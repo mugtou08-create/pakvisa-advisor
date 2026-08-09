@@ -20,6 +20,10 @@
 - Agent-browser snapshot confirms full page renders: Header, Nav tabs (Explore/Questionnaire/Compare/AI Consultant/Tools/Reports), Visa Alert Banners, Passport Renewal Reminder, Main content with search/FAQ/testimonials, Footer with links/newsletter
 - API endpoints verified: `/api/countries/stats` returns 70 countries, `/api/admin/ai-status` returns AI toggle
 - No Runtime TypeError dialogs detected in browser snapshot
+- Caddy proxy on port 81 returns 200
+- Server stable for 60+ seconds using `setsid -f`
+
+**Note**: Dev server process must be started with `setsid -f` in this sandbox to survive shell session termination.
 
 ---
 
