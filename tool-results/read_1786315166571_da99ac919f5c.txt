@@ -1,0 +1,592 @@
+   230→      .filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
+   231→      .slice(0, 8);
+   232→  }, [heroSearch, countries]);
+   233→
+   234→  // Helper for hero visa status
+   235→  const getHeroVisaStatus = (c: CountryData) => {
+   236→    if (c.visaFree) return { label: 'Visa Free', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' };
+   237→    if (c.visaOnArrival) return { label: 'Visa on Arrival', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' };
+   238→    if (c.etaAvailable) return { label: 'e-Visa', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' };
+   239→    return { label: 'Embassy Required', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' };
+   240→  };
+   241→
+   242→  // Hero search handlers
+   243→  const handleHeroCheckVisa = () => {
+   244→    const q = heroSearch.trim().toLowerCase();
+   245→    const match = countries.find(c => c.name.toLowerCase() === q || c.code.toLowerCase() === q);
+   246→    if (match) {
+   247→      setSelectedCountry(match);
+   248→      setHeroQuickResult(match);
+   249→      saveRecentSearch(match);
+   250→      setHeroSearch('');
+   251→      setShowSuggestions(false);
+   252→    } else {
+   253→      toast.error('Country not found. Please select from the suggestions.');
+   254→    }
+   255→  };
+   256→
+   257→  const handleHeroSelectCountry = (country: CountryData) => {
+   258→    setHeroSearch(country.name);
+   259→    setShowSuggestions(false);
+   260→  };
+   261→
+   262→  // Close suggestions on outside click
+   263→  useEffect(() => {
+   264→    const handleClickOutside = (e: MouseEvent) => {
+   265→      if (heroSearchRef.current && !heroSearchRef.current.contains(e.target as Node)) {
+   266→        setShowSuggestions(false);
+   267→      }
+   268→    };
+   269→    document.addEventListener('mousedown', handleClickOutside);
+   270→    return () => document.removeEventListener('mousedown', handleClickOutside);
+   271→  }, []);
+   272→
+   273→  // Ctrl+K → scroll to hero search & focus
+   274→  useEffect(() => {
+   275→    const handler = (e: KeyboardEvent) => {
+   276→      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+   277→        e.preventDefault();
+   278→        document.getElementById('visa-guide')?.scrollIntoView({ behavior: 'smooth' });
+   279→        setTimeout(() => {
+   280→          const input = heroSearchRef.current?.querySelector('input');
+   281→          input?.focus();
+   282→        }, 300);
+   283→      }
+   284→    };
+   285→    document.addEventListener('keydown', handler);
+   286→    return () => document.removeEventListener('keydown', handler);
+   287→  }, []);
+   288→
+   289→  return (
+   290→    <div className="space-y-10" ref={scrollRevealRef}>
+   291→      {/* Hero Section - Yellow Mango Themed Compact */}
+   292→      <section id="visa-guide" className="relative overflow-hidden rounded-2xl p-4 sm:p-6 md:p-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600 glass-card-strong">
+   293→        {/* Gradient mesh overlay */}
+   294→        <div className="hero-mesh-bg" />
+   295→        {/* Floating decorative orbs */}
+   296→        <div className="hero-orb hero-orb-1" />
+   297→        <div className="hero-orb hero-orb-2" />
+   298→        <div className="hero-orb hero-orb-3" />
+   299→        <div className="hero-orb hero-orb-4" />
+   300→        <div className="relative z-10 text-amber-950 dark:text-amber-100">
+   301→          <motion.h1
+   302→            className="text-[17px] sm:text-2xl md:text-3xl font-bold leading-snug mb-0.5"
+   303→            initial={{ opacity: 0, y: 10 }}
+   304→            animate={{ opacity: 1, y: 0 }}
+   305→            transition={{ duration: 0.4 }}
+   306→          >
+   307→            Does a Pakistani need a visa for...
+   308→          </motion.h1>
+   309→          <p className="text-xs sm:text-sm mb-1 opacity-90">
+   310→            Check visa requirements instantly for {countries.length}+ countries
+   311→          </p>
+   312→          {/* Typing animation */}
+   313→          <div className="h-5 sm:h-6 mb-2">
+   314→            <TypingText phrases={TYPING_PHRASES} className="text-[11px] sm:text-sm font-medium opacity-80" />
+   315→          </div>
+   316→
+   317→          {/* Visa Countdown Timer */}
+   318→          <VisaCountdownTimer />
+   319→
+   320→          {/* Search bar with animated gradient border */}
+   321→          <div ref={heroSearchRef} className="relative max-w-xl">
+   322→            <div className="hero-search-glow">
+   323→              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-700/60 dark:text-amber-200/60 z-10" />
+   324→              <Input
+   325→                placeholder="Type a country name..."
+   326→                value={heroSearch}
+   327→                onFocus={() => { setHeroSearchFocused(true); setShowSuggestions(true); }}
+   328→                onBlur={() => { setHeroSearchFocused(false); }}
+   329→                onChange={(e) => { setHeroSearch(e.target.value); setShowSuggestions(true); setHeroQuickResult(null); }}
+   330→                onKeyDown={(e) => { if (e.key === 'Enter') handleHeroCheckVisa(); }}
+   331→                className="pl-12 h-12 sm:h-14 rounded-xl text-base bg-white/90 dark:bg-black/20 border-amber-500/30 placeholder:text-amber-700/40 dark:placeholder:text-amber-200/40 text-amber-950 dark:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-400/60 shadow-lg shadow-amber-900/10 input-amber"
+   332→              />
+   333→            </div>
+   334→            <Button
+   335→              onClick={handleHeroCheckVisa}
+   336→              className="hero-btn-glow hero-btn-pulse hover-glow-amber absolute right-2 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-10 px-5 text-sm font-bold shine-sweep"
+   337→            >
+   338→              Check Visa
+   339→            </Button>
+   340→
+   341→            {/* Suggestions dropdown */}
+   342→            {showSuggestions && heroSuggestions.length > 0 && (
+   343→              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-popover rounded-xl shadow-lg border z-50 max-h-64 overflow-y-auto">
+   344→                {heroSuggestions.map((c) => (
+   345→                  <button
+   346→                    key={c.code}
+   347→                    onClick={() => { handleHeroSelectCountry(c); handleHeroCheckVisa(); }}
+   348→                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/50 transition-colors text-left text-sm"
+   349→                  >
+   350→                    <FlagImage code={c.code} flagUrl={c.flagUrl} size={24} emoji={c.flagEmoji} />
+   351→                    <span className="flex-1 font-medium text-foreground">{c.name}</span>
+   352→                    <Badge className={`${getHeroVisaStatus(c).color} text-[10px]`} variant="secondary">{getHeroVisaStatus(c).label}</Badge>
+   353→                  </button>
+   354→                ))}
+   355→              </div>
+   356→            )}
+   357→          </div>
+   358→
+   359→          {/* Quick Result Card */}
+   360→          {heroQuickResult && (
+   361→            <motion.div
+   362→              initial={{ opacity: 0, y: 10 }}
+   363→              animate={{ opacity: 1, y: 0 }}
+   364→              className="mt-4 max-w-xl"
+   365→            >
+   366→              <Card className="bg-white/95 dark:bg-black/30 border-amber-500/20 shadow-lg">
+   367→                <CardContent className="p-4">
+   368→                  <div className="flex items-center gap-3">
+   369→                    <FlagImage code={heroQuickResult.code} flagUrl={heroQuickResult.flagUrl} size={40} emoji={heroQuickResult.flagEmoji} />
+   370→                    <div className="flex-1 min-w-0">
+   371→                      <p className="font-semibold text-amber-950 dark:text-amber-100 truncate">{heroQuickResult.name}</p>
+   372→                      <Badge className={`${getHeroVisaStatus(heroQuickResult).color} text-[10px] mt-0.5`} variant="secondary">{getHeroVisaStatus(heroQuickResult).label}</Badge>
+   373→                    </div>
+   374→                    <div className="text-right text-xs text-amber-800/70 dark:text-amber-200/70 space-y-0.5">
+   375→                      <p>{heroQuickResult.processingDaysMin === heroQuickResult.processingDaysMax ? `${heroQuickResult.processingDaysMin} days` : `${heroQuickResult.processingDaysMin}-${heroQuickResult.processingDaysMax} days`}</p>
+   376→                      <p>${heroQuickResult.costProfile?.visaFeeUSD || 0}</p>
+   377→                    </div>
+   378→                    <Button size="sm" variant="outline" className="ml-2 rounded-lg text-xs border-amber-500/30 hover:bg-amber-50 dark:hover:bg-amber-900/20" onClick={() => setSelectedCountry(heroQuickResult)}>
+   379→                      View Details
+   380→                    </Button>
+   381→                  </div>
+   382→                </CardContent>
+   383→              </Card>
+   384→            </motion.div>
+   385→          )}
+   386→
+   387→          {/* Popular destination chips */}
+   388→          <div className="flex flex-wrap gap-2 mt-3">
+   389→            {['Malaysia', 'UAE', 'Turkey', 'UK', 'Saudi Arabia', 'Thailand'].map((name) => (
+   390→              <button
+   391→                key={name}
+   392→                onClick={() => {
+   393→                  const c = countries.find(x => x.name === name);
+   394→                  if (c) { setSelectedCountry(c); setHeroQuickResult(c); saveRecentSearch(c); }
+   395→                }}
+   396→                className="hero-chip hover-lift-smooth px-3 py-1.5 rounded-full text-xs font-semibold bg-white/30 dark:bg-black/15 hover:bg-white/60 dark:hover:bg-black/30 transition-all duration-200 border border-white/30 dark:border-white/10 hover:shadow-md hover:scale-105 active:scale-95"
+   397→              >
+   398→                {name}
+   399→              </button>
+   400→            ))}
+   401→          </div>
+   402→
+   403→          {/* Recent Searches - only when search bar focused and empty */ }
+   404→          <AnimatePresence>
+   405→            {recentSearches.length > 0 && heroSearchFocused && heroSearch.trim() === '' && (
+   406→              <motion.div
+   407→                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+   408→                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+   409→                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+   410→                className="overflow-hidden"
+   411→              >
+   412→                <div className="flex items-center justify-between mb-2">
+   413→                  <div className="flex items-center gap-1.5 text-amber-950/70 dark:text-amber-100/70">
+   414→                    <History className="w-3.5 h-3.5" />
+   415→                    <span className="text-[11px] font-medium">Recent Searches</span>
+   416→                  </div>
+   417→                  <button
+   418→                    onClick={clearRecentSearches}
+   419→                    className="text-[10px] text-amber-950/50 dark:text-amber-100/50 hover:text-amber-950/80 dark:hover:text-amber-100/80 transition-colors flex items-center gap-1"
+   420→                  >
+   421→                    <X className="w-3 h-3" /> Clear all
+   422→                  </button>
+   423→                </div>
+   424→                <div className="flex flex-wrap gap-1.5">
+   425→                  {recentSearches.map((entry, idx) => (
+   426→                    <motion.button
+   427→                      key={entry.code}
+   428→                      initial={{ opacity: 0, scale: 0.9 }}
+   429→                      animate={{ opacity: 1, scale: 1 }}
+   430→                      transition={{ delay: idx * 0.04 }}
+   431→                      onClick={() => selectRecentSearch(entry)}
+   432→                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-white/40 dark:bg-black/20 hover:bg-white/70 dark:hover:bg-black/35 transition-all border border-white/30 dark:border-white/10 hover:shadow-sm hover:scale-105 active:scale-95"
+   433→                    >
+   434→                      <span className="text-sm">{entry.flagEmoji}</span>
+   435→                      <span className="font-medium">{entry.name}</span>
+   436→                      <span className="text-[9px] opacity-60 flex items-center gap-0.5">
+   437→                        <Clock4 className="w-2.5 h-2.5" />
+   438→                        {formatRelativeTime(entry.searchedAt)}
+   439→                      </span>
+   440→                    </motion.button>
+   441→                  ))}
+   442→                </div>
+   443→              </motion.div>
+   444→            )}
+   445→          </AnimatePresence>
+   446→
+   447→          {/* Trust text */}
+   448→          <p className="text-[11px] mt-2 opacity-75">
+   449→            ✓ {countries.length} countries · Updated {(() => { const d = new Date(); return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; })()} · Free to use
+   450→          </p>
+   451→        </div>
+   452→      </section>
+   453→
+   454→      {/* Destination Spotlight Carousel */}
+   455→      {!loading && countries.length > 0 && (
+   456→        <DestinationSpotlight onSelectCountry={setSelectedCountry} />
+   457→      )}
+   458→
+   459→      {/* Recent Updates - Visa Policy Change Tracker */}
+   460→      {!loading && countries.length > 0 && (
+   461→        <section className="space-y-3 py-1">
+   462→          <h2 className="text-lg font-bold flex items-center gap-2">
+   463→            <History className="w-5 h-5 text-amber-500" />
+   464→            Recent Updates
+   465→          </h2>
+   466→          <VisaPolicyChangeTracker countries={filtered.length > 0 ? filtered : countries} />
+   467→        </section>
+   468→      )}
+   469→
+   470→      {/* Decorative section divider */}
+   471→      <div className="section-gradient-divider-enhanced" />
+   472→
+   473→      {/* Passport Power Index - At a glance overview */}
+   474→      {!loading && countries.length > 0 && (
+   475→        <section className="glass-section p-5 md:p-6 rounded-xl card-accent-top">
+   476→          <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+   477→            <Globe className="w-5 h-5 text-amber-500" />
+   478→            Pakistani Passport Overview
+   479→          </h2>
+   480→          <PassportPowerIndex countries={countries} stats={stats} />
+   481→        </section>
+   482→      )}
+   483→
+   484→      {/* Decorative section divider */}
+   485→      <div className="section-gradient-divider-enhanced" />
+   486→
+   487→      {/* Continent Quick Stats */}
+   488→      {!loading && countries.length > 0 && (
+   489→        <section className="glass-section p-5 md:p-6 rounded-xl card-accent-left">
+   490→          <ContinentQuickStats countries={countries} />
+   491→        </section>
+   492→      )}
+   493→
+   494→      {/* Visa Readiness Dashboard */}
+   495→      {!loading && countries.length > 0 && (
+   496→        <section className="glass-section p-5 md:p-6 rounded-xl">
+   497→          <div className="flex items-center gap-2 mb-4">
+   498→            <Target className="w-5 h-5 text-amber-500" />
+   499→            <h2 className="text-lg font-bold">Visa Readiness Dashboard</h2>
+   500→          </div>
+   501→          <div className="card-elevated-1 rounded-xl p-5">
+   502→            <VisaReadinessDashboard countries={countries} userProfile={userProfile} />
+   503→          </div>
+   504→        </section>
+   505→      )}
+   506→
+   507→      {/* Smart Recommendations */}
+   508→      {!loading && countries.length > 0 && (
+   509→        <section className="glass-section p-5 md:p-6 rounded-xl">
+   510→          <SmartRecommendations countries={countries} userProfile={userProfile} />
+   511→        </section>
+   512→      )}
+   513→
+   514→      {/* Decorative section divider */}
+   515→      <div className="section-gradient-divider-enhanced" />
+   516→
+   517→      {/* Visa Requirement World Map */}
+   518→      {!loading && countries.length > 0 && (
+   519→        <section className="space-y-4 py-2">
+   520→          <div className="flex items-center justify-between">
+   521→            <div>
+   522→              <h2 className="text-lg font-bold flex items-center gap-2">
+   523→                <Map className="w-5 h-5 text-amber-500" /> Visa Requirement World Map
+   524→              </h2>
+   525→              <p className="text-xs text-muted-foreground">Click any country to see visa details</p>
+   526→            </div>
+   527→          </div>
+   528→          <InteractiveWorldMap countries={countries} onSelectCountry={setSelectedCountry} />
+   529→        </section>
+   530→      )}
+   531→
+   532→      {/* Decorative section divider */}
+   533→      <div className="section-gradient-divider-enhanced" />
+   534→
+   535→      {/* Country Directory - Filter Toolbar + Grid */}
+   536→      <section id="country-grid" className="space-y-3">
+   537→        {/* Section Heading */}
+   538→        <div className="flex items-center justify-between">
+   539→          <div>
+   540→            <h2 className="text-lg font-bold flex items-center gap-2">
+   541→              <Compass className="w-5 h-5 text-amber-500" /> Explore All Countries
+   542→            </h2>
+   543→            <p className="text-xs text-muted-foreground">Browse visa requirements for {countries.length} destinations worldwide</p>
+   544→          </div>
+   545→          <div className="flex items-center gap-2">
+   546→            <span className="text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full">{filtered.length} shown</span>
+   547→            <TooltipProvider>
+   548→              <Tooltip>
+   549→                <TooltipTrigger asChild>
+   550→                  <button
+   551→                    onClick={() => {
+   552→                      setLoading(true);
+   553→                      Promise.all([
+   554→                        fetch('/api/countries').then(r => r.json()).then(data => {
+   555→                          setCountries(data.data || []);
+   556→                          setLastDataFetch(new Date().toISOString());
+   557→                          return data.data || [];
+   558→                        }),
+   559→                        fetch('/api/countries/stats').then(r => r.json()).then(data => {
+   560→                          if (data.data) setStats(data.data);
+   561→                        }),
+   562→                      ]).then(([newCountries]) => {
+   563→                        const count = Array.isArray(newCountries) ? newCountries.length : countries.length;
+   564→                        toast.success(`Data refreshed — ${count} countries loaded`);
+   565→                      }).catch(() => {
+   566→                        toast.error('Failed to refresh data');
+   567→                      }).finally(() => {
+   568→                        setLoading(false);
+   569→                      });
+   570→                    }}
+   571→                    disabled={loading}
+   572→                    className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
+   573→                    title="Refresh country data"
+   574→                  >
+   575→                    <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+   576→                  </button>
+   577→                </TooltipTrigger>
+   578→                <TooltipContent side="top">
+   579→                  <p className="text-xs">Refresh visa data for all {countries.length} countries</p>
+   580→                </TooltipContent>
+   581→              </Tooltip>
+   582→            </TooltipProvider>
+   583→          </div>
+   584→        </div>
+   585→
+   586→        {/* Search + Sort + View Mode + Month Filter Toolbar - Sticky on desktop */}
+   587→        <div className="sticky-filter-bar bg-background/95 backdrop-blur-sm sm:rounded-xl sm:border sm:border-border/50 sm:shadow-sm sm:px-4 sm:py-3 -mx-0 sm:-mx-4">
+   588→        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+   589→          <div className="relative flex-1">
+   590→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   591→            <Input placeholder="Filter countries by name..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-10 text-sm" />
+   592→          </div>
+   593→          <div className="flex items-center gap-2 flex-wrap">
+   594→            <Select value={sortBy} onValueChange={setSortBy}>
+   595→              <SelectTrigger className="w-32 h-10 text-sm">
+   596→                <ArrowUpDown className="w-4 h-4 mr-1" />
+   597→                <SelectValue placeholder="Sort" />
+   598→              </SelectTrigger>
+   599→              <SelectContent>
+   600→                <SelectItem value="name">Name A-Z</SelectItem>
+   601→                <SelectItem value="visa-free">Visa-Free First</SelectItem>
+   602→                <SelectItem value="processing">Fastest</SelectItem>
+   603→                <SelectItem value="cost">Lowest Cost</SelectItem>
+   604→                <SelectItem value="safety">Safest First</SelectItem>
+   605→              </SelectContent>
+   606→            </Select>
+   607→            {/* Best Month to Visit Filter */}
+   608→            <Select value={monthFilter} onValueChange={(v) => setMonthFilter(v === 'all' ? '' : v)}>
+   609→              <SelectTrigger className="w-36 h-10 text-sm">
+   610→                <Sun className="w-4 h-4 mr-1" />
+   611→                <SelectValue placeholder="Best Month" />
+   612→              </SelectTrigger>
+   613→              <SelectContent>
+   614→                <SelectItem value="all">Any Month</SelectItem>
+   615→                {MONTH_NAMES.map((m) => (
+   616→                  <SelectItem key={m} value={m}>{m}</SelectItem>
+   617→                ))}
+   618→              </SelectContent>
+   619→            </Select>
+   620→            <div className="flex rounded-lg border p-0.5">
+   621→              <button className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-amber-600 text-white' : 'text-muted-foreground'}`} onClick={() => setViewMode('grid')}><LayoutGrid className="w-4 h-4" /></button>
+   622→              <button className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-amber-600 text-white' : 'text-muted-foreground'}`} onClick={() => setViewMode('list')}><List className="w-4 h-4" /></button>
+   623→            </div>
+   624→            <span className="text-xs text-muted-foreground whitespace-nowrap">{displayCountries.length} of {filtered.length}</span>
+   625→          </div>
+   626→        </div>
+   627→
+   628→        {/* Region + Visa Type Filters - Combined clean layout */}
+   629→        <div className="space-y-2.5">
+   630→          {/* Region Filters */}
+   631→          <div className="flex items-center gap-2 flex-wrap">
+   632→            <span className="text-xs font-medium text-muted-foreground shrink-0">Region:</span>
+   633→            <div className="flex flex-wrap gap-1.5">
+   634→              <motion.button
+   635→                onClick={() => setRegion('All')}
+   636→                whileTap={{ scale: 0.95 }}
+   637→                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+   638→                  region === 'All'
+   639→                    ? 'bg-amber-600 text-white border-amber-600'
+   640→                    : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+   641→                }`}
+   642→              >
+   643→                <Globe className="w-3 h-3" />All
+   644→                <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${region === 'All' ? 'bg-white/20' : 'bg-muted'}`}>{countries.length}</span>
+   645→              </motion.button>
+   646→              {REGIONS.map((r) => {
+   647→                const regionIcons: Record<string, React.ReactNode> = {
+   648→                  'Asia': <Globe className="w-3 h-3" />,
+   649→                  'Middle East': <Building className="w-3 h-3" />,
+   650→                  'Africa': <Sun className="w-3 h-3" />,
+   651→                  'Europe': <Landmark className="w-3 h-3" />,
+   652→                  'Americas': <Map className="w-3 h-3" />,
+   653→                  'Oceania': <Globe className="w-3 h-3" />,
+   654→                };
+   655→                const isActive = region === r;
+   656→                return (
+   657→                  <motion.button
+   658→                    key={r}
+   659→                    onClick={() => setRegion(isActive ? 'All' : r)}
+   660→                    whileTap={{ scale: 0.95 }}
+   661→                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+   662→                      isActive
+   663→                        ? 'bg-amber-600 text-white border-amber-600'
+   664→                        : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+   665→                    }`}
+   666→                  >
+   667→                    {regionIcons[r]}
+   668→                    <span className="shrink-0">{r}</span>
+   669→                    <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${isActive ? 'bg-white/20' : 'bg-muted'}`}>
+   670→                      {countries.filter(c => getRegion(c) === r).length}
+   671→                    </span>
+   672→                  </motion.button>
+   673→                );
+   674→              })}
+   675→            </div>
+   676→          </div>
+   677→
+   678→          {/* Visa Type & Smart Filters */}
+   679→          <div className="flex items-center gap-2 flex-wrap">
+   680→            <span className="text-xs font-medium text-muted-foreground shrink-0">Filters:</span>
+   681→            <div className="flex flex-wrap gap-1.5">
+   682→              {QUICK_FILTERS.map((qf) => {
+   683→                const count = filterCounts[qf.id as keyof typeof filterCounts] ?? null;
+   684→                const isActive = quickFilter === qf.id;
+   685→                return (
+   686→                  <motion.button
+   687→                    key={qf.id}
+   688→                    onClick={() => setQuickFilter(isActive ? '' : qf.id)}
+   689→                    whileTap={{ scale: 0.95 }}
+   690→                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+   691→                      isActive
+   692→                        ? 'bg-amber-600 text-white border-amber-600'
+   693→                        : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+   694→                    }`}
+   695→                  >
+   696→                    <qf.icon className="w-3 h-3" />
+   697→                    {qf.label}
+   698→                    {count !== null && count > 0 && (
+   699→                      <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${isActive ? 'bg-white/20' : 'bg-muted'}`}>{count}</span>
+   700→                    )}
+   701→                  </motion.button>
+   702→                );
+   703→              })}
+   704→              {monthFilter && (
+   705→                <motion.button
+   706→                  initial={{ opacity: 0, scale: 0.9 }}
+   707→                  animate={{ opacity: 1, scale: 1 }}
+   708→                  onClick={() => setMonthFilter('')}
+   709→                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
+   710→                >
+   711→                  <Sun className="w-3 h-3" />
+   712→                  Best in {monthFilter}
+   713→                  <X className="w-3 h-3" />
+   714→                </motion.button>
+   715→              )}
+   716→            </div>
+   717→          </div>
+   718→        </div>
+   719→        </div>
+   720→
+   721→        {/* Grid / List */}
+   722→        {loading ? (
+   723→          <div className="loading-dots"><SkeletonCountryCards /></div>
+   724→        ) : viewMode === 'grid' ? (
+   725→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 responsive-grid-2">
+   726→            <AnimatePresence mode="popLayout">
+   727→              {displayCountries.map((country, idx) => (
+   728→                <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>
+   729→                  <div className="card-accent-top rounded-xl">
+   730→                  <CountryCard country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
+   731→                  </div>
+   732→                </motion.div>
+   733→              ))}
+   734→            </AnimatePresence>
+   735→          </div>
+   736→        ) : (
+   737→          <div className="space-y-2">
+   738→            <AnimatePresence mode="popLayout">
+   739→              {displayCountries.map((country, idx) => (
+   740→                <motion.div key={country.code} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.15 }}>
+   741→                  <CountryListRow country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
+   742→                </motion.div>
+   743→              ))}
+   744→            </AnimatePresence>
+   745→          </div>
+   746→        )}
+   747→
+   748→        {/* Show More / Show All */}
+   749→        {!loading && displayCountries.length < filtered.length && (
+   750→          <div className="flex justify-center pt-2">
+   751→            <Button variant="outline" onClick={() => setVisibleCount(v => v + 12)} className="gap-2 text-sm">
+   752→              Show More Countries ({filtered.length - displayCountries.length} remaining)
+   753→              <ChevronDown className="w-4 h-4" />
+   754→            </Button>
+   755→          </div>
+   756→        )}
+   757→        {!loading && displayCountries.length >= filtered.length && filtered.length > 0 && (
+   758→          <p className="text-center text-xs text-muted-foreground pt-2">Showing all {filtered.length} countries</p>
+   759→        )}
+   760→      </section>
+   761→
+   762→      {/* Trending Destinations - After country grid */}
+   763→      {!loading && trendingCountries.length > 0 && (
+   764→        <>
+   765→        <div className="section-gradient-divider" />
+   766→        <section className="space-y-4 py-2">
+   767→          <div className="flex items-center justify-between">
+   768→            <div>
+   769→              <h2 className="text-lg font-bold flex items-center gap-2">
+   770→                <Flame className="w-5 h-5 text-orange-500" /> Trending Destinations
+   771→              </h2>
+   772→              <p className="text-xs text-muted-foreground">Most checked by Pakistani travelers</p>
+   773→            </div>
+   774→            <button onClick={() => document.getElementById('country-grid')?.scrollIntoView({ behavior: 'smooth' })} className="text-xs text-amber-600 dark:text-amber-400 font-medium hover:underline flex items-center gap-1">
+   775→              Back to top <ChevronUp className="w-3 h-3" />
+   776→            </button>
+   777→          </div>
+   778→          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   779→            {trendingCountries.map((c) => {
+   780→              const status = getHeroVisaStatus(c);
+   781→              return (
+   782→                <motion.div key={c.code} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+   783→                  <Card className="cursor-pointer hover:shadow-md transition-shadow p-4 card-warm-shadow" onClick={() => setSelectedCountry(c)}>
+   784→                    <div className="flex items-center gap-2 mb-2">
+   785→                      <span className="text-2xl"><FlagImage code={c.code} flagUrl={c.flagUrl} size={28} emoji={c.flagEmoji} /></span>
+   786→                      <div className="min-w-0 flex-1">
+   787→                        <p className="text-sm font-semibold truncate">{c.name}</p>
+   788→                        <p className="text-[11px] text-muted-foreground">{c.continent}</p>
+   789→                      </div>
+   790→                    </div>
+   791→                    <Badge className={`${status.color} text-[10px] mb-2`} variant="secondary">{status.label}</Badge>
+   792→                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+   793→                      <span>{c.processingDaysMin === c.processingDaysMax ? `${c.processingDaysMin} days` : `${c.processingDaysMin}-${c.processingDaysMax}d`}</span>
+   794→                      <span>${c.costProfile?.visaFeeUSD || 0}</span>
+   795→                    </div>
+   796→                  </Card>
+   797→                </motion.div>
+   798→              );
+   799→            })}
+   800→          </div>
+   801→        </section>
+   802→        </>
+   803→      )}
+   804→
+   805→      {/* FAQ Section - Enhanced with Search & Categories */}
+   806→      <section className="faq-section-tint rounded-xl p-5 md:p-6">
+   807→        <EnhancedFAQ />
+   808→      </section>
+   809→
+   810→      {/* Floating Mobile CTA */}
+   811→      <div className="fixed bottom-24 right-3 z-40 lg:hidden">
+   812→        <button onClick={() => document.getElementById('visa-guide')?.scrollIntoView({ behavior: 'smooth' })} className="w-10 h-10 rounded-full bg-amber-500/90 backdrop-blur-sm text-white shadow-lg shadow-amber-500/20 flex items-center justify-center hover:bg-amber-600 active:scale-95 transition-all border-2 border-white/80 dark:border-background/80" aria-label="Scroll to search">
+   813→          <Search className="w-3.5 h-3.5" />
+   814→        </button>
+   815→      </div>
+   816→
+   817→      <CountryDetailDialog country={selectedCountry} open={!!selectedCountry} onClose={() => setSelectedCountry(null)} />
+   818→    </div>
+   819→  );
+   820→}
+   821→

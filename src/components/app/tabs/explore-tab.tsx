@@ -30,6 +30,7 @@ import {
 import { CountryDetailDialog, SimilarCountriesPanel, EmbassyInfoSection, DestinationDiscoveryPanel, ApplicationTimelineTracker, VisaFeeComparisonChart, SkeletonCountryCards, TypingText, FloatingParticles, SmartQuickSearch, DestinationSpotlight } from '../shared-components-2';
 import { VisaStatsDashboard, PassportPowerIndex } from '../shared-components-3';
 import { VisaPolicyChangeTracker, ContinentQuickStats, VisaReadinessDashboard, SmartRecommendations, EnhancedFAQ } from '../shared-components-4';
+import { CountryComparisonSwiper, VisaEligibilityMap } from '../shared-components-5';
 
 export function ExploreTab() {
   const [countries, setCountries] = useState<CountryData[]>([]);
@@ -451,6 +452,23 @@ export function ExploreTab() {
         </div>
       </section>
 
+      {/* Quick Explore - Country Comparison Swiper */}
+      {!loading && countries.length > 0 && (
+        <section className="glass-section p-5 md:p-6 rounded-xl">
+          <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+            <Sparkles className="w-5 h-5 text-amber-500" />
+            Quick Explore
+          </h2>
+          <CountryComparisonSwiper
+            countries={countries.slice(0, 8)}
+            onSelectCountry={(code) => {
+              const c = countries.find((x) => x.code === code);
+              if (c) setSelectedCountry(c);
+            }}
+          />
+        </section>
+      )}
+
       {/* Destination Spotlight Carousel */}
       {!loading && countries.length > 0 && (
         <DestinationSpotlight onSelectCountry={setSelectedCountry} />
@@ -470,9 +488,23 @@ export function ExploreTab() {
       {/* Decorative section divider */}
       <div className="section-gradient-divider-enhanced" />
 
+      {/* Visa Eligibility Map */}
+      {!loading && countries.length > 0 && (
+        <section className="glass-section p-5 md:p-6 rounded-xl card-accent-top">
+          <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+            <Map className="w-5 h-5 text-amber-500" />
+            Visa Eligibility Map
+          </h2>
+          <VisaEligibilityMap countries={countries} onSelectCountry={setSelectedCountry} />
+        </section>
+      )}
+
+      {/* Decorative section divider */}
+      <div className="section-gradient-divider-enhanced" />
+
       {/* Passport Power Index - At a glance overview */}
       {!loading && countries.length > 0 && (
-        <section className="glass-section p-5 md:p-6 rounded-xl">
+        <section className="glass-section p-5 md:p-6 rounded-xl card-accent-top">
           <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
             <Globe className="w-5 h-5 text-amber-500" />
             Pakistani Passport Overview
@@ -486,7 +518,7 @@ export function ExploreTab() {
 
       {/* Continent Quick Stats */}
       {!loading && countries.length > 0 && (
-        <section className="glass-section p-5 md:p-6 rounded-xl">
+        <section className="glass-section p-5 md:p-6 rounded-xl card-accent-left">
           <ContinentQuickStats countries={countries} />
         </section>
       )}
@@ -726,7 +758,9 @@ export function ExploreTab() {
             <AnimatePresence mode="popLayout">
               {displayCountries.map((country, idx) => (
                 <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>
+                  <div className="card-accent-top rounded-xl">
                   <CountryCard country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>

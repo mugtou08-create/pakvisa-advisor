@@ -68,6 +68,20 @@ interface AppState {
   removeTripDestination: (index: number) => void;
   reorderTripDestination: (fromIndex: number, toIndex: number) => void;
   clearTripPlan: () => void;
+  // Favorite Countries Enhancement
+  favoriteCountries: string[];
+  toggleFavoriteCountry: (code: string) => void;
+  isFavorite: (code: string) => boolean;
+  // Search History Enhancement
+  recentSearches: Array<{ query: string; timestamp: number }>;
+  addRecentSearch: (query: string) => void;
+  clearRecentSearches: () => void;
+  // View Preferences
+  viewPreference: 'grid' | 'list';
+  setViewPreference: (pref: 'grid' | 'list') => void;
+  // Dashboard Widgets Order
+  dashboardWidgets: string[];
+  reorderWidget: (fromIndex: number, toIndex: number) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -150,6 +164,37 @@ export const useAppStore = create<AppState>()(
         return { tripPlan: updated };
       }),
       clearTripPlan: () => set({ tripPlan: [] }),
+      // Favorite Countries Enhancement
+      favoriteCountries: [],
+      toggleFavoriteCountry: (code) => set((state) => ({
+        favoriteCountries: state.favoriteCountries.includes(code)
+          ? state.favoriteCountries.filter((c) => c !== code)
+          : [...state.favoriteCountries, code],
+      })),
+      isFavorite: (code) => {
+        const state = useAppStore.getState();
+        return state.favoriteCountries.includes(code);
+      },
+      // Search History Enhancement
+      recentSearches: [],
+      addRecentSearch: (query) => set((state) => ({
+        recentSearches: [
+          { query, timestamp: Date.now() },
+          ...state.recentSearches.filter((s) => s.query.toLowerCase() !== query.toLowerCase()),
+        ].slice(0, 10),
+      })),
+      clearRecentSearches: () => set({ recentSearches: [] }),
+      // View Preferences
+      viewPreference: 'grid',
+      setViewPreference: (pref) => set({ viewPreference: pref }),
+      // Dashboard Widgets Order
+      dashboardWidgets: ['passport-power', 'continent-stats', 'readiness', 'recommendations', 'world-map', 'policy-tracker'],
+      reorderWidget: (fromIndex, toIndex) => set((state) => {
+        const updated = [...state.dashboardWidgets];
+        const [moved] = updated.splice(fromIndex, 1);
+        updated.splice(toIndex, 0, moved);
+        return { dashboardWidgets: updated };
+      }),
     }),
     {
       name: 'pakvisa-store',
@@ -168,6 +213,10 @@ export const useAppStore = create<AppState>()(
         conversionHistory: state.conversionHistory,
         userFeedback: state.userFeedback,
         tripPlan: state.tripPlan,
+        favoriteCountries: state.favoriteCountries,
+        recentSearches: state.recentSearches,
+        viewPreference: state.viewPreference,
+        dashboardWidgets: state.dashboardWidgets,
       }),
     }
   )

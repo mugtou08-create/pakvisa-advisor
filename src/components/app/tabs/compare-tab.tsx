@@ -326,12 +326,12 @@ export function CompareTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {results.map((r, i) => (
-            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 card-glow-border ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
+            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 card-glow-border card-accent-top ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base card-section-title">{r.country}</CardTitle>
                   <div className="stat-card-compact flex flex-col items-center">
-                    <span className="text-2xl font-bold text-amber-600 stat-card-number">{Math.round(r.finalScore)}</span>
+                    <span className="text-2xl font-bold text-amber-600 stat-card-number stat-number-amber">{Math.round(r.finalScore)}</span>
                     <span className="stat-card-label text-[10px] text-muted-foreground">Score</span>
                   </div>
                 </div>
@@ -341,7 +341,9 @@ export function CompareTab() {
                   <div key={j} className="flex items-center justify-between">
                     <span className="text-muted-foreground">{c.name}</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={c.score} className="w-20 h-1.5" />
+                      <div className="data-bar-amber data-bar-animated w-20 h-1.5">
+                        <div className="data-bar-fill" style={{ width: `${Math.round(c.score)}%` }} />
+                      </div>
                       <span className="w-8 text-right">{Math.round(c.score)}%</span>
                     </div>
                   </div>

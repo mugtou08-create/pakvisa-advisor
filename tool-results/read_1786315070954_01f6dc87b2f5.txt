@@ -1,0 +1,736 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  FileText, BarChart3, Search, ChevronRight, ChevronLeft, Star, Clock,
+     7→  DollarSign, Shield, Calendar, Heart,
+     8→  Send, Bot, User, Plus, Minus, ArrowUpDown,
+     9→  CheckCircle2, AlertTriangle, XCircle, Info,
+    10→  Globe, Plane, Building, GraduationCap, Briefcase, Landmark, Map,
+    11→  CreditCard, Home, Users, Lock, Lightbulb,
+    12→  RotateCcw, ToggleLeft, ToggleRight, Zap,
+    13→  TrendingUp, TrendingDown, ArrowRight, Printer, Share2,
+    14→  Eye, ClipboardList, Play, Save, Upload, ChevronUp, Compass,
+    15→  Gavel, BadgePercent, Timer, Wallet, Trophy, Phone, Mail,
+    16→  Keyboard, HelpCircle, Sparkles, ChevronDown, History, Target, SearchX,
+    17→  LayoutGrid, List, RefreshCw, Passports, Flame, Languages, CircleDollarSign, CircleCheckBig, FileWarning,
+    18→  Bell, Bookmark, AlertCircle, CalendarClock, Luggage, FileCheck2,
+    19→  Check, CalendarDays, AlarmClock, PackageOpen, PlaneTakeoff, UtensilsCrossed, MoreHorizontal, Calculator,
+    20→  Copy, SlidersHorizontal, BookOpen,
+    21→} from 'lucide-react';
+    22→import { Button } from '@/components/ui/button';
+    23→import { Input } from '@/components/ui/input';
+    24→import { Label } from '@/components/ui/label';
+    25→import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+    26→import { Badge } from '@/components/ui/badge';
+    27→import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+    28→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    29→import { Checkbox } from '@/components/ui/checkbox';
+    30→import { Progress } from '@/components/ui/progress';
+    31→import { Separator } from '@/components/ui/separator';
+    32→import { ScrollArea } from '@/components/ui/scroll-area';
+    33→import { Skeleton } from '@/components/ui/skeleton';
+    34→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+    35→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+    36→import { Switch } from '@/components/ui/switch';
+    37→import { Slider } from '@/components/ui/slider';
+    38→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+    39→import { toast } from 'sonner';
+    40→import { useAppStore } from '@/lib/store';
+    41→import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, ChecklistItem } from '@/lib/types';
+    42→import { FlagImage, AnimatedCounter, QuickDashboard, ConfettiDot, ColorProgress } from '../shared-components-1';
+    43→import { ScoringHistoryPanel, TravelCostCalculator, RadialGauge, AnimatedScoreNumber, ConfettiAnimation, ScoreQuickViewDialog, ApplicationTipsPanel, ProfileStrengthMeter, CheckFlash, AnimatedScoreRing, VisaDocumentChecklist } from '../shared-components-2';
+    44→import { VisaReadinessGauge } from '../shared-components-3';
+    45→
+    46→export const emptyProfile: UserProfileData = {
+    47→  fullName: '', age: 25, gender: '', nationality: 'Pakistani', passportNumber: '',
+    48→  passportExpiry: '', occupation: '', monthlyIncomeUSD: 0, savingsUSD: 0,
+    49→  education: '', languages: ['english'], hasCriminalRecord: false, hasPriorTravel: false,
+    50→  priorCountries: [], hasHealthInsurance: false, hasSponsor: false, sponsorRelation: '',
+    51→  sponsorIncomeUSD: 0, travelPurpose: '', intendedStayDays: 30, hasReturnTicket: false,
+    52→  hasHotelBooking: false, budgetUSD: 0, maritalStatus: '', dependents: 0,
+    53→  hasSpecialNeeds: false, additionalNotes: '',
+    54→};
+    55→
+    56→export const STEPS = [
+    57→  { title: 'Personal Information', icon: User, description: 'Basic details and passport info' },
+    58→  { title: 'Professional', icon: Briefcase, description: 'Occupation, education, and languages' },
+    59→  { title: 'Financial', icon: DollarSign, description: 'Income, savings, and sponsor details' },
+    60→  { title: 'Travel Details', icon: Plane, description: 'Purpose, duration, and bookings' },
+    61→  { title: 'Additional', icon: Users, description: 'Health, travel history, and other' },
+    62→  { title: 'Review & Score', icon: BarChart3, description: 'Summary and eligibility check' },
+    63→];
+    64→
+    65→export function QuestionnaireTab() {
+    66→  const { userProfile, setUserProfile, scoreResults, addScoreResult, setActiveTab } = useAppStore();
+    67→  const [step, setStep] = useState(0);
+    68→  const [profile, setProfile] = useState<UserProfileData>(userProfile || emptyProfile);
+    69→  const [scoring, setScoring] = useState(false);
+    70→  const [scores, setScores] = useState<ScoreBreakdown[]>([]);
+    71→  const [quickViewScore, setQuickViewScore] = useState<ScoreBreakdown | null>(null);
+    72→  const [quickViewOpen, setQuickViewOpen] = useState(false);
+    73→
+    74→  // Save/Load profile to localStorage
+    75→  const saveProfile = useCallback(() => {
+    76→    try {
+    77→      localStorage.setItem('pakvisa-profile', JSON.stringify(profile));
+    78→      toast.success('Profile saved to browser storage!');
+    79→    } catch {
+    80→      toast.error('Failed to save profile');
+    81→    }
+    82→  }, [profile]);
+    83→
+    84→  const loadProfile = useCallback(() => {
+    85→    try {
+    86→      const saved = localStorage.getItem('pakvisa-profile');
+    87→      if (saved) {
+    88→        const parsed = JSON.parse(saved) as UserProfileData;
+    89→        setProfile(parsed);
+    90→        toast.success('Profile loaded from saved data!');
+    91→      } else {
+    92→        toast.error('No saved profile found');
+    93→      }
+    94→    } catch {
+    95→      toast.error('Failed to load profile');
+    96→    }
+    97→  }, []);
+    98→
+    99→  const updateProfile = (field: keyof UserProfileData, value: string | number | boolean | string[]) => {
+   100→    setProfile(prev => ({ ...prev, [field]: value }));
+   101→  };
+   102→
+   103→  const calculateScores = async () => {
+   104→    setScoring(true);
+   105→    try {
+   106→      const res = await fetch('/api/score-batch', {
+   107→        method: 'POST',
+   108→        headers: { 'Content-Type': 'application/json' },
+   109→        body: JSON.stringify({ profile }),
+   110→      });
+   111→      const data = await res.json();
+   112→      const allScores: ScoreBreakdown[] = data.data || [];
+   113→      setScores(allScores);
+   114→      allScores.forEach(s => addScoreResult(s));
+   115→      setUserProfile(profile);
+   116→      // Show rich toast with top score
+   117→      const topResult = allScores.reduce((best, s) => s.finalScore > best.finalScore ? s : best, allScores[0]);
+   118→      if (topResult) {
+   119→        toast.custom(() => (
+   120→          <div className="flex items-center gap-3 p-3 rounded-lg border bg-background shadow-lg max-w-sm">
+   121→            <div className="toast-score-ring" style={{ backgroundColor: topResult.finalScore >= 70 ? '#f59e0b' : topResult.finalScore >= 40 ? '#f59e0b' : '#ef4444' }}>
+   122→              {Math.round(topResult.finalScore)}
+   123→            </div>
+   124→            <div className="flex-1 min-w-0">
+   125→              <p className="text-sm font-semibold">Scores Calculated!</p>
+   126→              <p className="text-xs text-muted-foreground truncate">Top: {topResult.country} ({topResult.visaType})</p>
+   127→            </div>
+   128→            <Button
+   129→              size="sm"
+   130→              className="bg-amber-600 hover:bg-amber-700 text-white text-xs shrink-0"
+   131→              onClick={() => { setActiveTab('reports'); }}
+   132→            >
+   133→              View Report
+   134→            </Button>
+   135→          </div>
+   136→        ), { duration: 5000 });
+   137→      }
+   138→      // Save to scoring history
+   139→      try {
+   140→        const historyEntry: ScoringSession = {
+   141→          id: Date.now().toString(),
+   142→          date: new Date().toISOString(),
+   143→          profile: { age: profile.age, occupation: profile.occupation || 'N/A', purpose: profile.travelPurpose || 'N/A' },
+   144→          topCountries: allScores.sort((a, b) => b.finalScore - a.finalScore).slice(0, 3).map(s => s.country),
+   145→          scores: allScores,
+   146→        };
+   147→        const stored = localStorage.getItem(SCORING_HISTORY_KEY);
+   148→        const existing: ScoringSession[] = stored ? JSON.parse(stored) : [];
+   149→        existing.unshift(historyEntry);
+   150→        localStorage.setItem(SCORING_HISTORY_KEY, JSON.stringify(existing.slice(0, 10)));
+   151→      } catch { /* empty */ }
+   152→      // No more duplicate toast - rich toast above handles it
+   153→    } catch {
+   154→      toast.error('Failed to calculate scores');
+   155→    }
+   156→    setScoring(false);
+   157→  };
+   158→
+   159→  const nextStep = () => {
+   160→    const newStep = Math.min(step + 1, 5);
+   161→    setStep(newStep);
+   162→    if (newStep < 6) {
+   163→      toast(`Step ${newStep}/6 complete \u2713`, {
+   164→        description: STEPS[newStep - 1]?.title || '',
+   165→        duration: 2000,
+   166→      });
+   167→    }
+   168→  };
+   169→  const prevStep = () => setStep(s => Math.max(s - 1, 0));
+   170→
+   171→  // Summary stats
+   172→  const bestMatch = useMemo(() => {
+   173→    if (scores.length === 0) return null;
+   174→    return scores.reduce((best, s) => s.finalScore > best.finalScore ? s : best);
+   175→  }, [scores]);
+   176→
+   177→  const easiest = useMemo(() => {
+   178→    if (scores.length === 0) return null;
+   179→    return scores.reduce((best, s) => s.visaLikelihood > best.visaLikelihood ? s : best);
+   180→  }, [scores]);
+   181→
+   182→  const cheapest = useMemo(() => {
+   183→    if (scores.length === 0) return null;
+   184→    return scores.reduce((best, s) => s.costSuitability > best.costSuitability ? s : best);
+   185→  }, [scores]);
+   186→
+   187→  const openQuickView = (score: ScoreBreakdown) => {
+   188→    setQuickViewScore(score);
+   189→    setQuickViewOpen(true);
+   190→  };
+   191→
+   192→  // Prominent completion percentage calculation
+   193→  const completionPct = useMemo(() => {
+   194→    const checks = [
+   195→      !!profile.fullName.trim(),
+   196→      profile.age > 0,
+   197→      !!profile.gender,
+   198→      !!profile.passportNumber.trim(),
+   199→      !!profile.passportExpiry,
+   200→      !!profile.occupation.trim(),
+   201→      profile.monthlyIncomeUSD > 0,
+   202→      !!profile.education && profile.education !== 'other',
+   203→      profile.languages.length >= 1,
+   204→      profile.savingsUSD > 0,
+   205→      profile.budgetUSD > 0,
+   206→      !!profile.travelPurpose,
+   207→      profile.hasReturnTicket,
+   208→      profile.hasHotelBooking,
+   209→      profile.hasHealthInsurance,
+   210→      !!profile.maritalStatus,
+   211→      profile.hasCriminalRecord !== undefined,
+   212→    ];
+   213→    return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+   214→  }, [profile]);
+   215→
+   216→  return (
+   217→    <div className="space-y-6">
+   218→      {/* Progress Header with dots */}
+   219→      <div className="bg-muted/50 rounded-xl p-4">
+   220→        <div className="flex items-center justify-between mb-3">
+   221→          <h2 className="text-lg font-semibold">Visa Eligibility Questionnaire</h2>
+   222→          <div className="flex items-center gap-3">
+   223→            {/* Prominent Completion Percentage */}
+   224→            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border shadow-sm">
+   225→              <div className="relative w-8 h-8">
+   226→                <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
+   227→                  <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/30" />
+   228→                  <circle cx="18" cy="18" r="15" fill="none" stroke={completionPct >= 80 ? '#f59e0b' : completionPct >= 50 ? '#f59e0b' : '#ef4444'} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 15}`} strokeDashoffset={`${2 * Math.PI * 15 * (1 - completionPct / 100)}`} className="transition-all duration-700" />
+   229→                </svg>
+   230→                <span className={`absolute inset-0 flex items-center justify-center text-[9px] font-bold ${completionPct >= 80 ? 'text-amber-600' : completionPct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{completionPct}%</span>
+   231→              </div>
+   232→              <div className="flex flex-col">
+   233→                <span className="text-[10px] font-semibold leading-tight">Profile</span>
+   234→                <span className={`text-[10px] leading-tight ${completionPct >= 80 ? 'text-amber-600' : completionPct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{completionPct >= 80 ? 'Strong' : completionPct >= 50 ? 'Moderate' : 'Needs Work'}</span>
+   235→              </div>
+   236→            </div>
+   237→            <span className="text-sm text-muted-foreground">Step {step + 1} of {STEPS.length}</span>
+   238→          </div>
+   239→        </div>
+   240→        <div className="relative">
+   241→          <Progress value={((step + 1) / STEPS.length) * 100} className="h-2" />
+   242→          {/* Override the progress indicator with gradient fill */}
+   243→          <div
+   244→            className="absolute top-0 left-0 h-2 rounded-full progress-gradient-fill transition-all duration-500"
+   245→            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+   246→          />
+   247→          {/* Confetti dot at end of progress */}
+   248→          <div className="absolute top-0 h-2" style={{ '--progress-end': `${((step + 1) / STEPS.length) * 100}%`, left: 0, right: 0, pointerEvents: 'none' } as React.CSSProperties}>
+   249→            <ConfettiDot show />
+   250→          </div>
+   251→        </div>
+   252→        {/* Step progress dots */}
+   253→        <div className="flex justify-between mt-3 relative">
+   254→          {/* Connecting line */}
+   255→          <div className="absolute top-3 left-[5%] right-[5%] h-0.5 bg-muted rounded-full" />
+   256→          <div
+   257→            className={`absolute top-3 left-[5%] h-0.5 bg-amber-500 rounded-full transition-all duration-500 ${step > 0 ? 'step-connector-active' : ''}`}
+   258→            style={{ width: `${(step / (STEPS.length - 1)) * 90}%` }}
+   259→          />
+   260→          {STEPS.map((s, i) => (
+   261→            <div key={i} className="flex flex-col items-center gap-1.5 relative z-10">
+   262→              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+   263→                i < step ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30' :
+   264→                i === step ? 'bg-amber-600 text-white ring-4 ring-amber-200 dark:ring-amber-800 shadow-md shadow-amber-600/30 step-badge-fill' :
+   265→                'bg-background border-2 border-muted-foreground/30 text-muted-foreground'
+   266→              }`}>
+   267→                {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+   268→              </div>
+   269→              <span className={`text-[10px] hidden sm:block transition-colors ${i <= step ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>{s.title.split(' ')[0]}</span>
+   270→            </div>
+   271→          ))}
+   272→        </div>
+   273→      </div>
+   274→
+   275→      {/* Profile Strength Meter */}
+   276→      <ProfileStrengthMeter profile={profile} />
+   277→
+   278→      {/* Save/Load Profile Buttons */}
+   279→      <div className="flex gap-2">
+   280→        <Button variant="outline" size="sm" onClick={saveProfile} className="flex-1">
+   281→          <Save className="w-3.5 h-3.5 mr-1.5" /> Save Profile
+   282→        </Button>
+   283→        <Button variant="outline" size="sm" onClick={loadProfile} className="flex-1">
+   284→          <Upload className="w-3.5 h-3.5 mr-1.5" /> Load Saved Profile
+   285→        </Button>
+   286→      </div>
+   287→
+   288→      {/* Step Content */}
+   289→      <AnimatePresence mode="wait">
+   290→        <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+   291→          <Card className="dark-surface-1">
+   292→            <CardHeader>
+   293→              <CardTitle className="flex items-center gap-2">
+   294→                {React.createElement(STEPS[step].icon, { className: 'w-5 h-5 text-amber-500' })}
+   295→                {STEPS[step].title}
+   296→              </CardTitle>
+   297→              <CardDescription>{STEPS[step].description}</CardDescription>
+   298→            </CardHeader>
+   299→            <CardContent>
+   300→              {step === 0 && (
+   301→                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   302→                  <div className="space-y-2 relative">
+   303→                    <Label htmlFor="fullName">Full Name</Label>
+   304→                    <div className="relative">
+   305→                      <Input id="fullName" placeholder="Enter your full name" value={profile.fullName} onChange={e => updateProfile('fullName', e.target.value)} className={`input-glow-focus ${profile.fullName.trim() ? 'field-valid' : ''}`} />
+   306→                      <CheckFlash show={!!profile.fullName.trim()} />
+   307→                    </div>
+   308→                  </div>
+   309→                  <div className="space-y-2 relative">
+   310→                    <Label htmlFor="age">Age</Label>
+   311→                    <div className="relative">
+   312→                      <Input id="age" type="number" min={16} max={100} value={profile.age} onChange={e => updateProfile('age', parseInt(e.target.value) || 0)} className={`input-glow-focus ${profile.age > 0 ? 'field-valid' : ''}`} />
+   313→                      <CheckFlash show={profile.age > 0} />
+   314→                    </div>
+   315→                  </div>
+   316→                  <div className="space-y-2">
+   317→                    <Label>Gender</Label>
+   318→                    <Select value={profile.gender} onValueChange={v => updateProfile('gender', v)}>
+   319→                      <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+   320→                      <SelectContent>
+   321→                        <SelectItem value="male">Male</SelectItem>
+   322→                        <SelectItem value="female">Female</SelectItem>
+   323→                        <SelectItem value="other">Other</SelectItem>
+   324→                      </SelectContent>
+   325→                    </Select>
+   326→                  </div>
+   327→                  <div className="space-y-2 relative">
+   328→                    <Label htmlFor="passportNumber">Passport Number</Label>
+   329→                    <div className="relative">
+   330→                      <Input id="passportNumber" placeholder="e.g. AB1234567" value={profile.passportNumber} onChange={e => updateProfile('passportNumber', e.target.value)} className={`input-glow-focus ${profile.passportNumber.trim() ? 'field-valid' : ''}`} />
+   331→                      <CheckFlash show={!!profile.passportNumber.trim()} />
+   332→                    </div>
+   333→                  </div>
+   334→                  <div className="space-y-2 relative md:col-span-2">
+   335→                    <Label htmlFor="passportExpiry">Passport Expiry Date</Label>
+   336→                    <div className="relative">
+   337→                      <Input id="passportExpiry" type="date" value={profile.passportExpiry} onChange={e => updateProfile('passportExpiry', e.target.value)} className={`input-glow-focus ${profile.passportExpiry ? 'field-valid' : ''}`} />
+   338→                      <CheckFlash show={!!profile.passportExpiry} />
+   339→                    </div>
+   340→                    <p className="text-xs text-muted-foreground">Must be valid for at least 6 months beyond intended stay</p>
+   341→                  </div>
+   342→                </div>
+   343→              )}
+   344→
+   345→              {step === 1 && (
+   346→                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   347→                  <div className="space-y-2 relative">
+   348→                    <Label htmlFor="occupation">Occupation</Label>
+   349→                    <div className="relative">
+   350→                      <Input id="occupation" placeholder="e.g. Software Engineer" value={profile.occupation} onChange={e => updateProfile('occupation', e.target.value)} className={`input-glow-focus ${profile.occupation.trim() ? 'field-valid' : ''}`} />
+   351→                      <CheckFlash show={!!profile.occupation.trim()} />
+   352→                    </div>
+   353→                  </div>
+   354→                  <div className="space-y-2 relative">
+   355→                    <Label htmlFor="monthlyIncome">Monthly Income (USD)</Label>
+   356→                    <div className="relative">
+   357→                      <Input id="monthlyIncome" type="number" min={0} value={profile.monthlyIncomeUSD} onChange={e => updateProfile('monthlyIncomeUSD', parseFloat(e.target.value) || 0)} className={`input-glow-focus ${profile.monthlyIncomeUSD > 0 ? 'field-valid' : ''}`} />
+   358→                      <CheckFlash show={profile.monthlyIncomeUSD > 0} />
+   359→                    </div>
+   360→                  </div>
+   361→                  <div className="space-y-2">
+   362→                    <Label>Education Level</Label>
+   363→                    <Select value={profile.education} onValueChange={v => updateProfile('education', v)}>
+   364→                      <SelectTrigger><SelectValue placeholder="Select education" /></SelectTrigger>
+   365→                      <SelectContent>
+   366→                        <SelectItem value="high-school">High School</SelectItem>
+   367→                        <SelectItem value="diploma">Diploma / College</SelectItem>
+   368→                        <SelectItem value="bachelors">Bachelor&apos;s Degree</SelectItem>
+   369→                        <SelectItem value="masters">Master&apos;s Degree</SelectItem>
+   370→                        <SelectItem value="phd">PhD / Doctorate</SelectItem>
+   371→                        <SelectItem value="other">Other</SelectItem>
+   372→                      </SelectContent>
+   373→                    </Select>
+   374→                  </div>
+   375→                  <div className="space-y-2">
+   376→                    <Label>Languages</Label>
+   377→                    <div className="flex flex-wrap gap-2 mt-1">
+   378→                      {['English', 'Urdu', 'Arabic', 'French', 'German', 'Turkish', 'Chinese', 'Other'].map(lang => {
+   379→                        const key = lang.toLowerCase();
+   380→                        const checked = profile.languages.includes(key);
+   381→                        return (
+   382→                          <Badge
+   383→                            key={lang}
+   384→                            variant={checked ? 'default' : 'outline'}
+   385→                            className="cursor-pointer"
+   386→                            onClick={() => {
+   387→                              const newLangs = checked
+   388→                                ? profile.languages.filter(l => l !== key)
+   389→                                : [...profile.languages, key];
+   390→                              updateProfile('languages', newLangs);
+   391→                            }}
+   392→                          >
+   393→                            {lang}
+   394→                          </Badge>
+   395→                        );
+   396→                      })}
+   397→                    </div>
+   398→                  </div>
+   399→                </div>
+   400→              )}
+   401→
+   402→              {step === 2 && (
+   403→                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   404→                  <div className="space-y-2 relative">
+   405→                    <Label htmlFor="savings">Total Savings (USD)</Label>
+   406→                    <div className="relative">
+   407→                      <Input id="savings" type="number" min={0} value={profile.savingsUSD} onChange={e => updateProfile('savingsUSD', parseFloat(e.target.value) || 0)} className={`input-glow-focus ${profile.savingsUSD > 0 ? 'field-valid' : ''}`} />
+   408→                      <CheckFlash show={profile.savingsUSD > 0} />
+   409→                    </div>
+   410→                  </div>
+   411→                  <div className="space-y-2 relative">
+   412→                    <Label htmlFor="budget">Travel Budget (USD)</Label>
+   413→                    <div className="relative">
+   414→                      <Input id="budget" type="number" min={0} value={profile.budgetUSD} onChange={e => updateProfile('budgetUSD', parseFloat(e.target.value) || 0)} className={`input-glow-focus ${profile.budgetUSD > 0 ? 'field-valid' : ''}`} />
+   415→                      <CheckFlash show={profile.budgetUSD > 0} />
+   416→                    </div>
+   417→                  </div>
+   418→                  <div className="flex items-center space-x-3 md:col-span-2">
+   419→                    <Switch checked={profile.hasSponsor} onCheckedChange={v => updateProfile('hasSponsor', v)} />
+   420→                    <Label>I have a sponsor</Label>
+   421→                  </div>
+   422→                  {profile.hasSponsor && (
+   423→                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
+   424→                      <div className="space-y-2">
+   425→                        <Label>Sponsor Relation</Label>
+   426→                        <Select value={profile.sponsorRelation} onValueChange={v => updateProfile('sponsorRelation', v)}>
+   427→                          <SelectTrigger><SelectValue placeholder="Select relation" /></SelectTrigger>
+   428→                          <SelectContent>
+   429→                            <SelectItem value="parent">Parent</SelectItem>
+   430→                            <SelectItem value="spouse">Spouse</SelectItem>
+   431→                            <SelectItem value="sibling">Sibling</SelectItem>
+   432→                            <SelectItem value="employer">Employer</SelectItem>
+   433→                            <SelectItem value="friend">Friend</SelectItem>
+   434→                            <SelectItem value="other">Other</SelectItem>
+   435→                          </SelectContent>
+   436→                        </Select>
+   437→                      </div>
+   438→                      <div className="space-y-2">
+   439→                        <Label htmlFor="sponsorIncome">Sponsor Monthly Income (USD)</Label>
+   440→                        <Input id="sponsorIncome" type="number" min={0} value={profile.sponsorIncomeUSD} onChange={e => updateProfile('sponsorIncomeUSD', parseFloat(e.target.value) || 0)} className="input-glow-focus" />
+   441→                      </div>
+   442→                    </div>
+   443→                  )}
+   444→                </div>
+   445→              )}
+   446→
+   447→              {step === 3 && (
+   448→                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   449→                  <div className="space-y-2">
+   450→                    <Label>Travel Purpose</Label>
+   451→                    <Select value={profile.travelPurpose} onValueChange={v => updateProfile('travelPurpose', v)}>
+   452→                      <SelectTrigger><SelectValue placeholder="Select purpose" /></SelectTrigger>
+   453→                      <SelectContent>
+   454→                        <SelectItem value="tourism">Tourism / Holiday</SelectItem>
+   455→                        <SelectItem value="business">Business</SelectItem>
+   456→                        <SelectItem value="study">Study / Education</SelectItem>
+   457→                        <SelectItem value="work">Work / Employment</SelectItem>
+   458→                        <SelectItem value="medical">Medical Treatment</SelectItem>
+   459→                        <SelectItem value="family">Family Visit</SelectItem>
+   460→                        <SelectItem value="religious">Religious Pilgrimage</SelectItem>
+   461→                        <SelectItem value="transit">Transit</SelectItem>
+   462→                      </SelectContent>
+   463→                    </Select>
+   464→                  </div>
+   465→                  <div className="space-y-2">
+   466→                    <Label htmlFor="stayDays">Intended Stay (Days)</Label>
+   467→                    <Input id="stayDays" type="number" min={1} max={365} value={profile.intendedStayDays} onChange={e => updateProfile('intendedStayDays', parseInt(e.target.value) || 30)} className="input-glow-focus" />
+   468→                  </div>
+   469→                  <div className="flex items-center space-x-3">
+   470→                    <Switch checked={profile.hasReturnTicket} onCheckedChange={v => updateProfile('hasReturnTicket', v)} />
+   471→                    <Label>I have a return flight ticket</Label>
+   472→                  </div>
+   473→                  <div className="flex items-center space-x-3">
+   474→                    <Switch checked={profile.hasHotelBooking} onCheckedChange={v => updateProfile('hasHotelBooking', v)} />
+   475→                    <Label>I have hotel/accommodation booking</Label>
+   476→                  </div>
+   477→                </div>
+   478→              )}
+   479→
+   480→              {step === 4 && (
+   481→                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   482→                  <div className="space-y-2">
+   483→                    <Label>Marital Status</Label>
+   484→                    <Select value={profile.maritalStatus} onValueChange={v => updateProfile('maritalStatus', v)}>
+   485→                      <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+   486→                      <SelectContent>
+   487→                        <SelectItem value="single">Single</SelectItem>
+   488→                        <SelectItem value="married">Married</SelectItem>
+   489→                        <SelectItem value="divorced">Divorced</SelectItem>
+   490→                        <SelectItem value="widowed">Widowed</SelectItem>
+   491→                      </SelectContent>
+   492→                    </Select>
+   493→                  </div>
+   494→                  <div className="space-y-2">
+   495→                    <Label htmlFor="dependents">Number of Dependents</Label>
+   496→                    <Input id="dependents" type="number" min={0} max={20} value={profile.dependents} onChange={e => updateProfile('dependents', parseInt(e.target.value) || 0)} className="input-glow-focus" />
+   497→                  </div>
+   498→                  <div className="flex items-center space-x-3">
+   499→                    <Switch checked={profile.hasHealthInsurance} onCheckedChange={v => updateProfile('hasHealthInsurance', v)} />
+   500→                    <Label>I have travel health insurance</Label>
+   501→                  </div>
+   502→                  <div className="flex items-center space-x-3">
+   503→                    <Switch checked={profile.hasPriorTravel} onCheckedChange={v => updateProfile('hasPriorTravel', v)} />
+   504→                    <Label>I have prior international travel history</Label>
+   505→                  </div>
+   506→                  {profile.hasCriminalRecord !== undefined && (
+   507→                    <div className="flex items-center space-x-3 md:col-span-2">
+   508→                      <Switch checked={profile.hasCriminalRecord} onCheckedChange={v => updateProfile('hasCriminalRecord', v)} />
+   509→                      <Label className="text-destructive">I have a criminal record</Label>
+   510→                      <TooltipProvider>
+   511→                        <Tooltip>
+   512→                          <TooltipTrigger><Info className="w-3.5 h-3.5 text-muted-foreground" /></TooltipTrigger>
+   513→                          <TooltipContent><p className="max-w-xs">This is a hard filter. Having a criminal record may disqualify you from many visa applications.</p></TooltipContent>
+   514→                        </Tooltip>
+   515→                      </TooltipProvider>
+   516→                    </div>
+   517→                  )}
+   518→                </div>
+   519→              )}
+   520→
+   521→              {step === 5 && (
+   522→                <div className="space-y-6">
+   523→                  <div className="text-center">
+   524→                    <h3 className="text-lg font-semibold">Profile Summary</h3>
+   525→                    <p className="text-sm text-muted-foreground">Review your information before calculating scores</p>
+   526→                  </div>
+   527→                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+   528→                    {[
+   529→                      { label: 'Age', value: profile.age, icon: User },
+   530→                      { label: 'Occupation', value: profile.occupation || 'Not set', icon: Briefcase },
+   531→                      { label: 'Education', value: profile.education || 'Not set', icon: GraduationCap },
+   532→                      { label: 'Income', value: `$${profile.monthlyIncomeUSD}/mo`, icon: DollarSign },
+   533→                      { label: 'Savings', value: `$${profile.savingsUSD}`, icon: CreditCard },
+   534→                      { label: 'Budget', value: `$${profile.budgetUSD}`, icon: DollarSign },
+   535→                      { label: 'Purpose', value: profile.travelPurpose || 'Not set', icon: Plane },
+   536→                      { label: 'Stay', value: `${profile.intendedStayDays} days`, icon: Calendar },
+   537→                      { label: 'Insurance', value: profile.hasHealthInsurance ? 'Yes' : 'No', icon: Shield },
+   538→                      { label: 'Return Ticket', value: profile.hasReturnTicket ? 'Yes' : 'No', icon: Plane },
+   539→                      { label: 'Accommodation', value: profile.hasHotelBooking ? 'Yes' : 'No', icon: Home },
+   540→                      { label: 'Sponsor', value: profile.hasSponsor ? 'Yes' : 'No', icon: Users },
+   541→                    ].map(item => (
+   542→                      <div key={item.label} className="flex items-center gap-2 p-3 rounded-lg border text-sm">
+   543→                        <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
+   544→                        <div>
+   545→                          <div className="text-xs text-muted-foreground">{item.label}</div>
+   546→                          <div className="font-medium">{item.value}</div>
+   547→                        </div>
+   548→                      </div>
+   549→                    ))}
+   550→                  </div>
+   551→                  <Button onClick={calculateScores} disabled={scoring} className="w-full bg-amber-600 hover:bg-amber-700 text-white" size="lg">
+   552→                    {scoring ? (
+   553→                      <><RotateCcw className="w-4 h-4 mr-2 animate-spin" /> Calculating Scores...</>
+   554→                    ) : (
+   555→                      <><Zap className="w-4 h-4 mr-2" /> Calculate My Visa Scores</>
+   556→                    )}
+   557→                  </Button>
+   558→                </div>
+   559→              )}
+   560→              {/* B4: Document Upload Zone */}
+   561→              {step === 5 && (
+   562→                <div className="mt-4 space-y-3">
+   563→                  {/* Privacy Consent */}
+   564→                  <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+   565→                    <input type="checkbox" id="doc-consent" className="mt-0.5 accent-amber-600" defaultChecked />
+   566→                    <label htmlFor="doc-consent" className="text-xs cursor-pointer">
+   567→                      <strong>Privacy Notice:</strong> Your documents are processed securely in-memory only. Images are NEVER stored on our servers and are deleted immediately after analysis.
+   568→                    </label>
+   569→                  </div>
+   570→                  <div className="p-4 rounded-xl border-2 border-dashed border-border hover:border-amber-500/50 transition-colors cursor-pointer"
+   571→                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('dropzone-active'); }}
+   572→                    onDragLeave={(e) => { e.currentTarget.classList.remove('dropzone-active'); }}
+   573→                    onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('dropzone-active'); toast.info('Document upload is a preparation feature - files are noted for your records.'); }}
+   574→                    onClick={() => toast.info('Drag & drop your documents here to prepare for your visa application.')}
+   575→                  >
+   576→                    <div className="flex flex-col items-center gap-2 py-4">
+   577→                      <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+   578→                        <Upload className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+   579→                      </div>
+   580→                      <p className="text-sm font-medium">Drag & drop your documents here</p>
+   581→                      <p className="text-xs text-muted-foreground">or click to browse</p>
+   582→                      <div className="flex flex-wrap gap-2 mt-2">
+   583→                        {['PDF', 'JPG', 'PNG', 'DOC'].map((ext) => (
+   584→                          <Badge key={ext} variant="outline" className="text-[10px]">.{ext.toLowerCase()}</Badge>
+   585→                        ))}
+   586→                      </div>
+   587→                    </div>
+   588→                  </div>
+   589→                </div>
+   590→              )}
+   591→            </CardContent>
+   592→            <CardFooter className="flex justify-between border-t pt-4">
+   593→              <div className="btn-group-amber">
+   594→              <Button variant="outline" onClick={prevStep} disabled={step === 0}>
+   595→                <ChevronLeft className="w-4 h-4 mr-1" /> Back
+   596→              </Button>
+   597→              <Button onClick={nextStep} disabled={step === 5} className="bg-amber-600 hover:bg-amber-700">
+   598→                Next <ChevronRight className="w-4 h-4 ml-1" />
+   599→              </Button>
+   600→              </div>
+   601→            </CardFooter>
+   602→          </Card>
+   603→        </motion.div>
+   604→      </AnimatePresence>
+   605→
+   606→      {/* Score Results Table - Improved */}
+   607→      {scores.length > 0 && (
+   608→        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+   609→          <ConfettiAnimation trigger={scores.length > 0} />
+   610→          <Card className="card-warm-shadow">
+   611→            <CardHeader>
+   612→              <CardTitle className="flex items-center gap-2">
+   613→                <BarChart3 className="w-5 h-5 text-amber-500" />
+   614→                Visa Eligibility Results ({scores.length} countries)
+   615→                {bestMatch && <RadialGauge score={bestMatch.finalScore} size={90} />}
+   616→              </CardTitle>
+   617→              <CardDescription>Ranked by final recommendation score. Click any row for detailed breakdown.</CardDescription>
+   618→            </CardHeader>
+   619→            <CardContent>
+   620→              {/* Summary Stats */}
+   621→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+   622→                {bestMatch && (
+   623→                  <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+   624→                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+   625→                      <Star className="w-5 h-5 text-amber-600" />
+   626→                    </div>
+   627→                    <div className="min-w-0">
+   628→                      <div className="text-xs text-muted-foreground">Best Match</div>
+   629→                      <div className="text-sm font-semibold truncate">{bestMatch.country}</div>
+   630→                      <div className="text-xs text-amber-600 font-medium">{bestMatch.finalScore.toFixed(1)}</div>
+   631→                    </div>
+   632→                  </div>
+   633→                )}
+   634→                {easiest && (
+   635→                  <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800">
+   636→                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+   637→                      <Zap className="w-5 h-5 text-orange-600" />
+   638→                    </div>
+   639→                    <div className="min-w-0">
+   640→                      <div className="text-xs text-muted-foreground">Easiest</div>
+   641→                      <div className="text-sm font-semibold truncate">{easiest.country}</div>
+   642→                      <div className="text-xs text-orange-600 font-medium">{easiest.visaLikelihood.toFixed(1)} likelihood</div>
+   643→                    </div>
+   644→                  </div>
+   645→                )}
+   646→                {cheapest && (
+   647→                  <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+   648→                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+   649→                      <DollarSign className="w-5 h-5 text-amber-600" />
+   650→                    </div>
+   651→                    <div className="min-w-0">
+   652→                      <div className="text-xs text-muted-foreground">Cheapest</div>
+   653→                      <div className="text-sm font-semibold truncate">{cheapest.country}</div>
+   654→                      <div className="text-xs text-amber-600 font-medium">{cheapest.costSuitability.toFixed(1)} cost fit</div>
+   655→                    </div>
+   656→                  </div>
+   657→                )}
+   658→              </div>
+   659→
+   660→              <ScrollArea className="max-h-[500px]">
+   661→                <div className="space-y-2">
+   662→                  {scores.map((score, idx) => (
+   663→                    <motion.div
+   664→                      key={idx}
+   665→                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+   666→                      onClick={() => openQuickView(score)}
+   667→                      initial={{ opacity: 0, y: 10 }}
+   668→                      animate={{ opacity: 1, y: 0 }}
+   669→                      transition={{ delay: idx * 0.03 }}
+   670→                    >
+   671→                      <div className="w-8 text-center shrink-0">
+   672→                        <span className="text-lg font-bold text-muted-foreground">{idx + 1}</span>
+   673→                      </div>
+   674→                      <div className="flex-1 min-w-0">
+   675→                        <div className="flex items-center gap-2">
+   676→                          <span className="font-medium truncate text-sm">{score.country}</span>
+   677→                          <Badge variant="outline" className="text-[10px] shrink-0">{score.visaType}</Badge>
+   678→                        </div>
+   679→                        {/* Color-coded score bar */}
+   680→                        <div className="mt-1.5">
+   681→                          <ColorProgress value={score.finalScore} className="h-1.5" useGradient />
+   682→                        </div>
+   683→                        {/* Component mini bars */}
+   684→                        <div className="flex gap-1 mt-1.5 items-end h-3">
+   685→                          {score.components.slice(0, 6).map((c, i) => {
+   686→                            const barColor = c.score >= 70 ? '#f59e0b' : c.score >= 40 ? '#f59e0b' : '#ef4444';
+   687→                            return (
+   688→                              <TooltipProvider key={i}>
+   689→                                <Tooltip>
+   690→                                  <TooltipTrigger asChild>
+   691→                                    <div
+   692→                                      className="flex-1 rounded-t-sm cursor-default transition-all hover:opacity-80"
+   693→                                      style={{
+   694→                                        height: `${Math.max(2, (c.score / 100) * 100)}%`,
+   695→                                        backgroundColor: barColor,
+   696→                                        minHeight: '2px',
+   697→                                      }}
+   698→                                    />
+   699→                                  </TooltipTrigger>
+   700→                                  <TooltipContent side="top">
+   701→                                    <p className="text-xs">{c.name}: {Math.round(c.score)}%</p>
+   702→                                  </TooltipContent>
+   703→                                </Tooltip>
+   704→                              </TooltipProvider>
+   705→                            );
+   706→                          })}
+   707→                        </div>
+   708→                      </div>
+   709→                      <div className="flex flex-col items-center shrink-0">
+   710→                        <div className={`text-2xl font-bold ${score.finalScore >= 70 ? 'text-amber-600' : score.finalScore >= 40 ? 'text-amber-600' : 'text-red-600'} ${score.finalScore > 80 ? 'score-pulse rounded-full p-1' : ''}`}>
+   711→                          <AnimatedScoreNumber value={Math.round(score.finalScore)} />
+   712→                        </div>
+   713→                        <span className="text-[10px] text-muted-foreground">Final</span>
+   714→                      </div>
+   715→                      {score.hardFilters.some(f => !f.passed && f.severity === 'critical') && (
+   716→                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+   717→                      )}
+   718→                      <Button variant="ghost" size="sm" className="shrink-0" onClick={(e) => { e.stopPropagation(); openQuickView(score); }}>
+   719→                        <Eye className="w-4 h-4 text-muted-foreground" />
+   720→                      </Button>
+   721→                    </motion.div>
+   722→                  ))}
+   723→                </div>
+   724→              </ScrollArea>
+   725→            </CardContent>
+   726→          </Card>
+   727→
+   728→          {/* Quick View Dialog */}
+   729→          <ScoreQuickViewDialog score={quickViewScore} open={quickViewOpen} onClose={() => setQuickViewOpen(false)} />
+   730→        </motion.div>
+   731→      )}
+   732→    </div>
+   733→  );
+   734→}
+   735→
+   736→

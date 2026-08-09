@@ -10,7 +10,7 @@ import {
   MapPin, Plane, Building, Users, Lock, Lightbulb, Compass,
   Keyboard, HelpCircle, Sparkles, Settings,
   Gavel, Info, AlertTriangle, Mail, Zap,
-  TrendingUp, BarChart3 as BarChart3Icon, Play, History, ClipboardList,
+  TrendingUp, BarChart3 as BarChart3Icon, Play, History, ClipboardList, Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,8 @@ import { ReportsTab } from '@/components/app/tabs/reports-tab';
 import { ToolsTab } from '@/components/app/tabs/tools-tab';
 import { PassportExpiryWarning } from '@/components/app/shared-components-1';
 import { NotificationBell, VisaAlertBanner } from '@/components/app/shared-components-3';
+import { ThemeAccentCustomizer, NotificationHistoryPanel } from '@/components/app/shared-components-5';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AdminDialog } from '@/components/app/admin-dialog';
 import {
   KeyboardShortcutsDialog, HelpCenterDialog, FloatingChatWidget,
@@ -46,6 +48,7 @@ export default function HomePage() {
   const [legalDialog, setLegalDialog] = useState<'about' | 'disclaimer' | 'terms' | 'privacy' | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showNotifHistory, setShowNotifHistory] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
 
   const TABS = [
@@ -189,7 +192,7 @@ export default function HomePage() {
         }} />
 
         {/* Header */}
-        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden card-elevated-2">
+        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden card-elevated-2 glass-frost">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -197,7 +200,7 @@ export default function HomePage() {
                   <Globe className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold tracking-tight gradient-text-mango">PakVisa Advisor</h1>
+                  <h1 className="text-lg font-bold tracking-tight gradient-text-mango neon-amber">PakVisa Advisor</h1>
                   <p className="text-[10px] text-muted-foreground hidden sm:block">Pakistani Passport Visa Intelligence</p>
                 </div>
               </div>
@@ -237,6 +240,16 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 {/* Notification Bell */}
                 <NotificationBell />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => setShowNotifHistory(!showNotifHistory)} aria-label="Notification history" className="hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                        <History className="w-4 h-4 text-amber-600" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Notification History</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {/* Passport Expiry Warning */}
                 <PassportExpiryWarning />
                 {/* Keyboard Shortcuts Help */}
@@ -263,6 +276,17 @@ export default function HomePage() {
                     <TooltipContent>Help Center — Guides, Terms & Use Cases</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                {/* Accent Color popover */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Accent Color" className="hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                      <Palette className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0" side="bottom" align="end">
+                    <ThemeAccentCustomizer />
+                  </PopoverContent>
+                </Popover>
                 {/* Admin Dashboard button */}
                 <TooltipProvider>
                   <Tooltip>
@@ -321,8 +345,11 @@ export default function HomePage() {
           <VisaAlertBanner />
         </div>
 
+        {/* Collapsible Notification History Panel */}
+        <NotificationHistoryPanel isOpen={showNotifHistory} onClose={() => setShowNotifHistory(false)} />
+
         {/* Main Content */}
-        <main className="flex-1 container mx-auto px-4 py-8 card-warm-shadow rounded-2xl my-2 mx-2 sm:mx-auto sm:my-0">
+        <main className="flex-1 container mx-auto px-4 py-8 card-warm-shadow rounded-2xl my-2 mx-2 sm:mx-auto sm:my-0 shadow-amber-lg">
           <div className="page-load-animation">
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>

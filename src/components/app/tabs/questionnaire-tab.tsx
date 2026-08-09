@@ -42,6 +42,8 @@ import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, Checkli
 import { FlagImage, AnimatedCounter, QuickDashboard, ConfettiDot, ColorProgress } from '../shared-components-1';
 import { ScoringHistoryPanel, TravelCostCalculator, RadialGauge, AnimatedScoreNumber, ConfettiAnimation, ScoreQuickViewDialog, ApplicationTipsPanel, ProfileStrengthMeter, CheckFlash, AnimatedScoreRing, VisaDocumentChecklist } from '../shared-components-2';
 import { VisaReadinessGauge } from '../shared-components-3';
+import { UserProfileProgressWidget } from '../shared-components-5';
+
 
 export const emptyProfile: UserProfileData = {
   fullName: '', age: 25, gender: '', nationality: 'Pakistani', passportNumber: '',
@@ -215,6 +217,19 @@ export function QuestionnaireTab() {
 
   return (
     <div className="space-y-6">
+      {/* Profile Progress Widget */}
+      <UserProfileProgressWidget profile={userProfile} />
+
+      {/* Profile completion indicator */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50">
+        <div className="text-sm font-medium text-amber-700 dark:text-amber-400">
+          Profile: {completionPct}% complete
+        </div>
+        <div className="flex-1 h-2 rounded-full bg-amber-100 dark:bg-amber-900/40">
+          <div className="h-full rounded-full bg-amber-500 transition-all duration-500" style={{ width: `${completionPct}%` }} />
+        </div>
+      </div>
+
       {/* Progress Header with dots */}
       <div className="bg-muted/50 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
@@ -261,7 +276,7 @@ export function QuestionnaireTab() {
             <div key={i} className="flex flex-col items-center gap-1.5 relative z-10">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                 i < step ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30' :
-                i === step ? 'bg-amber-600 text-white ring-4 ring-amber-200 dark:ring-amber-800 shadow-md shadow-amber-600/30 step-badge-fill' :
+                i === step ? 'bg-amber-600 text-white ring-4 ring-amber-200 dark:ring-amber-800 shadow-md shadow-amber-600/30 step-badge-fill shadow-amber-glow' :
                 'bg-background border-2 border-muted-foreground/30 text-muted-foreground'
               }`}>
                 {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
@@ -525,7 +540,7 @@ export function QuestionnaireTab() {
                     <p className="text-sm text-muted-foreground">Review your information before calculating scores</p>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
+                      {[
                       { label: 'Age', value: profile.age, icon: User },
                       { label: 'Occupation', value: profile.occupation || 'Not set', icon: Briefcase },
                       { label: 'Education', value: profile.education || 'Not set', icon: GraduationCap },
@@ -539,7 +554,7 @@ export function QuestionnaireTab() {
                       { label: 'Accommodation', value: profile.hasHotelBooking ? 'Yes' : 'No', icon: Home },
                       { label: 'Sponsor', value: profile.hasSponsor ? 'Yes' : 'No', icon: Users },
                     ].map(item => (
-                      <div key={item.label} className="flex items-center gap-2 p-3 rounded-lg border text-sm">
+                      <div key={item.label} className="flex items-center gap-2 p-3 rounded-lg border text-sm card-accent-top">
                         <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
                         <div>
                           <div className="text-xs text-muted-foreground">{item.label}</div>

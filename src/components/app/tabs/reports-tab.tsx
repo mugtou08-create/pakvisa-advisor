@@ -150,7 +150,7 @@ export function ReportsTab() {
       {reportsView === 'reports' && scoreResults.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Report List */}
-          <Card className="lg:col-span-1 card-glow-border">
+          <Card className="lg:col-span-1 card-glow-border card-accent-left">
           <CardHeader>
             <CardTitle className="text-sm">Score Results ({scoreResults.length})</CardTitle>
           </CardHeader>
@@ -197,7 +197,7 @@ export function ReportsTab() {
                   { label: 'Final Score', value: selected.finalScore, color: 'text-amber-600' },
                 ].map((item, i) => (
                   <div key={item.label} className={`stat-card-highlight text-center p-3 rounded-lg ${i === 3 ? 'ring-2 ring-amber-500' : ''}`}>
-                    <div className={`text-3xl font-bold ${item.color}`}><AnimatedScoreNumber value={Math.round(item.value)} delay={i * 150} /></div>
+                    <div className={`text-3xl font-bold ${item.color} stat-number-amber`}><AnimatedScoreNumber value={Math.round(item.value)} delay={i * 150} /></div>
                     <div className="text-xs text-muted-foreground mt-1">{item.label}</div>
                   </div>
                 ))}

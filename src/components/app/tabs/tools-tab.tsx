@@ -71,7 +71,7 @@ function BudgetDonutChart({ budgetResult, budgetTripDays, budgetViewMode, budget
   const StepIcon = ({ icon: StepIconProp, className }: { icon: React.ElementType; className?: string }) => React.createElement(StepIconProp, { className });
 
   return (
-    <div className="p-4 rounded-lg border bg-muted/20">
+    <div className="p-4 rounded-lg border bg-muted/20 chart-container-amber">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <PieChartIcon className="w-4 h-4 text-amber-500" />
@@ -541,7 +541,7 @@ export function ToolsTab() {
                 value={convertAmount}
                 onChange={e => setConvertAmount(e.target.value)}
                 placeholder="Amount"
-                className="flex-1 text-lg font-semibold input-amber"
+                className="flex-1 text-lg font-semibold input-amber input-search-enhanced"
                 min="0"
               />
             </div>
@@ -1086,7 +1086,7 @@ export function ToolsTab() {
             </div>
 
             {/* Budget Pie Chart (Feature 12-C) */}
-            <div className="p-4 rounded-lg border bg-muted/20">
+            <div className="p-4 rounded-lg border bg-muted/20 chart-container-amber">
               <div className="flex items-center gap-2 mb-3">
                 <PieChartIcon className="w-4 h-4 text-amber-500" />
                 <p className="text-xs font-semibold">Budget Overview</p>

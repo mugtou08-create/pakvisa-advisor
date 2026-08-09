@@ -220,7 +220,7 @@ export function AIChatTab() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-280px)] min-h-[500px]">
-      <Card className="mb-4 shrink-0 glass-card-strong">
+      <Card className="mb-4 shrink-0 glass-card-strong neon-card">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
@@ -346,7 +346,7 @@ export function AIChatTab() {
         </CardContent>
       </Card>
 
-      <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border p-4 custom-scrollbar-thin glass-card-strong">
+      <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border p-4 custom-scrollbar-thin glass-card-strong glass-warm">
         <div className="space-y-4">
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -407,7 +407,7 @@ export function AIChatTab() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && sendMessage()}
-          className="flex-1 input-amber"
+          className="flex-1 input-amber input-search-enhanced"
         />
         <Button onClick={() => sendMessage()} disabled={loading || !input.trim()} className="bg-amber-600 hover:bg-amber-700 relative z-10">
           <Send className="w-4 h-4" />
