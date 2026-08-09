@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,191 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Country {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  flagEmoji     String
+  flagUrl       String   @default("")
+  continent     String
+  currency      String
+  currencyCode  String
+  timezone      String
+  visaFree      Boolean  @default(false)
+  visaOnArrival Boolean  @default(false)
+  etaAvailable Boolean  @default(false)
+  safetyRating  Int      @default(5)
+  safetySummary String  @default("")
+  bestTravelMonths String @default("")
+  avgTempC      String   @default("25")
+  monthlyTemps  String   @default("{}")
+  processingDaysMin Int   @default(5)
+  processingDaysMax Int   @default(30)
+  sourceUrl     String   @default("")
+  fetchTimestamp DateTime @default(now())
+  fetchHash     String   @default("")
+  parserVersion String   @default("1.0.0")
+  parserConfidence Float @default(0.8)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  visaTypes     VisaType[]
+  costProfiles  CostProfile[]
+  requirements  VisaRequirement[]
 }
 
-model Post {
+model VisaType {
+  id          String   @id @default(cuid())
+  countryId   String
+  country     Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  type        String
+  description String   @default("")
+  maxDuration String   @default("")
+  extensions  Boolean  @default(false)
+  multipleEntry Boolean @default(false)
+  sourceUrl   String   @default("")
+  fetchTimestamp DateTime @default(now())
+  parserConfidence Float @default(0.8)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requirements VisaRequirement[]
+}
+
+model VisaRequirement {
+  id                  String   @id @default(cuid())
+  countryId           String
+  country             Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  visaTypeId          String?
+  visaType            VisaType? @relation(fields: [visaTypeId], references: [id], onDelete: Cascade)
+  category            String
+  requirement         String
+  mandatory           Boolean  @default(true)
+  description         String   @default("")
+  scoringWeight       Float    @default(0.0)
+  sourceUrl           String   @default("")
+  fetchTimestamp      DateTime @default(now())
+  fetchHash           String   @default("")
+  parserVersion       String   @default("1.0.0")
+  parserConfidence    Float    @default(0.8)
+  needsReview         Boolean  @default(false)
+  reviewNote          String   @default("")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model CostProfile {
+  id               String   @id @default(cuid())
+  countryId        String
+  country          Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  visaFeeUSD       Float    @default(0)
+  serviceFeeUSD    Float    @default(0)
+  processingDays   Int      @default(10)
+  monthlyLivingUSD Float    @default(1000)
+  monthlyRentUSD   Float    @default(500)
+  monthlyFoodUSD   Float    @default(300)
+  monthlyTransportUSD Float  @default(100)
+  healthInsuranceUSD Float  @default(50)
+  totalMonthlyUSD  Float    @default(1000)
+  currency         String   @default("")
+  sourceUrl        String   @default("")
+  fetchTimestamp   DateTime @default(now())
+  parserConfidence Float    @default(0.8)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  fullName    String   @default("")
+  age         Int      @default(25)
+  gender      String   @default("")
+  nationality String   @default("Pakistani")
+  passportNumber String @default("")
+  passportExpiry DateTime @default(now())
+  occupation   String   @default("")
+  monthlyIncomeUSD Float @default(0)
+  savingsUSD   Float    @default(0)
+  education    String   @default("")
+  languages    String   @default("[]")
+  hasCriminalRecord Boolean @default(false)
+  hasPriorTravel Boolean @default(false)
+  priorCountries String @default("[]")
+  hasHealthInsurance Boolean @default(false)
+  hasSponsor Boolean @default(false)
+  sponsorRelation String @default("")
+  sponsorIncomeUSD Float @default(0)
+  travelPurpose String @default("")
+  intendedStayDays Int @default(30)
+  hasReturnTicket Boolean @default(false)
+  hasHotelBooking Boolean @default(false)
+  budgetUSD    Float    @default(0)
+  maritalStatus String @default("")
+  dependents   Int      @default(0)
+  hasSpecialNeeds Boolean @default(false)
+  additionalNotes String @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions    Session[]
+}
+
+model Session {
+  id              String   @id @default(cuid())
+  userProfileId   String
+  userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  status          String   @default("in_progress")
+  questionnaireProgress Float @default(0)
+  currentStep     Int      @default(0)
+  answers         String   @default("{}")
+  scores          String   @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  auditLogs       AuditLog[]
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  sessionId       String
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  action          String
+  countryId       String?
+  component       String
+  score           Float?
+  weight          Float?
+  multiplier      Float?
+  confidence      Float?
+  sourceUrl       String?
+  details         String   @default("")
+  createdAt       DateTime @default(now())
+}
+
+model ScoringWeight {
+  id          String   @id @default(cuid())
+  category    String   @unique
+  weight      Float    @default(0.0)
+  editable    Boolean  @default(true)
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AdminUser {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  passwordHash  String
+  role          String    @default("admin")
+  permissions   String    @default("full")
+  isOnline      Boolean   @default(false)
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model SiteSettings {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
+  key       String   @unique
+  value     String
   updatedAt DateTime @updatedAt
 }

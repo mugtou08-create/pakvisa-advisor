@@ -1,0 +1,715 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Globe, FileText, BarChart3, Search, ChevronRight, Star, Clock,
+  DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin,
+  CreditCard, Home, Users, Lightbulb, TrendingUp, TrendingDown,
+  ArrowRight, Eye, Sparkles, Target, Compass, Flame, Map, Download, Sun, Landmark,
+  SearchX, LayoutGrid, List, RefreshCw, Bookmark, ChevronDown, ChevronUp, X, Filter, SlidersHorizontal, ArrowUpDown, HelpCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
+import { useAppStore } from '@/lib/store';
+import type { CountryData, ScoreBreakdown } from '@/lib/types';
+import { QUICK_FILTERS, REGIONS, MONTH_NAMES, RECENT_SEARCHES_KEY, TYPING_PHRASES, getRegion, VISA_CATEGORY_COLORS } from '../constants';
+import {
+  FlagImage, InteractiveWorldMap, SuccessStoriesCarousel, BestMatchRecommendations,
+  CountryCard, CountryListRow, QuickDashboard,
+} from '../shared-components-1';
+import { CountryDetailDialog, SimilarCountriesPanel, EmbassyInfoSection, DestinationDiscoveryPanel, ApplicationTimelineTracker, VisaFeeComparisonChart, SkeletonCountryCards, TypingText, FloatingParticles, SmartQuickSearch } from '../shared-components-2';
+import { VisaStatsDashboard, PassportPowerIndex } from '../shared-components-3';
+
+export function ExploreTab() {
+  const [countries, setCountries] = useState<CountryData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [region, setRegion] = useState('All');
+  const [quickFilter, setQuickFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [stats, setStats] = useState<{ totalCountries: number; visaFreeCount: number; visaOnArrivalCount: number; eVisaCount: number; embassyRequiredCount: number; avgCostUSD?: number; cheapestCountry?: { name: string; code: string; flagEmoji: string; visaFeeUSD: number }; fastestProcessing?: { name: string; code: string; flagEmoji: string; processingDaysMin: number } } | null>(null);
+  const { selectedCountry, setSelectedCountry, setActiveTab, viewMode, setViewMode, setLastDataFetch, scoreResults, favorites, toggleFavorite } = useAppStore();
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchWithRetry = async (url: string, retries = 3, delay = 1000): Promise<any> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json();
+          if (i < retries - 1) await new Promise(r => setTimeout(r, delay * (i + 1)));
+        } catch {
+          if (i < retries - 1) await new Promise(r => setTimeout(r, delay * (i + 1)));
+        }
+      }
+      return null;
+    };
+    const load = async () => {
+      setLoading(true);
+      const data = await fetchWithRetry('/api/countries');
+      if (!cancelled && data?.data) {
+        setCountries(data.data);
+        setLastDataFetch(new Date().toISOString());
+        setLoading(false);
+      } else if (!cancelled) {
+        toast.error('Failed to load countries. Retrying...');
+        setLoading(false);
+      }
+      const statsData = await fetchWithRetry('/api/countries/stats');
+      if (!cancelled && statsData?.data) setStats(statsData.data);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [setLastDataFetch]);
+
+  const filtered = useMemo(() => {
+    let result = countries.filter((c) => {
+      if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.code.toLowerCase().includes(search.toLowerCase())) return false;
+      if (region !== 'All' && getRegion(c) !== region) return false;
+      return true;
+    });
+
+    // Apply quick filters (single source of truth for visa type filtering)
+    if (quickFilter === 'visa-free') result = result.filter(c => c.visaFree);
+    else if (quickFilter === 'visa-on-arrival') result = result.filter(c => c.visaOnArrival);
+    else if (quickFilter === 'e-visa') result = result.filter(c => c.etaAvailable);
+    else if (quickFilter === 'embassy') result = result.filter(c => !c.visaFree && !c.visaOnArrival && !c.etaAvailable);
+    else if (quickFilter === 'cheapest') result = [...result].sort((a, b) => (a.costProfile?.totalMonthlyUSD || 9999) - (b.costProfile?.totalMonthlyUSD || 9999));
+    else if (quickFilter === 'fastest') result = [...result].sort((a, b) => a.processingDaysMin - b.processingDaysMin);
+    else if (quickFilter === 'favorites') result = result.filter(c => favorites.includes(c.code));
+    else if (quickFilter === 'safest') result = result.filter(c => c.safetyRating >= 8);
+
+    // Apply month filter - show countries where selected month is best to visit
+    if (monthFilter) {
+      result = result.filter(c => {
+        if (c.bestTravelMonths) {
+          const months = c.bestTravelMonths.split(',').map(m => m.trim());
+          return months.includes(monthFilter);
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }, [countries, search, region, quickFilter, monthFilter, favorites]);
+
+  const totalVisaTypes = useMemo(() => {
+    return countries.reduce((sum, c) => sum + c.visaTypes.length, 0);
+  }, [countries]);
+
+  // Count for quick filter badges
+  const filterCounts = useMemo(() => {
+    return {
+      'visa-free': countries.filter(c => c.visaFree).length,
+      'visa-on-arrival': countries.filter(c => c.visaOnArrival).length,
+      'e-visa': countries.filter(c => c.etaAvailable).length,
+      'embassy': countries.filter(c => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
+      'safest': countries.filter(c => c.safetyRating >= 8).length,
+      'favorites': favorites.length,
+    };
+  }, [countries, favorites]);
+
+  // Scroll reveal observer for cards
+  const scrollRevealRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = scrollRevealRef.current;
+    if (!container) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -30px 0px' }
+    );
+    const cards = container.querySelectorAll('.card-reveal');
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+  }, [filtered, loading]);
+
+  // Hero search state
+  const [heroSearch, setHeroSearch] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [heroQuickResult, setHeroQuickResult] = useState<CountryData | null>(null);
+  const [visibleCount, setVisibleCount] = useState(12);
+  const [sortBy, setSortBy] = useState('name');
+  const heroSearchRef = useRef<HTMLDivElement>(null);
+
+  // Display countries with sort + pagination
+  const displayCountries = useMemo(() => {
+    let sorted = [...filtered];
+    switch (sortBy) {
+      case 'name': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case 'visa-free': sorted.sort((a, b) => (b.visaFree ? 1 : 0) - (a.visaFree ? 1 : 0) || a.name.localeCompare(b.name)); break;
+      case 'processing': sorted.sort((a, b) => a.processingDaysMin - b.processingDaysMin); break;
+      case 'cost': sorted.sort((a, b) => (a.costProfile?.totalMonthlyUSD || 9999) - (b.costProfile?.totalMonthlyUSD || 9999)); break;
+      case 'safety': sorted.sort((a, b) => b.safetyRating - a.safetyRating); break;
+      default: break;
+    }
+    return sorted.slice(0, visibleCount);
+  }, [filtered, sortBy, visibleCount]);
+
+  // Trending countries (8 popular destinations)
+  const trendingCountries = useMemo(() => {
+    const names = ['UAE', 'Turkey', 'Malaysia', 'UK', 'Saudi Arabia', 'Thailand', 'Qatar', 'Singapore'];
+    return names.map(name => countries.find(c => c.name === name)).filter(Boolean) as CountryData[];
+  }, [countries]);
+
+  // Hero search suggestions
+  const heroSuggestions = useMemo(() => {
+    if (!heroSearch.trim()) return [];
+    const q = heroSearch.toLowerCase();
+    return countries
+      .filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [heroSearch, countries]);
+
+  // Helper for hero visa status
+  const getHeroVisaStatus = (c: CountryData) => {
+    if (c.visaFree) return { label: 'Visa Free', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' };
+    if (c.visaOnArrival) return { label: 'Visa on Arrival', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' };
+    if (c.etaAvailable) return { label: 'e-Visa', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' };
+    return { label: 'Embassy Required', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' };
+  };
+
+  // Hero search handlers
+  const handleHeroCheckVisa = () => {
+    const q = heroSearch.trim().toLowerCase();
+    const match = countries.find(c => c.name.toLowerCase() === q || c.code.toLowerCase() === q);
+    if (match) {
+      setSelectedCountry(match);
+      setHeroQuickResult(match);
+      setHeroSearch('');
+      setShowSuggestions(false);
+    } else {
+      toast.error('Country not found. Please select from the suggestions.');
+    }
+  };
+
+  const handleHeroSelectCountry = (country: CountryData) => {
+    setHeroSearch(country.name);
+    setShowSuggestions(false);
+  };
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (heroSearchRef.current && !heroSearchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Ctrl+K → scroll to hero search & focus
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('visa-guide')?.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+          const input = heroSearchRef.current?.querySelector('input');
+          input?.focus();
+        }, 300);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  return (
+    <div className="space-y-4" ref={scrollRevealRef}>
+      {/* Hero Section - Yellow Mango Themed Compact */}
+      <section id="visa-guide" className="relative overflow-hidden rounded-xl p-3 sm:p-5 md:p-8 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-500 dark:via-orange-500 dark:to-yellow-500">
+        <div className="relative z-10 text-amber-950 dark:text-amber-100">
+          <motion.h1
+            className="text-[17px] sm:text-2xl md:text-3xl font-bold leading-snug mb-0.5"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            Does a Pakistani need a visa for...
+          </motion.h1>
+          <p className="text-xs sm:text-sm mb-3 opacity-90">
+            Check visa requirements instantly for {countries.length}+ countries
+          </p>
+
+          {/* Search bar */}
+          <div ref={heroSearchRef} className="relative max-w-xl">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-700/60 dark:text-amber-200/60" />
+            <Input
+              placeholder="Type a country name..."
+              value={heroSearch}
+              onChange={(e) => { setHeroSearch(e.target.value); setShowSuggestions(true); setHeroQuickResult(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleHeroCheckVisa(); }}
+              className="pl-11 h-10 sm:h-11 rounded-xl text-sm bg-white/90 dark:bg-black/20 border-amber-500/30 placeholder:text-amber-700/40 dark:placeholder:text-amber-200/40 text-amber-950 dark:text-amber-100 focus-visible:ring-amber-500/50"
+            />
+            <Button
+              onClick={handleHeroCheckVisa}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-9 px-4 text-sm font-medium"
+            >
+              Check Visa
+            </Button>
+
+            {/* Suggestions dropdown */}
+            {showSuggestions && heroSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-popover rounded-xl shadow-lg border z-50 max-h-64 overflow-y-auto">
+                {heroSuggestions.map((c) => (
+                  <button
+                    key={c.code}
+                    onClick={() => { handleHeroSelectCountry(c); handleHeroCheckVisa(); }}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/50 transition-colors text-left text-sm"
+                  >
+                    <FlagImage code={c.code} flagUrl={c.flagUrl} size={24} emoji={c.flagEmoji} />
+                    <span className="flex-1 font-medium text-foreground">{c.name}</span>
+                    <Badge className={`${getHeroVisaStatus(c).color} text-[10px]`} variant="secondary">{getHeroVisaStatus(c).label}</Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Result Card */}
+          {heroQuickResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 max-w-xl"
+            >
+              <Card className="bg-white/95 dark:bg-black/30 border-amber-500/20 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <FlagImage code={heroQuickResult.code} flagUrl={heroQuickResult.flagUrl} size={40} emoji={heroQuickResult.flagEmoji} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-amber-950 dark:text-amber-100 truncate">{heroQuickResult.name}</p>
+                      <Badge className={`${getHeroVisaStatus(heroQuickResult).color} text-[10px] mt-0.5`} variant="secondary">{getHeroVisaStatus(heroQuickResult).label}</Badge>
+                    </div>
+                    <div className="text-right text-xs text-amber-800/70 dark:text-amber-200/70 space-y-0.5">
+                      <p>{heroQuickResult.processingDaysMin === heroQuickResult.processingDaysMax ? `${heroQuickResult.processingDaysMin} days` : `${heroQuickResult.processingDaysMin}-${heroQuickResult.processingDaysMax} days`}</p>
+                      <p>${heroQuickResult.costProfile?.visaFeeUSD || 0}</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="ml-2 rounded-lg text-xs border-amber-500/30 hover:bg-amber-50 dark:hover:bg-amber-900/20" onClick={() => setSelectedCountry(heroQuickResult)}>
+                      View Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Popular destination chips */}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {['Malaysia', 'UAE', 'Turkey', 'UK', 'Saudi Arabia', 'Thailand'].map((name) => (
+              <button
+                key={name}
+                onClick={() => {
+                  const c = countries.find(x => x.name === name);
+                  if (c) { setSelectedCountry(c); setHeroQuickResult(c); }
+                }}
+                className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/30 dark:bg-black/15 hover:bg-white/50 dark:hover:bg-black/25 transition-colors border border-white/30 dark:border-white/10"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+
+          {/* Trust text */}
+          <p className="text-[11px] mt-2 opacity-75">
+            ✓ {countries.length} countries · Updated {(() => { const d = new Date(); return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; })()} · Free to use
+          </p>
+        </div>
+      </section>
+
+      {/* Passport Power Index - At a glance overview */}
+      {!loading && countries.length > 0 && (
+        <section className="glass-section p-4 md:p-5 rounded-xl">
+          <h2 className="text-sm font-bold flex items-center gap-2 mb-3">
+            <Globe className="w-4 h-4 text-amber-500" />
+            Pakistani Passport Overview
+          </h2>
+          <PassportPowerIndex countries={countries} stats={stats} />
+        </section>
+      )}
+
+      {/* Visa Requirement World Map */}
+      {!loading && countries.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Map className="w-5 h-5 text-amber-500" /> Visa Requirement World Map
+              </h2>
+              <p className="text-xs text-muted-foreground">Click any country to see visa details</p>
+            </div>
+          </div>
+          <InteractiveWorldMap countries={countries} onSelectCountry={setSelectedCountry} />
+        </section>
+      )}
+
+      {/* Country Directory - Filter Toolbar + Grid */}
+      <section id="country-grid" className="space-y-3">
+        {/* Section Heading */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Compass className="w-5 h-5 text-amber-500" /> Explore All Countries
+            </h2>
+            <p className="text-xs text-muted-foreground">Browse visa requirements for {countries.length} destinations worldwide</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full">{filtered.length} shown</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      setLoading(true);
+                      Promise.all([
+                        fetch('/api/countries').then(r => r.json()).then(data => {
+                          setCountries(data.data || []);
+                          setLastDataFetch(new Date().toISOString());
+                          return data.data || [];
+                        }),
+                        fetch('/api/countries/stats').then(r => r.json()).then(data => {
+                          if (data.data) setStats(data.data);
+                        }),
+                      ]).then(([newCountries]) => {
+                        const count = Array.isArray(newCountries) ? newCountries.length : countries.length;
+                        toast.success(`Data refreshed — ${count} countries loaded`);
+                      }).catch(() => {
+                        toast.error('Failed to refresh data');
+                      }).finally(() => {
+                        setLoading(false);
+                      });
+                    }}
+                    disabled={loading}
+                    className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
+                    title="Refresh country data"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">Refresh visa data for all {countries.length} countries</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+
+        {/* Search + Sort + View Mode + Month Filter Toolbar */}
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Filter countries by name..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-10 text-sm" />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-32 h-10 text-sm">
+                <ArrowUpDown className="w-4 h-4 mr-1" />
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name A-Z</SelectItem>
+                <SelectItem value="visa-free">Visa-Free First</SelectItem>
+                <SelectItem value="processing">Fastest</SelectItem>
+                <SelectItem value="cost">Lowest Cost</SelectItem>
+                <SelectItem value="safety">Safest First</SelectItem>
+              </SelectContent>
+            </Select>
+            {/* Best Month to Visit Filter */}
+            <Select value={monthFilter} onValueChange={(v) => setMonthFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-36 h-10 text-sm">
+                <Sun className="w-4 h-4 mr-1" />
+                <SelectValue placeholder="Best Month" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any Month</SelectItem>
+                {MONTH_NAMES.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex rounded-lg border p-0.5">
+              <button className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-amber-600 text-white' : 'text-muted-foreground'}`} onClick={() => setViewMode('grid')}><LayoutGrid className="w-4 h-4" /></button>
+              <button className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-amber-600 text-white' : 'text-muted-foreground'}`} onClick={() => setViewMode('list')}><List className="w-4 h-4" /></button>
+            </div>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{displayCountries.length} of {filtered.length}</span>
+          </div>
+        </div>
+
+        {/* Region + Visa Type Filters - Combined clean layout */}
+        <div className="space-y-2.5">
+          {/* Region Filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-muted-foreground shrink-0">Region:</span>
+            <div className="flex flex-wrap gap-1.5">
+              <motion.button
+                onClick={() => setRegion('All')}
+                whileTap={{ scale: 0.95 }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+                  region === 'All'
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+                }`}
+              >
+                <Globe className="w-3 h-3" />All
+                <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${region === 'All' ? 'bg-white/20' : 'bg-muted'}`}>{countries.length}</span>
+              </motion.button>
+              {REGIONS.map((r) => {
+                const regionIcons: Record<string, React.ReactNode> = {
+                  'Asia': <Globe className="w-3 h-3" />,
+                  'Middle East': <Building className="w-3 h-3" />,
+                  'Africa': <Sun className="w-3 h-3" />,
+                  'Europe': <Landmark className="w-3 h-3" />,
+                  'Americas': <Map className="w-3 h-3" />,
+                  'Oceania': <Globe className="w-3 h-3" />,
+                };
+                const isActive = region === r;
+                return (
+                  <motion.button
+                    key={r}
+                    onClick={() => setRegion(isActive ? 'All' : r)}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+                      isActive
+                        ? 'bg-amber-600 text-white border-amber-600'
+                        : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+                    }`}
+                  >
+                    {regionIcons[r]}
+                    <span className="shrink-0">{r}</span>
+                    <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${isActive ? 'bg-white/20' : 'bg-muted'}`}>
+                      {countries.filter(c => getRegion(c) === r).length}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Visa Type & Smart Filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-muted-foreground shrink-0">Filters:</span>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_FILTERS.map((qf) => {
+                const count = filterCounts[qf.id as keyof typeof filterCounts] ?? null;
+                const isActive = quickFilter === qf.id;
+                return (
+                  <motion.button
+                    key={qf.id}
+                    onClick={() => setQuickFilter(isActive ? '' : qf.id)}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+                      isActive
+                        ? 'bg-amber-600 text-white border-amber-600'
+                        : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+                    }`}
+                  >
+                    <qf.icon className="w-3 h-3" />
+                    {qf.label}
+                    {count !== null && count > 0 && (
+                      <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${isActive ? 'bg-white/20' : 'bg-muted'}`}>{count}</span>
+                    )}
+                  </motion.button>
+                );
+              })}
+              {monthFilter && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onClick={() => setMonthFilter('')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
+                >
+                  <Sun className="w-3 h-3" />
+                  Best in {monthFilter}
+                  <X className="w-3 h-3" />
+                </motion.button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Grid / List */}
+        {loading ? (
+          <SkeletonCountryCards />
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <AnimatePresence mode="popLayout">
+              {displayCountries.map((country, idx) => (
+                <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>
+                  <CountryCard country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={idx >= displayCountries.length - 5} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <AnimatePresence mode="popLayout">
+              {displayCountries.map((country, idx) => (
+                <motion.div key={country.code} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.15 }}>
+                  <CountryListRow country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={idx >= displayCountries.length - 5} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Show More / Show All */}
+        {!loading && displayCountries.length < filtered.length && (
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" onClick={() => setVisibleCount(v => v + 12)} className="gap-2 text-sm">
+              Show More Countries ({filtered.length - displayCountries.length} remaining)
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+        {!loading && displayCountries.length >= filtered.length && filtered.length > 0 && (
+          <p className="text-center text-xs text-muted-foreground pt-2">Showing all {filtered.length} countries</p>
+        )}
+      </section>
+
+      {/* Trending Destinations - After country grid */}
+      {!loading && trendingCountries.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-500" /> Trending Destinations
+              </h2>
+              <p className="text-xs text-muted-foreground">Most checked by Pakistani travelers</p>
+            </div>
+            <button onClick={() => document.getElementById('country-grid')?.scrollIntoView({ behavior: 'smooth' })} className="text-xs text-amber-600 dark:text-amber-400 font-medium hover:underline flex items-center gap-1">
+              Back to top <ChevronUp className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {trendingCountries.map((c) => {
+              const status = getHeroVisaStatus(c);
+              return (
+                <motion.div key={c.code} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow p-3" onClick={() => setSelectedCountry(c)}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl"><FlagImage code={c.code} flagUrl={c.flagUrl} size={28} emoji={c.flagEmoji} /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate">{c.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{c.continent}</p>
+                      </div>
+                    </div>
+                    <Badge className={`${status.color} text-[10px] mb-2`} variant="secondary">{status.label}</Badge>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{c.processingDaysMin === c.processingDaysMax ? `${c.processingDaysMin} days` : `${c.processingDaysMin}-${c.processingDaysMax}d`}</span>
+                      <span>${c.costProfile?.visaFeeUSD || 0}</span>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* FAQ Section - SEO Optimized (Beginners First, Visa-Specific Last) */}
+      <section className="glass-section p-4 md:p-6 rounded-xl">
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <HelpCircle className="w-5 h-5 text-amber-500" />
+          Frequently Asked Questions
+        </h2>
+        <Accordion type="single" collapsible className="w-full">
+          {/* === GROUP 1: GETTING STARTED (Beginners) === */}
+          <div className="mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Getting Started</p>
+          </div>
+          <AccordionItem value="faq-1">
+            <AccordionTrigger className="text-sm font-medium text-left">What is PakVisa Advisor and how does it work?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">PakVisa Advisor is a free AI-powered tool designed specifically for Pakistani passport holders. It provides instant visa requirement checks for 70+ countries, personalized eligibility scoring, cost breakdowns, embassy information, and travel planning tools. Simply type a country name in the hero search bar to instantly see its visa requirements, processing time, fees, and safety rating — all in one place.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-2">
+            <AccordionTrigger className="text-sm font-medium text-left">How do I use the "Explore" tab to find the best countries?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Explore tab is your main dashboard. Use the hero search bar to instantly check any country&apos;s visa status. The Passport Power Index shows your passport&apos;s global ranking. The World Map lets you visually browse visa requirements by clicking any country. The &quot;Explore All Countries&quot; section lets you filter by visa type, region, cost, safety, processing speed, and the best travel month. Click any country card to see full details.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-3">
+            <AccordionTrigger className="text-sm font-medium text-left">What do the scores and ratings mean on country cards?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Each country card shows key metrics: <strong>Safety Rating</strong> (1-10 scale), <strong>Ease Score</strong> (how easy the visa process is — 100% means visa-free), <strong>Processing Time</strong> (business days), and <strong>Monthly Cost</strong> (estimated living expenses in USD). These help you quickly compare destinations at a glance.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-4">
+            <AccordionTrigger className="text-sm font-medium text-left">Can I save my favorite countries and compare them?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Yes! Click the bookmark icon (♡) on any country card to save it. Your favorites persist across sessions. Use the &quot;Favorites&quot; filter pill in the Explore tab to view saved countries, or go to the Compare tab to see them side-by-side with detailed cost, safety, and visa comparisons.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-5">
+            <AccordionTrigger className="text-sm font-medium text-left">What is the Visa Questionnaire and how does it help?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Questionnaire creates a personalized travel profile by asking about your age, income, travel history, education, languages, and travel purpose. It generates a smart eligibility score for each country — showing how likely you are to get approved. It highlights strengths and weaknesses with actionable tips to improve your chances.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-6">
+            <AccordionTrigger className="text-sm font-medium text-left">How do I use the Tools tab (Currency Converter & Budget Calculator)?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Tools tab has two essential utilities: <strong>Currency Converter</strong> — convert between PKR and 25+ currencies with live exchange rates. <strong>Travel Budget Calculator</strong> — estimate your total trip cost (visa, flights, accommodation, food, transport, insurance) for any country. Both tools are designed for Pakistani travelers planning trips abroad.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-7">
+            <AccordionTrigger className="text-sm font-medium text-left">How do I use the AI Consultant chat?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The AI Consultant tab is like having a visa expert available 24/7. Ask any question about visa requirements, document preparation, interview tips, or travel planning. For example: &quot;What documents do I need for a UK visitor visa?&quot; You can also access it from the floating chat button at the bottom of any page.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-8">
+            <AccordionTrigger className="text-sm font-medium text-left">What is the "Reports" tab and how do I generate a report?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Reports tab generates downloadable visa assessment reports based on your questionnaire profile. After completing the questionnaire, you get a comprehensive report showing eligibility scores, document checklists, cost estimates, and personalized recommendations. You can print or download reports for offline reference.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-9">
+            <AccordionTrigger className="text-sm font-medium text-left">Is my personal data safe on this platform?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Yes. PakVisa Advisor processes all data locally in your browser. Your questionnaire responses, favorites, and search history are stored only on your device — nothing is sent to external servers. No personal identification documents (passport copies, photos, financial statements) are ever collected.</AccordionContent>
+          </AccordionItem>
+
+          {/* === GROUP 2: VISA-SPECIFIC QUESTIONS === */}
+          <div className="mt-4 mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Visa Information</p>
+          </div>
+          <AccordionItem value="faq-10">
+            <AccordionTrigger className="text-sm font-medium text-left">Which countries can Pakistani citizens visit without a visa?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Pakistani passport holders can visit several countries visa-free, including Malaysia (30 days), Dominica, Micronesia, Vanuatu, Trinidad &amp; Tobago, and Saint Vincent &amp; the Grenadines. Additionally, many countries offer visa on arrival or e-Visa facilities. Always verify current requirements with the official embassy before travel.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-11">
+            <AccordionTrigger className="text-sm font-medium text-left">How strong is the Pakistani passport globally?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Pakistani passport is ranked around 100-110th on the Henley Passport Index. However, the situation is improving with more countries introducing e-Visa and visa on arrival facilities. Countries in the Middle East (UAE, Saudi Arabia, Qatar, Oman) and Southeast Asia (Malaysia, Thailand) are generally the most accessible for Pakistani travelers.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-12">
+            <AccordionTrigger className="text-sm font-medium text-left">What is the difference between e-Visa and Visa on Arrival?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">An e-Visa must be applied for online before you travel. You receive an electronic visa via email to print and present at immigration. Processing takes 1-5 business days. Visa on Arrival is issued at the airport or border crossing when you arrive, taking 5-30 minutes. Popular e-Visa destinations: Turkey, Kenya, Azerbaijan. Popular VOA destinations: UAE, Saudi Arabia, Qatar, Maldives.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-13">
+            <AccordionTrigger className="text-sm font-medium text-left">What is the Schengen visa process for Pakistani citizens?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Pakistani citizens need to apply for a Schengen visa at the embassy/consulate of the primary destination country. Requirements: valid passport (6+ months), bank statements (6 months), travel insurance (€30,000+), flight itinerary, hotel bookings, employment letter, and tax returns. Processing takes 15-30 business days. The visa allows travel across 26 European countries.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-14">
+            <AccordionTrigger className="text-sm font-medium text-left">How can I improve my chances of getting a visa approved?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Key factors: strong financial documentation (6+ months bank statements), valid passport with 6+ months validity, clear travel purpose, confirmed return ticket, hotel bookings, employment verification, travel history, and complete documentation with no discrepancies. Use PakVisa Advisor&apos;s scoring system to identify areas for improvement.</AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="faq-15">
+            <AccordionTrigger className="text-sm font-medium text-left">What does the "Best Month to Visit" filter do?</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">This filter finds countries with ideal weather for your planned travel month. Selecting &quot;January&quot; shows countries where January is within their recommended travel season. Each country&apos;s best travel months are based on temperatures, rainfall patterns, and tourist seasons. Combine with visa type filters to find visa-free destinations great to visit in your preferred month.</AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </section>
+
+      {/* Floating Mobile CTA */}
+      <div className="fixed bottom-24 right-3 z-40 lg:hidden">
+        <button onClick={() => document.getElementById('visa-guide')?.scrollIntoView({ behavior: 'smooth' })} className="w-10 h-10 rounded-full bg-amber-500/90 backdrop-blur-sm text-white shadow-lg shadow-amber-500/20 flex items-center justify-center hover:bg-amber-600 active:scale-95 transition-all border-2 border-white/80 dark:border-background/80" aria-label="Scroll to search">
+          <Search className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <CountryDetailDialog country={selectedCountry} open={!!selectedCountry} onClose={() => setSelectedCountry(null)} />
+    </div>
+  );
+}
