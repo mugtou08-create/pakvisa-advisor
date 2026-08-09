@@ -43,7 +43,7 @@ export function ReportsTab() {
 
   if (scoreResults.length === 0) {
     return (
-      <Card className="text-center p-10">
+      <Card className="text-center p-10 card-glow-border">
         <div className="empty-state-illustration mx-auto mb-4">
           <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
             {/* Clipboard body */}
@@ -131,7 +131,7 @@ export function ReportsTab() {
 
       {/* Reports View */}
       {reportsView === 'reports' && scoreResults.length === 0 && (
-        <Card className="text-center p-10">
+        <Card className="text-center p-10 card-glow-border">
           <div className="empty-state-illustration mx-auto mb-4">
             <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
               <rect x="25" y="15" width="50" height="70" rx="6" fill="var(--muted)" stroke="var(--muted-foreground)" strokeWidth="2" />
@@ -150,7 +150,7 @@ export function ReportsTab() {
       {reportsView === 'reports' && scoreResults.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Report List */}
-          <Card className="lg:col-span-1">
+          <Card className="lg:col-span-1 card-glow-border">
           <CardHeader>
             <CardTitle className="text-sm">Score Results ({scoreResults.length})</CardTitle>
           </CardHeader>
@@ -160,7 +160,7 @@ export function ReportsTab() {
                 {[...scoreResults].sort((a, b) => b.finalScore - a.finalScore).map((r, idx) => (
                   <button
                     key={idx}
-                    className={`w-full flex items-center gap-3 p-2 rounded-lg text-left text-sm hover:bg-muted/50 transition-all duration-200 hover-lift-smooth ${selectedIdx === idx ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-500' : ''}`}
+                    className={`w-full flex items-center gap-3 p-2 rounded-lg text-left text-sm hover:bg-muted/50 transition-all duration-200 hover-lift-smooth list-item-hover ${selectedIdx === idx ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-500' : ''}`}
                     onClick={() => setSelectedIdx(idx)}
                   >
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${r.finalScore >= 70 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : r.finalScore >= 40 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
@@ -179,7 +179,7 @@ export function ReportsTab() {
 
         {/* Report Detail */}
         {selected && (
-          <Card className="lg:col-span-2 print:shadow-none print:border-none">
+          <Card className="lg:col-span-2 print:shadow-none print:border-none card-glow-border">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <CardTitle>Eligibility Report: {selected.country}</CardTitle>

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FileText, BarChart3, MessageSquare,
   Send, Bot, User, Download, Printer,
-  Sparkles, CheckCircle2, Star,
+  Sparkles, CheckCircle2, Star, Copy, Check, History, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,63 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { ChatMessage } from '@/lib/types';
+
+interface ChatHistoryEntry {
+  id: string;
+  firstMessage: string;
+  timestamp: string;
+  messageCount: number;
+}
+
+const QUICK_PROMPTS = [
+  'What documents do I need for UAE?',
+  'Compare Turkey vs Malaysia visa',
+  'Best visa-free destinations',
+  'How to improve my visa score?',
+];
+
+function getChatHistory(): ChatHistoryEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('pakvisa-chat-history');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<{ id: string; messages: ChatMessage[]; timestamp: string }>;
+    return parsed.slice(-5).reverse().map(entry => ({
+      id: entry.id,
+      firstMessage: entry.messages[0]?.content?.slice(0, 60) || 'New conversation',
+      timestamp: entry.timestamp,
+      messageCount: entry.messages.length,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function saveCurrentChatToHistory(messages: ChatMessage[]) {
+  if (typeof window === 'undefined') return;
+  if (messages.length < 2) return;
+  try {
+    const raw = localStorage.getItem('pakvisa-chat-history');
+    const existing: Array<{ id: string; messages: ChatMessage[]; timestamp: string }> = raw ? JSON.parse(raw) : [];
+    // Don't save if the last saved entry has the same first message
+    const lastSaved = existing[existing.length - 1];
+    if (lastSaved && lastSaved.messages[0]?.content === messages[0]?.content) {
+      // Update existing entry
+      lastSaved.messages = messages;
+      lastSaved.timestamp = new Date().toISOString();
+    } else {
+      existing.push({
+        id: Date.now().toString(),
+        messages,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    // Keep only last 10 conversations
+    localStorage.setItem('pakvisa-chat-history', JSON.stringify(existing.slice(-10)));
+  } catch {
+    // Silently fail
+  }
+}
 
 export function saveChatAs(messages: Array<{ role: 'user' | 'assistant'; content: string }>, format: 'txt' | 'pdf', title?: string) {
   const chatTitle = title || 'PakVisa Advisor - AI Chat';
@@ -45,7 +102,6 @@ export function saveChatAs(messages: Array<{ role: 'user' | 'assistant'; content
     a.click();
     URL.revokeObjectURL(url);
   } else {
-    // PDF via hidden print iframe
     const printWindow = window.open('', '_blank', 'width=700,height=600');
     if (!printWindow) return;
     printWindow.document.write(`<!DOCTYPE html><html><head><title>${chatTitle}</title>
@@ -73,6 +129,7 @@ export function saveChatAs(messages: Array<{ role: 'user' | 'assistant'; content
     printWindow.onload = () => { printWindow.print(); };
   }
 }
+
 export function AIChatTab() {
   const { userProfile } = useAppStore();
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -83,18 +140,62 @@ export function AIChatTab() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatHistoryEntry[]>(() => getChatHistory());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const refreshHistory = useCallback(() => {
+    setChatHistory(getChatHistory());
+  }, []);
+
+  // Save to history when messages change (after a response)
+  useEffect(() => {
+    if (messages.length >= 2 && !loading) {
+      const timer = setTimeout(() => saveCurrentChatToHistory(messages), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length, loading]);
+
+  const handleCopy = async (content: string, msgId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId(null), 2000);
+      toast.success('Copied to clipboard');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
+  const handleLoadHistory = (entry: ChatHistoryEntry) => {
+    try {
+      const raw = localStorage.getItem('pakvisa-chat-history');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Array<{ id: string; messages: ChatMessage[]; timestamp: string }>;
+      const found = parsed.find(e => e.id === entry.id);
+      if (found) {
+        setMessages(found.messages);
+        setShowHistory(false);
+        toast.success('Conversation loaded');
+      }
+    } catch {
+      toast.error('Failed to load conversation');
+    }
+  };
 
   const sendMessage = async (msgOverride?: string) => {
     const messageText = msgOverride || input;
     if (!messageText.trim()) return;
-    if (!msgOverride) {
-      const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: input, timestamp: new Date().toISOString() };
-      setMessages(prev => [...prev, userMsg]);
-      setInput('');
-    } else {
-      const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: messageText, timestamp: new Date().toISOString() };
-      setMessages(prev => [...prev, userMsg]);
-    }
+    if (loading) return;
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: messageText, timestamp: new Date().toISOString() };
+    setMessages(prev => [...prev, userMsg]);
+    if (!msgOverride) setInput('');
     setLoading(true);
 
     try {
@@ -130,6 +231,28 @@ export function AIChatTab() {
               <p className="text-xs text-muted-foreground">Powered by AI · English only · Official sources cited</p>
             </div>
             <div className="ml-auto flex items-center gap-1.5">
+              {/* History button */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1 relative"
+                      onClick={() => { refreshHistory(); setShowHistory(!showHistory); }}
+                    >
+                      <History className="w-3 h-3" />
+                      History
+                      {chatHistory.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] flex items-center justify-center font-bold">
+                          {chatHistory.length}
+                        </span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">View past conversations</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {messages.length > 1 && (
                 <TooltipProvider>
                   <Tooltip>
@@ -181,10 +304,49 @@ export function AIChatTab() {
               )}
             </div>
           </div>
+
+          {/* Chat History Dropdown */}
+          {showHistory && (
+            <div ref={historyRef} className="mt-3 border rounded-lg bg-background p-2 space-y-1 max-h-60 overflow-y-auto custom-scrollbar-thin">
+              {chatHistory.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No conversation history yet</p>
+              ) : (
+                chatHistory.map(entry => (
+                  <button
+                    key={entry.id}
+                    onClick={() => handleLoadHistory(entry)}
+                    className="w-full text-left px-3 py-2 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors press-effect"
+                  >
+                    <p className="text-xs font-medium truncate">{entry.firstMessage}{entry.firstMessage.length >= 60 ? '...' : ''}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">{new Date(entry.timestamp).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-muted-foreground">·</span>
+                      <span className="text-[10px] text-muted-foreground">{entry.messageCount} messages</span>
+                    </div>
+                  </button>
+                ))
+              )}
+              <div className="pt-1 border-t mt-1">
+                <button
+                  onClick={() => {
+                    setMessages([{
+                      id: Date.now().toString(), role: 'assistant', timestamp: new Date().toISOString(),
+                      content: 'Welcome to PakVisa AI Consultant! I can help you understand visa requirements, scoring, and application processes for Pakistani passport holders.',
+                    }]);
+                    setShowHistory(false);
+                  }}
+                  className="w-full text-center px-3 py-1.5 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors font-medium press-effect"
+                >
+                  <Sparkles className="w-3 h-3 inline mr-1" />
+                  Start New Conversation
+                </button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border p-4 custom-scrollbar-thin">
+      <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border p-4 custom-scrollbar-thin glass-card-strong">
         <div className="space-y-4">
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -193,14 +355,29 @@ export function AIChatTab() {
                   <Bot className="w-4 h-4 text-amber-600" />
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
+              <div className={`max-w-[80%] rounded-lg p-3 text-sm relative group ${
                 msg.role === 'user'
                   ? 'chat-bubble-user'
                   : 'chat-bubble-bot'
               }`}>
                 <p className="whitespace-pre-wrap">{msg.content}</p>
-                <div className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-amber-200' : 'text-muted-foreground'}`}>
-                  {new Date(msg.timestamp).toLocaleTimeString()}
+                <div className={`flex items-center gap-2 mt-1 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                  <span className={`text-[10px] ${msg.role === 'user' ? 'text-amber-200' : 'text-muted-foreground'}`}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {msg.role === 'assistant' && msg.id !== '1' && (
+                    <button
+                      onClick={() => handleCopy(msg.content, msg.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                      aria-label="Copy message"
+                    >
+                      {copiedId === msg.id ? (
+                        <Check className="w-3 h-3 text-amber-500" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-muted-foreground" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
               {msg.role === 'user' && (
@@ -220,6 +397,7 @@ export function AIChatTab() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 
@@ -235,22 +413,16 @@ export function AIChatTab() {
           <Send className="w-4 h-4" />
         </Button>
       </div>
-      {/* Quick Action Buttons */}
+      {/* Quick Prompts Bar */}
       <div className="flex flex-wrap gap-2 mt-3">
-        {[
-          "What's the easiest country for me?",
-          'Compare UAE vs Saudi Arabia',
-          'What documents do I need for Turkey?',
-          'How to improve my score?',
-          'Show me visa-free countries',
-        ].map((q) => (
+        {QUICK_PROMPTS.map((q) => (
           <button
             key={q}
-            onClick={() => sendMessage(q)}
-            className="quick-action-chip inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors"
+            onClick={() => setInput(q)}
+            className="quick-action-chip inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors press-effect"
           >
             <Sparkles className="w-3 h-3" />
-            {q.length > 30 ? q.substring(0, 30) + '...' : q}
+            {q.length > 35 ? q.substring(0, 35) + '...' : q}
           </button>
         ))}
       </div>

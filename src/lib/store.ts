@@ -11,6 +11,17 @@ export interface NotificationItem {
   date: string;
 }
 
+export interface TripDestination {
+  countryCode: string;
+  countryName: string;
+  flagEmoji: string;
+  startDate: string;
+  endDate: string;
+  estimatedDays: number;
+  estimatedCost: number;
+  visaType: string;
+}
+
 interface AppState {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -52,6 +63,11 @@ interface AppState {
   clearConversionHistory: () => void;
   userFeedback: { rating: number; comment: string; submittedAt: string } | null;
   submitFeedback: (rating: number, comment: string) => void;
+  tripPlan: TripDestination[];
+  addTripDestination: (dest: TripDestination) => void;
+  removeTripDestination: (index: number) => void;
+  reorderTripDestination: (fromIndex: number, toIndex: number) => void;
+  clearTripPlan: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -120,6 +136,20 @@ export const useAppStore = create<AppState>()(
       submitFeedback: (rating, comment) => set({
         userFeedback: { rating, comment, submittedAt: new Date().toISOString() },
       }),
+      tripPlan: [],
+      addTripDestination: (dest) => set((state) => ({
+        tripPlan: state.tripPlan.length >= 5 ? state.tripPlan : [...state.tripPlan, dest],
+      })),
+      removeTripDestination: (index) => set((state) => ({
+        tripPlan: state.tripPlan.filter((_, i) => i !== index),
+      })),
+      reorderTripDestination: (fromIndex, toIndex) => set((state) => {
+        const updated = [...state.tripPlan];
+        const [moved] = updated.splice(fromIndex, 1);
+        updated.splice(toIndex, 0, moved);
+        return { tripPlan: updated };
+      }),
+      clearTripPlan: () => set({ tripPlan: [] }),
     }),
     {
       name: 'pakvisa-store',
@@ -137,6 +167,7 @@ export const useAppStore = create<AppState>()(
         savedBudgets: state.savedBudgets,
         conversionHistory: state.conversionHistory,
         userFeedback: state.userFeedback,
+        tripPlan: state.tripPlan,
       }),
     }
   )

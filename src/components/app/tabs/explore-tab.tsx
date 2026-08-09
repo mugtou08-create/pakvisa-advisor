@@ -7,7 +7,7 @@ import {
   DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin,
   CreditCard, Home, Users, Lightbulb, TrendingUp, TrendingDown,
   ArrowRight, Eye, Sparkles, Target, Compass, Flame, Map, Download, Sun, Landmark,
-  SearchX, LayoutGrid, List, RefreshCw, Bookmark, ChevronDown, ChevronUp, X, Filter, SlidersHorizontal, ArrowUpDown, HelpCircle,
+  SearchX, LayoutGrid, List, RefreshCw, Bookmark, ChevronDown, ChevronUp, X, Filter, SlidersHorizontal, ArrowUpDown,
   History, Clock4,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -30,7 +29,7 @@ import {
 } from '../shared-components-1';
 import { CountryDetailDialog, SimilarCountriesPanel, EmbassyInfoSection, DestinationDiscoveryPanel, ApplicationTimelineTracker, VisaFeeComparisonChart, SkeletonCountryCards, TypingText, FloatingParticles, SmartQuickSearch, DestinationSpotlight } from '../shared-components-2';
 import { VisaStatsDashboard, PassportPowerIndex } from '../shared-components-3';
-import { VisaPolicyChangeTracker, ContinentQuickStats } from '../shared-components-4';
+import { VisaPolicyChangeTracker, ContinentQuickStats, VisaReadinessDashboard, SmartRecommendations, EnhancedFAQ } from '../shared-components-4';
 
 export function ExploreTab() {
   const [countries, setCountries] = useState<CountryData[]>([]);
@@ -40,7 +39,7 @@ export function ExploreTab() {
   const [quickFilter, setQuickFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [stats, setStats] = useState<{ totalCountries: number; visaFreeCount: number; visaOnArrivalCount: number; eVisaCount: number; embassyRequiredCount: number; avgCostUSD?: number; cheapestCountry?: { name: string; code: string; flagEmoji: string; visaFeeUSD: number }; fastestProcessing?: { name: string; code: string; flagEmoji: string; processingDaysMin: number } } | null>(null);
-  const { selectedCountry, setSelectedCountry, setActiveTab, viewMode, setViewMode, setLastDataFetch, scoreResults, favorites, toggleFavorite } = useAppStore();
+  const { selectedCountry, setSelectedCountry, setActiveTab, viewMode, setViewMode, setLastDataFetch, scoreResults, favorites, toggleFavorite, userProfile } = useAppStore();
 
   useEffect(() => {
     let cancelled = false;
@@ -492,6 +491,26 @@ export function ExploreTab() {
         </section>
       )}
 
+      {/* Visa Readiness Dashboard */}
+      {!loading && countries.length > 0 && (
+        <section className="glass-section p-5 md:p-6 rounded-xl">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="w-5 h-5 text-amber-500" />
+            <h2 className="text-lg font-bold">Visa Readiness Dashboard</h2>
+          </div>
+          <div className="card-elevated-1 rounded-xl p-5">
+            <VisaReadinessDashboard countries={countries} userProfile={userProfile} />
+          </div>
+        </section>
+      )}
+
+      {/* Smart Recommendations */}
+      {!loading && countries.length > 0 && (
+        <section className="glass-section p-5 md:p-6 rounded-xl">
+          <SmartRecommendations countries={countries} userProfile={userProfile} />
+        </section>
+      )}
+
       {/* Decorative section divider */}
       <div className="section-gradient-divider-enhanced" />
 
@@ -759,7 +778,7 @@ export function ExploreTab() {
               const status = getHeroVisaStatus(c);
               return (
                 <motion.div key={c.code} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow p-4" onClick={() => setSelectedCountry(c)}>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow p-4 card-warm-shadow" onClick={() => setSelectedCountry(c)}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-2xl"><FlagImage code={c.code} flagUrl={c.flagUrl} size={28} emoji={c.flagEmoji} /></span>
                       <div className="min-w-0 flex-1">
@@ -781,83 +800,9 @@ export function ExploreTab() {
         </>
       )}
 
-      {/* FAQ Section - SEO Optimized with amber tint background */}
+      {/* FAQ Section - Enhanced with Search & Categories */}
       <section className="faq-section-tint rounded-xl p-5 md:p-6">
-        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <HelpCircle className="w-5 h-5 text-amber-500" />
-          Frequently Asked Questions
-        </h2>
-        <Accordion type="single" collapsible className="w-full">
-          {/* === GROUP 1: GETTING STARTED (Beginners) === */}
-          <div className="mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Getting Started</p>
-          </div>
-          <AccordionItem value="faq-1">
-            <AccordionTrigger className="text-sm font-medium text-left">What is PakVisa Advisor and how does it work?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">PakVisa Advisor is a free AI-powered tool designed specifically for Pakistani passport holders. It provides instant visa requirement checks for 70+ countries, personalized eligibility scoring, cost breakdowns, embassy information, and travel planning tools. Simply type a country name in the hero search bar to instantly see its visa requirements, processing time, fees, and safety rating — all in one place.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-2">
-            <AccordionTrigger className="text-sm font-medium text-left">How do I use the "Explore" tab to find the best countries?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Explore tab is your main dashboard. Use the hero search bar to instantly check any country&apos;s visa status. The Passport Power Index shows your passport&apos;s global ranking. The World Map lets you visually browse visa requirements by clicking any country. The &quot;Explore All Countries&quot; section lets you filter by visa type, region, cost, safety, processing speed, and the best travel month. Click any country card to see full details.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-3">
-            <AccordionTrigger className="text-sm font-medium text-left">What do the scores and ratings mean on country cards?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Each country card shows key metrics: <strong>Safety Rating</strong> (1-10 scale), <strong>Ease Score</strong> (how easy the visa process is — 100% means visa-free), <strong>Processing Time</strong> (business days), and <strong>Monthly Cost</strong> (estimated living expenses in USD). These help you quickly compare destinations at a glance.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-4">
-            <AccordionTrigger className="text-sm font-medium text-left">Can I save my favorite countries and compare them?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Yes! Click the bookmark icon (♡) on any country card to save it. Your favorites persist across sessions. Use the &quot;Favorites&quot; filter pill in the Explore tab to view saved countries, or go to the Compare tab to see them side-by-side with detailed cost, safety, and visa comparisons.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-5">
-            <AccordionTrigger className="text-sm font-medium text-left">What is the Visa Questionnaire and how does it help?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Questionnaire creates a personalized travel profile by asking about your age, income, travel history, education, languages, and travel purpose. It generates a smart eligibility score for each country — showing how likely you are to get approved. It highlights strengths and weaknesses with actionable tips to improve your chances.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-6">
-            <AccordionTrigger className="text-sm font-medium text-left">How do I use the Tools tab (Currency Converter & Budget Calculator)?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Tools tab has two essential utilities: <strong>Currency Converter</strong> — convert between PKR and 25+ currencies with live exchange rates. <strong>Travel Budget Calculator</strong> — estimate your total trip cost (visa, flights, accommodation, food, transport, insurance) for any country. Both tools are designed for Pakistani travelers planning trips abroad.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-7">
-            <AccordionTrigger className="text-sm font-medium text-left">How do I use the AI Consultant chat?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The AI Consultant tab is like having a visa expert available 24/7. Ask any question about visa requirements, document preparation, interview tips, or travel planning. For example: &quot;What documents do I need for a UK visitor visa?&quot; You can also access it from the floating chat button at the bottom of any page.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-8">
-            <AccordionTrigger className="text-sm font-medium text-left">What is the "Reports" tab and how do I generate a report?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Reports tab generates downloadable visa assessment reports based on your questionnaire profile. After completing the questionnaire, you get a comprehensive report showing eligibility scores, document checklists, cost estimates, and personalized recommendations. You can print or download reports for offline reference.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-9">
-            <AccordionTrigger className="text-sm font-medium text-left">Is my personal data safe on this platform?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Yes. PakVisa Advisor processes all data locally in your browser. Your questionnaire responses, favorites, and search history are stored only on your device — nothing is sent to external servers. No personal identification documents (passport copies, photos, financial statements) are ever collected.</AccordionContent>
-          </AccordionItem>
-
-          {/* === GROUP 2: VISA-SPECIFIC QUESTIONS === */}
-          <div className="mt-4 mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Visa Information</p>
-          </div>
-          <AccordionItem value="faq-10">
-            <AccordionTrigger className="text-sm font-medium text-left">Which countries can Pakistani citizens visit without a visa?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Pakistani passport holders can visit several countries visa-free, including Malaysia (30 days), Dominica, Micronesia, Vanuatu, Trinidad &amp; Tobago, and Saint Vincent &amp; the Grenadines. Additionally, many countries offer visa on arrival or e-Visa facilities. Always verify current requirements with the official embassy before travel.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-11">
-            <AccordionTrigger className="text-sm font-medium text-left">How strong is the Pakistani passport globally?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Pakistani passport is ranked around 100-110th on the Henley Passport Index. However, the situation is improving with more countries introducing e-Visa and visa on arrival facilities. Countries in the Middle East (UAE, Saudi Arabia, Qatar, Oman) and Southeast Asia (Malaysia, Thailand) are generally the most accessible for Pakistani travelers.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-12">
-            <AccordionTrigger className="text-sm font-medium text-left">What is the difference between e-Visa and Visa on Arrival?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">An e-Visa must be applied for online before you travel. You receive an electronic visa via email to print and present at immigration. Processing takes 1-5 business days. Visa on Arrival is issued at the airport or border crossing when you arrive, taking 5-30 minutes. Popular e-Visa destinations: Turkey, Kenya, Azerbaijan. Popular VOA destinations: UAE, Saudi Arabia, Qatar, Maldives.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-13">
-            <AccordionTrigger className="text-sm font-medium text-left">What is the Schengen visa process for Pakistani citizens?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Pakistani citizens need to apply for a Schengen visa at the embassy/consulate of the primary destination country. Requirements: valid passport (6+ months), bank statements (6 months), travel insurance (€30,000+), flight itinerary, hotel bookings, employment letter, and tax returns. Processing takes 15-30 business days. The visa allows travel across 26 European countries.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-14">
-            <AccordionTrigger className="text-sm font-medium text-left">How can I improve my chances of getting a visa approved?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Key factors: strong financial documentation (6+ months bank statements), valid passport with 6+ months validity, clear travel purpose, confirmed return ticket, hotel bookings, employment verification, travel history, and complete documentation with no discrepancies. Use PakVisa Advisor&apos;s scoring system to identify areas for improvement.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="faq-15">
-            <AccordionTrigger className="text-sm font-medium text-left">What does the "Best Month to Visit" filter do?</AccordionTrigger>
-            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">This filter finds countries with ideal weather for your planned travel month. Selecting &quot;January&quot; shows countries where January is within their recommended travel season. Each country&apos;s best travel months are based on temperatures, rainfall patterns, and tourist seasons. Combine with visa type filters to find visa-free destinations great to visit in your preferred month.</AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <EnhancedFAQ />
       </section>
 
       {/* Floating Mobile CTA */}

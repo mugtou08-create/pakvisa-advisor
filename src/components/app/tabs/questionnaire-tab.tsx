@@ -288,7 +288,7 @@ export function QuestionnaireTab() {
       {/* Step Content */}
       <AnimatePresence mode="wait">
         <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-          <Card>
+          <Card className="dark-surface-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 {React.createElement(STEPS[step].icon, { className: 'w-5 h-5 text-amber-500' })}
@@ -590,12 +590,14 @@ export function QuestionnaireTab() {
               )}
             </CardContent>
             <CardFooter className="flex justify-between border-t pt-4">
+              <div className="btn-group-amber">
               <Button variant="outline" onClick={prevStep} disabled={step === 0}>
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <Button onClick={nextStep} disabled={step === 5} className="bg-amber-600 hover:bg-amber-700">
                 Next <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
+              </div>
             </CardFooter>
           </Card>
         </motion.div>
@@ -605,7 +607,7 @@ export function QuestionnaireTab() {
       {scores.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <ConfettiAnimation trigger={scores.length > 0} />
-          <Card>
+          <Card className="card-warm-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-amber-500" />

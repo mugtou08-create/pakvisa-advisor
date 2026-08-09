@@ -224,7 +224,7 @@ export default function HomePage() {
                     key={tab.id}
                     variant="ghost"
                     size="sm"
-                    className={`rounded-lg transition-all duration-200 ${activeTab === tab.id ? 'tab-gradient-text font-semibold shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-amber-50 dark:hover:bg-amber-900/20 active:scale-95'}`}
+                    className={`rounded-lg transition-all duration-200 btn-ghost-amber ${activeTab === tab.id ? 'tab-gradient-text font-semibold shadow-sm !bg-amber-50 dark:!bg-amber-900/20' : ''}`}
                     onClick={() => setActiveTab(tab.id)}
                     ref={(el) => { tabRefs.current[tab.id] = el; }}
                   >
@@ -322,7 +322,7 @@ export default function HomePage() {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main className="flex-1 container mx-auto px-4 py-8 card-warm-shadow rounded-2xl my-2 mx-2 sm:mx-auto sm:my-0">
           <div className="page-load-animation">
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>
@@ -349,7 +349,7 @@ export default function HomePage() {
         </main>
 
         {/* Footer - Enhanced with Gradient Background & Animated Separator */}
-        <footer className="footer-gradient-bg footer-gradient-enhanced glass-card print:hidden mt-auto sm:block" style={{ borderTop: '2px solid rgba(249, 115, 22, 0.3)' }}>
+        <footer className="footer-gradient-bg footer-gradient-enhanced glass-card print:hidden mt-auto sm:block card-warm-shadow" style={{ borderTop: '2px solid rgba(249, 115, 22, 0.3)' }}>
           <div className="footer-separator-dots mx-4 mt-6 mb-2" />
           <div className="container mx-auto px-4 py-10">
             {/* Bento Grid Footer - 5 columns */}

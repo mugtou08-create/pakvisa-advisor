@@ -102,7 +102,7 @@ export function CompareTab() {
 
   return (
     <div className="space-y-6 pb-24 sm:pb-8">
-      <Card className="glass-card">
+      <Card className="glass-card card-warm-shadow">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -251,7 +251,7 @@ export function CompareTab() {
               </p>
               <div className="card-elevated-2 rounded-xl overflow-hidden">
                 <div className="overflow-x-auto custom-scrollbar-thin">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs table-amber table-hover-row">
                     <thead>
                       <tr className="border-b bg-amber-50/50 dark:bg-amber-950/20">
                         <th className="text-left p-2.5 font-semibold text-amber-700 dark:text-amber-400 sticky left-0 bg-amber-50/80 dark:bg-amber-950/40 backdrop-blur-sm">Country</th>
@@ -317,7 +317,7 @@ export function CompareTab() {
       </Card>
 
       {results.length > 0 && (
-        <div className="space-y-6 pb-4">
+        <div className="space-y-6 pb-4 list-group">
           {/* Fee Comparison Chart */}
           <VisaFeeComparisonChart results={results} />
 
@@ -326,7 +326,7 @@ export function CompareTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {results.map((r, i) => (
-            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
+            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 card-glow-border ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base card-section-title">{r.country}</CardTitle>

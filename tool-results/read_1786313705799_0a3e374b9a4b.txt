@@ -1,0 +1,743 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  RefreshCw, ShieldCheck, DollarSign, Clock, FileWarning,
+     7→  Globe, CheckCircle2, ChevronDown, ChevronRight, ClipboardCheck,
+     8→  PlaneTakeoff, FileText, MapPin, Phone, Wifi, Banknote,
+     9→  Building, AlertCircle, Briefcase, GraduationCap, Users, RotateCcw,
+    10→  ExternalLink, Shield, TrendingUp, BarChart3, Map,
+    11→  User, Wallet, FileCheck, ArrowRight, Sparkles, Lightbulb,
+    12→  Search, HelpCircle, BookOpen, Plane, CheckCircle, UserCircle,
+    13→  AlertTriangle, CircleCheckBig, X,
+    14→} from 'lucide-react';
+    15→import { Button } from '@/components/ui/button';
+    16→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    17→import { Badge } from '@/components/ui/badge';
+    18→import { Progress } from '@/components/ui/progress';
+    19→import { Input } from '@/components/ui/input';
+    20→import { Checkbox } from '@/components/ui/checkbox';
+    21→import { Separator } from '@/components/ui/separator';
+    22→import { ScrollArea } from '@/components/ui/scroll-area';
+    23→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+    24→import { useAppStore } from '@/lib/store';
+    25→import type { CountryData, UserProfileData } from '@/lib/types';
+    26→import { getFlagUrl } from './constants';
+    27→import Image from 'next/image';
+    28→
+    29→// ============================================================
+    30→// Feature 1: VisaPolicyChangeTracker
+    31→// ============================================================
+    32→
+    33→type ChangeType = 'visa-free' | 'fee-change' | 'processing' | 'requirement' | 'evisa';
+    34→
+    35→interface PolicyChangeEntry {
+    36→  id: string;
+    37→  countryCode: string;
+    38→  countryName: string;
+    39→  flagEmoji: string;
+    40→  flagUrl: string;
+    41→  changeType: ChangeType;
+    42→  title: string;
+    43→  description: string;
+    44→  detail: string;
+    45→  daysAgo: number;
+    46→}
+    47→
+    48→const CHANGE_TYPE_CONFIG: Record<ChangeType, { label: string; color: string; dotClass: string; badgeClass: string }> = {
+    49→  'visa-free': { label: 'New Visa-Free', color: 'text-green-600 dark:text-green-400', dotClass: 'bg-green-500', badgeClass: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border-green-200 dark:border-green-800' },
+    50→  'fee-change': { label: 'Fee Change', color: 'text-amber-600 dark:text-amber-400', dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
+    51→  'processing': { label: 'Processing Update', color: 'text-orange-600 dark:text-orange-400', dotClass: 'bg-orange-500', badgeClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border-orange-200 dark:border-orange-800' },
+    52→  'requirement': { label: 'New Requirement', color: 'text-red-600 dark:text-red-400', dotClass: 'bg-red-500', badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800' },
+    53→  'evisa': { label: 'e-Visa Launch', color: 'text-emerald-600 dark:text-emerald-400', dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
+    54→};
+    55→
+    56→function relativeTime(daysAgo: number): string {
+    57→  if (daysAgo === 0) return 'Today';
+    58→  if (daysAgo === 1) return 'Yesterday';
+    59→  if (daysAgo < 7) return `${daysAgo} days ago`;
+    60→  if (daysAgo < 14) return '1 week ago';
+    61→  if (daysAgo < 21) return `${Math.floor(daysAgo / 7)} weeks ago`;
+    62→  if (daysAgo < 30) return '3 weeks ago';
+    63→  if (daysAgo < 45) return '1 month ago';
+    64→  return `${Math.floor(daysAgo / 30)} months ago`;
+    65→}
+    66→
+    67→function generatePolicyChanges(countries: CountryData[]): PolicyChangeEntry[] {
+    68→  if (!countries || countries.length === 0) return [];
+    69→
+    70→  const entries: PolicyChangeEntry[] = [];
+    71→  const used = new Set<string>();
+    72→  const timestamps = [0, 1, 2, 3, 5, 7, 10, 14, 21, 28, 35, 42, 49, 56];
+    73→
+    74→  // Pick visa-free countries
+    75→  const vfCountries = countries.filter(c => c.visaFree);
+    76→  const voaCountries = countries.filter(c => c.visaOnArrival && !c.visaFree);
+    77→  const etaCountries = countries.filter(c => c.etaAvailable && !c.visaFree && !c.visaOnArrival);
+    78→  const embassyCountries = countries.filter(c => !c.visaFree && !c.visaOnArrival && !c.etaAvailable);
+    79→
+    80→  const pick = (list: CountryData[]) => {
+    81→    for (const c of list) {
+    82→      if (!used.has(c.code) && entries.length < 10) return c;
+    83→    }
+    84→    return null;
+    85→  };
+    86→
+    87→  // Visa-free entries (2-3)
+    88→  for (let i = 0; i < 3; i++) {
+    89→    const c = pick(vfCountries);
+    90→    if (!c) break;
+    91→    used.add(c.code);
+    92→    entries.push({
+    93→      id: `vf-${c.code}`, countryCode: c.code, countryName: c.name,
+    94→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+    95→      changeType: 'visa-free',
+    96→      title: 'Visa-free access confirmed',
+    97→      description: `Pakistan passport holders enjoy visa-free entry to ${c.name} for up to ${c.visaTypes?.[0]?.maxDuration || '30 days'}.`,
+    98→      detail: `This visa-free arrangement allows Pakistani citizens to enter ${c.name} without any prior visa application. Ensure your passport has at least 6 months validity. Best travel months: ${c.bestTravelMonths}. Average temperature: ${c.avgTempC}°C.`,
+    99→      daysAgo: timestamps[entries.length] ?? 10,
+   100→    });
+   101→  }
+   102→
+   103→  // VOA entries (1-2)
+   104→  for (let i = 0; i < 2; i++) {
+   105→    const c = pick(voaCountries);
+   106→    if (!c) break;
+   107→    used.add(c.code);
+   108→    entries.push({
+   109→      id: `voa-${c.code}`, countryCode: c.code, countryName: c.name,
+   110→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+   111→      changeType: 'processing',
+   112→      title: 'Visa on arrival policy updated',
+   113→      description: `${c.name} has streamlined its VOA process. Processing now takes approximately ${c.processingDaysMin}-${c.processingDaysMax} business days.`,
+   114→      detail: `Pakistan passport holders can obtain a visa on arrival at ${c.name} ports of entry. The fee is approximately $${c.costProfile?.visaFeeUSD || 'varies'}. Maximum stay: ${c.visaTypes?.[0]?.maxDuration || '30 days'}. Extensions may be available.`,
+   115→      daysAgo: timestamps[entries.length] ?? 15,
+   116→    });
+   117→  }
+   118→
+   119→  // e-Visa entries (2)
+   120→  for (let i = 0; i < 2; i++) {
+   121→    const c = pick(etaCountries);
+   122→    if (!c) break;
+   123→    used.add(c.code);
+   124→    entries.push({
+   125→      id: `eta-${c.code}`, countryCode: c.code, countryName: c.name,
+   126→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+   127→      changeType: 'evisa',
+   128→      title: 'e-Visa/eTA system launched',
+   129→      description: `${c.name} has launched an electronic visa system for Pakistani passport holders. Apply online before travel.`,
+   130→      detail: `The new e-Visa portal allows Pakistanis to apply for a ${c.name} visa entirely online. Processing time: ${c.processingDaysMin}-${c.processingDaysMax} days. Fee: $${c.costProfile?.visaFeeUSD || 'TBD'}. Required documents: valid passport, photographs, and travel itinerary.`,
+   131→      daysAgo: timestamps[entries.length] ?? 20,
+   132→    });
+   133→  }
+   134→
+   135→  // Embassy/fee entries (2-3)
+   136→  for (let i = 0; i < 3; i++) {
+   137→    const c = pick([...embassyCountries, ...etaCountries, ...voaCountries]);
+   138→    if (!c) break;
+   139→    used.add(c.code);
+   140→    const isFee = i % 2 === 0;
+   141→    entries.push({
+   142→      id: `emb-${c.code}`, countryCode: c.code, countryName: c.name,
+   143→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+   144→      changeType: isFee ? 'fee-change' : 'requirement',
+   145→      title: isFee ? 'Visa fee adjustment' : 'New document requirement added',
+   146→      description: isFee
+   147→        ? `${c.name} has adjusted its visa fee to $${c.costProfile?.visaFeeUSD || 'updated rate'} (previously $${Math.max(1, (c.costProfile?.visaFeeUSD || 50) - 10)}). Service fee: $${c.costProfile?.serviceFeeUSD || 'varies'}.`
+   148→        : `${c.name} now requires additional documentation: ${c.requirements?.[0]?.requirement || 'updated proof of funds'} for all visa applications.`,
+   149→      detail: isFee
+   150→        ? `The revised fee structure for ${c.name} visas: Visa fee $${c.costProfile?.visaFeeUSD || 'TBD'}, Service fee $${c.costProfile?.serviceFeeUSD || 'TBD'}. Health insurance: $${c.costProfile?.healthInsuranceUSD || 'N/A'}. Budget estimate: $${c.costProfile?.totalMonthlyUSD || 'TBD'}/month for living expenses. `
+   151→        : `Updated requirements for ${c.name}: ${c.requirements?.slice(0, 3).map(r => r.requirement).join(', ') || 'Standard documentation'}. Processing time: ${c.processingDaysMin}-${c.processingDaysMax} business days. Check official sources for the most current information.`,
+   152→      daysAgo: timestamps[entries.length] ?? 25,
+   153→    });
+   154→  }
+   155→
+   156→  return entries.slice(0, 10);
+   157→}
+   158→
+   159→export const VisaPolicyChangeTracker = React.memo(function VisaPolicyChangeTracker({ countries }: { countries: CountryData[] }) {
+   160→  const [refreshing, setRefreshing] = useState(false);
+   161→  const [expandedId, setExpandedId] = useState<string | null>(null);
+   162→  const [isMobile, setIsMobile] = useState(false);
+   163→
+   164→  useEffect(() => {
+   165→    const check = () => setIsMobile(window.innerWidth < 768);
+   166→    check();
+   167→    window.addEventListener('resize', check);
+   168→    return () => window.removeEventListener('resize', check);
+   169→  }, []);
+   170→
+   171→  const entries = useMemo(() => generatePolicyChanges(countries), [countries]);
+   172→
+   173→  const handleRefresh = useCallback(() => {
+   174→    setRefreshing(true);
+   175→    setTimeout(() => setRefreshing(false), 1500);
+   176→  }, []);
+   177→
+   178→  const toggleExpand = useCallback((id: string) => {
+   179→    setExpandedId(prev => prev === id ? null : id);
+   180→  }, []);
+   181→
+   182→  // Mobile: horizontal scroll cards
+   183→  if (isMobile) {
+   184→    return (
+   185→      <Card className="card-elevated-1 glass-card overflow-hidden">
+   186→        <CardHeader className="pb-3">
+   187→          <div className="flex items-center justify-between">
+   188→            <CardTitle className="text-base font-semibold flex items-center gap-2">
+   189→              <span className="text-lg">🛂</span>
+   190→              Recent Visa Policy Updates
+   191→            </CardTitle>
+   192→            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={refreshing}>
+   193→              <RefreshCw className={`h-4 w-4 text-amber-500 ${refreshing ? 'animate-spin' : ''}`} />
+   194→            </Button>
+   195→          </div>
+   196→        </CardHeader>
+   197→        <CardContent className="pb-4">
+   198→          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar-thin">
+   199→            {entries.map((entry, idx) => {
+   200→              const cfg = CHANGE_TYPE_CONFIG[entry.changeType];
+   201→              return (
+   202→                <motion.div
+   203→                  key={entry.id}
+   204→                  initial={{ opacity: 0, x: 20 }}
+   205→                  animate={{ opacity: 1, x: 0 }}
+   206→                  transition={{ delay: idx * 0.06, duration: 0.3 }}
+   207→                  className="flex-shrink-0 w-64"
+   208→                >
+   209→                  <button
+   210→                    onClick={() => toggleExpand(entry.id)}
+   211→                    className="w-full text-left p-3 rounded-xl border border-amber-200/50 dark:border-amber-800/30 bg-white/60 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors press-effect"
+   212→                  >
+   213→                    <div className="flex items-center gap-2 mb-2">
+   214→                      {entry.flagUrl ? (
+   215→                        <Image src={entry.flagUrl} alt={entry.countryName} width={20} height={14} className="rounded-sm object-cover" unoptimized />
+   216→                      ) : (
+   217→                        <span className="text-base">{entry.flagEmoji}</span>
+   218→                      )}
+   219→                      <span className="text-xs font-medium truncate">{entry.countryName}</span>
+   220→                    </div>
+   221→                    <Badge className={`badge-3d text-[10px] px-1.5 py-0 ${cfg.badgeClass}`}>
+   222→                      {cfg.label}
+   223→                    </Badge>
+   224→                    <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{entry.description}</p>
+   225→                    <p className="text-[10px] text-muted-foreground/70 mt-1">{relativeTime(entry.daysAgo)}</p>
+   226→                    <AnimatePresence>
+   227→                      {expandedId === entry.id && (
+   228→                        <motion.div
+   229→                          initial={{ height: 0, opacity: 0 }}
+   230→                          animate={{ height: 'auto', opacity: 1 }}
+   231→                          exit={{ height: 0, opacity: 0 }}
+   232→                          className="overflow-hidden"
+   233→                        >
+   234→                          <Separator className="my-2" />
+   235→                          <p className="text-[11px] text-muted-foreground leading-relaxed">{entry.detail}</p>
+   236→                        </motion.div>
+   237→                      )}
+   238→                    </AnimatePresence>
+   239→                  </button>
+   240→                </motion.div>
+   241→              );
+   242→            })}
+   243→          </div>
+   244→          <Button variant="outline" size="sm" className="w-full mt-3 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+   245→            View All Changes <ExternalLink className="ml-1 h-3 w-3" />
+   246→          </Button>
+   247→        </CardContent>
+   248→      </Card>
+   249→    );
+   250→  }
+   251→
+   252→  // Desktop: vertical timeline
+   253→  return (
+   254→    <Card className="card-elevated-1 glass-card overflow-hidden">
+   255→      <CardHeader className="pb-3">
+   256→        <div className="flex items-center justify-between">
+   257→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   258→            <span className="text-lg">🛂</span>
+   259→            Recent Visa Policy Updates
+   260→          </CardTitle>
+   261→          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={refreshing}>
+   262→            <RefreshCw className={`h-4 w-4 text-amber-500 ${refreshing ? 'animate-spin' : ''}`} />
+   263→          </Button>
+   264→        </div>
+   265→      </CardHeader>
+   266→      <CardContent className="pb-4">
+   267→        <div className="relative pl-6">
+   268→          {/* Timeline line */}
+   269→          <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-amber-400 via-orange-400 to-amber-300 dark:from-amber-600 dark:via-orange-600 dark:to-amber-500" />
+   270→
+   271→          {entries.map((entry, idx) => {
+   272→            const cfg = CHANGE_TYPE_CONFIG[entry.changeType];
+   273→            return (
+   274→              <motion.div
+   275→                key={entry.id}
+   276→                initial={{ opacity: 0, x: -16 }}
+   277→                animate={{ opacity: 1, x: 0 }}
+   278→                transition={{ delay: idx * 0.07, duration: 0.35, ease: 'easeOut' }}
+   279→                className="relative mb-4 last:mb-0"
+   280→              >
+   281→                {/* Timeline dot */}
+   282→                <div className={`absolute -left-6 top-2.5 w-[7px] h-[7px] rounded-full ${cfg.dotClass} ring-2 ring-background`} />
+   283→
+   284→                <button
+   285→                  onClick={() => toggleExpand(entry.id)}
+   286→                  className="w-full text-left group"
+   287→                >
+   288→                  <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-200/40 dark:border-amber-800/20 bg-white/50 dark:bg-amber-950/10 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 transition-all hover:shadow-sm press-effect">
+   289→                    <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+   290→                      {entry.flagUrl ? (
+   291→                        <Image src={entry.flagUrl} alt={entry.countryName} width={22} height={15} className="rounded-sm object-cover" unoptimized />
+   292→                      ) : (
+   293→                        <span className="text-base">{entry.flagEmoji}</span>
+   294→                      )}
+   295→                      <span className="text-sm font-medium truncate">{entry.countryName}</span>
+   296→                    </div>
+   297→                    <Badge className={`badge-3d text-[10px] px-1.5 py-0 flex-shrink-0 ${cfg.badgeClass}`}>
+   298→                      {cfg.label}
+   299→                    </Badge>
+   300→                    <span className="text-[11px] text-muted-foreground/60 flex-shrink-0 ml-auto">{relativeTime(entry.daysAgo)}</span>
+   301→                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground flex-shrink-0 transition-transform ${expandedId === entry.id ? 'rotate-180' : ''}`} />
+   302→                  </div>
+   303→                  <p className="text-xs text-muted-foreground mt-1.5 px-1">{entry.description}</p>
+   304→                  <AnimatePresence>
+   305→                    {expandedId === entry.id && (
+   306→                      <motion.div
+   307→                        initial={{ height: 0, opacity: 0 }}
+   308→                        animate={{ height: 'auto', opacity: 1 }}
+   309→                        exit={{ height: 0, opacity: 0 }}
+   310→                        transition={{ duration: 0.2 }}
+   311→                        className="overflow-hidden"
+   312→                      >
+   313→                        <div className="mt-2 mx-1 p-3 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/30 dark:border-amber-800/20">
+   314→                          <p className="text-xs text-muted-foreground leading-relaxed">{entry.detail}</p>
+   315→                        </div>
+   316→                      </motion.div>
+   317→                    )}
+   318→                  </AnimatePresence>
+   319→                </button>
+   320→              </motion.div>
+   321→            );
+   322→          })}
+   323→        </div>
+   324→
+   325→        <Button variant="outline" size="sm" className="w-full mt-4 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+   326→          View All Changes <ExternalLink className="ml-1 h-3 w-3" />
+   327→        </Button>
+   328→      </CardContent>
+   329→    </Card>
+   330→  );
+   331→});
+   332→
+   333→
+   334→// ============================================================
+   335→// Feature 2: TravelChecklistGenerator
+   336→// ============================================================
+   337→
+   338→interface ChecklistSection {
+   339→  id: string;
+   340→  title: string;
+   341→  icon: React.ReactNode;
+   342→  colorClass: string;
+   343→  items: { id: string; label: string }[];
+   344→}
+   345→
+   346→function buildChecklistSections(country: CountryData | null, userProfile: UserProfileData | null): ChecklistSection[] {
+   347→  const sections: ChecklistSection[] = [];
+   348→
+   349→  // Section 1: Pre-Departure
+   350→  const preDepartureItems: { id: string; label: string }[] = [
+   351→    { id: 'pre-passport', label: 'Check passport validity (6+ months)' },
+   352→    { id: 'pre-insurance', label: 'Purchase travel insurance' },
+   353→    { id: 'pre-flights', label: 'Book flights' },
+   354→    { id: 'pre-accommodation', label: 'Book accommodation' },
+   355→    { id: 'pre-currency', label: `Exchange currency${country ? ` (${country.currencyCode || 'local currency'})` : ''}` },
+   356→    { id: 'pre-maps', label: 'Download offline maps' },
+   357→    { id: 'pre-bank', label: 'Notify your bank about travel' },
+   358→  ];
+   359→
+   360→  if (country) {
+   361→    if (country.visaFree) {
+   362→      preDepartureItems.unshift({ id: 'pre-vf-check', label: 'Confirm visa-free entry requirements' });
+   363→    } else if (country.visaOnArrival) {
+   364→      preDepartureItems.unshift({ id: 'pre-voa-docs', label: 'Prepare VOA documents (return ticket, hotel booking)' });
+   365→      preDepartureItems.splice(1, 0, { id: 'pre-voa-fee', label: `Carry VOA fee in cash (~$${country.costProfile?.visaFeeUSD || 'check amount'})` });
+   366→    } else if (country.etaAvailable) {
+   367→      preDepartureItems.unshift({ id: 'pre-eta-apply', label: 'Apply for e-Visa/eTA online' });
+   368→      preDepartureItems.splice(1, 0, { id: 'pre-eta-print', label: 'Print e-Visa approval letter' });
+   369→    } else {
+   370→      preDepartureItems.unshift({ id: 'pre-embassy-apply', label: 'Apply for visa at embassy/consulate' });
+   371→      preDepartureItems.splice(1, 0, { id: 'pre-embassy-appt', label: 'Book embassy appointment' });
+   372→      preDepartureItems.splice(2, 0, { id: 'pre-embassy-docs', label: 'Prepare and organize all documents' });
+   373→    }
+   374→  }
+   375→
+   376→  if (userProfile) {
+   377→    if (userProfile.occupation && userProfile.occupation !== 'Unemployed' && userProfile.occupation !== 'Student') {
+   378→      preDepartureItems.push({ id: 'pre-leave', label: 'Request leave from employer' });
+   379→    }
+   380→    if (userProfile.maritalStatus === 'Married' || (userProfile.dependents && userProfile.dependents > 0)) {
+   381→      preDepartureItems.push({ id: 'pre-family', label: 'Arrange family care during travel' });
+   382→    }
+   383→    if (userProfile.occupation === 'Student') {
+   384→      preDepartureItems.push({ id: 'pre-student-docs', label: 'Get student documents / NOC from institution' });
+   385→    }
+   386→  }
+   387→
+   388→  sections.push({
+   389→    id: 'pre-departure',
+   390→    title: `Pre-Departure Checklist${country ? ` — ${country.name}` : ''}`,
+   391→    icon: <PlaneTakeoff className="h-4 w-4 text-amber-500" />,
+   392→    colorClass: 'text-amber-600 dark:text-amber-400',
+   393→    items: preDepartureItems,
+   394→  });
+   395→
+   396→  // Section 2: Required Documents
+   397→  const docItems: { id: string; label: string }[] = [
+   398→    { id: 'doc-passport', label: 'Valid passport (6+ months validity)' },
+   399→    { id: 'doc-photos', label: 'Passport-sized photographs (2x)' },
+   400→    { id: 'doc-bank', label: 'Bank statements (last 6 months)' },
+   401→    { id: 'doc-flights', label: 'Flight itinerary / booking confirmation' },
+   402→    { id: 'doc-hotel', label: 'Hotel reservation confirmation' },
+   403→    { id: 'doc-insurance', label: 'Travel insurance certificate' },
+   404→    { id: 'doc-employment', label: 'Employment letter / NOC from employer' },
+   405→    { id: 'doc-tax', label: 'Income tax returns' },
+   406→  ];
+   407→
+   408→  if (country && country.requirements && country.requirements.length > 0) {
+   409→    country.requirements.forEach((req, i) => {
+   410→      if (i < 4 && !docItems.some(d => d.label.toLowerCase().includes(req.requirement.toLowerCase().slice(0, 15)))) {
+   411→        docItems.push({ id: `doc-req-${i}`, label: req.requirement });
+   412→      }
+   413→    });
+   414→  }
+   415→
+   416→  sections.push({
+   417→    id: 'documents',
+   418→    title: 'Required Documents',
+   419→    icon: <FileText className="h-4 w-4 text-orange-500" />,
+   420→    colorClass: 'text-orange-600 dark:text-orange-400',
+   421→    items: docItems,
+   422→  });
+   423→
+   424→  // Section 3: At Destination
+   425→  sections.push({
+   426→    id: 'at-destination',
+   427→    title: 'At Destination',
+   428→    icon: <MapPin className="h-4 w-4 text-yellow-500" />,
+   429→    colorClass: 'text-yellow-600 dark:text-yellow-400',
+   430→    items: [
+   431→      { id: 'dest-embassy', label: 'Register with Pakistan embassy/consulate' },
+   432→      { id: 'dest-emergency', label: 'Save emergency numbers (police, ambulance, embassy)' },
+   433→      { id: 'dest-sim', label: 'Check local SIM card options' },
+   434→      { id: 'dest-transport', label: 'Familiarize with local transport' },
+   435→      { id: 'dest-customs', label: 'Note local customs and laws' },
+   436→    ],
+   437→  });
+   438→
+   439→  return sections;
+   440→}
+   441→
+   442→export const TravelChecklistGenerator = React.memo(function TravelChecklistGenerator({ country, userProfile }: { country: CountryData | null; userProfile?: UserProfileData | null }) {
+   443→  const storageKey = country ? `pakvisa-checklist-${country.code}` : 'pakvisa-checklist-generic';
+   444→
+   445→  const sections = useMemo(() => buildChecklistSections(country, userProfile || null), [country, userProfile]);
+   446→  const allItemIds = useMemo(() => sections.flatMap(s => s.items.map(i => i.id)), [sections]);
+   447→
+   448→  // Detect client-side mount without setState (useSyncExternalStore)
+   449→  const mounted = useSyncExternalStore(
+   450→    () => () => {}, // noop subscribe
+   451→    () => true,     // client: always mounted
+   452→    () => false     // server: not mounted
+   453→  );
+   454→
+   455→  // Combined state for all country checklists — no reset needed when country changes
+   456→  const [allChecked, setAllChecked] = useState<Record<string, Record<string, boolean>>>(() => {
+   457→    if (typeof window === 'undefined') return {};
+   458→    try {
+   459→      const saved = localStorage.getItem(storageKey);
+   460→      return saved ? { [storageKey]: JSON.parse(saved) as Record<string, boolean> } : {};
+   461→    } catch {
+   462→      return {};
+   463→    }
+   464→  });
+   465→
+   466→  // Derive current country's checked items (no setState needed)
+   467→  const checked = allChecked[storageKey] || {};
+   468→
+   469→  const toggleItem = useCallback((id: string) => {
+   470→    setAllChecked(prev => {
+   471→      const current = prev[storageKey] || {};
+   472→      return { ...prev, [storageKey]: { ...current, [id]: !current[id] } };
+   473→    });
+   474→  }, [storageKey]);
+   475→
+   476→  const clearAll = useCallback(() => {
+   477→    const cleared: Record<string, boolean> = {};
+   478→    allItemIds.forEach(id => { cleared[id] = true; });
+   479→    setAllChecked(prev => ({ ...prev, [storageKey]: cleared }));
+   480→  }, [allItemIds, storageKey]);
+   481→
+   482→  const resetAll = useCallback(() => {
+   483→    setAllChecked(prev => ({ ...prev, [storageKey]: {} }));
+   484→  }, [storageKey]);
+   485→
+   486→  // Persist to localStorage (external system sync — no setState)
+   487→  useEffect(() => {
+   488→    if (!mounted) return;
+   489→    const current = allChecked[storageKey];
+   490→    if (current) {
+   491→      try {
+   492→        localStorage.setItem(storageKey, JSON.stringify(current));
+   493→      } catch {
+   494→        // ignore
+   495→      }
+   496→    }
+   497→  }, [allChecked, storageKey, mounted]);
+   498→
+   499→  const totalItems = allItemIds.length;
+   500→  const checkedCount = allItemIds.filter(id => checked[id]).length;
+   501→  const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
+   502→  const isReady = pct >= 90;
+   503→
+   504→  if (!mounted) {
+   505→    return (
+   506→      <Card className="card-elevated-1">
+   507→        <CardContent className="p-6">
+   508→          <div className="space-y-3">
+   509→            <div className="h-5 w-48 bg-muted rounded animate-pulse" />
+   510→            <div className="h-2 w-full bg-muted rounded" />
+   511→            <div className="space-y-2 mt-4">
+   512→              {Array.from({ length: 5 }).map((_, i) => (
+   513→                <div key={i} className="h-4 w-full bg-muted rounded animate-pulse" />
+   514→              ))}
+   515→            </div>
+   516→          </div>
+   517→        </CardContent>
+   518→      </Card>
+   519→    );
+   520→  }
+   521→
+   522→  return (
+   523→    <Card className="card-elevated-1 overflow-hidden">
+   524→      <CardHeader className="pb-3">
+   525→        <div className="flex items-center justify-between">
+   526→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   527→            <span className="text-lg">📋</span>
+   528→            Travel Checklist
+   529→            {country && (
+   530→              <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground">
+   531→                {country.flagUrl ? (
+   532→                  <Image src={country.flagUrl} alt={country.name} width={18} height={12} className="rounded-sm object-cover" unoptimized />
+   533→                ) : (
+   534→                  <span>{country.flagEmoji}</span>
+   535→                )}
+   536→                {country.name}
+   537→              </span>
+   538→            )}
+   539→          </CardTitle>
+   540→          <div className="flex items-center gap-1">
+   541→            <Button variant="ghost" size="sm" className="h-7 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700" onClick={clearAll}>
+   542→              Clear All
+   543→            </Button>
+   544→            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground" onClick={resetAll}>
+   545→              <RotateCcw className="h-3 w-3 mr-1" /> Reset
+   546→            </Button>
+   547→          </div>
+   548→        </div>
+   549→      </CardHeader>
+   550→      <CardContent className="pb-4">
+   551→        {/* Progress bar */}
+   552→        <div className="mb-4">
+   553→          <div className="flex items-center justify-between mb-1.5">
+   554→            <span className="text-xs font-medium text-muted-foreground">{checkedCount}/{totalItems} completed</span>
+   555→            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{pct}%</span>
+   556→          </div>
+   557→          <Progress value={pct} className="progress-amber h-2.5" />
+   558→          {isReady && (
+   559→            <motion.p
+   560→              initial={{ opacity: 0, y: 4 }}
+   561→              animate={{ opacity: 1, y: 0 }}
+   562→              className="text-sm font-semibold text-glow-amber mt-2 flex items-center gap-1.5"
+   563→            >
+   564→              <CheckCircle2 className="h-4 w-4" />
+   565→              Ready to travel! ✈️
+   566→            </motion.p>
+   567→          )}
+   568→        </div>
+   569→
+   570→        {/* Checklist accordion */}
+   571→        <Accordion type="multiple" defaultValue={typeof window !== 'undefined' && window.innerWidth >= 768 ? ['pre-departure', 'documents', 'at-destination'] : []} className="w-full">
+   572→          {sections.map((section) => (
+   573→            <AccordionItem key={section.id} value={section.id} className="border-amber-200/40 dark:border-amber-800/20">
+   574→              <AccordionTrigger className={`text-sm font-semibold ${section.colorClass} hover:no-underline py-2.5`}>
+   575→                <span className="flex items-center gap-2">
+   576→                  {section.icon}
+   577→                  {section.title}
+   578→                  <Badge variant="secondary" className="ml-1 text-[10px] font-normal">
+   579→                    {section.items.filter(i => checked[i.id]).length}/{section.items.length}
+   580→                  </Badge>
+   581→                </span>
+   582→              </AccordionTrigger>
+   583→              <AccordionContent className="pt-1 pb-2">
+   584→                <div className="space-y-2">
+   585→                  {section.items.map((item) => (
+   586→                    <label
+   587→                      key={item.id}
+   588→                      className="flex items-start gap-3 cursor-pointer group py-1 px-2 rounded-lg hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors"
+   589→                    >
+   590→                      <Checkbox
+   591→                        checked={checked[item.id] || false}
+   592→                        onCheckedChange={() => toggleItem(item.id)}
+   593→                        className="mt-0.5 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+   594→                      />
+   595→                      <span className={`text-sm leading-snug transition-colors ${checked[item.id] ? 'line-through text-muted-foreground' : 'text-foreground group-hover:text-amber-700 dark:group-hover:text-amber-400'}`}>
+   596→                        {item.label}
+   597→                      </span>
+   598→                    </label>
+   599→                  ))}
+   600→                </div>
+   601→              </AccordionContent>
+   602→            </AccordionItem>
+   603→          ))}
+   604→        </Accordion>
+   605→      </CardContent>
+   606→    </Card>
+   607→  );
+   608→});
+   609→
+   610→// ============================================================
+   611→// Feature 3: ContinentQuickStats
+   612→// ============================================================
+   613→
+   614→interface ContinentStat {
+   615→  name: string;
+   616→  count: number;
+   617→  avgFee: number;
+   618→  topVisaType: string;
+   619→  avgSafety: number;
+   620→}
+   621→
+   622→const CONTINENT_COLORS: Record<string, { bg: string; border: string; text: string; accent: string; bar: string }> = {
+   623→  'Asia': { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800/50', text: 'text-amber-800 dark:text-amber-200', accent: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' },
+   624→  'Europe': { bg: 'bg-orange-50 dark:bg-orange-950/30', border: 'border-orange-200 dark:border-orange-800/50', text: 'text-orange-800 dark:text-orange-200', accent: 'text-orange-600 dark:text-orange-400', bar: 'bg-orange-500' },
+   625→  'Middle East': { bg: 'bg-yellow-50 dark:bg-yellow-950/30', border: 'border-yellow-200 dark:border-yellow-800/50', text: 'text-yellow-800 dark:text-yellow-200', accent: 'text-yellow-600 dark:text-yellow-400', bar: 'bg-yellow-500' },
+   626→  'Africa': { bg: 'bg-stone-50 dark:bg-stone-950/30', border: 'border-stone-300 dark:border-stone-700/50', text: 'text-stone-700 dark:text-stone-300', accent: 'text-stone-600 dark:text-stone-400', bar: 'bg-amber-700' },
+   627→  'Americas': { bg: 'bg-orange-50/70 dark:bg-orange-950/20', border: 'border-orange-200/70 dark:border-orange-800/40', text: 'text-orange-700 dark:text-orange-300', accent: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' },
+   628→  'Oceania': { bg: 'bg-amber-50/80 dark:bg-amber-950/20', border: 'border-amber-200/80 dark:border-amber-800/40', text: 'text-amber-700 dark:text-amber-300', accent: 'text-amber-500 dark:text-amber-400', bar: 'bg-amber-400' },
+   629→};
+   630→
+   631→const CONTINENT_ORDER = ['Asia', 'Middle East', 'Europe', 'Africa', 'Americas', 'Oceania'];
+   632→
+   633→function getVisaTypeLabel(c: CountryData): string {
+   634→  if (c.visaFree) return 'Visa-Free';
+   635→  if (c.visaOnArrival) return 'VOA';
+   636→  if (c.etaAvailable) return 'eTA';
+   637→  return 'Embassy';
+   638→}
+   639→
+   640→export const ContinentQuickStats = React.memo(function ContinentQuickStats({ countries }: { countries: CountryData[] }) {
+   641→  const stats = useMemo<ContinentStat[]>(() => {
+   642→    if (!countries.length) return [];
+   643→
+   644→    const byContinent = new Map<string, CountryData[]>();
+   645→    for (const c of countries) {
+   646→      const cont = c.continent || 'Other';
+   647→      if (!byContinent.has(cont)) byContinent.set(cont, []);
+   648→      byContinent.get(cont)!.push(c);
+   649→    }
+   650→
+   651→    return CONTINENT_ORDER
+   652→      .filter((name) => {
+   653→        const list = byContinent.get(name);
+   654→        return list && list.length > 0;
+   655→      })
+   656→      .map((name) => {
+   657→        const list = byContinent.get(name)!;
+   658→        const fees = list.map((c) => c.costProfile?.visaFeeUSD ?? 0).filter((f) => f > 0);
+   659→        const avgFee = fees.length > 0 ? Math.round(fees.reduce((a, b) => a + b, 0) / fees.length) : 0;
+   660→        const avgSafety = list.reduce((a, c) => a + (c.safetyRating || 5), 0) / list.length;
+   661→
+   662→        const typeCounts: Record<string, number> = {};
+   663→        for (const c of list) {
+   664→          const label = getVisaTypeLabel(c);
+   665→          typeCounts[label] = (typeCounts[label] || 0) + 1;
+   666→        }
+   667→        const topVisaType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+   668→
+   669→        return { name, count: list.length, avgFee, topVisaType, avgSafety: Math.round(avgSafety * 10) / 10 };
+   670→      });
+   671→  }, [countries]);
+   672→
+   673→  if (stats.length === 0) return null;
+   674→
+   675→  return (
+   676→    <section>
+   677→      <div className="flex items-center gap-2 mb-3">
+   678→        <BarChart3 className="w-5 h-5 text-amber-500" />
+   679→        <h2 className="text-lg font-bold">Continent Overview</h2>
+   680→        <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+   681→          {stats.length} regions
+   682→        </Badge>
+   683→      </div>
+   684→      <div className="flex gap-3 overflow-x-auto custom-scrollbar-thin pb-2 -mx-1 px-1">
+   685→        {stats.map((s, idx) => {
+   686→          const colors = CONTINENT_COLORS[s.name] || CONTINENT_COLORS['Asia'];
+   687→          return (
+   688→            <motion.div
+   689→              key={s.name}
+   690→              initial={{ opacity: 0, y: 12 }}
+   691→              animate={{ opacity: 1, y: 0 }}
+   692→              transition={{ duration: 0.3, delay: idx * 0.06 }}
+   693→              className={`shrink-0 w-40 sm:w-48 rounded-xl border ${colors.border} ${colors.bg} card-elevated-1 press-effect p-3 sm:p-4`}
+   694→            >
+   695→              <p className={`text-sm font-bold ${colors.accent} mb-2`}>{s.name}</p>
+   696→
+   697→              <div className="flex items-center gap-1.5 mb-2">
+   698→                <Map className="w-3.5 h-3.5 text-muted-foreground" />
+   699→                <span className="text-xs text-muted-foreground">
+   700→                  <span className={`font-semibold ${colors.text}`}>{s.count}</span> {s.count === 1 ? 'country' : 'countries'}
+   701→                </span>
+   702→              </div>
+   703→
+   704→              <div className="hidden sm:flex items-center gap-1.5 mb-2">
+   705→                <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+   706→                <span className="text-xs text-muted-foreground">
+   707→                  Avg fee: <span className={`font-semibold ${colors.text}`}>${s.avgFee || '—'}</span>
+   708→                </span>
+   709→              </div>
+   710→
+   711→              <div className="flex items-center gap-1.5 mb-2.5">
+   712→                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+   713→                <span className="text-xs text-muted-foreground">
+   714→                  Top: <Badge variant="secondary" className="text-[9px] px-1.5 py-0 font-semibold">{s.topVisaType}</Badge>
+   715→                </span>
+   716→              </div>
+   717→
+   718→              <div className="space-y-1">
+   719→                <div className="flex items-center justify-between">
+   720→                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   721→                    <Shield className="w-3 h-3" /> Safety
+   722→                  </span>
+   723→                  <span className={`text-[10px] font-bold ${s.avgSafety >= 7 ? 'text-amber-600 dark:text-amber-400' : s.avgSafety >= 5 ? 'text-orange-500' : 'text-red-500'}`}>
+   724→                    {s.avgSafety}/10
+   725→                  </span>
+   726→                </div>
+   727→                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+   728→                  <motion.div
+   729→                    className={`h-full rounded-full ${colors.bar}`}
+   730→                    initial={{ width: 0 }}
+   731→                    animate={{ width: `${(s.avgSafety / 10) * 100}%` }}
+   732→                    transition={{ duration: 0.5, delay: idx * 0.06 + 0.2 }}
+   733→                  />
+   734→                </div>
+   735→              </div>
+   736→            </motion.div>
+   737→          );
+   738→        })}
+   739→      </div>
+   740→    </section>
+   741→  );
+   742→});
+   743→

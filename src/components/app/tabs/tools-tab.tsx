@@ -41,7 +41,7 @@ import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, Checkli
 import { EXCHANGE_RATES, FLAG_ISO_MAP, getFlagUrl, getRegion } from '../constants';
 import { FlagImage, BudgetPieChart } from '../shared-components-1';
 import { ScoringHistoryPanel, TravelCostCalculator } from '../shared-components-2';
-import { TravelChecklistGenerator } from '../shared-components-4';
+import { TravelChecklistGenerator, TripPlannerTimeline } from '../shared-components-4';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 const CHART_COLORS = ['#f59e0b', '#f97316', '#fbbf24', '#d97706', '#ea580c', '#c2410c', '#78716c'];
@@ -1141,6 +1141,27 @@ export function ToolsTab() {
               <Globe className="w-10 h-10 text-muted-foreground/30 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">Select a country first</p>
               <p className="text-xs text-muted-foreground mt-1">Go to the Explore tab and click on a country to select it</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Trip Planner */}
+      <Card className="card-elevated-1">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Compass className="w-5 h-5 text-amber-500" />
+            Trip Planner
+          </CardTitle>
+          <CardDescription className="text-xs">Plan a multi-destination trip with visa requirements and cost estimates</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {allCountries.length > 0 ? (
+            <TripPlannerTimeline countries={allCountries} />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Compass className="w-10 h-10 text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">Loading countries...</p>
             </div>
           )}
         </CardContent>
