@@ -1,0 +1,2002 @@
+     1→     1→@import "tailwindcss";
+     2→     2→@import "tw-animate-css";
+     3→     3→
+     4→     4→@custom-variant dark (&:is(.dark *));
+     5→     5→
+     6→     6→@theme inline {
+     7→     7→  --color-background: var(--background);
+     8→     8→  --color-foreground: var(--foreground);
+     9→     9→  --font-sans: var(--font-geist-sans);
+    10→    10→  --font-mono: var(--font-geist-mono);
+    11→    11→  --color-sidebar-ring: var(--sidebar-ring);
+    12→    12→  --color-sidebar-border: var(--sidebar-border);
+    13→    13→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    14→    14→  --color-sidebar-accent: var(--sidebar-accent);
+    15→    15→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    16→    16→  --color-sidebar-primary: var(--sidebar-primary);
+    17→    17→  --color-sidebar-foreground: var(--sidebar-foreground);
+    18→    18→  --color-sidebar: var(--sidebar);
+    19→    19→  --color-chart-5: var(--chart-5);
+    20→    20→  --color-chart-4: var(--chart-4);
+    21→    21→  --color-chart-3: var(--chart-3);
+    22→    22→  --color-chart-2: var(--chart-2);
+    23→    23→  --color-chart-1: var(--chart-1);
+    24→    24→  --color-ring: var(--ring);
+    25→    25→  --color-input: var(--input);
+    26→    26→  --color-border: var(--border);
+    27→    27→  --color-destructive: var(--destructive);
+    28→    28→  --color-accent-foreground: var(--accent-foreground);
+    29→    29→  --color-accent: var(--accent);
+    30→    30→  --color-muted-foreground: var(--muted-foreground);
+    31→    31→  --color-muted: var(--muted);
+    32→    32→  --color-secondary-foreground: var(--secondary-foreground);
+    33→    33→  --color-secondary: var(--secondary);
+    34→    34→  --color-primary-foreground: var(--primary-foreground);
+    35→    35→  --color-primary: var(--primary);
+    36→    36→  --color-popover-foreground: var(--popover-foreground);
+    37→    37→  --color-popover: var(--popover);
+    38→    38→  --color-card-foreground: var(--card-foreground);
+    39→    39→  --color-card: var(--card);
+    40→    40→  --radius-sm: calc(var(--radius) - 4px);
+    41→    41→  --radius-md: calc(var(--radius) - 2px);
+    42→    42→  --radius-lg: var(--radius);
+    43→    43→  --radius-xl: calc(var(--radius) + 4px);
+    44→    44→}
+    45→    45→
+    46→    46→:root {
+    47→    47→  --radius: 0.625rem;
+    48→    48→  --background: oklch(1 0 0);
+    49→    49→  --foreground: oklch(0.145 0 0);
+    50→    50→  --card: oklch(1 0 0);
+    51→    51→  --card-foreground: oklch(0.145 0 0);
+    52→    52→  --popover: oklch(1 0 0);
+    53→    53→  --popover-foreground: oklch(0.145 0 0);
+    54→    54→  --primary: oklch(0.705 0.191 68.1);
+    55→    55→  --primary-foreground: oklch(0.985 0 0);
+    56→    56→  --secondary: oklch(0.97 0 0);
+    57→    57→  --secondary-foreground: oklch(0.205 0 0);
+    58→    58→  --muted: oklch(0.97 0 0);
+    59→    59→  --muted-foreground: oklch(0.556 0 0);
+    60→    60→  --accent: oklch(0.97 0 0);
+    61→    61→  --accent-foreground: oklch(0.205 0 0);
+    62→    62→  --destructive: oklch(0.577 0.245 27.325);
+    63→    63→  --border: oklch(0.922 0 0);
+    64→    64→  --input: oklch(0.922 0 0);
+    65→    65→  --ring: oklch(0.708 0 0);
+    66→    66→  --chart-1: oklch(0.646 0.222 41.116);
+    67→    67→  --chart-2: oklch(0.6 0.118 184.704);
+    68→    68→  --chart-3: oklch(0.398 0.07 227.392);
+    69→    69→  --chart-4: oklch(0.828 0.189 84.429);
+    70→    70→  --chart-5: oklch(0.769 0.188 70.08);
+    71→    71→  --sidebar: oklch(0.985 0 0);
+    72→    72→  --sidebar-foreground: oklch(0.145 0 0);
+    73→    73→  --sidebar-primary: oklch(0.205 0 0);
+    74→    74→  --sidebar-primary-foreground: oklch(0.985 0 0);
+    75→    75→  --sidebar-accent: oklch(0.97 0 0);
+    76→    76→  --sidebar-accent-foreground: oklch(0.205 0 0);
+    77→    77→  --sidebar-border: oklch(0.922 0 0);
+    78→    78→  --sidebar-ring: oklch(0.708 0 0);
+    79→    79→
+    80→    80→  /* Typography Scale */
+    81→    81→  --text-xs: 0.75rem;
+    82→    82→  --text-sm: 0.875rem;
+    83→    83→  --text-base: 1rem;
+    84→    84→  --text-lg: 1.125rem;
+    85→    85→  --text-xl: 1.25rem;
+    86→    86→  --text-2xl: 1.5rem;
+    87→    87→  --leading-heading: 1.2;
+    88→    88→  --leading-body: 1.5;
+    89→    89→}
+    90→    90→
+    91→    91→.dark {
+    92→    92→  --background: oklch(0.145 0 0);
+    93→    93→  --foreground: oklch(0.985 0 0);
+    94→    94→  --card: oklch(0.205 0 0);
+    95→    95→  --card-foreground: oklch(0.985 0 0);
+    96→    96→  --popover: oklch(0.205 0 0);
+    97→    97→  --popover-foreground: oklch(0.985 0 0);
+    98→    98→  --primary: oklch(0.705 0.191 68.1);
+    99→    99→  --primary-foreground: oklch(0.985 0 0);
+   100→   100→  --secondary: oklch(0.269 0 0);
+   101→   101→  --secondary-foreground: oklch(0.985 0 0);
+   102→   102→  --muted: oklch(0.269 0 0);
+   103→   103→  --muted-foreground: oklch(0.708 0 0);
+   104→   104→  --accent: oklch(0.269 0 0);
+   105→   105→  --accent-foreground: oklch(0.985 0 0);
+   106→   106→  --destructive: oklch(0.704 0.191 22.216);
+   107→   107→  --border: oklch(1 0 0 / 10%);
+   108→   108→  --input: oklch(1 0 0 / 15%);
+   109→   109→  --ring: oklch(0.556 0 0);
+   110→   110→  --chart-1: oklch(0.488 0.243 264.376);
+   111→   111→  --chart-2: oklch(0.696 0.17 162.48);
+   112→   112→  --chart-3: oklch(0.769 0.188 70.08);
+   113→   113→  --chart-4: oklch(0.627 0.265 303.9);
+   114→   114→  --chart-5: oklch(0.645 0.246 16.439);
+   115→   115→  --sidebar: oklch(0.205 0 0);
+   116→   116→  --sidebar-foreground: oklch(0.985 0 0);
+   117→   117→  --sidebar-primary: oklch(0.705 0.191 68.1);
+   118→   118→  --sidebar-primary-foreground: oklch(0.985 0 0);
+   119→   119→  --sidebar-accent: oklch(0.269 0 0);
+   120→   120→  --sidebar-accent-foreground: oklch(0.985 0 0);
+   121→   121→  --sidebar-border: oklch(1 0 0 / 10%);
+   122→   122→  --sidebar-ring: oklch(0.556 0 0);
+   123→   123→}
+   124→   124→
+   125→   125→@layer base {
+   126→   126→  * {
+   127→   127→    @apply border-border outline-ring/50;
+   128→   128→  }
+   129→   129→  html {
+   130→   130→    scroll-behavior: smooth;
+   131→   131→  }
+   132→   132→  body {
+   133→   133→    @apply bg-background text-foreground;
+   134→   134→  }
+   135→   135→}
+   136→   136→
+   137→   137→/* ===== SMOOTH THEME TRANSITION ===== */
+   138→   138→*,
+   139→   139→*::before,
+   140→   140→*::after {
+   141→   141→  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+   142→   142→  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+   143→   143→  transition-duration: 150ms;
+   144→   144→}
+   145→   145→
+   146→   146→/* Override for motion animations to not conflict */
+   147→   147→[data-framer-motion],
+   148→   148→.motion-div {
+   149→   149→  transition: none !important;
+   150→   150→}
+   151→   151→
+   152→   152→/* ===== CUSTOM SCROLLBAR ===== */
+   153→   153→::-webkit-scrollbar {
+   154→   154→  width: 8px;
+   155→   155→  height: 8px;
+   156→   156→}
+   157→   157→::-webkit-scrollbar-track {
+   158→   158→  background: transparent;
+   159→   159→}
+   160→   160→::-webkit-scrollbar-thumb {
+   161→   161→  background: oklch(0.7 0 0 / 30%);
+   162→   162→  border-radius: 4px;
+   163→   163→}
+   164→   164→::-webkit-scrollbar-thumb:hover {
+   165→   165→  background: oklch(0.5 0 0 / 50%);
+   166→   166→}
+   167→   167→.dark ::-webkit-scrollbar-thumb {
+   168→   168→  background: oklch(0.4 0 0 / 50%);
+   169→   169→}
+   170→   170→.dark ::-webkit-scrollbar-thumb:hover {
+   171→   171→  background: oklch(0.5 0 0 / 70%);
+   172→   172→}
+   173→   173→
+   174→   174→/* Firefox scrollbar */
+   175→   175→* {
+   176→   176→  scrollbar-width: thin;
+   177→   177→  scrollbar-color: oklch(0.7 0 0 / 30%) transparent;
+   178→   178→}
+   179→   179→.dark * {
+   180→   180→  scrollbar-color: oklch(0.4 0 0 / 50%) transparent;
+   181→   181→}
+   182→   182→
+   183→   183→/* ===== GRADIENT TEXT ===== */
+   184→   184→.gradient-text-mango {
+   185→   185→  background: linear-gradient(135deg, #d97706, #f59e0b, #fbbf24);
+   186→   186→  -webkit-background-clip: text;
+   187→   187→  -webkit-text-fill-color: transparent;
+   188→   188→  background-clip: text;
+   189→   189→}
+   190→   190→
+   191→   191→/* ===== GRAIN TEXTURE OVERLAY ===== */
+   192→   192→.grain-overlay::before {
+   193→   193→  content: '';
+   194→   194→  position: fixed;
+   195→   195→  inset: 0;
+   196→   196→  z-index: 9999;
+   197→   197→  pointer-events: none;
+   198→   198→  opacity: 0.03;
+   199→   199→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+   200→   200→  background-repeat: repeat;
+   201→   201→  background-size: 200px 200px;
+   202→   202→  mix-blend-mode: overlay;
+   203→   203→}
+   204→   204→.dark .grain-overlay::before {
+   205→   205→  opacity: 0.015;
+   206→   206→}
+   207→   207→
+   208→   208→/* ===== HERO GRADIENT MESH ===== */
+   209→   209→@keyframes gradient-mesh {
+   210→   210→  0%, 100% { background-position: 0% 50%; }
+   211→   211→  25% { background-position: 100% 0%; }
+   212→   212→  50% { background-position: 100% 100%; }
+   213→   213→  75% { background-position: 0% 100%; }
+   214→   214→}
+   215→   215→.hero-gradient-mesh {
+   216→   216→  background: linear-gradient(
+   217→   217→    135deg,
+   218→   218→    #d97706 0%,
+   219→   219→    #ea580c 20%,
+   220→   220→    #f59e0b 40%,
+   221→   221→    #fb923c 60%,
+   222→   222→    #b45309 80%,
+   223→   223→    #92400e 100%
+   224→   224→  );
+   225→   225→  background-size: 400% 400%;
+   226→   226→  animation: gradient-mesh 15s ease infinite;
+   227→   227→}
+   228→   228→
+   229→   229→/* ===== PASSPORT STAMP FLOAT ===== */
+   230→   230→@keyframes stamp-float {
+   231→   231→  0%, 100% { transform: translateY(0px) rotate(-12deg); }
+   232→   232→  50% { transform: translateY(-12px) rotate(-8deg); }
+   233→   233→}
+   234→   234→.passport-stamp {
+   235→   235→  animation: stamp-float 4s ease-in-out infinite;
+   236→   236→}
+   237→   237→
+   238→   238→/* ===== ANIMATED BORDER (Glass cards) ===== */
+   239→   239→@keyframes border-rotate {
+   240→   240→  0% { --border-angle: 0deg; }
+   241→   241→  100% { --border-angle: 360deg; }
+   242→   242→}
+   243→   243→
+   244→   244→.glass-card-animated {
+   245→   245→  position: relative;
+   246→   246→  overflow: hidden;
+   247→   247→}
+   248→   248→
+   249→   249→.glass-card-animated::before {
+   250→   250→  content: '';
+   251→   251→  position: absolute;
+   252→   252→  inset: 0;
+   253→   253→  padding: 2px;
+   254→   254→  border-radius: inherit;
+   255→   255→  background: conic-gradient(
+   256→   256→    from var(--border-angle, 0deg),
+   257→   257→    transparent 40%,
+   258→   258→    rgba(249, 115, 22, 0.3) 50%,
+   259→   259→    transparent 60%
+   260→   260→  );
+   261→   261→  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+   262→   262→  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+   263→   263→  -webkit-mask-composite: xor;
+   264→   264→  mask-composite: exclude;
+   265→   265→  animation: border-rotate 4s linear infinite;
+   266→   266→}
+   267→   267→
+   268→   268→@property --border-angle {
+   269→   269→  syntax: '<angle>';
+   270→   270→  initial-value: 0deg;
+   271→   271→  inherits: false;
+   272→   272→}
+   273→   273→
+   274→   274→/* ===== SHIMMER ON BOTTOM BAR ===== */
+   275→   275→@keyframes shimmer-slide {
+   276→   276→  0% { transform: translateX(-100%); }
+   277→   277→  100% { transform: translateX(200%); }
+   278→   278→}
+   279→   279→
+   280→   280→.bottom-bar-shimmer {
+   281→   281→  position: relative;
+   282→   282→  overflow: hidden;
+   283→   283→}
+   284→   284→.bottom-bar-shimmer::after {
+   285→   285→  content: '';
+   286→   286→  position: absolute;
+   287→   287→  inset: 0;
+   288→   288→  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+   289→   289→  animation: shimmer-slide 3s ease-in-out infinite;
+   290→   290→}
+   291→   291→
+   292→   292→/* ===== PULSING GLOW FOR HIGH SCORES ===== */
+   293→   293→@keyframes score-pulse {
+   294→   294→  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+   295→   295→  50% { box-shadow: 0 0 12px 4px rgba(249, 115, 22, 0.15); }
+   296→   296→}
+   297→   297→.score-pulse {
+   298→   298→  animation: score-pulse 2s ease-in-out infinite;
+   299→   299→}
+   300→   300→
+   301→   301→/* ===== SCORE RING FILL ANIMATION ===== */
+   302→   302→@keyframes ring-fill {
+   303→   303→  from { stroke-dashoffset: var(--ring-circumference); }
+   304→   304→  to { stroke-dashoffset: var(--ring-offset); }
+   305→   305→}
+   306→   306→.score-ring-animated circle.ring-progress {
+   307→   307→  animation: ring-fill 1.2s ease-out forwards;
+   308→   308→}
+   309→   309→
+   310→   310→/* ===== SKELETON SHIMMER ===== */
+   311→   311→@keyframes shimmer {
+   312→   312→  0% { background-position: -200% 0; }
+   313→   313→  100% { background-position: 200% 0; }
+   314→   314→}
+   315→   315→.skeleton-shimmer {
+   316→   316→  background: linear-gradient(
+   317→   317→    90deg,
+   318→   318→    oklch(0.95 0 0) 25%,
+   319→   319→    oklch(0.92 0 0) 50%,
+   320→   320→    oklch(0.95 0 0) 75%
+   321→   321→  );
+   322→   322→  background-size: 200% 100%;
+   323→   323→  animation: shimmer 1.5s ease-in-out infinite;
+   324→   324→}
+   325→   325→.dark .skeleton-shimmer {
+   326→   326→  background: linear-gradient(
+   327→   327→    90deg,
+   328→   328→    oklch(0.25 0 0) 25%,
+   329→   329→    oklch(0.30 0 0) 50%,
+   330→   330→    oklch(0.25 0 0) 75%
+   331→   331→  );
+   332→   332→  background-size: 200% 100%;
+   333→   333→}
+   334→   334→
+   335→   335→/* ===== QUICK FILTER PILLS ===== */
+   336→   336→.filter-scroll {
+   337→   337→  scrollbar-width: none;
+   338→   338→  -ms-overflow-style: none;
+   339→   339→}
+   340→   340→.filter-scroll::-webkit-scrollbar {
+   341→   341→  display: none;
+   342→   342→}
+   343→   343→
+   344→   344→/* ===== CONFETTI ANIMATION ===== */
+   345→   345→@keyframes confetti-fall {
+   346→   346→  0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+   347→   347→  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+   348→   348→}
+   349→   349→.confetti-piece {
+   350→   350→  position: fixed;
+   351→   351→  top: -10px;
+   352→   352→  z-index: 100;
+   353→   353→  pointer-events: none;
+   354→   354→  animation: confetti-fall linear forwards;
+   355→   355→}
+   356→   356→
+   357→   357→/* ===== SOCIAL PROOF COUNTER ANIMATION ===== */
+   358→   358→@keyframes social-pulse {
+   359→   359→  0%, 100% { transform: scale(1); }
+   360→   360→  50% { transform: scale(1.05); }
+   361→   361→}
+   362→   362→.social-proof-badge {
+   363→   363→  animation: social-pulse 3s ease-in-out infinite;
+   364→   364→}
+   365→   365→
+   366→   366→/* ===== NAV UNDERLINE GRADIENT ===== */
+   367→   367→.nav-active-underline {
+   368→   368→  position: relative;
+   369→   369→}
+   370→   370→.nav-active-underline::after {
+   371→   371→  content: '';
+   372→   372→  position: absolute;
+   373→   373→  bottom: -2px;
+   374→   374→  left: 0;
+   375→   375→  right: 0;
+   376→   376→  height: 2px;
+   377→   377→  background: linear-gradient(90deg, #d97706, #f59e0b, #fbbf24, #f59e0b, #d97706);
+   378→   378→  background-size: 200% 100%;
+   379→   379→  border-radius: 2px;
+   380→   380→  animation: nav-underline-slide 3s linear infinite;
+   381→   381→}
+   382→   382→@keyframes nav-underline-slide {
+   383→   383→  0% { background-position: 0% 50%; }
+   384→   384→  100% { background-position: 200% 50%; }
+   385→   385→}
+   386→   386→
+   387→   387→/* ===== LOGO GLOW ===== */
+   388→   388→.logo-glow {
+   389→   389→  transition: filter 0.3s ease, box-shadow 0.3s ease;
+   390→   390→}
+   391→   391→.logo-glow:hover {
+   392→   392→  filter: brightness(1.1);
+   393→   393→  box-shadow: 0 0 16px 4px rgba(249, 115, 22, 0.3);
+   394→   394→}
+   395→   395→
+   396→   396→/* ===== BUTTON GLOW HOVER ===== */
+   397→   397→.btn-glow {
+   398→   398→  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+   399→   399→}
+   400→   400→.btn-glow:hover {
+   401→   401→  transform: scale(1.03);
+   402→   402→  box-shadow: 0 4px 20px 0 rgba(249, 115, 22, 0.25);
+   403→   403→}
+   404→   404→
+   405→   405→/* ===== TILT CARD (CSS perspective) ===== */
+   406→   406→.card-tilt {
+   407→   407→  transition: transform 0.3s ease, box-shadow 0.3s ease;
+   408→   408→  transform-style: preserve-3d;
+   409→   409→}
+   410→   410→.card-tilt:hover {
+   411→   411→  transform: perspective(800px) rotateX(2deg) rotateY(-2deg) translateY(-4px);
+   412→   412→}
+   413→   413→
+   414→   414→/* ===== FOOTER WAVE ===== */
+   415→   415→.footer-wave svg {
+   416→   416→  display: block;
+   417→   417→  width: 100%;
+   418→   418→  height: auto;
+   419→   419→}
+   420→   420→
+   421→   421→/* ===== TIMELINE DOT PULSE ===== */
+   422→   422→@keyframes timeline-pulse {
+   423→   423→  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+   424→   424→  50% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); }
+   425→   425→}
+   426→   426→.timeline-dot-active {
+   427→   427→  animation: timeline-pulse 2s ease-in-out infinite;
+   428→   428→}
+   429→   429→
+   430→   430→/* ===== STEP SLIDE ANIMATIONS ===== */
+   431→   431→@keyframes step-slide-left {
+   432→   432→  from { transform: translateX(60px); opacity: 0; }
+   433→   433→  to { transform: translateX(0); opacity: 1; }
+   434→   434→}
+   435→   435→@keyframes step-slide-right {
+   436→   436→  from { transform: translateX(-60px); opacity: 0; }
+   437→   437→  to { transform: translateX(0); opacity: 1; }
+   438→   438→}
+   439→   439→
+   440→   440→/* ===== KEYBOARD SHORTCUT HINT ===== */
+   441→   441→.kbd-key {
+   442→   442→  display: inline-flex;
+   443→   443→  align-items: center;
+   444→   444→  justify-content: center;
+   445→   445→  min-width: 22px;
+   446→   446→  height: 22px;
+   447→   447→  padding: 0 6px;
+   448→   448→  border-radius: 4px;
+   449→   449→  font-size: 11px;
+   450→   450→  font-weight: 600;
+   451→   451→  font-family: system-ui, sans-serif;
+   452→   452→  background: oklch(0.95 0 0);
+   453→   453→  border: 1px solid oklch(0.85 0 0);
+   454→   454→  box-shadow: 0 1px 0 oklch(0.85 0 0);
+   455→   455→}
+   456→   456→.dark .kbd-key {
+   457→   457→  background: oklch(0.25 0 0);
+   458→   458→  border-color: oklch(0.35 0 0);
+   459→   459→  box-shadow: 0 1px 0 oklch(0.35 0 0);
+   460→   460→}
+   461→   461→
+   462→   462→/* ===== HORIZONTAL BAR ANIMATION ===== */
+   463→   463→@keyframes bar-grow {
+   464→   464→  from { width: 0; }
+   465→   465→}
+   466→   466→.bar-animated {
+   467→   467→  animation: bar-grow 0.8s ease-out forwards;
+   468→   468→}
+   469→   469→
+   470→   470→/* ===== RANK BADGE ===== */
+   471→   471→.rank-badge {
+   472→   472→  position: absolute;
+   473→   473→  top: -4px;
+   474→   474→  right: -4px;
+   475→   475→  z-index: 10;
+   476→   476→  min-width: 24px;
+   477→   477→  height: 24px;
+   478→   478→  border-radius: 50%;
+   479→   479→  display: flex;
+   480→   480→  align-items: center;
+   481→   481→  justify-content: center;
+   482→   482→  font-size: 11px;
+   483→   483→  font-weight: 800;
+   484→   484→  color: white;
+   485→   485→  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+   486→   486→}
+   487→   487→.rank-badge-1 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+   488→   488→.rank-badge-2 { background: linear-gradient(135deg, #94a3b8, #64748b); }
+   489→   489→.rank-badge-3 { background: linear-gradient(135deg, #c2410c, #9a3412); }
+   490→   490→
+   491→   491→/* ===== NEW: TYPING CURSOR BLINK ===== */
+   492→   492→@keyframes typing-cursor-blink {
+   493→   493→  0%, 100% { opacity: 1; }
+   494→   494→  50% { opacity: 0; }
+   495→   495→}
+   496→   496→.typing-cursor-blink {
+   497→   497→  animation: typing-cursor-blink 1s step-end infinite;
+   498→   498→}
+   499→   499→
+   500→   500→/* ===== NEW: FLOATING PARTICLES ===== */
+   501→   501→@keyframes particle-drift {
+   502→   502→  0% { transform: translateY(0) translateX(0) scale(0); opacity: 0; }
+   503→   503→  15% { opacity: 0.6; transform: translateY(-40px) translateX(10px) scale(1); }
+   504→   504→  85% { opacity: 0.3; }
+   505→   505→  100% { transform: translateY(-500px) translateX(40px) scale(0.5); opacity: 0; }
+   506→   506→}
+   507→   507→.particle-float {
+   508→   508→  animation: particle-drift linear infinite;
+   509→   509→}
+   510→   510→
+   511→   511→/* ===== NEW: FLAG GLOW RING ON HOVER ===== */
+   512→   512→@keyframes flag-glow {
+   513→   513→  0%, 100% { box-shadow: 0 0 4px rgba(249, 115, 22, 0.15), 0 0 0 0 rgba(249, 115, 22, 0); }
+   514→   514→  50% { box-shadow: 0 0 12px rgba(249, 115, 22, 0.4), 0 0 24px rgba(249, 115, 22, 0.1); }
+   515→   515→}
+   516→   516→.flag-glow-ring {
+   517→   517→ transition: all 0.3s ease;
+   518→   518→  border-radius: 8px;
+   519→   519→  display: inline-block;
+   520→   520→}
+   521→   521→.flag-glow-ring:hover {
+   522→   522→  animation: flag-glow 1.5s ease-in-out infinite;
+   523→   523→  box-shadow: 0 0 8px rgba(249, 115, 22, 0.3), 0 0 20px rgba(249, 115, 22, 0.1);
+   524→   524→}
+   525→   525→
+   526→   526→/* ===== NEW: NEW BADGE PULSE ===== */
+   527→   527→@keyframes new-badge-pulse {
+   528→   528→  0%, 100% { transform: scale(1); opacity: 1; }
+   529→   529→  50% { transform: scale(1.12); opacity: 0.85; }
+   530→   530→}
+   531→   531→.new-badge-pulse {
+   532→   532→  animation: new-badge-pulse 2s ease-in-out infinite;
+   533→   533→}
+   534→   534→
+   535→   535→/* ===== NEW: MOVING GRADIENT BAR ===== */
+   536→   536→@keyframes gradient-slide {
+   537→   537→  0% { background-position: 0% 50%; }
+   538→   538→  100% { background-position: 200% 50%; }
+   539→   539→}
+   540→   540→.moving-gradient-bar {
+   541→   541→  background-size: 200% 100%;
+   542→   542→  animation: gradient-slide 4s linear infinite;
+   543→   543→}
+   544→   544→
+   545→   545→/* ===== NEW: CHECKMARK FLASH ===== */
+   546→   546→@keyframes check-flash-anim {
+   547→   547→  0% { opacity: 0; transform: scale(0.3) translateY(4px); }
+   548→   548→  30% { opacity: 1; transform: scale(1.2) translateY(0); }
+   549→   549→  100% { opacity: 0; transform: scale(1) translateY(-8px); }
+   550→   550→}
+   551→   551→.check-flash {
+   552→   552→  animation: check-flash-anim 0.7s ease-out forwards;
+   553→   553→  pointer-events: none;
+   554→   554→}
+   555→   555→
+   556→   556→/* ===== NEW: FOOTER ANIMATED GRADIENT TEXT ===== */
+   557→   557→@keyframes footer-text-shift {
+   558→   558→  0% { background-position: 0% 50%; }
+   559→   559→  100% { background-position: 200% 50%; }
+   560→   560→}
+   561→   561→.footer-gradient-text {
+   562→   562→  background: linear-gradient(90deg, #d97706, #f59e0b, #fbbf24, #f97316, #f59e0b, #d97706);
+   563→   563→  background-size: 200% auto;
+   564→   564→  -webkit-background-clip: text;
+   565→   565→  -webkit-text-fill-color: transparent;
+   566→   566→  background-clip: text;
+   567→   567→  animation: footer-text-shift 4s linear infinite;
+   568→   568→}
+   569→   569→
+   570→   570→/* ===== NEW: FOOTER ICON FLOAT ===== */
+   571→   571→@keyframes icon-gentle-float {
+   572→   572→  0%, 100% { transform: translateY(0); }
+   573→   573→  50% { transform: translateY(-5px); }
+   574→   574→}
+   575→   575→.icon-float {
+   576→   576→ animation: icon-gentle-float 3s ease-in-out infinite;
+   577→   577→}
+   578→   578→.icon-float-delay-1 { animation-delay: 0.5s; }
+   579→   579→.icon-float-delay-2 { animation-delay: 1s; }
+   580→   580→.icon-float-delay-3 { animation-delay: 1.5s; }
+   581→   581→
+   582→   582→/* ===== NEW: ANIMATED WAVE ===== */
+   583→   583→@keyframes wave-drift {
+   584→   584→  0% { transform: translateX(0); }
+   585→   585→  100% { transform: translateX(-50%); }
+   586→   586→}
+   587→   587→.animated-wave {
+   588→   588→  overflow: hidden;
+   589→   589→}
+   590→   590→.animated-wave-inner {
+   591→   591→  animation: wave-drift 12s linear infinite;
+   592→   592→  width: 200%;
+   593→   593→}
+   594→   594→
+   595→   595→/* ===== NEW: PAGE LOAD FADE ===== */
+   596→   596→@keyframes page-enter {
+   597→   597→  0% { opacity: 0; transform: translateY(20px); }
+   598→   598→  100% { opacity: 1; transform: translateY(0); }
+   599→   599→}
+   600→   600→.page-load-animation {
+   601→   601→  animation: page-enter 0.6s ease-out;
+   602→   602→}
+   603→   603→
+   604→   604→/* ===== NEW: CUSTOM ORANGE FOCUS RING ===== */
+   605→   605→*:focus-visible {
+   606→   606→ outline: 2px solid #f59e0b !important;
+   607→   607→  outline-offset: 2px;
+   608→   608→}
+   609→   609→
+   610→   610→/* ===== NEW: CARD HOVER LIFT (GLOBAL) ===== */
+   611→   611→.card-hover-lift {
+   612→   612→  transition: transform 0.2s ease, box-shadow 0.2s ease;
+   613→   613→}
+   614→   614→.card-hover-lift:hover {
+   615→   615→  transform: translateY(-2px);
+   616→   616→  box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+   617→   617→}
+   618→   618→.dark .card-hover-lift:hover {
+   619→   619→  box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2);
+   620→   620→}
+   621→   621→
+   622→   622→/* ===== NEW: SEARCH EXPAND ===== */
+   623→   623→.search-input-expand {
+   624→   624→  transition: width 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+   625→   625→}
+   626→   626→.search-input-expand:focus-within {
+   627→   627→  border-color: #f59e0b;
+   628→   628→  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+   629→   629→}
+   630→   630→
+   631→   631→/* ===== NEW: FIELD VALIDATION BORDERS ===== */
+   632→   632→.field-valid {
+   633→   633→  border-color: #f59e0b !important;
+   634→   634→  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+   635→   635→}
+   636→   636→.field-invalid {
+   637→   637→  border-color: #ef4444 !important;
+   638→   638→  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+   639→   639→}
+   640→   640→
+   641→   641→/* ===== NEW: RADIAL GAUGE ARC ===== */
+   642→   642→@keyframes gauge-arc-fill {
+   643→   643→  from { stroke-dashoffset: var(--gauge-full-length);
+   644→   644→  }
+   645→   645→}
+   646→   646→.gauge-animated {
+   647→   647→  animation: gauge-arc-fill 1.2s ease-out forwards;
+   648→   648→}
+   649→   649→
+   650→   650→/* ===== NEW: EMBOSSED PASSPORT ===== */
+   651→   651→.passport-embossed {
+   652→   652→  text-shadow: 0 1px 0 rgba(0,0,0,0.2), 0 -1px 0 rgba(255,255,255,0.1);
+   653→   653→}
+   654→   654→.passport-embossed-dark {
+   655→   655→  text-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 -1px 0 rgba(255,255,255,0.05);
+   656→   656→}
+   657→   657→
+   658→   658→/* ===== NEW: STAMP DECORATION ===== */
+   659→   659→@keyframes stamp-rotate {
+   660→   660→  0%, 100% { transform: rotate(-12deg) scale(1); }
+   661→   661→  50% { transform: rotate(-8deg) scale(1.05); }
+   662→   662→}
+   663→   663→.stamp-decoration {
+   664→   664→  animation: stamp-rotate 6s ease-in-out infinite;
+   665→   665→}
+   666→   666→
+   667→   667→/* ===== NEW: SCORE BAR SHIMMER ===== */
+   668→   668→@keyframes score-bar-shimmer {
+   669→   669→  0% { background-position: -200% 0; }
+   670→   670→  100% { background-position: 200% 0; }
+   671→   671→}
+   672→   672→.score-bar-shimmer {
+   673→   673→  position: relative;
+   674→   674→  overflow: hidden;
+   675→   675→}
+   676→   676→.score-bar-shimmer::after {
+   677→   677→  content: '';
+   678→   678→  position: absolute;
+   679→   679→  inset: 0;
+   680→   680→  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%);
+   681→   681→  background-size: 200% 100%;
+   682→   682→  animation: score-bar-shimmer 1.8s ease-in-out infinite;
+   683→   683→  border-radius: inherit;
+   684→   684→}
+   685→   685→
+   686→   686→/* ===== NEW: SCORE BAR FLASH ===== */
+   687→   687→@keyframes score-flash {
+   688→   688→  0% { filter: brightness(1); }
+   689→   689→  30% { filter: brightness(1.6); }
+   690→   690→  100% { filter: brightness(1); }
+   691→   691→}
+   692→   692→.score-bar-flash {
+   693→   693→  animation: score-flash 0.6s ease-out;
+   694→   694→}
+   695→   695→
+   696→   696→/* ===== NEW: SLIDING PILL INDICATOR ===== */
+   697→   697→.pill-nav {
+   698→   698→  position: relative;
+   699→   699→}
+   700→   700→.pill-indicator {
+   701→   701→  position: absolute;
+   702→   702→  bottom: 4px;
+   703→   703→  height: calc(100% - 8px);
+   704→   704→  background: #d97706;
+   705→   705→  border-radius: 8px;
+   706→   706→  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   707→   707→  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.3);
+   708→   708→  z-index: 0;
+   709→   709→}
+   710→   710→.pill-nav button {
+   711→   711→  position: relative;
+   712→   712→  z-index: 1;
+   713→   713→}
+   714→   714→
+   715→   715→/* ===== NEW: LIST VIEW ROW ===== */
+   716→   716→.list-row-hover {
+   717→   717→  transition: transform 0.15s ease, box-shadow 0.15s ease;
+   718→   718→}
+   719→   719→.list-row-hover:hover {
+   720→   720→  transform: translateX(4px);
+   721→   721→  box-shadow: -3px 0 0 #f59e0b, 0 2px 8px rgba(0,0,0,0.04);
+   722→   722→}
+   723→   723→
+   724→   724→/* ===== NEW: TOAST SCORE CIRCLE ===== */
+   725→   725→.toast-score-ring {
+   726→   726→  width: 44px;
+   727→   727→  height: 44px;
+   728→   728→  border-radius: 50%;
+   729→   729→  display: flex;
+   730→   730→  align-items: center;
+   731→   731→  justify-content: center;
+   732→   732→  font-weight: 800;
+   733→   733→  font-size: 16px;
+   734→   734→  color: white;
+   735→   735→  flex-shrink: 0;
+   736→   736→}
+   737→   737→
+   738→   738→/* ===== NEW: CHIPOP ANIMATION ===== */
+   739→   739→@keyframes chip-enter {
+   740→   740→  from { transform: scale(0.8); opacity: 0; }
+   741→   741→  to { transform: scale(1); opacity: 1; }
+   742→   742→}
+   743→   743→.chip-animate {
+   744→   744→  animation: chip-enter 0.2s ease-out;
+   745→   745→}
+   746→   746→
+   747→   747→/* ===== NEW: EMPTY STATE PULSE ===== */
+   748→   748→@keyframes empty-state-float {
+   749→   749→  0%, 100% { transform: translateY(0); }
+   750→   750→  50% { transform: translateY(-8px); }
+   751→   751→}
+   752→   752→.empty-state-illustration {
+   753→   753→  animation: empty-state-float 3s ease-in-out infinite;
+   754→   754→}
+   755→   755→
+   756→   756→/* ===== NEW: QUICK ACTION CHIP ===== */
+   757→   757→.quick-action-chip {
+   758→   758→  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+   759→   759→}
+   760→   760→.quick-action-chip:hover {
+   761→   761→  transform: translateY(-1px);
+   762→   762→  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.15);
+   763→   763→}
+   764→   764→
+   765→   765→/* ===== NEW: DASHBOARD PANEL ===== */
+   766→   766→@keyframes dashboard-expand {
+   767→   767→  from { opacity: 0; max-height: 0; }
+   768→   768→  to { opacity: 1; max-height: 500px; }
+   769→   769→}
+   770→   770→@keyframes dashboard-collapse {
+   771→   771→  from { opacity: 1; max-height: 500px; }
+   772→   772→  to { opacity: 0; max-height: 0; }
+   773→   773→}
+   774→   774→.dashboard-panel-enter {
+   775→   775→  animation: dashboard-expand 0.3s ease-out forwards;
+   776→   776→  overflow: hidden;
+   777→   777→}
+   778→   778→.dashboard-panel-exit {
+   779→   779→  animation: dashboard-collapse 0.3s ease-out forwards;
+   780→   780→  overflow: hidden;
+   781→   781→}
+   782→   782→
+   783→   783→/* ===== NEW: MINI STAT CARD ===== */
+   784→   784→.mini-stat-card {
+   785→   785→  transition: transform 0.15s ease, box-shadow 0.15s ease;
+   786→   786→}
+   787→   787→.mini-stat-card:hover {
+   788→   788→  transform: translateY(-2px);
+   789→   789→  box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+   790→   790→}
+   791→   791→.dark .mini-stat-card:hover {
+   792→   792→  box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2);
+   793→   793→}
+   794→   794→
+   795→   795→/* ===== TASK 4: ENHANCED CARD PARALLAX TILT ===== */
+   796→   796→.card-tilt-enhanced {
+   797→   797→  perspective: 1000px;
+   798→   798→  transform-style: preserve-3d;
+   799→   799→  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+   800→   800→              box-shadow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+   801→   801→  will-change: transform;
+   802→   802→}
+   803→   803→.card-tilt-enhanced:hover {
+   804→   804→  transform: perspective(1000px) rotateX(3deg) rotateY(-3deg) translateY(-8px) scale(1.02);
+   805→   805→  box-shadow:
+   806→   806→    0 0 0 1px rgba(249, 115, 22, 0.1),
+   807→   807→    0 20px 40px -12px rgba(249, 115, 22, 0.15),
+   808→   808→    0 8px 20px -8px rgba(0,0,0,0.1);
+   809→   809→}
+   810→   810→.dark .card-tilt-enhanced:hover {
+   811→   811→  box-shadow:
+   812→   812→    0 0 0 1px rgba(249, 115, 22, 0.15),
+   813→   813→    0 20px 40px -12px rgba(249, 115, 22, 0.12),
+   814→   814→    0 8px 20px -8px rgba(0,0,0,0.4);
+   815→   815→}
+   816→   816→
+   817→   817→/* ===== TASK 4: GLOWING BORDER ON CARD HOVER ===== */
+   818→   818→@keyframes border-glow-pulse {
+   819→   819→  0%, 100% { opacity: 0.4; }
+   820→   820→  50% { opacity: 1; }
+   821→   821→}
+   822→   822→.card-glow-border {
+   823→   823→  position: relative;
+   824→   824→}
+   825→   825→.card-glow-border::after {
+   826→   826→  content: '';
+   827→   827→  position: absolute;
+   828→   828→  inset: -1px;
+   829→   829→  border-radius: inherit;
+   830→   830→  background: linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(251, 146, 60, 0.1), rgba(249, 115, 22, 0.3));
+   831→   831→  z-index: -1;
+   832→   832→  opacity: 0;
+   833→   833→  transition: opacity 0.4s ease;
+   834→   834→  filter: blur(4px);
+   835→   835→}
+   836→   836→.card-glow-border:hover::after {
+   837→   837→  opacity: 1;
+   838→   838→  animation: border-glow-pulse 2s ease-in-out infinite;
+   839→   839→}
+   840→   840→
+   841→   841→/* ===== TASK 4: SCORE BADGE BOUNCE ENTRANCE ===== */
+   842→   842→@keyframes badge-bounce-in {
+   843→   843→  0% { transform: scale(0); opacity: 0; }
+   844→   844→  40% { transform: scale(1.3); opacity: 1; }
+   845→   845→  60% { transform: scale(0.85); }
+   846→   846→  80% { transform: scale(1.1); }
+   847→   847→  100% { transform: scale(1); opacity: 1; }
+   848→   848→}
+   849→   849→.score-badge-animated {
+   850→   850→  animation: badge-bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+   851→   851→  opacity: 0;
+   852→   852→}
+   853→   853→.score-badge-green {
+   854→   854→  background: linear-gradient(135deg, #ea580c, #f97316);
+   855→   855→  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+   856→   856→}
+   857→   857→.score-badge-amber {
+   858→   858→  background: linear-gradient(135deg, #d97706, #f59e0b);
+   859→   859→  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+   860→   860→}
+   861→   861→.score-badge-red {
+   862→   862→  background: linear-gradient(135deg, #dc2626, #ef4444);
+   863→   863→  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+   864→   864→}
+   865→   865→
+   866→   866→/* ===== TASK 4: GRADIENT TEXT FOR ACTIVE TAB ===== */
+   867→   867→.tab-gradient-text {
+   868→   868→  background: linear-gradient(135deg, #d97706, #f59e0b, #fb923c, #ea580c);
+   869→   869→  background-size: 200% 100%;
+   870→   870→  -webkit-background-clip: text;
+   871→   871→  -webkit-text-fill-color: transparent;
+   872→   872→  background-clip: text;
+   873→   873→  animation: tab-gradient-shift 3s ease-in-out infinite alternate;
+   874→   874→}
+   875→   875→@keyframes tab-gradient-shift {
+   876→   876→  0% { background-position: 0% 50%; }
+   877→   877→  100% { background-position: 100% 50%; }
+   878→   878→}
+   879→   879→
+   880→   880→/* ===== TASK 4: PROGRESS BAR GRADIENT FILL ===== */
+   881→   881→.progress-gradient-fill {
+   882→   882→  background: linear-gradient(90deg, #d97706, #f59e0b, #fb923c, #ea580c) !important;
+   883→   883→  background-size: 200% 100% !important;
+   884→   884→  animation: progress-gradient-slide 2s linear infinite !important;
+   885→   885→}
+   886→   886→@keyframes progress-gradient-slide {
+   887→   887→  0% { background-position: 0% 50%; }
+   888→   888→  100% { background-position: 200% 50%; }
+   889→   889→}
+   890→   890→
+   891→   891→/* ===== TASK 4: CONFETTI DOT AT PROGRESS END ===== */
+   892→   892→@keyframes confetti-dot-burst {
+   893→   893→  0% { transform: scale(0); opacity: 1; }
+   894→   894→  30% { transform: scale(1.8); opacity: 1; }
+   895→   895→  100% { transform: scale(0.5); opacity: 0; }
+   896→   896→}
+   897→   897→.confetti-dot {
+   898→   898→  animation: confetti-dot-burst 0.6s ease-out forwards;
+   899→   899→}
+   900→   900→@keyframes confetti-particle {
+   901→   901→  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+   902→   902→  100% { transform: translate(var(--px, 8px), var(--py, -12px)) scale(0); opacity: 0; }
+   903→   903→}
+   904→   904→.confetti-particle {
+   905→   905→  animation: confetti-particle 0.5s ease-out forwards;
+   906→   906→  pointer-events: none;
+   907→   907→}
+   908→   908→
+   909→   909→/* ===== TASK 4: STEP NUMBER BADGE FILL ===== */
+   910→   910→@keyframes step-badge-fill {
+   911→   911→  0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.5); }
+   912→   912→  50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); }
+   913→   913→  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+   914→   914→}
+   915→   915→.step-badge-fill {
+   916→   916→  animation: step-badge-fill 0.4s ease-out forwards;
+   917→   917→}
+   918→   918→
+   919→   919→/* ===== TASK 4: TOOLTIP FADE-IN ===== */
+   920→   920→.tooltip-fade-in {
+   921→   921→  animation: tooltip-appear 0.2s ease-out forwards;
+   922→   922→}
+   923→   923→@keyframes tooltip-appear {
+   924→   924→  0% { opacity: 0; transform: translateY(4px) scale(0.96); }
+   925→   925→  100% { opacity: 1; transform: translateY(0) scale(1); }
+   926→   926→}
+   927→   927→.tooltip-enhanced {
+   928→   928→  background: oklch(0.985 0 0) !important;
+   929→   929→  border: 1px solid oklch(0.9 0 0) !important;
+   930→   930→  border-radius: 10px !important;
+   931→   931→  box-shadow: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04) !important;
+   932→   932→  padding: 10px 14px !important;
+   933→   933→}
+   934→   934→.dark .tooltip-enhanced {
+   935→   935→  background: oklch(0.22 0 0) !important;
+   936→   936→  border: 1px solid oklch(0.3 0 0) !important;
+   937→   937→  box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2) !important;
+   938→   938→}
+   939→   939→
+   940→   940→/* ===== TASK 4: STAT CARD PULSE (HERO) ===== */
+   941→   941→@keyframes stat-card-breathe {
+   942→   942→  0%, 100% {
+   943→   943→    box-shadow: 0 0 0 0 rgba(255,255,255,0);
+   944→   944→    opacity: 1;
+   945→   945→  }
+   946→   946→  50% {
+   947→   947→    box-shadow: 0 0 20px 2px rgba(249, 115, 22, 0.15);
+   948→   948→    opacity: 0.95;
+   949→   949→  }
+   950→   950→}
+   951→   951→.stat-card-pulse {
+   952→   952→  animation: stat-card-breathe 3s ease-in-out infinite;
+   953→   953→}
+   954→   954→.stat-card-pulse:nth-child(2) { animation-delay: 0.5s; }
+   955→   955→.stat-card-pulse:nth-child(3) { animation-delay: 1s; }
+   956→   956→.stat-card-pulse:nth-child(4) { animation-delay: 1.5s; }
+   957→   957→
+   958→   958→/* ===== TASK 4: SCROLL REVEAL ===== */
+   959→   959→@keyframes card-reveal-anim {
+   960→   960→  0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+   961→   961→  100% { opacity: 1; transform: translateY(0) scale(1); }
+   962→   962→}
+   963→   963→.card-reveal {
+   964→   964→  opacity: 0;
+   965→   965→  transform: translateY(30px) scale(0.95);
+   966→   966→}
+   967→   967→.card-reveal.revealed {
+   968→   968→  animation: card-reveal-anim 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+   969→   969→}
+   970→   970→/* Staggered delays */
+   971→   971→.card-reveal-delay-1 { animation-delay: 0.05s !important; }
+   972→   972→.card-reveal-delay-2 { animation-delay: 0.1s !important; }
+   973→   973→.card-reveal-delay-3 { animation-delay: 0.15s !important; }
+   974→   974→.card-reveal-delay-4 { animation-delay: 0.2s !important; }
+   975→   975→.card-reveal-delay-5 { animation-delay: 0.25s !important; }
+   976→   976→.card-reveal-delay-6 { animation-delay: 0.3s !important; }
+   977→   977→
+   978→   978→/* ===== TASK 4: ENHANCED FOOTER ===== */
+   979→   979→.footer-gradient-bg {
+   980→   980→  background: linear-gradient(180deg,
+   981→   981→    oklch(0.97 0 0) 0%,
+   982→   982→    oklch(0.95 0.01 75) 100%
+   983→   983→  );
+   984→   984→}
+   985→   985→.dark .footer-gradient-bg {
+   986→   986→  background: linear-gradient(180deg,
+   987→   987→    oklch(0.16 0 0) 0%,
+   988→   988→    oklch(0.14 0.01 75) 100%
+   989→   989→  );
+   990→   990→}
+   991→   991→@keyframes footer-dot-travel {
+   992→   992→  0% { transform: translateX(-100%); }
+   993→   993→  100% { transform: translateX(calc(100vw + 100%)); }
+   994→   994→}
+   995→   995→.footer-separator-dots {
+   996→   996→  position: relative;
+   997→   997→  height: 2px;
+   998→   998→  overflow: hidden;
+   999→   999→  background: oklch(0.92 0 0);
+  1000→  1000→  border-radius: 1px;
+  1001→  1001→}
+  1002→  1002→.dark .footer-separator-dots {
+  1003→  1003→  background: oklch(0.25 0 0);
+  1004→  1004→}
+  1005→  1005→.footer-separator-dots::after {
+  1006→  1006→  content: '';
+  1007→  1007→  position: absolute;
+  1008→  1008→  top: -2px;
+  1009→  1009→  left: 0;
+  1010→  1010→  width: 60px;
+  1011→  1011→  height: 6px;
+  1012→  1012→  background: linear-gradient(90deg, transparent, #f59e0b, #fb923c, transparent);
+  1013→  1013→  border-radius: 3px;
+  1014→  1014→  animation: footer-dot-travel 4s ease-in-out infinite;
+  1015→  1015→}
+  1016→  1016→@keyframes footer-glow-line {
+  1017→  1017→  0%, 100% { opacity: 0.3; }
+  1018→  1018→  50% { opacity: 0.8; }
+  1019→  1019→}
+  1020→  1020→.footer-glow-accent {
+  1021→  1021→  animation: footer-glow-line 4s ease-in-out infinite;
+  1022→  1022→}
+  1023→  1023→
+  1024→  1024→/* Bell ring animation */
+  1025→  1025→@keyframes bell-ring {
+  1026→  1026→  0% { transform: rotate(0deg); }
+  1027→  1027→  10% { transform: rotate(14deg); }
+  1028→  1028→  20% { transform: rotate(-12deg); }
+  1029→  1029→  30% { transform: rotate(10deg); }
+  1030→  1030→  40% { transform: rotate(-8deg); }
+  1031→  1031→  50% { transform: rotate(0deg); }
+  1032→  1032→  100% { transform: rotate(0deg); }
+  1033→  1033→}
+  1034→  1034→.animate-bell-ring {
+  1035→  1035→  animation: bell-ring 0.6s ease-in-out;
+  1036→  1036→  transform-origin: top center;
+  1037→  1037→}
+  1038→  1038→
+  1039→  1039→/* Golden glow for favorite cards */
+  1040→  1040→.fav-card-glow {
+  1041→  1041→  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3), 0 4px 12px rgba(245, 158, 11, 0.1);
+  1042→  1042→}
+  1043→  1043→
+  1044→  1044→/* ===== TASK 10: PREMIUM CARD DEPTH ===== */
+  1045→  1045→.premium-card {
+  1046→  1046→  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+  1047→  1047→  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  1048→  1048→}
+  1049→  1049→.premium-card:hover {
+  1050→  1050→  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.08), 0 30px 60px -15px rgba(0, 0, 0, 0.15);
+  1051→  1051→}
+  1052→  1052→
+  1053→  1053→/* ===== TASK 10: TEXT GRADIENT UTILITY ===== */
+  1054→  1054→.text-gradient-mango {
+  1055→  1055→  background: linear-gradient(135deg, #d97706, #f59e0b, #fbbf24);
+  1056→  1056→  -webkit-background-clip: text;
+  1057→  1057→  -webkit-text-fill-color: transparent;
+  1058→  1058→  background-clip: text;
+  1059→  1059→}
+  1060→  1060→
+  1061→  1061→/* ===== TASK 10: ANIMATED GRADIENT BORDER ===== */
+  1062→  1062→.gradient-border-animated {
+  1063→  1063→  position: relative;
+  1064→  1064→}
+  1065→  1065→.gradient-border-animated::before {
+  1066→  1066→  content: '';
+  1067→  1067→  position: absolute;
+  1068→  1068→  inset: 0;
+  1069→  1069→  padding: 2px;
+  1070→  1070→  border-radius: inherit;
+  1071→  1071→  background: linear-gradient(135deg, #f59e0b, #fb923c, #d97706, #ea580c);
+  1072→  1072→  background-size: 300% 300%;
+  1073→  1073→  animation: gradient-rotate 4s ease infinite;
+  1074→  1074→  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  1075→  1075→  -webkit-mask-composite: xor;
+  1076→  1076→  mask-composite: exclude;
+  1077→  1077→}
+  1078→  1078→@keyframes gradient-rotate {
+  1079→  1079→  0%, 100% { background-position: 0% 50%; }
+  1080→  1080→  50% { background-position: 100% 50%; }
+  1081→  1081→}
+  1082→  1082→
+  1083→  1083→/* ===== TASK 10: FLOATING LABEL ANIMATION ===== */
+  1084→  1084→.float-label {
+  1085→  1085→  animation: float-y 3s ease-in-out infinite;
+  1086→  1086→}
+  1087→  1087→@keyframes float-y {
+  1088→  1088→  0%, 100% { transform: translateY(0); }
+  1089→  1089→  50% { transform: translateY(-6px); }
+  1090→  1090→}
+  1091→  1091→
+  1092→  1092→/* ===== TASK 10: SHIMMER LOADING EFFECT ===== */
+  1093→  1093→.shimmer-overlay {
+  1094→  1094→  position: relative;
+  1095→  1095→  overflow: hidden;
+  1096→  1096→}
+  1097→  1097→.shimmer-overlay::after {
+  1098→  1098→  content: '';
+  1099→  1099→  position: absolute;
+  1100→  1100→  inset: 0;
+  1101→  1101→  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  1102→  1102→  animation: shimmer-slide-task10 2s infinite;
+  1103→  1103→}
+  1104→  1104→@keyframes shimmer-slide-task10 {
+  1105→  1105→  0% { transform: translateX(-100%); }
+  1106→  1106→  100% { transform: translateX(100%); }
+  1107→  1107→}
+  1108→  1108→
+  1109→  1109→/* ===== TASK 10: MICRO INTERACTION SCALE ===== */
+  1110→  1110→.micro-scale {
+  1111→  1111→  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  1112→  1112→}
+  1113→  1113→.micro-scale:hover {
+  1114→  1114→  transform: scale(1.03);
+  1115→  1115→}
+  1116→  1116→.micro-scale:active {
+  1117→  1117→  transform: scale(0.98);
+  1118→  1118→}
+  1119→  1119→
+  1120→  1120→/* ===== TASK 10: NOISE TEXTURE OVERLAY ===== */
+  1121→  1121→.noise-overlay::after {
+  1122→  1122→  content: '';
+  1123→  1123→  position: absolute;
+  1124→  1124→  inset: 0;
+  1125→  1125→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  1126→  1126→  background-repeat: repeat;
+  1127→  1127→  background-size: 128px 128px;
+  1128→  1128→  pointer-events: none;
+  1129→  1129→  border-radius: inherit;
+  1130→  1130→  opacity: 0.5;
+  1131→  1131→  z-index: 1;
+  1132→  1132→}
+  1133→  1133→
+  1134→  1134→/* ===== TASK 10: HERO ENHANCED GRADIENT SHIFT ===== */
+  1135→  1135→@keyframes hero-gradient-shift {
+  1136→  1136→  0% { background-position: 0% 50%; }
+  1137→  1137→  25% { background-position: 100% 0%; }
+  1138→  1138→  50% { background-position: 100% 100%; }
+  1139→  1139→  75% { background-position: 0% 100%; }
+  1140→  1140→  100% { background-position: 0% 50%; }
+  1141→  1141→}
+  1142→  1142→.hero-gradient-mesh-enhanced {
+  1143→  1143→  background: linear-gradient(
+  1144→  1144→    135deg,
+  1145→  1145→    #d97706 0%,
+  1146→  1146→    #ea580c 15%,
+  1147→  1147→    #f59e0b 30%,
+  1148→  1148→    #fb923c 50%,
+  1149→  1149→    #b45309 70%,
+  1150→  1150→    #92400e 85%,
+  1151→  1151→    #d97706 100%
+  1152→  1152→  );
+  1153→  1153→  background-size: 400% 400%;
+  1154→  1154→  animation: hero-gradient-shift 12s ease infinite;
+  1155→  1155→}
+  1156→  1156→
+  1157→  1157→/* ===== TASK 10: FILTER PILL ENHANCED ===== */
+  1158→  1158→.filter-pill-active {
+  1159→  1159→  background: #d97706;
+  1160→  1160→  color: white;
+  1161→  1161→  border-color: #d97706;
+  1162→  1162→  border-left: 2px solid #f59e0b;
+  1163→  1163→  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3), 0 0 0 0 rgba(217, 119, 6, 0);
+  1164→  1164→  transform: scale(1.02);
+  1165→  1165→  font-weight: 600;
+  1166→  1166→}
+  1167→  1167→.filter-pill-active:hover {
+  1168→  1168→  background: #b45309;
+  1169→  1169→  border-color: #b45309;
+  1170→  1170→}
+  1171→  1171→.filter-pill-inactive {
+  1172→  1172→  background: var(--background);
+  1173→  1173→  border: 1px solid var(--border);
+  1174→  1174→  color: var(--muted-foreground);
+  1175→  1175→}
+  1176→  1176→.filter-pill-inactive:hover {
+  1177→  1177→  border-color: #fdba74;
+  1178→  1178→  background: rgba(249, 115, 22, 0.06);
+  1179→  1179→  color: var(--foreground);
+  1180→  1180→}
+  1181→  1181→.filter-pill-count {
+  1182→  1182→  transition: transform 0.2s ease, opacity 0.2s ease;
+  1183→  1183→}
+  1184→  1184→.filter-pill-active .filter-pill-count {
+  1185→  1185→  background: rgba(255,255,255,0.25);
+  1186→  1186→  color: white;
+  1187→  1187→}
+  1188→  1188→.filter-pill-inactive .filter-pill-count {
+  1189→  1189→  background: var(--muted);
+  1190→  1190→  color: var(--muted-foreground);
+  1191→  1191→}
+  1192→  1192→
+  1193→  1193→/* ===== TASK 10: NAV HOVER ENHANCEMENT ===== */
+  1194→  1194→.pill-nav button:not(:first-child)::before {
+  1195→  1195→  content: '';
+  1196→  1196→  position: absolute;
+  1197→  1197→  inset: 0;
+  1198→  1198→  border-radius: 6px;
+  1199→  1199→  background: rgba(249, 115, 22, 0.06);
+  1200→  1200→  opacity: 0;
+  1201→  1201→  transition: opacity 0.2s ease;
+  1202→  1202→}
+  1203→  1203→.pill-nav button:not(:first-child):hover::before {
+  1204→  1204→  opacity: 1;
+  1205→  1205→}
+  1206→  1206→
+  1207→  1207→/* ===== TASK 10: SCORE BADGE INNER GLOW ===== */
+  1208→  1208→.score-badge-glow-green {
+  1209→  1209→  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4), inset 0 1px 2px rgba(255,255,255,0.3);
+  1210→  1210→}
+  1211→  1211→.score-badge-glow-amber {
+  1212→  1212→  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4), inset 0 1px 2px rgba(255,255,255,0.3);
+  1213→  1213→}
+  1214→  1214→.score-badge-glow-red {
+  1215→  1215→  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4), inset 0 1px 2px rgba(255,255,255,0.3);
+  1216→  1216→}
+  1217→  1217→
+  1218→  1218→/* ===== TASK 10: PASSPORT EXPIRY WARNING BAR ===== */
+  1219→  1219→@keyframes expiry-pulse-green {
+  1220→  1220→  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.2); }
+  1221→  1221→  50% { box-shadow: 0 0 8px 2px rgba(249, 115, 22, 0.1); }
+  1222→  1222→}
+  1223→  1223→@keyframes expiry-pulse-amber {
+  1224→  1224→  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.2); }
+  1225→  1225→  50% { box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.1); }
+  1226→  1226→}
+  1227→  1227→@keyframes expiry-pulse-red {
+  1228→  1228→  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
+  1229→  1229→  50% { box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.1); }
+  1230→  1230→}
+  1231→  1231→.expiry-badge-green { animation: expiry-pulse-green 3s ease-in-out infinite; }
+  1232→  1232→.expiry-badge-amber { animation: expiry-pulse-amber 2s ease-in-out infinite; }
+  1233→  1233→.expiry-badge-red { animation: expiry-pulse-red 1.5s ease-in-out infinite; }
+  1234→  1234→
+  1235→  1235→/* ===== TASK 10: PRINT STYLES ===== */
+  1236→  1236→@media print {
+  1237→  1237→  .no-print { display: none !important; }
+  1238→  1238→  .print-only { display: block !important; }
+  1239→  1239→  body { background: white !important; color: black !important; font-size: 12pt; }
+  1240→  1240→  .print-report-header { text-align: center; margin-bottom: 24pt; border-bottom: 2pt solid #d97706; padding-bottom: 12pt; }
+  1241→  1241→  .print-report-header h1 { font-size: 20pt; color: #d97706; margin: 0 0 4pt; }
+  1242→  1242→  .print-report-header p { font-size: 10pt; color: #666; }
+  1243→  1243→  .print-section { margin-bottom: 16pt; page-break-inside: avoid; }
+  1244→  1244→  .print-section h2 { font-size: 14pt; color: #333; border-bottom: 1pt solid #ddd; padding-bottom: 4pt; margin-bottom: 8pt; }
+  1245→  1245→  .print-score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12pt; margin-bottom: 16pt; }
+  1246→  1246→  .print-score-card { text-align: center; border: 1pt solid #ddd; border-radius: 6pt; padding: 8pt; }
+  1247→  1247→  .print-score-card .value { font-size: 18pt; font-weight: 700; }
+  1248→  1248→  .print-score-card .label { font-size: 9pt; color: #666; }
+  1249→  1249→  .print-table { width: 100%; border-collapse: collapse; margin-bottom: 16pt; font-size: 10pt; }
+  1250→  1250→  .print-table th { background: #f5f5f5; font-weight: 600; text-align: left; padding: 6pt 8pt; border: 1pt solid #ddd; }
+  1251→  1251→  .print-table td { padding: 6pt 8pt; border: 1pt solid #ddd; }
+  1252→  1252→  .print-table tr:nth-child(even) { background: #fafafa; }
+  1253→  1253→  .print-best { background: #fff7ed !important; font-weight: 600; }
+  1254→  1254→  .print-worst { background: #fef2f2 !important; }
+  1255→  1255→  .print-footer { margin-top: 24pt; padding-top: 12pt; border-top: 1pt solid #ddd; font-size: 8pt; color: #999; text-align: center; }
+  1256→  1256→}
+  1257→  1257→
+  1258→  1258→/* ===== TASK 10: VLM FEEDBACK POLISH ===== */
+  1259→  1259→/* CTA button premium lift */
+  1260→  1260→.cta-premium {
+  1261→  1261→  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+  1262→  1262→  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  1263→  1263→}
+  1264→  1264→.cta-premium:hover {
+  1265→  1265→  transform: translateY(-2px);
+  1266→  1266→  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+  1267→  1267→}
+  1268→  1268→.cta-premium:active {
+  1269→  1269→  transform: translateY(0);
+  1270→  1270→  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  1271→  1271→}
+  1272→  1272→
+  1273→  1273→/* Passport illustration depth */
+  1274→  1274→.passport-illustration-depth {
+  1275→  1275→  box-shadow:
+  1276→  1276→    0 8px 32px rgba(0, 0, 0, 0.2),
+  1277→  1277→    0 0 0 1px rgba(255, 255, 255, 0.15),
+  1278→  1278→    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  1279→  1279→}
+  1280→  1280→
+  1281→  1281→/* Hero stat number bolder */
+  1282→  1282→.hero-stat-number {
+  1283→  1283→  font-weight: 800;
+  1284→  1284→  letter-spacing: -0.02em;
+  1285→  1285→  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  1286→  1286→}
+  1287→  1287→
+  1288→  1288→/* Subtle link-to-search visual connection */
+  1289→  1289→.search-connected {
+  1290→  1290→  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.06);
+  1291→  1291→  border-color: rgba(249, 115, 22, 0.15);
+  1292→  1292→  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  1293→  1293→}
+  1294→  1294→.search-connected:focus-within {
+  1295→  1295→  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+  1296→  1296→  border-color: rgba(249, 115, 22, 0.3);
+  1297→  1297→}
+  1298→  1298→
+  1299→  1299→/* Comparison slot placeholder */
+  1300→  1300→.comparison-slot {
+  1301→  1301→  border: 2px dashed var(--border);
+  1302→  1302→  border-radius: 12px;
+  1303→  1303→  transition: border-color 0.3s ease, background-color 0.3s ease;
+  1304→  1304→}
+  1305→  1305→.comparison-slot:hover {
+  1306→  1306→  border-color: #f59e0b;
+  1307→  1307→  background: rgba(249, 115, 22, 0.03);
+  1308→  1308→}
+  1309→  1309→
+  1310→  1310→/* Checklist progress ring animation */
+  1311→  1311→@keyframes checklist-progress-fill {
+  1312→  1312→  0% { stroke-dashoffset: 100; }
+  1313→  1313→}
+  1314→  1314→.checklist-progress-ring {
+  1315→  1315→  animation: checklist-progress-fill 0.6s ease-out forwards;
+  1316→  1316→}
+  1317→  1317→
+  1318→  1318→/* Deadline urgency indicator */
+  1319→  1319→@keyframes urgency-breathe {
+  1320→  1320→  0%, 100% { opacity: 1; }
+  1321→  1321→  50% { opacity: 0.6; }
+  1322→  1322→}
+  1323→  1323→.urgency-indicator {
+  1324→  1324→  animation: urgency-breathe 2s ease-in-out infinite;
+  1325→  1325→}
+  1326→  1326→
+  1327→  1327→/* Card inner border highlight on hover */
+  1328→  1328→.card-inner-highlight {
+  1329→  1329→  position: relative;
+  1330→  1330→}
+  1331→  1331→.card-inner-highlight::after {
+  1332→  1332→  content: '';
+  1333→  1333→  position: absolute;
+  1334→  1334→  inset: 0;
+  1335→  1335→  border-radius: inherit;
+  1336→  1336→  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0);
+  1337→  1337→  transition: box-shadow 0.3s ease;
+  1338→  1338→  pointer-events: none;
+  1339→  1339→}
+  1340→  1340→.card-inner-highlight:hover::after {
+  1341→  1341→  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.15);
+  1342→  1342→}
+  1343→  1343→
+  1344→  1344→/* ===== ROUND 11 ADDITIONS ===== */
+  1345→  1345→
+  1346→  1346→/* Card shimmer sweep on hover */
+  1347→  1347→@keyframes card-shimmer-sweep {
+  1348→  1348→  0% { transform: translateX(-100%); }
+  1349→  1349→  100% { transform: translateX(100%); }
+  1350→  1350→}
+  1351→  1351→.card-shimmer-hover {
+  1352→  1352→  position: relative;
+  1353→  1353→  overflow: hidden;
+  1354→  1354→}
+  1355→  1355→.card-shimmer-hover::after {
+  1356→  1356→  content: '';
+  1357→  1357→  position: absolute;
+  1358→  1358→  top: 0;
+  1359→  1359→  left: 0;
+  1360→  1360→  width: 100%;
+  1361→  1361→  height: 100%;
+  1362→  1362→  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+  1363→  1363→  transform: translateX(-100%);
+  1364→  1364→  pointer-events: none;
+  1365→  1365→}
+  1366→  1366→.card-shimmer-hover:hover::after {
+  1367→  1367→  animation: card-shimmer-sweep 0.8s ease forwards;
+  1368→  1368→}
+  1369→  1369→
+  1370→  1370→/* Bento stat featured card */
+  1371→  1371→.bento-featured {
+  1372→  1372→  background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+  1373→  1373→  border: 1px solid rgba(255,255,255,0.2);
+  1374→  1374→  backdrop-filter: blur(8px);
+  1375→  1375→}
+  1376→  1376→
+  1377→  1377→/* Difficulty bar */
+  1378→  1378→.difficulty-bar {
+  1379→  1379→  display: flex;
+  1380→  1380→  gap: 3px;
+  1381→  1381→}
+  1382→  1382→.difficulty-segment {
+  1383→  1383→  height: 4px;
+  1384→  1384→  flex: 1;
+  1385→  1385→  border-radius: 2px;
+  1386→  1386→  background: var(--muted);
+  1387→  1387→  transition: background 0.3s ease;
+  1388→  1388→}
+  1389→  1389→.difficulty-segment.active-easy { background: #f97316; }
+  1390→  1390→.difficulty-segment.active-medium { background: #f59e0b; }
+  1391→  1391→.difficulty-segment.active-hard { background: #ef4444; }
+  1392→  1392→
+  1393→  1393→/* Glass card for sections */
+  1394→  1394→.glass-section {
+  1395→  1395→  background: rgba(255, 255, 255, 0.03);
+  1396→  1396→  backdrop-filter: blur(8px);
+  1397→  1397→  border: 1px solid rgba(249, 115, 22, 0.12);
+  1398→  1398→  border-radius: 16px;
+  1399→  1399→  transition: border-color 0.3s ease, background 0.3s ease;
+  1400→  1400→}
+  1401→  1401→
+  1402→  1402→.glass-section:hover {
+  1403→  1403→  border-color: rgba(249, 115, 22, 0.25);
+  1404→  1404→  background: rgba(255, 255, 255, 0.05);
+  1405→  1405→}
+  1406→  1406→
+  1407→  1407→/* Dark mode adjustments */
+  1408→  1408→.dark .glass-section {
+  1409→  1409→  background: rgba(0, 0, 0, 0.2);
+  1410→  1410→  border-color: rgba(249, 115, 22, 0.1);
+  1411→  1411→}
+  1412→  1412→.dark .glass-section:hover {
+  1413→  1413→  border-color: rgba(249, 115, 22, 0.2);
+  1414→  1414→  background: rgba(0, 0, 0, 0.25);
+  1415→  1415→}
+  1416→  1416→
+  1417→  1417→/* Ambient glow animation */
+  1418→  1418→@keyframes ambient-glow {
+  1419→  1419→  0%, 100% { opacity: 0.5; transform: scale(1); }
+  1420→  1420→  50% { opacity: 0.8; transform: scale(1.05); }
+  1421→  1421→}
+  1422→  1422→.ambient-glow {
+  1423→  1423→  animation: ambient-glow 8s ease-in-out infinite;
+  1424→  1424→}
+  1425→  1425→
+  1426→  1426→/* Score top accent */
+  1427→  1427→.score-accent-top {
+  1428→  1428→  position: absolute;
+  1429→  1429→  top: 0;
+  1430→  1430→  left: 0;
+  1431→  1431→  right: 0;
+  1432→  1432→  height: 2px;
+  1433→  1433→  border-radius: 999px 999px 0 0;
+  1434→  1434→}
+  1435→  1435→
+  1436→  1436→/* Section header dot */
+  1437→  1437→.section-dot {
+  1438→  1438→  width: 8px;
+  1439→  1439→  height: 8px;
+  1440→  1440→  border-radius: 50%;
+  1441→  1441→  background: #f59e0b;
+  1442→  1442→  display: inline-block;
+  1443→  1443→  margin-right: 8px;
+  1444→  1444→  vertical-align: middle;
+  1445→  1445→  box-shadow: 0 0 6px rgba(249, 115, 22, 0.4);
+  1446→  1446→}
+  1447→  1447→
+  1448→  1448→/* Filter container unification */
+  1449→  1449→.filter-container {
+  1450→  1450→  background: oklch(0.97 0 0);
+  1451→  1451→  border: 1px solid oklch(0.92 0 0);
+  1452→  1452→  border-radius: 12px;
+  1453→  1453→  padding: 16px;
+  1454→  1454→}
+  1455→  1455→.dark .filter-container {
+  1456→  1456→  background: oklch(0.22 0 0);
+  1457→  1457→  border-color: oklch(0.3 0 0);
+  1458→  1458→}
+  1459→  1459→
+  1460→  1460→/* Mobile bottom nav */
+  1461→  1461→@media (max-width: 640px) {
+  1462→  1462→  .mobile-bottom-nav {
+  1463→  1463→    position: fixed;
+  1464→  1464→    bottom: 0;
+  1465→  1465→    left: 0;
+  1466→  1466→    right: 0;
+  1467→  1467→    z-index: 40;
+  1468→  1468→    background: oklch(0.985 0 0 / 95%);
+  1469→  1469→    backdrop-filter: blur(12px);
+  1470→  1470→    border-top: 1px solid oklch(0.92 0 0);
+  1471→  1471→    padding: 8px 16px;
+  1472→  1472→    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  1473→  1473→  }
+  1474→  1474→  .dark .mobile-bottom-nav {
+  1475→  1475→    background: oklch(0.15 0 0 / 95%);
+  1476→  1476→    border-color: oklch(0.3 0 0);
+  1477→  1477→  }
+  1478→  1478→  .mobile-nav-item {
+  1479→  1479→    display: flex;
+  1480→  1480→    flex-direction: column;
+  1481→  1481→    align-items: center;
+  1482→  1482→    gap: 2px;
+  1483→  1483→    font-size: 10px;
+  1484→  1484→    color: oklch(0.55 0 0);
+  1485→  1485→    padding: 4px 8px;
+  1486→  1486→    border-radius: 8px;
+  1487→  1487→    transition: color 0.2s, background 0.2s, transform 0.15s;
+  1488→  1488→    min-width: 48px;
+  1489→  1489→    min-height: 48px;
+  1490→  1490→    justify-content: center;
+  1491→  1491→    position: relative;
+  1492→  1492→    -webkit-tap-highlight-color: transparent;
+  1493→  1493→  }
+  1494→  1494→  .mobile-nav-item:active {
+  1495→  1495→    transform: scale(0.95);
+  1496→  1496→  }
+  1497→  1497→  .mobile-nav-item.active {
+  1498→  1498→    color: #d97706;
+  1499→  1499→    background: rgba(249, 115, 22, 0.1);
+  1500→  1500→  }
+  1501→  1501→  body {
+  1502→  1502→    padding-bottom: 88px;
+  1503→  1503→  }
+  1504→  1504→}
+  1505→  1505→
+  1506→  1506→/* Horizontal scroll section title */
+  1507→  1507→.scroll-section-title {
+  1508→  1508→  display: flex;
+  1509→  1509→  align-items: center;
+  1510→  1510→  gap: 8px;
+  1511→  1511→  margin-bottom: 12px;
+  1512→  1512→}
+  1513→  1513→.scroll-section-title::after {
+  1514→  1514→  content: '';
+  1515→  1515→  flex: 1;
+  1516→  1516→  height: 1px;
+  1517→  1517→  background: linear-gradient(90deg, oklch(0.9 0 0), transparent);
+  1518→  1518→}
+  1519→  1519→.dark .scroll-section-title::after {
+  1520→  1520→  background: linear-gradient(90deg, oklch(0.3 0 0), transparent);
+  1521→  1521→}
+  1522→  1522→
+  1523→  1523→/* Hero-to-filter gradient connector */
+  1524→  1524→@keyframes gradient-flow {
+  1525→  1525→  0% { background-position: 0% 50%; }
+  1526→  1526→  50% { background-position: 100% 50%; }
+  1527→  1527→  100% { background-position: 0% 50%; }
+  1528→  1528→}
+  1529→  1529→.hero-filter-connector {
+  1530→  1530→  height: 2px;
+  1531→  1531→  background: linear-gradient(90deg, #d97706, #f59e0b, #fbbf24, #fdba74, #fbbf24, #f59e0b, #d97706);
+  1532→  1532→  background-size: 200% 100%;
+  1533→  1533→  animation: gradient-flow 4s ease infinite;
+  1534→  1534→  border-radius: 999px;
+  1535→  1535→  opacity: 0.6;
+  1536→  1536→}
+  1537→  1537→
+  1538→  1538→/* Card frosted inner glow (before pseudo) */
+  1539→  1539→.card-frosted::before {
+  1540→  1540→  content: '';
+  1541→  1541→  position: absolute;
+  1542→  1542→  inset: 0;
+  1543→  1543→  border-radius: inherit;
+  1544→  1544→  background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent);
+  1545→  1545→  pointer-events: none;
+  1546→  1546→}
+  1547→  1547→.dark .card-frosted::before {
+  1548→  1548→  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(249,115,22,0.02));
+  1549→  1549→}
+  1550→  1550→
+  1551→  1551→/* Bottom gradient bar enhanced */
+  1552→  1552→@keyframes gradient-bar-flow {
+  1553→  1553→  0% { background-position: 0% 50%; }
+  1554→  1554→  100% { background-position: 200% 50%; }
+  1555→  1555→}
+  1556→  1556→.bottom-bar-animated {
+  1557→  1557→  background-size: 200% 100%;
+  1558→  1558→  animation: gradient-bar-flow 3s linear infinite;
+  1559→  1559→  border-radius: 0 0 var(--radius) var(--radius);
+  1560→  1560→}
+  1561→  1561→
+  1562→  1562→/* Success story card scroll hide scrollbar */
+  1563→  1563→.story-scroll::-webkit-scrollbar {
+  1564→  1564→  height: 4px;
+  1565→  1565→}
+  1566→  1566→.story-scroll::-webkit-scrollbar-track {
+  1567→  1567→  background: transparent;
+  1568→  1568→}
+  1569→  1569→.story-scroll::-webkit-scrollbar-thumb {
+  1570→  1570→  background: oklch(0.85 0 0);
+  1571→  1571→  border-radius: 2px;
+  1572→  1572→}
+  1573→  1573→.dark .story-scroll::-webkit-scrollbar-thumb {
+  1574→  1574→  background: oklch(0.35 0 0);
+  1575→  1575→}
+  1576→  1576→
+  1577→  1577→/* Auto scroll animation for stories */
+  1578→  1578→@keyframes auto-scroll-x {
+  1579→  1579→  0% { transform: translateX(0); }
+  1580→  1580→  100% { transform: translateX(-50%); }
+  1581→  1581→}
+  1582→  1582→.auto-scroll-stories {
+  1583→  1583→  animation: auto-scroll-x 30s linear infinite;
+  1584→  1584→}
+  1585→  1585→.auto-scroll-stories:hover {
+  1586→  1586→  animation-play-state: paused;
+  1587→  1587→}
+  1588→  1588→
+  1589→  1589→/* Map dot pulse */
+  1590→  1590→@keyframes map-dot-pulse {
+  1591→  1591→  0%, 100% { r: 4; opacity: 1; }
+  1592→  1592→  50% { r: 6; opacity: 0.7; }
+  1593→  1593→}
+  1594→  1594→.map-dot {
+  1595→  1595→  transition: r 0.2s, opacity 0.2s;
+  1596→  1596→  cursor: pointer;
+  1597→  1597→}
+  1598→  1598→.map-dot:hover {
+  1599→  1599→  filter: brightness(1.3);
+  1600→  1600→}
+  1601→  1601→
+  1602→  1602→/* Upload dropzone */
+  1603→  1603→.dropzone-active {
+  1604→  1604→  border-color: #f59e0b;
+  1605→  1605→  background: rgba(249, 115, 22, 0.05);
+  1606→  1606→}
+  1607→  1607→
+  1608→  1608→/* Trust badge float animation */
+  1609→  1609→@keyframes trust-float {
+  1610→  1610→  0%, 100% { transform: translateY(0); }
+  1611→  1611→  50% { transform: translateY(-4px); }
+  1612→  1612→}
+  1613→  1613→.trust-badge-float {
+  1614→  1614→  animation: trust-float 3s ease-in-out infinite;
+  1615→  1615→}
+  1616→  1616→
+  1617→  1617→/* ===== ROUND 12 ADDITIONS ===== */
+  1618→  1618→
+  1619→  1619→/* Floating chat widget */
+  1620→  1620→.chat-widget-btn {
+  1621→  1621→  position: fixed;
+  1622→  1622→  bottom: 80px;
+  1623→  1623→  right: 16px;
+  1624→  1624→  z-index: 30;
+  1625→  1625→  width: 56px;
+  1626→  1626→  height: 56px;
+  1627→  1627→  border-radius: 50%;
+  1628→  1628→  background: linear-gradient(135deg, #d97706, #f59e0b);
+  1629→  1629→  color: white;
+  1630→  1630→  display: flex;
+  1631→  1631→  align-items: center;
+  1632→  1632→  justify-content: center;
+  1633→  1633→  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+  1634→  1634→  cursor: pointer;
+  1635→  1635→  transition: transform 0.2s, box-shadow 0.2s;
+  1636→  1636→}
+  1637→  1637→.chat-widget-btn:hover {
+  1638→  1638→  transform: scale(1.1);
+  1639→  1639→  box-shadow: 0 6px 28px rgba(249, 115, 22, 0.5);
+  1640→  1640→}
+  1641→  1641→@keyframes chat-pulse {
+  1642→  1642→  0%, 100% { box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4); }
+  1643→  1643→  50% { box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4), 0 0 0 8px rgba(249, 115, 22, 0.15); }
+  1644→  1644→}
+  1645→  1645→.chat-widget-pulse {
+  1646→  1646→  animation: chat-pulse 2.5s ease-in-out infinite;
+  1647→  1647→}
+  1648→  1648→.chat-panel {
+  1649→  1649→  position: fixed;
+  1650→  1650→  bottom: 148px;
+  1651→  1651→  right: 16px;
+  1652→  1652→  z-index: 30;
+  1653→  1653→  width: 340px;
+  1654→  1654→  max-height: 440px;
+  1655→  1655→  border-radius: 16px;
+  1656→  1656→  overflow: hidden;
+  1657→  1657→  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  1658→  1658→  border: 1px solid oklch(0.92 0 0);
+  1659→  1659→}
+  1660→  1660→.dark .chat-panel {
+  1661→  1661→  border-color: oklch(0.3 0 0);
+  1662→  1662→}
+  1663→  1663→
+  1664→  1664→/* Passport power bar */
+  1665→  1665→.power-bar-segment {
+  1666→  1666→  height: 10px;
+  1667→  1667→  transition: width 0.8s ease, flex 0.8s ease;
+  1668→  1668→  border-radius: 5px;
+  1669→  1669→}
+  1670→  1670→@keyframes power-bar-fill {
+  1671→  1671→  0% { width: 0; }
+  1672→  1672→}
+  1673→  1673→.power-bar-animated {
+  1674→  1674→  animation: power-bar-fill 1s ease-out forwards;
+  1675→  1675→}
+  1676→  1676→
+  1677→  1677→/* Kbd key styling (enhanced) */
+  1678→  1678→.kbd-key {
+  1679→  1679→  display: inline-flex;
+  1680→  1680→  align-items: center;
+  1681→  1681→  justify-content: center;
+  1682→  1682→  min-width: 28px;
+  1683→  1683→  height: 24px;
+  1684→  1684→  padding: 0 6px;
+  1685→  1685→  border-radius: 6px;
+  1686→  1686→  background: oklch(0.96 0 0);
+  1687→  1687→  border: 1px solid oklch(0.88 0 0);
+  1688→  1688→  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  1689→  1689→  font-size: 11px;
+  1690→  1690→  font-weight: 600;
+  1691→  1691→  font-family: monospace;
+  1692→  1692→  color: oklch(0.4 0 0);
+  1693→  1693→}
+  1694→  1694→.dark .kbd-key {
+  1695→  1695→  background: oklch(0.25 0 0);
+  1696→  1696→  border-color: oklch(0.35 0 0);
+  1697→  1697→  color: oklch(0.7 0 0);
+  1698→  1698→}
+  1699→  1699→
+  1700→  1700→/* Chat message bubble */
+  1701→  1701→.chat-bubble-user {
+  1702→  1702→  background: linear-gradient(135deg, #d97706, #f59e0b);
+  1703→  1703→  color: white;
+  1704→  1704→  border-radius: 16px 16px 4px 16px;
+  1705→  1705→  padding: 10px 14px;
+  1706→  1706→  max-width: 85%;
+  1707→  1707→  margin-left: auto;
+  1708→  1708→}
+  1709→  1709→.chat-bubble-bot {
+  1710→  1710→  background: oklch(0.96 0 0);
+  1711→  1711→  border: 1px solid oklch(0.92 0 0);
+  1712→  1712→  border-radius: 16px 16px 16px 4px;
+  1713→  1713→  padding: 10px 14px;
+  1714→  1714→  max-width: 85%;
+  1715→  1715→}
+  1716→  1716→.dark .chat-bubble-bot {
+  1717→  1717→  background: oklch(0.22 0 0);
+  1718→  1718→  border-color: oklch(0.3 0 0);
+  1719→  1719→}
+  1720→  1720→
+  1721→  1721→/* Typing indicator */
+  1722→  1722→@keyframes typing-dot {
+  1723→  1723→  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  1724→  1724→  30% { transform: translateY(-4px); opacity: 1; }
+  1725→  1725→}
+  1726→  1726→.typing-indicator span {
+  1727→  1727→  display: inline-block;
+  1728→  1728→  width: 6px;
+  1729→  1729→  height: 6px;
+  1730→  1730→  border-radius: 50%;
+  1731→  1731→  background: #f59e0b;
+  1732→  1732→  margin: 0 2px;
+  1733→  1733→}
+  1734→  1734→.typing-indicator span:nth-child(1) { animation: typing-dot 1.4s infinite 0s; }
+  1735→  1735→.typing-indicator span:nth-child(2) { animation: typing-dot 1.4s infinite 0.2s; }
+  1736→  1736→.typing-indicator span:nth-child(3) { animation: typing-dot 1.4s infinite 0.4s; }
+  1737→  1737→
+  1738→  1738→/* Mini stat card hover */
+  1739→  1739→.mini-stat-hover {
+  1740→  1740→  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  1741→  1741→}
+  1742→  1742→.mini-stat-hover:hover {
+  1743→  1743→  transform: translateY(-2px);
+  1744→  1744→  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  1745→  1745→}
+  1746→  1746→
+  1747→  1747→/* Mobile adjustments for chat widget */
+  1748→  1748→@media (max-width: 640px) {
+  1749→  1749→  .chat-widget-btn {
+  1750→  1750→    bottom: 80px;
+  1751→  1751→    right: 12px;
+  1752→  1752→    width: 48px;
+  1753→  1753→    height: 48px;
+  1754→  1754→  }
+  1755→  1755→  .chat-panel {
+  1756→  1756→    bottom: 136px;
+  1757→  1757→    right: 8px;
+  1758→  1758→    left: 8px;
+  1759→  1759→    width: auto;
+  1760→  1760→  }
+  1761→  1761→}
+  1762→  1762→
+  1763→  1763→/* Donut chart animation */
+  1764→  1764→@keyframes donut-fill {
+  1765→  1765→  0% { stroke-dasharray: 0 100; }
+  1766→  1766→}
+  1767→  1767→.donut-segment-animated {
+  1768→  1768→  animation: donut-fill 1s ease-out forwards;
+  1769→  1769→}
+  1770→  1770→
+  1771→  1771→/* ===== Round 13: Input Focus Glow ===== */
+  1772→  1772→.input-glow-focus:focus {
+  1773→  1773→  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15), 0 0 12px rgba(249, 115, 22, 0.08) !important;
+  1774→  1774→  border-color: #f59e0b !important;
+  1775→  1775→}
+  1776→  1776→
+  1777→  1777→/* ===== Round 13: Step Progress Animation ===== */
+  1778→  1778→@keyframes step-progress-fill {
+  1779→  1779→  from { transform: scaleX(0); }
+  1780→  1780→  to { transform: scaleX(1); }
+  1781→  1781→}
+  1782→  1782→.step-connector-active {
+  1783→  1783→  animation: step-progress-fill 0.5s ease-out forwards;
+  1784→  1784→  transform-origin: left;
+  1785→  1785→}
+  1786→  1786→
+  1787→  1787→/* ===== Round 13: Enhanced Glass Section ===== */
+  1788→  1788→.glass-section-enhanced {
+  1789→  1789→  background: rgba(255, 255, 255, 0.06);
+  1790→  1790→  backdrop-filter: blur(8px);
+  1791→  1791→  border: 1px solid rgba(249, 115, 22, 0.12);
+  1792→  1792→  border-radius: 12px;
+  1793→  1793→  transition: border-color 0.3s ease, background 0.3s ease;
+  1794→  1794→}
+  1795→  1795→.glass-section-enhanced:hover {
+  1796→  1796→  border-color: rgba(249, 115, 22, 0.25);
+  1797→  1797→  background: rgba(255, 255, 255, 0.08);
+  1798→  1798→}
+  1799→  1799→.dark .glass-section-enhanced {
+  1800→  1800→  background: rgba(255, 255, 255, 0.03);
+  1801→  1801→  border-color: rgba(249, 115, 22, 0.1);
+  1802→  1802→}
+  1803→  1803→.dark .glass-section-enhanced:hover {
+  1804→  1804→  background: rgba(255, 255, 255, 0.05);
+  1805→  1805→  border-color: rgba(249, 115, 22, 0.2);
+  1806→  1806→}
+  1807→  1807→
+  1808→  1808→/* ===== Round 13: Insights Panel Container ===== */
+  1809→  1809→.insights-panel {
+  1810→  1810→  background: linear-gradient(to bottom, rgba(248, 250, 252, 0.5), transparent);
+  1811→  1811→  border: 1px solid rgba(0, 0, 0, 0.06);
+  1812→  1812→  border-radius: 16px;
+  1813→  1813→  padding: 24px;
+  1814→  1814→}
+  1815→  1815→.dark .insights-panel {
+  1816→  1816→  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.5), transparent);
+  1817→  1817→  border-color: rgba(255, 255, 255, 0.06);
+  1818→  1818→}
+  1819→  1819→
+  1820→  1820→/* ===== Round 13: Countdown Pulse ===== */
+  1821→  1821→@keyframes countdown-pulse {
+  1822→  1822→  0%, 100% { opacity: 1; }
+  1823→  1823→  50% { opacity: 0.7; }
+  1824→  1824→}
+  1825→  1825→.countdown-urgent {
+  1826→  1826→  animation: countdown-pulse 1.5s ease-in-out infinite;
+  1827→  1827→}
+  1828→  1828→
+  1829→  1829→/* Countdown pulse ring for hero timer button */
+  1830→  1830→@keyframes countdown-pulse-ring {
+  1831→  1831→  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  1832→  1832→  50% { box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.2); }
+  1833→  1833→}
+  1834→  1834→.countdown-pulse-ring {
+  1835→  1835→  animation: countdown-pulse-ring 1.5s ease-in-out infinite;
+  1836→  1836→}
+  1837→  1837→/* ===== Round 13: Tabular Numbers ===== */
+  1838→  1838→.tabular-nums {
+  1839→  1839→  font-variant-numeric: tabular-nums;
+  1840→  1840→}
+  1841→  1841→
+  1842→  1842→/* ===== Round 13: Profile Gradient Bar ===== */
+  1843→  1843→.profile-gradient-bar {
+  1844→  1844→  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #f97316 80%, #d97706 100%);
+  1845→  1845→  border-radius: 999px;
+  1846→  1846→  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  1847→  1847→}
+  1848→  1848→
+  1849→  1849→/* ===== Round 13: Enhanced Stat Card Hover ===== */
+  1850→  1850→.stat-card-interactive {
+  1851→  1851→  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  1852→  1852→}
+  1853→  1853→.stat-card-interactive:hover {
+  1854→  1854→  transform: scale(1.03);
+  1855→  1855→  background-color: rgba(255, 255, 255, 0.25);
+  1856→  1856→  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  1857→  1857→}
+  1858→  1858→.dark .stat-card-interactive:hover {
+  1859→  1859→  background-color: rgba(255, 255, 255, 0.15);
+  1860→  1860→  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  1861→  1861→}
+  1862→  1862→
+  1863→  1863→/* ===== ROUND 14: Hero Enhancement ===== */
+  1864→  1864→
+  1865→  1865→/* Floating orbs for hero section */
+  1866→  1866→@keyframes hero-orb-float-1 {
+  1867→  1867→  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  1868→  1868→  25% { transform: translateY(-20px) translateX(10px) scale(1.05); }
+  1869→  1869→  50% { transform: translateY(-10px) translateX(-15px) scale(0.95); }
+  1870→  1870→  75% { transform: translateY(-25px) translateX(5px) scale(1.02); }
+  1871→  1871→}
+  1872→  1872→@keyframes hero-orb-float-2 {
+  1873→  1873→  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  1874→  1874→  25% { transform: translateY(15px) translateX(-12px) scale(0.97); }
+  1875→  1875→  50% { transform: translateY(-18px) translateX(8px) scale(1.06); }
+  1876→  1876→  75% { transform: translateY(-8px) translateX(-20px) scale(1.01); }
+  1877→  1877→}
+  1878→  1878→@keyframes hero-orb-float-3 {
+  1879→  1879→  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  1880→  1880→  25% { transform: translateY(-12px) translateX(-8px) scale(1.03); }
+  1881→  1881→  50% { transform: translateY(20px) translateX(15px) scale(0.98); }
+  1882→  1882→  75% { transform: translateY(-22px) translateX(-5px) scale(1.04); }
+  1883→  1883→}
+  1884→  1884→.hero-orb {
+  1885→  1885→  position: absolute;
+  1886→  1886→  border-radius: 50%;
+  1887→  1887→  pointer-events: none;
+  1888→  1888→  opacity: 0.15;
+  1889→  1889→}
+  1890→  1890→.dark .hero-orb {
+  1891→  1891→  opacity: 0.08;
+  1892→  1892→}
+  1893→  1893→.hero-orb-1 {
+  1894→  1894→  width: 120px;
+  1895→  1895→  height: 120px;
+  1896→  1896→  background: radial-gradient(circle, #fbbf24 0%, #f97316 70%, transparent 100%);
+  1897→  1897→  top: -20px;
+  1898→  1898→  right: 10%;
+  1899→  1899→  animation: hero-orb-float-1 8s ease-in-out infinite;
+  1900→  1900→}
+  1901→  1901→.hero-orb-2 {
+  1902→  1902→  width: 80px;
+  1903→  1903→  height: 80px;
+  1904→  1904→  background: radial-gradient(circle, #f59e0b 0%, #ea580c 70%, transparent 100%);
+  1905→  1905→  bottom: -10px;
+  1906→  1906→  left: 5%;
+  1907→  1907→  animation: hero-orb-float-2 10s ease-in-out infinite;
+  1908→  1908→}
+  1909→  1909→.hero-orb-3 {
+  1910→  1910→  width: 60px;
+  1911→  1911→  height: 60px;
+  1912→  1912→  background: radial-gradient(circle, #fcd34d 0%, #fb923c 70%, transparent 100%);
+  1913→  1913→  top: 30%;
+  1914→  1914→  left: 60%;
+  1915→  1915→  animation: hero-orb-float-3 7s ease-in-out infinite;
+  1916→  1916→}
+  1917→  1917→.hero-orb-4 {
+  1918→  1918→  width: 40px;
+  1919→  1919→  height: 40px;
+  1920→  1920→  background: radial-gradient(circle, #fef3c7 0%, #fdba74 70%, transparent 100%);
+  1921→  1921→  top: 15%;
+  1922→  1922→  left: 25%;
+  1923→  1923→  animation: hero-orb-float-1 12s ease-in-out infinite reverse;
+  1924→  1924→}
+  1925→  1925→
+  1926→  1926→/* Typing text animation */
+  1927→  1927→@keyframes typing-text-blink {
+  1928→  1928→  0%, 100% { border-color: transparent; }
+  1929→  1929→  50% { border-color: currentColor; }
+  1930→  1930→}
+  1931→  1931→.typing-text-cursor {
+  1932→  1932→  border-right: 2px solid;
+  1933→  1933→  animation: typing-text-blink 1s step-end infinite;
+  1934→  1934→  padding-right: 2px;
+  1935→  1935→}
+  1936→  1936→.dark .typing-text-cursor {
+  1937→  1937→  border-right-color: rgba(245, 158, 11, 0.8);
+  1938→  1938→}
+  1939→  1939→
+  1940→  1940→/* Hero gradient mesh overlay */
+  1941→  1941→.hero-mesh-bg {
+  1942→  1942→  position: absolute;
+  1943→  1943→  inset: 0;
+  1944→  1944→  background:
+  1945→  1945→    radial-gradient(ellipse at 20% 50%, rgba(251, 191, 36, 0.3) 0%, transparent 50%),
+  1946→  1946→    radial-gradient(ellipse at 80% 20%, rgba(249, 115, 22, 0.25) 0%, transparent 50%),
+  1947→  1947→    radial-gradient(ellipse at 50% 100%, rgba(245, 158, 11, 0.2) 0%, transparent 50%);
+  1948→  1948→  pointer-events: none;
+  1949→  1949→  z-index: 0;
+  1950→  1950→}
+  1951→  1951→.dark .hero-mesh-bg {
+  1952→  1952→  background:
+  1953→  1953→    radial-gradient(ellipse at 20% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 50%),
+  1954→  1954→    radial-gradient(ellipse at 80% 20%, rgba(234, 88, 12, 0.12) 0%, transparent 50%),
+  1955→  1955→    radial-gradient(ellipse at 50% 100%, rgba(217, 119, 6, 0.1) 0%, transparent 50%);
+  1956→  1956→}
+  1957→  1957→
+  1958→  1958→/* Active tab indicator for mobile nav */
+  1959→  1959→.mobile-nav-indicator {
+  1960→  1960→  position: absolute;
+  1961→  1961→  bottom: 0;
+  1962→  1962→  height: 2px;
+  1963→  1963→  background: linear-gradient(90deg, #d97706, #f59e0b);
+  1964→  1964→  border-radius: 1px 1px 0 0;
+  1965→  1965→  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  1966→  1966→  box-shadow: 0 0 8px rgba(249, 115, 22, 0.5);
+  1967→  1967→}
+  1968→  1968→
+  1969→  1969→/* Card accent bar */
+  1970→  1970→.card-accent-bar {
+  1971→  1971→  position: absolute;
+  1972→  1972→  left: 0;
+  1973→  1973→  top: 12px;
+  1974→  1974→  bottom: 12px;
+  1975→  1975→  width: 3px;
+  1976→  1976→  border-radius: 0 3px 3px 0;
+  1977→  1977→}
+  1978→  1978→.card-accent-visa-free { background: #f59e0b; }
+  1979→  1979→.card-accent-voa { background: #f97316; }
+  1980→  1980→.card-accent-evisa { background: #fdba74; }
+  1981→  1981→.card-accent-embassy { background: #ef4444; }
+  1982→  1982→
+  1983→  1983→/* Enhanced hero button glow */
+  1984→  1984→.hero-btn-glow {
+  1985→  1985→  position: relative;
+  1986→  1986→  overflow: hidden;
+  1987→  1987→  z-index: 1;
+  1988→  1988→}
+  1989→  1989→.hero-btn-glow::before {
+  1990→  1990→  content: '';
+  1991→  1991→  position: absolute;
+  1992→  1992→  inset: -2px;
+  1993→  1993→  border-radius: inherit;
+  1994→  1994→  background: linear-gradient(135deg, #f59e0b, #f97316, #fbbf24);
+  1995→  1995→  opacity: 0;
+  1996→  1996→  transition: opacity 0.3s ease;
+  1997→  1997→  z-index: -1;
+  1998→  1998→  filter: blur(8px);
+  1999→  1999→}
+  2000→  2000→.hero-btn-glow:hover::before {
+
+[showing lines 1-2000 of 2002; use offset=2001 with limit to continue reading]

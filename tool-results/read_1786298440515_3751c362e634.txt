@@ -1,0 +1,571 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef, useSyncExternalStore, Fragment } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Globe, FileText, BarChart3, MessageSquare, FileCheck,
+     7→  Search, ChevronRight, Star, Clock,
+     8→  DollarSign, Shield, Calendar, Heart,
+     9→  Sun, Moon, Menu, X, ExternalLink, Download,
+    10→  MapPin, Plane, Building, Users, Lock, Lightbulb, Compass,
+    11→  Keyboard, HelpCircle, Sparkles, Settings,
+    12→  Gavel, Info, AlertTriangle, Mail, Zap,
+    13→  TrendingUp, BarChart3 as BarChart3Icon, Play, History, ClipboardList,
+    14→} from 'lucide-react';
+    15→import { Button } from '@/components/ui/button';
+    16→import { Badge } from '@/components/ui/badge';
+    17→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+    18→import { toast } from 'sonner';
+    19→import { useTheme } from 'next-themes';
+    20→import { useAppStore } from '@/lib/store';
+    21→
+    22→import { ExploreTab } from '@/components/app/tabs/explore-tab';
+    23→import { QuestionnaireTab } from '@/components/app/tabs/questionnaire-tab';
+    24→import { CompareTab } from '@/components/app/tabs/compare-tab';
+    25→import { AIChatTab } from '@/components/app/tabs/ai-chat-tab';
+    26→import { ReportsTab } from '@/components/app/tabs/reports-tab';
+    27→import { ToolsTab } from '@/components/app/tabs/tools-tab';
+    28→import { PassportExpiryWarning } from '@/components/app/shared-components-1';
+    29→import { NotificationBell } from '@/components/app/shared-components-3';
+    30→import { AdminDialog } from '@/components/app/admin-dialog';
+    31→import {
+    32→  KeyboardShortcutsDialog, HelpCenterDialog, FloatingChatWidget,
+    33→  KeyboardShortcutsTooltip, BackToTopButton, NewsletterInput,
+    34→  AboutDialog, DisclaimerDialog, TermsDialog, PrivacyDialog,
+    35→} from '@/components/app/dialogs';
+    36→
+    37→// ============ MAIN PAGE (IMPROVED) ============
+    38→export default function HomePage() {
+    39→  const { activeTab, setActiveTab, selectedCountry, setSelectedCountry, setViewMode } = useAppStore();
+    40→  const { theme, setTheme } = useTheme();
+    41→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    42→  const [showShortcuts, setShowShortcuts] = useState(false);
+    43→  const [showHelpCenter, setShowHelpCenter] = useState(false);
+    44→  const [footerCountryCount, setFooterCountryCount] = useState(0);
+    45→  const [legalDialog, setLegalDialog] = useState<'about' | 'disclaimer' | 'terms' | 'privacy' | null>(null);
+    46→  const [downloading, setDownloading] = useState(false);
+    47→  const [showAdmin, setShowAdmin] = useState(false);
+    48→  const [aiEnabled, setAiEnabled] = useState(true);
+    49→
+    50→  const TABS = [
+    51→    { id: 'explore', label: 'Explore', icon: Globe },
+    52→    { id: 'questionnaire', label: 'Assess', icon: FileText },
+    53→    { id: 'compare', label: 'Compare', icon: BarChart3 },
+    54→    { id: 'chat', label: 'AI Chat', icon: MessageSquare },
+    55→    { id: 'tools', label: 'Tools', icon: Compass },
+    56→    { id: 'reports', label: 'Reports', icon: FileCheck },
+    57→  ];
+    58→  const TAB_IDS = TABS.map(t => t.id);
+    59→
+    60→  // Fetch AI enabled setting on app load
+    61→  useEffect(() => {
+    62→    fetch('/api/admin/ai-status')
+    63→      .then(r => r.json())
+    64→      .then(data => {
+    65→        if (data.success && data.data !== undefined) {
+    66→          setAiEnabled(data.data.enabled);
+    67→        }
+    68→      })
+    69→      .catch(() => {});
+    70→  }, []);
+    71→
+    72→  // Fetch country count for footer
+    73→  useEffect(() => {
+    74→    fetch('/api/countries/stats').then(r => r.json()).then(data => {
+    75→      if (data.data?.totalCountries) setFooterCountryCount(data.data.totalCountries);
+    76→    }).catch(() => {});
+    77→  }, []);
+    78→
+    79→  const handleDownloadBackup = useCallback(() => {
+    80→    setDownloading(true);
+    81→    toast.info('Generating backup… please wait');
+    82→    fetch('/api/download-backup')
+    83→      .then(res => {
+    84→        if (!res.ok) throw new Error('Backup failed');
+    85→        return res.blob();
+    86→      })
+    87→      .then(blob => {
+    88→        const url = URL.createObjectURL(blob);
+    89→        const a = document.createElement('a');
+    90→        a.href = url;
+    91→        a.download = `pakvisa-advisor-backup-${new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)}.tar.gz`;
+    92→        document.body.appendChild(a);
+    93→        a.click();
+    94→        document.body.removeChild(a);
+    95→        URL.revokeObjectURL(url);
+    96→        const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+    97→        toast.success(`Backup downloaded! (${sizeMB} MB)`);
+    98→      })
+    99→      .catch(() => {
+   100→        toast.error('Failed to generate backup. Please try again.');
+   101→      })
+   102→      .finally(() => setDownloading(false));
+   103→  }, []);
+   104→  const mounted = useSyncExternalStore(
+   105→    () => () => {},
+   106→    () => true,
+   107→    () => false,
+   108→  );
+   109→
+   110→  // Pill indicator state
+   111→  const navRef = useRef<HTMLElement>(null);
+   112→  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+   113→  const [pillStyle, setPillStyle] = useState({ left: 0, width: 0 });
+   114→
+   115→  useEffect(() => {
+   116→    const updatePill = () => {
+   117→      const el = tabRefs.current[activeTab];
+   118→      const nav = navRef.current;
+   119→      if (el && nav) {
+   120→        const navRect = nav.getBoundingClientRect();
+   121→        const elRect = el.getBoundingClientRect();
+   122→        setPillStyle({
+   123→          left: elRect.left - navRect.left,
+   124→          width: elRect.width,
+   125→        });
+   126→      }
+   127→    };
+   128→    updatePill();
+   129→    window.addEventListener('resize', updatePill);
+   130→    return () => window.removeEventListener('resize', updatePill);
+   131→  }, [activeTab]);
+   132→
+   133→  // Keyboard shortcuts handler
+   134→  useEffect(() => {
+   135→    const handleKeyDown = (e: KeyboardEvent) => {
+   136→      if (e.ctrlKey || e.metaKey) {
+   137→        switch (e.key) {
+   138→          case '1': e.preventDefault(); setActiveTab('explore'); break;
+   139→          case '2': e.preventDefault(); setActiveTab('questionnaire'); break;
+   140→          case '3': e.preventDefault(); setActiveTab('compare'); break;
+   141→          case '4': e.preventDefault(); setActiveTab('chat'); break;
+   142→          case '5': e.preventDefault(); setActiveTab('reports'); break;
+   143→          case '6': e.preventDefault(); setActiveTab('tools'); break;
+   144→          case 'k': case 'K':
+   145→            e.preventDefault();
+   146→            const searchEl = document.querySelector('.search-input-expand input') as HTMLInputElement;
+   147→            searchEl?.focus();
+   148→            break;
+   149→          case 'b': case 'B':
+   150→            e.preventDefault();
+   151→            setViewMode(useAppStore.getState().viewMode === 'grid' ? 'list' : 'grid');
+   152→            break;
+   153→          case 'f': case 'F':
+   154→            e.preventDefault();
+   155→            toast.info('Toggle favorites in the Explore tab filter pills');
+   156→            break;
+   157→          case 'd': case 'D':
+   158→            e.preventDefault();
+   159→            if (activeTab === 'questionnaire') {
+   160→              toast.info('Quick scoring all countries — fill out your profile first, then use this shortcut!');
+   161→            } else {
+   162→              toast.info('Switch to Questionnaire tab first, then press Ctrl+D to score all countries.');
+   163→            }
+   164→            break;
+   165→          case '/':
+   166→            e.preventDefault(); setShowShortcuts(s => !s);
+   167→            break;
+   168→        }
+   169→      }
+   170→      if (e.key === 'Escape') {
+   171→        setSelectedCountry(null);
+   172→        setMobileMenuOpen(false);
+   173→        setShowShortcuts(false);
+   174→      }
+   175→    };
+   176→    window.addEventListener('keydown', handleKeyDown);
+   177→    return () => window.removeEventListener('keydown', handleKeyDown);
+   178→  }, [setActiveTab, setSelectedCountry, setViewMode, activeTab]);
+   179→
+   180→  return (
+   181→    <TooltipProvider>
+   182→      <div className="min-h-screen flex flex-col bg-background scroll-smooth">
+   183→        {/* Subtle background pattern */}
+   184→        <div className="fixed inset-0 -z-10 pointer-events-none grain-overlay" />
+   185→        <div className="fixed inset-0 -z-10 pointer-events-none opacity-[0.02] dark:opacity-[0.03]" style={{
+   186→          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+   187→          backgroundSize: '24px 24px',
+   188→        }} />
+   189→
+   190→        {/* Header */}
+   191→        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden">
+   192→          <div className="container mx-auto px-4 py-3">
+   193→            <div className="flex items-center justify-between">
+   194→              <div className="flex items-center gap-3">
+   195→                <div className="w-9 h-9 rounded-lg bg-amber-600 flex items-center justify-center shadow-sm logo-glow">
+   196→                  <Globe className="w-5 h-5 text-white" />
+   197→                </div>
+   198→                <div>
+   199→                  <h1 className="text-lg font-bold tracking-tight gradient-text-mango">PakVisa Advisor</h1>
+   200→                  <p className="text-[10px] text-muted-foreground hidden sm:block">Pakistani Passport Visa Intelligence</p>
+   201→                </div>
+   202→              </div>
+   203→
+   204→              {/* Desktop Nav with Pill Indicator */}
+   205→              <nav className="hidden md:flex items-center gap-2 pill-nav rounded-lg p-1 bg-muted/40 transition-all duration-100" ref={navRef}>
+   206→                <span
+   207→                  className="pill-indicator"
+   208→                  style={{
+   209→                    left: pillStyle.left,
+   210→                    width: pillStyle.width,
+   211→                    transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+   212→                  }}
+   213→                />
+   214→                {[
+   215→                  { id: 'explore', label: 'Explore', icon: Globe },
+   216→                  { id: 'questionnaire', label: 'Questionnaire', icon: FileText },
+   217→                  { id: 'compare', label: 'Compare', icon: BarChart3 },
+   218→                  { id: 'chat', label: 'AI Consultant', icon: MessageSquare },
+   219→                  { id: 'tools', label: 'Tools', icon: Compass },
+   220→                  { id: 'reports', label: 'Reports', icon: FileCheck },
+   221→                ].map(tab => (
+   222→                  <Button
+   223→                    key={tab.id}
+   224→                    variant="ghost"
+   225→                    size="sm"
+   226→                    className={`rounded-lg ${activeTab === tab.id ? 'tab-gradient-text font-semibold' : 'text-muted-foreground hover:text-foreground hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
+   227→                    onClick={() => setActiveTab(tab.id)}
+   228→                    ref={(el) => { tabRefs.current[tab.id] = el; }}
+   229→                  >
+   230→                    <tab.icon className="w-4 h-4 mr-1.5" />
+   231→                    {tab.label}
+   232→                  </Button>
+   233→                ))}
+   234→              </nav>
+   235→
+   236→              <div className="flex items-center gap-2">
+   237→                {/* Notification Bell */}
+   238→                <NotificationBell />
+   239→                {/* Passport Expiry Warning */}
+   240→                <PassportExpiryWarning />
+   241→                {/* Keyboard Shortcuts Help */}
+   242→                <TooltipProvider>
+   243→                  <Tooltip>
+   244→                    <TooltipTrigger asChild>
+   245→                      <Button variant="ghost" size="icon" onClick={() => setShowShortcuts(!showShortcuts)} aria-label="Keyboard shortcuts">
+   246→                        <Keyboard className="w-4 h-4" />
+   247→                      </Button>
+   248→                    </TooltipTrigger>
+   249→                    <TooltipContent>
+   250→                      <KeyboardShortcutsTooltip />
+   251→                    </TooltipContent>
+   252→                  </Tooltip>
+   253→                </TooltipProvider>
+   254→                {/* Help Center button */}
+   255→                <TooltipProvider>
+   256→                  <Tooltip>
+   257→                    <TooltipTrigger asChild>
+   258→                      <Button variant="ghost" size="icon" onClick={() => setShowHelpCenter(true)} aria-label="Help Center" className="bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30">
+   259→                        <HelpCircle className="w-4 h-4 text-amber-600" />
+   260→                      </Button>
+   261→                    </TooltipTrigger>
+   262→                    <TooltipContent>Help Center — Guides, Terms & Use Cases</TooltipContent>
+   263→                  </Tooltip>
+   264→                </TooltipProvider>
+   265→                {/* Admin Dashboard button */}
+   266→                <TooltipProvider>
+   267→                  <Tooltip>
+   268→                    <TooltipTrigger asChild>
+   269→                      <Button variant="ghost" size="icon" onClick={() => setShowAdmin(true)} aria-label="Admin Dashboard" className="hover:bg-amber-50 dark:hover:bg-amber-900/20">
+   270→                        <Settings className="w-4 h-4 text-muted-foreground" />
+   271→                      </Button>
+   272→                    </TooltipTrigger>
+   273→                    <TooltipContent>Admin Dashboard</TooltipContent>
+   274→                  </Tooltip>
+   275→                </TooltipProvider>
+   276→                <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+   277→                  {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <div className="w-4 h-4" />}
+   278→                </Button>
+   279→                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+   280→                  {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+   281→                </Button>
+   282→              </div>
+   283→            </div>
+   284→
+   285→            {/* Mobile Nav */}
+   286→            {mobileMenuOpen && (
+   287→              <motion.nav
+   288→                className="md:hidden pt-3 border-t mt-3"
+   289→                initial={{ opacity: 0, height: 0 }}
+   290→                animate={{ opacity: 1, height: 'auto' }}
+   291→                exit={{ opacity: 0, height: 0 }}
+   292→              >
+   293→                <div className="grid grid-cols-2 gap-1">
+   294→                  {[
+   295→                    { id: 'explore', label: 'Explore', icon: Globe },
+   296→                    { id: 'questionnaire', label: 'Questionnaire', icon: FileText },
+   297→                    { id: 'compare', label: 'Compare', icon: BarChart3 },
+   298→                    { id: 'chat', label: 'AI Chat', icon: MessageSquare },
+   299→                    { id: 'tools', label: 'Tools', icon: Compass },
+   300→                    { id: 'reports', label: 'Reports', icon: FileCheck },
+   301→                  ].map(tab => (
+   302→                    <Button
+   303→                      key={tab.id}
+   304→                      variant={activeTab === tab.id ? 'default' : 'outline'}
+   305→                      className={activeTab === tab.id ? 'bg-amber-600 hover:bg-amber-700 font-semibold' : ''}
+   306→                      onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false); }}
+   307→                    >
+   308→                      <tab.icon className="w-4 h-4 mr-1.5" />
+   309→                      {tab.label}
+   310→                    </Button>
+   311→                  ))}
+   312→                </div>
+   313→              </motion.nav>
+   314→            )}
+   315→          </div>
+   316→        </header>
+   317→
+   318→        {/* Main Content */}
+   319→        <main className="flex-1 container mx-auto px-4 py-8">
+   320→          <div className="page-load-animation">
+   321→          <AnimatePresence mode="wait">
+   322→            <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>
+   323→              {activeTab === 'explore' && <ExploreTab />}
+   324→              {activeTab === 'questionnaire' && <QuestionnaireTab />}
+   325→              {activeTab === 'compare' && <CompareTab />}
+   326→              {activeTab === 'chat' && aiEnabled && <AIChatTab />}
+   327→              {activeTab === 'chat' && !aiEnabled && (
+   328→                <div className="flex flex-col items-center justify-center py-20">
+   329→                  <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+   330→                    <Zap className="w-8 h-8 text-muted-foreground" />
+   331→                  </div>
+   332→                  <h3 className="text-lg font-semibold mb-2">AI Features Unavailable</h3>
+   333→                  <p className="text-sm text-muted-foreground text-center max-w-md">
+   334→                    AI features are currently disabled by the administrator. Please check back later or contact support for more information.
+   335→                  </p>
+   336→                </div>
+   337→              )}
+   338→              {activeTab === 'reports' && <ReportsTab />}
+   339→              {activeTab === 'tools' && <ToolsTab />}
+   340→            </motion.div>
+   341→          </AnimatePresence>
+   342→          </div>
+   343→        </main>
+   344→
+   345→        {/* Footer - Enhanced with Gradient Background & Animated Separator */}
+   346→        <footer className="border-t border-border/50 footer-gradient-bg print:hidden mt-auto sm:block">
+   347→          <div className="footer-separator-dots mx-4 mt-6 mb-2" />
+   348→          <div className="container mx-auto px-4 py-8">
+   349→            {/* Bento Grid Footer - 5 columns */}
+   350→            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
+   351→              {/* Brand - Large */}
+   352→              <div className="sm:col-span-2 lg:col-span-1">
+   353→                <div className="flex items-center gap-2 mb-3">
+   354→                  <div className="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center shadow-sm">
+   355→                    <Globe className="w-5 h-5 text-white" />
+   356→                  </div>
+   357→                  <span className="font-bold text-lg footer-gradient-text">PakVisa Advisor</span>
+   358→                </div>
+   359→                <p className="text-sm text-muted-foreground leading-relaxed">
+   360→                  AI-powered visa intelligence for Pakistani passport holders. Explore requirements, compare destinations, and plan your travels with confidence.
+   361→                </p>
+   362→              </div>
+   363→
+   364→              {/* Quick Links */}
+   365→              <div>
+   366→                <h4 className="font-semibold text-sm mb-3">Quick Links</h4>
+   367→                <div className="space-y-2">
+   368→                  {[{ label: 'Explore Countries', tab: 'explore' }, { label: 'Visa Assessment', tab: 'questionnaire' }, { label: 'Compare Destinations', tab: 'compare' }, { label: 'AI Consultant', tab: 'chat' }, { label: 'Your Reports', tab: 'reports' }, { label: 'Help Center', tab: 'help' }].map(link => (
+   369→                    <button key={link.tab} className="block text-sm text-muted-foreground hover:text-amber-600 transition-colors min-h-[44px] flex items-center" onClick={() => link.tab === 'help' ? setShowHelpCenter(true) : setActiveTab(link.tab)}>
+   370→                      {link.label}
+   371→                    </button>
+   372→                  ))}
+   373→                </div>
+   374→              </div>
+   375→
+   376→              {/* Trust & Stats with mini stat cards */}
+   377→              <div>
+   378→                <h4 className="font-semibold text-sm mb-3">Trust & Security</h4>
+   379→                <div className="space-y-3">
+   380→                  {/* Mini stat cards */}
+   381→                  <div className="grid grid-cols-3 gap-2">
+   382→                    <div className="text-center p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50">
+   383→                      <div className="text-sm font-bold text-amber-700 dark:text-amber-400">10K+</div>
+   384→                      <div className="text-[9px] text-muted-foreground">Travelers</div>
+   385→                    </div>
+   386→                    <div className="text-center p-2 rounded-lg bg-amber-50 dark:bg-orange-900/20 border border-orange-200/50 dark:border-orange-800/50">
+   387→                      <div className="text-sm font-bold text-orange-700 dark:text-orange-400">{footerCountryCount || '...'}</div>
+   388→                      <div className="text-[9px] text-muted-foreground">Countries</div>
+   389→                    </div>
+   390→                    <div className="text-center p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50">
+   391→                      <div className="text-sm font-bold text-amber-700 dark:text-amber-400">98%</div>
+   392→                      <div className="text-[9px] text-muted-foreground">Accuracy</div>
+   393→                    </div>
+   394→                  </div>
+   395→                  {/* Animated trust badges */}
+   396→                  <div className="flex gap-3 pt-1">
+   397→                    <div className="trust-badge-float" style={{ animationDelay: '0s' }}>
+   398→                      <div className="w-9 h-9 rounded-lg bg-muted/80 dark:bg-muted/30 flex items-center justify-center" title="AES-256 Encrypted">
+   399→                        <Lock className="w-4 h-4 text-amber-500" />
+   400→                      </div>
+   401→                    </div>
+   402→                    <div className="trust-badge-float" style={{ animationDelay: '0.5s' }}>
+   403→                      <div className="w-9 h-9 rounded-lg bg-muted/80 dark:bg-muted/30 flex items-center justify-center" title="Data Security">
+   404→                        <Shield className="w-4 h-4 text-amber-500" />
+   405→                      </div>
+   406→                    </div>
+   407→                    <div className="trust-badge-float" style={{ animationDelay: '1s' }}>
+   408→                      <div className="w-9 h-9 rounded-lg bg-muted/80 dark:bg-muted/30 flex items-center justify-center" title="Global Coverage">
+   409→                        <Globe className="w-4 h-4 text-amber-500" />
+   410→                      </div>
+   411→                    </div>
+   412→                  </div>
+   413→                </div>
+   414→              </div>
+   415→
+   416→              {/* Legal & Policies */}
+   417→              <div>
+   418→                <h4 className="font-semibold text-sm mb-3">Legal</h4>
+   419→                <div className="space-y-2">
+   420→                  <button className="block text-sm text-muted-foreground hover:text-amber-600 transition-colors min-h-[44px] flex items-center" onClick={() => setLegalDialog('about')}>
+   421→                    <Info className="w-3.5 h-3.5 mr-1.5" />About
+   422→                  </button>
+   423→                  <button className="block text-sm text-muted-foreground hover:text-amber-600 transition-colors min-h-[44px] flex items-center" onClick={() => setLegalDialog('disclaimer')}>
+   424→                    <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />Disclaimer
+   425→                  </button>
+   426→                  <button className="block text-sm text-muted-foreground hover:text-amber-600 transition-colors min-h-[44px] flex items-center" onClick={() => setLegalDialog('terms')}>
+   427→                    <Gavel className="w-3.5 h-3.5 mr-1.5" />Terms & Conditions
+   428→                  </button>
+   429→                  <button className="block text-sm text-muted-foreground hover:text-amber-600 transition-colors min-h-[44px] flex items-center" onClick={() => setLegalDialog('privacy')}>
+   430→                    <Lock className="w-3.5 h-3.5 mr-1.5" />Privacy Policy
+   431→                  </button>
+   432→                </div>
+   433→              </div>
+   434→
+   435→              {/* Newsletter / Updates + Download */}
+   436→              <div className="col-span-2 sm:col-span-3 lg:col-span-1">
+   437→                <h4 className="font-semibold text-sm mb-3">Stay Updated</h4>
+   438→                <p className="text-xs text-muted-foreground mb-3">Get visa policy updates and travel tips delivered to your inbox.</p>
+   439→                <div className="flex gap-2">
+   440→                  <NewsletterInput />
+   441→                </div>
+   442→                <p className="text-[10px] text-muted-foreground mt-1.5">No spam. Unsubscribe anytime.</p>
+   443→
+   444→                {/* Download Backup */}
+   445→                <div className="mt-5 pt-4 border-t border-border/40">
+   446→                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-1.5">
+   447→                    <Download className="w-3.5 h-3.5" />
+   448→                    Export Project
+   449→                  </h4>
+   450→                  <p className="text-xs text-muted-foreground mb-3">Download the complete source code of this application.</p>
+   451→                  <Button
+   452→                    variant="outline"
+   453→                    size="sm"
+   454→                    className="w-full gap-2 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-800 dark:hover:text-amber-300"
+   455→                    onClick={handleDownloadBackup}
+   456→                    disabled={downloading}
+   457→                  >
+   458→                    {downloading ? (
+   459→                      <>
+   460→                        <span className="inline-block w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+   461→                        Generating…
+   462→                      </>
+   463→                    ) : (
+   464→                      <>
+   465→                        <Download className="w-4 h-4" />
+   466→                        Download Complete Webapp
+   467→                      </>
+   468→                    )}
+   469→                  </Button>
+   470→                  <p className="text-[10px] text-muted-foreground mt-1.5">
+   471→                    ≈ 30 MB · Includes source code, database & configs
+   472→                  </p>
+   473→                </div>
+   474→              </div>
+   475→            </div>
+   476→
+   477→            <div className="footer-glow-accent h-px bg-amber-500/30 rounded-full mb-4" />
+   478→
+   479→            {/* Ad Placement Zone - Premium Sponsor */}
+   480→            <div className="border border-dashed border-orange-200 dark:border-orange-800 rounded-lg p-4 text-center mb-4">
+   481→              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Sponsored</p>
+   482→              <div className="h-[90px] flex items-center justify-center text-xs text-muted-foreground">
+   483→                Ad Space Available
+   484→              </div>
+   485→            </div>
+   486→
+   487→            {/* Social Proof Bar */}
+   488→            <div className="text-center mb-4">
+   489→              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 social-proof-badge">
+   490→                <Users className="w-4 h-4 text-amber-600" />
+   491→                <span className="text-sm font-medium text-amber-700 dark:text-amber-400">Join 10,000+ Pakistani travelers making informed visa decisions</span>
+   492→                <Sparkles className="w-3 h-3 text-amber-500" />
+   493→              </div>
+   494→            </div>
+   495→
+   496→            {/* Legal Links Bar */}
+   497→            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mb-3">
+   498→              {[
+   499→                { label: 'About', key: 'about' as const },
+   500→                { label: 'Disclaimer', key: 'disclaimer' as const },
+   501→                { label: 'Terms & Conditions', key: 'terms' as const },
+   502→                { label: 'Privacy Policy', key: 'privacy' as const },
+   503→              ].map((item, i) => (
+   504→                <Fragment key={item.key}>
+   505→                  {i > 0 && <span className="text-[11px] text-muted-foreground/40">·</span>}
+   506→                  <button className="text-[11px] text-muted-foreground hover:text-amber-600 transition-colors" onClick={() => setLegalDialog(item.key)}>
+   507→                    {item.label}
+   508→                  </button>
+   509→                </Fragment>
+   510→              ))}
+   511→            </div>
+   512→
+   513→            <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+   514→              <p className="text-[11px] text-muted-foreground">
+   515→                Disclaimer: Visa rules change frequently. Always verify with official embassy/consulate sources before application.
+   516→              </p>
+   517→              <p className="text-[11px] text-muted-foreground">
+   518→                Data sourced from official government websites · Last updated: {mounted ? new Date().toLocaleDateString() : ''}
+   519→              </p>
+   520→            </div>
+   521→          </div>
+   522→        </footer>
+   523→
+   524→        {/* Back to Top Button */}
+   525→        <BackToTopButton />
+   526→
+   527→        {/* Floating Chat Widget - only shown when AI is enabled */}
+   528→        {aiEnabled && <FloatingChatWidget />}
+   529→
+   530→        {/* Keyboard Shortcuts Dialog */}
+   531→        <KeyboardShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+   532→
+   533→        {/* Help Center Dialog */}
+   534→        <HelpCenterDialog open={showHelpCenter} onClose={() => setShowHelpCenter(false)} />
+   535→
+   536→        {/* Admin Dashboard Dialog */}
+   537→        <AdminDialog open={showAdmin} onClose={() => setShowAdmin(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />
+   538→
+   539→        {/* Legal / Information Dialogs */}
+   540→        <AboutDialog open={legalDialog === 'about'} onClose={() => setLegalDialog(null)} />
+   541→        <DisclaimerDialog open={legalDialog === 'disclaimer'} onClose={() => setLegalDialog(null)} />
+   542→        <TermsDialog open={legalDialog === 'terms'} onClose={() => setLegalDialog(null)} />
+   543→        <PrivacyDialog open={legalDialog === 'privacy'} onClose={() => setLegalDialog(null)} />
+   544→
+   545→        {/* C1: Mobile Bottom Navigation */}
+   546→        <nav className="mobile-bottom-nav sm:hidden">
+   547→          <div className="flex items-center justify-around relative">
+   548→            <div
+   549→              className="mobile-nav-indicator"
+   550→              style={{
+   551→                left: `${(TAB_IDS.indexOf(activeTab) / TAB_IDS.length) * 100}%`,
+   552→                width: `${100 / TAB_IDS.length}%`,
+   553→              }}
+   554→            />
+   555→            {TABS.map(tab => (
+   556→              <button
+   557→                key={tab.id}
+   558→                className={`mobile-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+   559→                onClick={() => setActiveTab(tab.id)}
+   560→              >
+   561→                <tab.icon className="w-5 h-5" />
+   562→                <span>{tab.label}</span>
+   563→              </button>
+   564→            ))}
+   565→          </div>
+   566→        </nav>
+   567→      </div>
+   568→    </TooltipProvider>
+   569→  );
+   570→}
+   571→

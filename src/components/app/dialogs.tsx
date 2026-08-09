@@ -1114,3 +1114,104 @@ export function PremiumBadge() {
     </Badge>
   );
 }
+
+// ============ QUICK ACTIONS TOOLBAR (Task 11) ============
+export function QuickActionsToolbar() {
+  const [expanded, setExpanded] = useState(false);
+  const { setActiveTab } = useAppStore();
+
+  const actions = [
+    {
+      label: 'Quick Check',
+      icon: Search,
+      onClick: () => {
+        document.getElementById('visa-guide')?.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+          const input = document.querySelector('.search-input-expand input') as HTMLInputElement;
+          if (input) input.focus();
+        }, 300);
+      },
+    },
+    {
+      label: 'AI Chat',
+      icon: MessageSquare,
+      onClick: () => setActiveTab('chat'),
+    },
+    {
+      label: 'Compare',
+      icon: BarChart3,
+      onClick: () => setActiveTab('compare'),
+    },
+  ];
+
+  return (
+    <div className="fixed bottom-20 sm:bottom-6 right-4 z-30 flex flex-col items-end gap-2">
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col gap-2 p-2 rounded-xl bg-background/80 dark:bg-popover/80 backdrop-blur-xl border shadow-lg"
+          >
+            {actions.map((action) => (
+              <TooltipProvider key={action.label}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        action.onClick();
+                        setExpanded(false);
+                      }}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-sm min-w-[140px] group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center group-hover:bg-amber-200 dark:group-hover:bg-amber-900/50 transition-colors">
+                        <action.icon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="font-medium text-foreground text-xs">{action.label}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    <p className="text-xs">{action.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setExpanded(!expanded)}
+        className="w-12 h-12 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30 flex items-center justify-center transition-colors"
+        aria-label="Quick actions"
+      >
+        <AnimatePresence mode="wait">
+          {expanded ? (
+            <motion.div
+              key="close"
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <X className="w-5 h-5" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="open"
+              initial={{ rotate: 90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: -90, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <Zap className="w-5 h-5" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.button>
+    </div>
+  );
+}

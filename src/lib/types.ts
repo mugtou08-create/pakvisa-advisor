@@ -28,6 +28,7 @@ export interface CountryData {
   visaTypes: VisaTypeData[];
   costProfile: CostProfileData | null;
   requirements: VisaRequirementData[];
+  createdAt?: string;
 }
 
 export interface VisaTypeData {

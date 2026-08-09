@@ -10,7 +10,7 @@ import {
   Eye, ClipboardList, Send, ChevronDown, ChevronUp, Compass, Gavel, CheckCircle2, X, XCircle,
   AlertTriangle, Info, Lock, FileWarning, PackageOpen, PlaneTakeoff, UtensilsCrossed, Bookmark, SearchX, Timer, Wallet, Languages, BadgePercent,
   Share2, Thermometer, CreditCard, CircleDollarSign, Save, History, RotateCcw, CalendarClock, Phone, Mail,
-  ShoppingBag, Banknote, Hotel, Sun,
+  ShoppingBag, Banknote, Hotel, Sun, SearchCheck, Briefcase, PlaneLanding, Loader, CircleCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,13 +32,50 @@ import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem, VisaDocChecklistItem } from '@/lib/types';
-import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion } from './constants';
-import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist } from './shared-components-1';
+import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion, TIMELINE_STAGES } from './constants';
+import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist, getScoreGradient } from './shared-components-1';
 import { PremiumBadge } from './dialogs';
 
 export function CountryDetailDialog({ country, open, onClose }: { country: CountryData | null; open: boolean; onClose: () => void }) {
   const { addScoreResult, setSelectedCountry, setActiveTab } = useAppStore();
   const [printMode, setPrintMode] = useState(false);
+  // Checklist items for DocumentReadinessScore
+  const [readinessItems, setReadinessItems] = useState<VisaDocChecklistItem[]>([]);
+  const [readinessLoaded, setReadinessLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!country) return;
+    const storageKey = `pakvisa-checklist-${country.code}`;
+    const load = () => {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          setReadinessItems(JSON.parse(saved));
+        } else {
+          const defaults = generateDefaultChecklist(country);
+          setReadinessItems(defaults);
+          localStorage.setItem(storageKey, JSON.stringify(defaults));
+        }
+      } catch {
+        setReadinessItems(generateDefaultChecklist(country));
+      }
+      setReadinessLoaded(true);
+    };
+    requestAnimationFrame(load);
+  }, [country]);
+
+  // Sync readiness items when storage changes
+  useEffect(() => {
+    if (!country) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `pakvisa-checklist-${country.code}` && e.newValue) {
+        try { setReadinessItems(JSON.parse(e.newValue)); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [country]);
+
   if (!country) return null;
   let monthlyTemps: number[] = [];
   try {
@@ -64,9 +101,9 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0" id="country-detail-print-area">
-        {/* Colored gradient header strip */}
-        <div className={`${headerGradient} h-2 rounded-t-lg`} />
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 dialog-slide-up dialog-backdrop-blur" id="country-detail-print-area">
+        {/* Colored gradient header strip - thicker */}
+        <div className={`${headerGradient} h-3 rounded-t-lg`} />
         <div className="px-6 pt-4">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -99,30 +136,33 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
         </DialogHeader>
         </div>
 
-        <div className="space-y-6 px-6 pb-6">
+        <div className="space-y-6 px-6 pb-6 scroll-smooth">
           {/* Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-3 rounded-lg bg-muted/50">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
               <Shield className="w-5 h-5 mx-auto mb-1 text-amber-500" />
               <div className="text-xs text-muted-foreground">Safety</div>
               <div className="font-semibold">{country.safetyRating}/10</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
+            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
               <Thermometer className="w-5 h-5 mx-auto mb-1 text-orange-500" />
               <div className="text-xs text-muted-foreground">Avg Temp</div>
               <div className="font-semibold">{country.avgTempC}°C</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
+            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
               <Calendar className="w-5 h-5 mx-auto mb-1 text-amber-500" />
               <div className="text-xs text-muted-foreground">Processing</div>
               <div className="font-semibold">{country.processingDaysMin}-{country.processingDaysMax} days</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
+            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
               <CreditCard className="w-5 h-5 mx-auto mb-1 text-amber-500" />
               <div className="text-xs text-muted-foreground">Visa Fee</div>
               <div className="font-semibold">${country.costProfile?.visaFeeUSD || 0}</div>
             </div>
           </div>
+
+          {/* Visa Processing Tracker */}
+          <VisaProcessingTracker country={country} />
 
           {/* Safety Summary with accent dot */}
           <div className="p-3 rounded-lg border bg-muted/30">
@@ -314,6 +354,12 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
             <VisaTimelineEstimator country={country} />
           </div>
 
+          {/* Visa Processing Tracker */}
+          <Separator />
+          <div className="overflow-hidden">
+            <VisaProcessingTracker country={country} />
+          </div>
+
           {/* Application Tips Panel */}
           <div className="overflow-hidden">
             <ApplicationTipsPanel country={country} />
@@ -323,6 +369,11 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
           <Separator />
           <div className="overflow-hidden">
             <VisaDocumentChecklist country={country} />
+          </div>
+
+          {/* Document Readiness Score */}
+          <div className="overflow-hidden">
+            {readinessLoaded && <DocumentReadinessScore checklist={readinessItems} countryName={country.name} />}
           </div>
 
           {/* Currency Converter - Links to Tools tab instead of duplicating */}
@@ -923,8 +974,11 @@ export function VisaDocumentChecklist({ country }: { country: CountryData }) {
       Health: { name: 'Health Documents', items: [] },
       Supporting: { name: 'Supporting Documents', items: [] },
     };
-    // Add DB requirements with normalized category names
+    // Add DB requirements with normalized category names (deduplicate by name)
+    const seenReqNames = new Set<string>();
     country.requirements.forEach(req => {
+      if (seenReqNames.has(req.requirement.trim().toLowerCase())) return;
+      seenReqNames.add(req.requirement.trim().toLowerCase());
       const cat = categoryMap[(req.category || '').toLowerCase()] || 'Supporting';
       if (!cats[cat]) cats[cat] = { name: cat, items: [] };
       cats[cat].items.push({ name: req.requirement, mandatory: req.mandatory, time: req.mandatory ? '1-3 days' : '3-7 days' });
@@ -2135,3 +2189,431 @@ export function TravelTipsPanel({ country }: { country: CountryData }) {
   );
 }
 
+// ============ DESTINATION SPOTLIGHT CAROUSEL (Task 11) ============
+interface SpotlightDestination {
+  name: string;
+  code: string;
+  flagEmoji: string;
+  visaType: string;
+  bestMonth: string;
+  avgCost: number;
+  rating: number;
+}
+
+const FEATURED_DESTINATIONS: SpotlightDestination[] = [
+  { name: 'Malaysia', code: 'MY', flagEmoji: '\u{1F1F2}\u{1F1FE}', visaType: 'Visa Free', bestMonth: 'Mar-May', avgCost: 850, rating: 9.2 },
+  { name: 'UAE', code: 'AE', flagEmoji: '\u{1F1E6}\u{1F1EA}', visaType: 'Visa on Arrival', bestMonth: 'Nov-Mar', avgCost: 1200, rating: 8.8 },
+  { name: 'Turkey', code: 'TR', flagEmoji: '\u{1F1F9}\u{1F1F7}', visaType: 'e-Visa', bestMonth: 'Apr-Jun', avgCost: 750, rating: 9.0 },
+  { name: 'Saudi Arabia', code: 'SA', flagEmoji: '\u{1F1F8}\u{1F1E6}', visaType: 'Visa on Arrival', bestMonth: 'Oct-Apr', avgCost: 1100, rating: 8.5 },
+  { name: 'Qatar', code: 'QA', flagEmoji: '\u{1F1F6}\u{1F1E6}', visaType: 'Visa on Arrival', bestMonth: 'Nov-Mar', avgCost: 1400, rating: 8.7 },
+];
+
+export function DestinationSpotlight({ onSelectCountry }: { onSelectCountry: (c: CountryData) => void }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+
+  // Auto-advance every 6 seconds
+  useEffect(() => {
+    if (hovered) return;
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % FEATURED_DESTINATIONS.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [hovered]);
+
+  // Scroll to current card
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const card = container.children[currentIndex] as HTMLElement;
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [currentIndex]);
+
+  const getVisaBadgeClass = (type: string) => {
+    if (type === 'Visa Free') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+    if (type === 'Visa on Arrival') return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400';
+    return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400';
+  };
+
+  const handleClick = (dest: SpotlightDestination) => {
+    // Fetch country data and open detail dialog
+    fetch(`/api/countries/${dest.code}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.data) onSelectCountry(data.data);
+      })
+      .catch(() => {});
+  };
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-amber-500" /> Featured Destinations
+          </h2>
+          <p className="text-xs text-muted-foreground">Top picks for Pakistani travelers</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev - 1 + FEATURED_DESTINATIONS.length) % FEATURED_DESTINATIONS.length); }}
+          >
+            <ChevronDown className="w-4 h-4 -rotate-90" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev + 1) % FEATURED_DESTINATIONS.length); }}
+          >
+            <ChevronDown className="w-4 h-4 rotate-90" />
+          </Button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto scroll-smooth filter-scroll pb-2 snap-x snap-mandatory"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {FEATURED_DESTINATIONS.map((dest, idx) => (
+          <motion.button
+            key={dest.code}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: idx * 0.08 }}
+            onClick={() => handleClick(dest)}
+            className={`shrink-0 w-52 p-4 rounded-xl border bg-card text-left snap-start transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-300 dark:hover:border-amber-700 group ${idx === currentIndex ? 'ring-2 ring-amber-400 dark:ring-amber-600 shadow-md' : ''}`}
+          >
+            <div className="relative overflow-hidden rounded-lg mb-3 h-24 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+              <span className="text-5xl group-hover:scale-110 transition-transform duration-500">{dest.flagEmoji}</span>
+            </div>
+
+            <h3 className="text-sm font-bold mb-1">{dest.name}</h3>
+
+            <Badge className={`${getVisaBadgeClass(dest.visaType)} text-[10px] mb-2`} variant="secondary">
+              {dest.visaType}
+            </Badge>
+
+            <div className="space-y-1 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <Sun className="w-3 h-3" />
+                <span>Best: {dest.bestMonth}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Wallet className="w-3 h-3" />
+                <span>~${dest.avgCost}/mo</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Star className="w-3 h-3 text-amber-500" />
+                <span className="font-medium text-foreground">{dest.rating}</span>/10
+              </div>
+            </div>
+          </motion.button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ============ VISA PROCESSING TRACKER (Task 12-B Feature 1) ============
+type TrackerStepStatus = 'completed' | 'in-progress' | 'upcoming' | 'locked';
+
+interface ProcessingStep {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  status: TrackerStepStatus;
+  estDays: number;
+  details: string;
+}
+export function VisaProcessingTracker({ country }: { country: CountryData }) {
+  const [activeStep, setActiveStep] = useState<number | null>(null);
+  const [activeStepData, setActiveStepData] = useState<ProcessingStep | null>(null);
+
+  const procMin = country.processingDaysMin || 5;
+  const procMax = country.processingDaysMax || 30;
+  const avgProc = Math.round((procMin + procMax) / 2);
+  const cp = country.costProfile;
+
+  const isEasy = country.visaFree || country.visaOnArrival;
+  const isEVisa = country.etaAvailable;
+
+  const steps: ProcessingStep[] = useMemo(() => {
+    if (isEasy) {
+      return [
+        { id: 'research', label: 'Research', icon: Search, status: 'completed', estDays: 1, details: 'Check visa-free/VOA rules, allowed stay duration, and entry requirements. Verify passport validity (6+ months).' },
+        { id: 'documents', label: 'Documents', icon: FileText, status: 'completed', estDays: 1, details: 'Prepare valid passport, return/onward ticket, hotel booking, travel insurance, bank statement, and passport photos.' },
+        { id: 'travel', label: 'Travel', icon: Plane, status: 'in-progress', estDays: 0, details: `Arrive at ${country.name} airport. Present passport, return ticket, and accommodation proof at immigration.` },
+        { id: 'processing', label: 'Processing', icon: Clock, status: 'upcoming', estDays: 0, details: 'No processing needed for visa-free/VOA.' },
+        { id: 'decision', label: 'Decision', icon: CircleCheck, status: 'upcoming', estDays: 0, details: 'Immigration officer decides at the counter. Usually 1-5 minutes.' },
+        { id: 'stay', label: 'Stay', icon: Home, status: 'upcoming', estDays: 0, details: `Enjoy your stay in ${country.name}!` },
+      ];
+    }
+    if (isEVisa) {
+      return [
+        { id: 'research', label: 'Research', icon: Search, status: 'completed', estDays: 2, details: 'Visit the official e-Visa portal. Read eligibility criteria and required documents.' },
+        { id: 'documents', label: 'Documents', icon: FileText, status: 'in-progress', estDays: 3, details: 'Scan passport, digital photo, return ticket, hotel booking, bank statement.' },
+        { id: 'application', label: 'Application', icon: Briefcase, status: 'upcoming', estDays: 1, details: 'Fill the online form, upload documents, pay e-Visa fee.' },
+        { id: 'processing', label: 'Processing', icon: Loader, status: 'upcoming', estDays: avgProc, details: `Processing: ${procMin}-${procMax} business days. Track online.` },
+        { id: 'decision', label: 'Decision', icon: CircleCheck, status: 'upcoming', estDays: 1, details: 'Receive approval via email. Print the approval letter.' },
+        { id: 'travel', label: 'Travel', icon: PlaneLanding, status: 'locked', estDays: 0, details: `Fly to ${country.name}. Present e-Visa and passport at immigration.` },
+      ];
+    }
+    return [
+      { id: 'research', label: 'Research', icon: Search, status: 'completed', estDays: 3, details: `Research ${country.name} embassy visa requirements and appointment availability.` },
+      { id: 'documents', label: 'Documents', icon: FileText, status: 'in-progress', estDays: 7, details: 'Collect passport, photos, bank statements, tax returns, employment letter, cover letter, itinerary.' },
+      { id: 'application', label: 'Application', icon: Briefcase, status: 'upcoming', estDays: 2, details: `Fill embassy form, schedule appointment, pay fee ${cp ? `$${cp.visaFeeUSD}` : ''}.` },
+      { id: 'processing', label: 'Processing', icon: Loader, status: 'upcoming', estDays: avgProc, details: `Review and verification: ${procMin}-${procMax} business days.` },
+      { id: 'decision', label: 'Decision', icon: CircleCheck, status: 'upcoming', estDays: 3, details: 'Collect passport with visa stamp from embassy.' },
+      { id: 'travel', label: 'Travel', icon: PlaneLanding, status: 'locked', estDays: 0, details: `Travel to ${country.name} with all documents.` },
+    ];
+  }, [country, isEasy, isEVisa, procMin, procMax, avgProc, cp]);
+
+  const handleStepClick = (idx: number) => {
+    setActiveStep(activeStep === idx ? null : idx);
+    setActiveStepData(activeStep === idx ? null : steps[idx]);
+  };
+
+  const getStatusStyle = (status: TrackerStepStatus, idx: number) => {
+    const isActive = activeStep === idx;
+    if (status === 'completed') return 'bg-amber-500 border-amber-500 text-white' + (isActive ? ' shadow-[0_0_12px_rgba(245,158,11,0.5)]' : '');
+    if (status === 'in-progress') return 'bg-amber-600 border-amber-500 text-white ring-2 ring-amber-400/50 shadow-[0_0_16px_rgba(245,158,11,0.4)]';
+    if (status === 'upcoming') return 'bg-background border-muted-foreground/30 text-muted-foreground hover:border-amber-400';
+    return 'bg-muted border-muted-foreground/15 text-muted-foreground/50';
+  };
+
+  const getConnectorClass = (fromStatus: TrackerStepStatus, toStatus: TrackerStepStatus) => {
+    if (fromStatus === 'completed' && (toStatus === 'completed' || toStatus === 'in-progress')) return 'bg-amber-500';
+    if (fromStatus === 'completed' && toStatus === 'upcoming') return 'bg-gradient-to-r from-amber-500 to-muted-foreground/20';
+    return 'bg-muted-foreground/15';
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Timer className="w-4 h-4 text-amber-500" />
+        <h3 className="text-sm font-semibold">Visa Processing Tracker</h3>
+        <Badge variant="secondary" className="text-[10px]">{isEasy ? 'No visa needed' : isEVisa ? 'e-Visa' : 'Embassy'}</Badge>
+      </div>
+
+      <div className="hidden md:block">
+        <div className="flex items-start gap-0">
+          {steps.map((step, idx) => (
+            <React.Fragment key={step.id}>
+              <div className="flex flex-col items-center flex-1 min-w-0">
+                <motion.button
+                  onClick={() => handleStepClick(idx)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all cursor-pointer ${getStatusStyle(step.status, idx)}`}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {step.status === 'completed' ? <CheckCircle2 className="w-5 h-5" /> : React.createElement(step.icon, { className: 'w-4 h-4' })}
+                </motion.button>
+                <span className="text-[10px] mt-1.5 font-medium text-center leading-tight truncate w-full">{step.label}</span>
+                {step.estDays > 0 && (
+                  <span className="text-[9px] text-muted-foreground">~{step.estDays}d</span>
+                )}
+              </div>
+              {idx < steps.length - 1 && (
+                <div className="flex items-center pt-4 px-0 w-8">
+                  <div className={`h-0.5 flex-1 rounded-full transition-colors ${getConnectorClass(step.status, steps[idx + 1].status)}`} />
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+        <AnimatePresence>
+          {activeStepData && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, y: -5 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -5 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 p-3 rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/10">
+                <div className="flex items-center gap-2 mb-1">
+                  {React.createElement(activeStepData.icon, { className: 'w-4 h-4 text-amber-600' })}
+                  <span className="text-xs font-semibold">Step {steps.indexOf(activeStepData) + 1}: {activeStepData.label}</span>
+                  {activeStepData.estDays > 0 && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-300 text-amber-700 dark:text-amber-400">~{activeStepData.estDays} days</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{activeStepData.details}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="md:hidden">
+        <div className="relative space-y-0 pl-6">
+          {steps.map((step, idx) => (
+            <React.Fragment key={step.id}>
+              <div className="relative flex items-start gap-3 pb-4">
+                {idx < steps.length - 1 && (
+                  <div className={`absolute left-[9px] top-[24px] w-0.5 h-[calc(100%-16px)] ${getConnectorClass(step.status, steps[idx + 1].status)}`} />
+                )}
+                <motion.button
+                  onClick={() => handleStepClick(idx)}
+                  className={`w-[20px] h-[20px] rounded-full flex items-center justify-center border-2 shrink-0 transition-all cursor-pointer z-10 ${getStatusStyle(step.status, idx)}`}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  {step.status === 'completed' ? <CheckCircle2 className="w-3 h-3" /> : React.createElement(step.icon, { className: 'w-3 h-3' })}
+                </motion.button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium">{step.label}</span>
+                    {step.estDays > 0 && <span className="text-[9px] text-muted-foreground">~{step.estDays}d</span>}
+                    <Badge variant="secondary" className={`text-[8px] px-1 py-0 ${
+                      step.status === 'completed' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' :
+                      step.status === 'in-progress' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {step.status === 'completed' ? 'Done' : step.status === 'in-progress' ? 'Current' : step.status === 'upcoming' ? 'Next' : 'Later'}
+                    </Badge>
+                  </div>
+                  <AnimatePresence>
+                    {activeStep === idx && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-[11px] text-muted-foreground leading-relaxed mt-1 overflow-hidden"
+                      >
+                        {step.details}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============ DOCUMENT READINESS SCORE (Task 12-B Feature 5) ============
+export function DocumentReadinessScore({ checklist: items, countryName }: { checklist: VisaDocChecklistItem[]; countryName: string }) {
+  const [prevPct, setPrevPct] = useState(-1);
+  const [pulse, setPulse] = useState(false);
+
+  // Calculate readiness based on REQUIRED items only
+  const requiredItems = items.filter(i => i.category === 'required');
+  const checkedRequired = requiredItems.filter(i => i.checked).length;
+  const totalRequired = requiredItems.length;
+  const pct = totalRequired > 0 ? Math.round((checkedRequired / totalRequired) * 100) : 0;
+
+  // Pulse animation when score changes
+  useEffect(() => {
+    if (prevPct >= 0 && pct !== prevPct) {
+      const raf = requestAnimationFrame(() => {
+        setPulse(true);
+        setPrevPct(pct);
+      });
+      const t = setTimeout(() => setPulse(false), 600);
+      return () => { cancelAnimationFrame(raf); clearTimeout(t); };
+    }
+    if (prevPct < 0) {
+      requestAnimationFrame(() => setPrevPct(pct));
+    }
+  }, [pct, prevPct]);
+
+  // Readiness label
+  const readinessLabel = useMemo(() => {
+    if (pct === 100) return 'Ready to Apply!';
+    if (pct >= 70) return 'Almost Ready';
+    if (pct >= 30) return 'Getting Ready';
+    return 'Not Started';
+  }, [pct]);
+
+  // Next recommended action based on first unchecked required item
+  const nextAction = useMemo(() => {
+    const next = requiredItems.find(i => !i.checked);
+    if (!next) return 'All required documents are ready!';
+    return `Next: Prepare "${next.name}"`;
+  }, [requiredItems]);
+
+  // Color based on score range
+  const colorConfig = useMemo(() => {
+    if (pct >= 70) return { stroke: '#22C55E', text: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-950/20' };
+    if (pct >= 30) return { stroke: '#F59E0B', text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/20' };
+    return { stroke: '#EF4444', text: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/20' };
+  }, [pct]);
+
+  // SVG circular progress (80px diameter)
+  const size = 80;
+  const strokeWidth = 6;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (pct / 100) * circumference;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  return (
+    <motion.div
+      className={`p-3 rounded-lg border space-y-2.5 ${colorConfig.bg}`}
+      animate={pulse ? { scale: [1, 1.03, 1] } : {}}
+      transition={{ duration: 0.4, ease: 'easeInOut' }}
+    >
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold flex items-center gap-1.5">
+          <SearchCheck className="w-3.5 h-3.5 text-amber-500" />
+          Document Readiness
+        </h4>
+        <span className={`text-[10px] font-semibold ${colorConfig.text}`}>{countryName}</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {/* Circular Progress Ring */}
+        <div className="relative shrink-0">
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted/30" />
+            <motion.circle
+              cx={cx} cy={cy} r={r} fill="none" stroke={colorConfig.stroke} strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              initial={{ strokeDashoffset: circumference }}
+              animate={{ strokeDashoffset: offset }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              transform={`rotate(-90 ${cx} ${cy})`}
+            />
+            <text x={cx} y={cy - 3} textAnchor="middle" dominantBaseline="middle" className="fill-foreground" style={{ fontSize: '18px', fontWeight: 'bold' }}>{pct}</text>
+            <text x={cx} y={cy + 10} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: '7px' }}>%</text>
+          </svg>
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">{checkedRequired}/{totalRequired} required</span>
+            <span className={`font-semibold text-[11px] ${colorConfig.text}`}>{readinessLabel}</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ background: colorConfig.stroke }}
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1 leading-tight">
+            <ArrowRight className="w-2.5 h-2.5 text-amber-500 shrink-0 mt-0.5" />
+            <span className="line-clamp-2">{nextAction}</span>
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}

@@ -8,6 +8,7 @@ import {
   CreditCard, Home, Users, Lightbulb, TrendingUp, TrendingDown,
   ArrowRight, Eye, Sparkles, Target, Compass, Flame, Map, Download, Sun, Landmark,
   SearchX, LayoutGrid, List, RefreshCw, Bookmark, ChevronDown, ChevronUp, X, Filter, SlidersHorizontal, ArrowUpDown, HelpCircle,
+  History, Clock4,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,9 +26,9 @@ import type { CountryData, ScoreBreakdown } from '@/lib/types';
 import { QUICK_FILTERS, REGIONS, MONTH_NAMES, RECENT_SEARCHES_KEY, TYPING_PHRASES, getRegion, VISA_CATEGORY_COLORS } from '../constants';
 import {
   FlagImage, InteractiveWorldMap, SuccessStoriesCarousel, BestMatchRecommendations,
-  CountryCard, CountryListRow, QuickDashboard,
+  CountryCard, CountryListRow, QuickDashboard, VisaCountdownTimer,
 } from '../shared-components-1';
-import { CountryDetailDialog, SimilarCountriesPanel, EmbassyInfoSection, DestinationDiscoveryPanel, ApplicationTimelineTracker, VisaFeeComparisonChart, SkeletonCountryCards, TypingText, FloatingParticles, SmartQuickSearch } from '../shared-components-2';
+import { CountryDetailDialog, SimilarCountriesPanel, EmbassyInfoSection, DestinationDiscoveryPanel, ApplicationTimelineTracker, VisaFeeComparisonChart, SkeletonCountryCards, TypingText, FloatingParticles, SmartQuickSearch, DestinationSpotlight } from '../shared-components-2';
 import { VisaStatsDashboard, PassportPowerIndex } from '../shared-components-3';
 
 export function ExploreTab() {
@@ -142,11 +143,64 @@ export function ExploreTab() {
 
   // Hero search state
   const [heroSearch, setHeroSearch] = useState('');
+  const [heroSearchFocused, setHeroSearchFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [heroQuickResult, setHeroQuickResult] = useState<CountryData | null>(null);
   const [visibleCount, setVisibleCount] = useState(12);
   const [sortBy, setSortBy] = useState('name');
   const heroSearchRef = useRef<HTMLDivElement>(null);
+
+  // Recent Searches state (Task 12-B Feature 2)
+  interface RecentSearchEntry {
+    code: string;
+    name: string;
+    flagEmoji: string;
+    searchedAt: number;
+  }
+  const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(RECENT_SEARCHES_KEY);
+      if (saved) setRecentSearches(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
+
+  const saveRecentSearch = useCallback((country: CountryData) => {
+    setRecentSearches(prev => {
+      const filtered = prev.filter(s => s.code !== country.code);
+      const entry: RecentSearchEntry = { code: country.code, name: country.name, flagEmoji: country.flagEmoji || '', searchedAt: Date.now() };
+      const updated = [entry, ...filtered].slice(0, 10);
+      requestAnimationFrame(() => { try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated)); } catch { /* ignore */ } });
+      return updated;
+    });
+  }, []);
+
+  const clearRecentSearches = useCallback(() => {
+    setRecentSearches([]);
+    try { localStorage.removeItem(RECENT_SEARCHES_KEY); } catch { /* ignore */ }
+  }, []);
+
+  const selectRecentSearch = useCallback((entry: RecentSearchEntry) => {
+    const match = countries.find(c => c.code === entry.code);
+    if (match) {
+      setSelectedCountry(match);
+      setHeroQuickResult(match);
+      saveRecentSearch(match);
+    }
+  }, [countries, setSelectedCountry, saveRecentSearch]);
+
+  const formatRelativeTime = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(timestamp).toLocaleDateString();
+  };
 
   // Display countries with sort + pagination
   const displayCountries = useMemo(() => {
@@ -192,6 +246,7 @@ export function ExploreTab() {
     if (match) {
       setSelectedCountry(match);
       setHeroQuickResult(match);
+      saveRecentSearch(match);
       setHeroSearch('');
       setShowSuggestions(false);
     } else {
@@ -232,9 +287,9 @@ export function ExploreTab() {
   }, []);
 
   return (
-    <div className="space-y-4" ref={scrollRevealRef}>
+    <div className="space-y-10" ref={scrollRevealRef}>
       {/* Hero Section - Yellow Mango Themed Compact */}
-      <section id="visa-guide" className="relative overflow-hidden rounded-xl p-3 sm:p-5 md:p-8 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600">
+      <section id="visa-guide" className="relative overflow-hidden rounded-2xl p-4 sm:p-6 md:p-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600">
         {/* Gradient mesh overlay */}
         <div className="hero-mesh-bg" />
         {/* Floating decorative orbs */}
@@ -259,19 +314,26 @@ export function ExploreTab() {
             <TypingText phrases={TYPING_PHRASES} className="text-[11px] sm:text-sm font-medium opacity-80" />
           </div>
 
-          {/* Search bar */}
+          {/* Visa Countdown Timer */}
+          <VisaCountdownTimer />
+
+          {/* Search bar with animated gradient border */}
           <div ref={heroSearchRef} className="relative max-w-xl">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-700/60 dark:text-amber-200/60" />
-            <Input
-              placeholder="Type a country name..."
-              value={heroSearch}
-              onChange={(e) => { setHeroSearch(e.target.value); setShowSuggestions(true); setHeroQuickResult(null); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleHeroCheckVisa(); }}
-              className="pl-11 h-10 sm:h-11 rounded-xl text-sm bg-white/90 dark:bg-black/20 border-amber-500/30 placeholder:text-amber-700/40 dark:placeholder:text-amber-200/40 text-amber-950 dark:text-amber-100 focus-visible:ring-amber-500/50"
-            />
+            <div className="hero-search-glow">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-700/60 dark:text-amber-200/60 z-10" />
+              <Input
+                placeholder="Type a country name..."
+                value={heroSearch}
+                onFocus={() => { setHeroSearchFocused(true); setShowSuggestions(true); }}
+                onBlur={() => { setHeroSearchFocused(false); }}
+                onChange={(e) => { setHeroSearch(e.target.value); setShowSuggestions(true); setHeroQuickResult(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleHeroCheckVisa(); }}
+                className="pl-12 h-12 sm:h-14 rounded-xl text-base bg-white/90 dark:bg-black/20 border-amber-500/30 placeholder:text-amber-700/40 dark:placeholder:text-amber-200/40 text-amber-950 dark:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-400/60 shadow-lg shadow-amber-900/10"
+              />
+            </div>
             <Button
               onClick={handleHeroCheckVisa}
-              className="hero-btn-glow absolute right-1.5 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-9 px-4 text-sm font-medium"
+              className="hero-btn-glow hero-btn-pulse absolute right-2 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-10 px-5 text-sm font-bold"
             >
               Check Visa
             </Button>
@@ -323,20 +385,64 @@ export function ExploreTab() {
           )}
 
           {/* Popular destination chips */}
-          <div className="flex flex-wrap gap-1.5 mt-2">
+          <div className="flex flex-wrap gap-2 mt-3">
             {['Malaysia', 'UAE', 'Turkey', 'UK', 'Saudi Arabia', 'Thailand'].map((name) => (
               <button
                 key={name}
                 onClick={() => {
                   const c = countries.find(x => x.name === name);
-                  if (c) { setSelectedCountry(c); setHeroQuickResult(c); }
+                  if (c) { setSelectedCountry(c); setHeroQuickResult(c); saveRecentSearch(c); }
                 }}
-                className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/30 dark:bg-black/15 hover:bg-white/50 dark:hover:bg-black/25 transition-colors border border-white/30 dark:border-white/10"
+                className="hero-chip px-3 py-1.5 rounded-full text-xs font-semibold bg-white/30 dark:bg-black/15 hover:bg-white/60 dark:hover:bg-black/30 transition-all duration-200 border border-white/30 dark:border-white/10 hover:shadow-md hover:scale-105 active:scale-95"
               >
                 {name}
               </button>
             ))}
           </div>
+
+          {/* Recent Searches - only when search bar focused and empty */ }
+          <AnimatePresence>
+            {recentSearches.length > 0 && heroSearchFocused && heroSearch.trim() === '' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-amber-950/70 dark:text-amber-100/70">
+                    <History className="w-3.5 h-3.5" />
+                    <span className="text-[11px] font-medium">Recent Searches</span>
+                  </div>
+                  <button
+                    onClick={clearRecentSearches}
+                    className="text-[10px] text-amber-950/50 dark:text-amber-100/50 hover:text-amber-950/80 dark:hover:text-amber-100/80 transition-colors flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" /> Clear all
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentSearches.map((entry, idx) => (
+                    <motion.button
+                      key={entry.code}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.04 }}
+                      onClick={() => selectRecentSearch(entry)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-white/40 dark:bg-black/20 hover:bg-white/70 dark:hover:bg-black/35 transition-all border border-white/30 dark:border-white/10 hover:shadow-sm hover:scale-105 active:scale-95"
+                    >
+                      <span className="text-sm">{entry.flagEmoji}</span>
+                      <span className="font-medium">{entry.name}</span>
+                      <span className="text-[9px] opacity-60 flex items-center gap-0.5">
+                        <Clock4 className="w-2.5 h-2.5" />
+                        {formatRelativeTime(entry.searchedAt)}
+                      </span>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Trust text */}
           <p className="text-[11px] mt-2 opacity-75">
@@ -345,20 +451,31 @@ export function ExploreTab() {
         </div>
       </section>
 
+      {/* Destination Spotlight Carousel */}
+      {!loading && countries.length > 0 && (
+        <DestinationSpotlight onSelectCountry={setSelectedCountry} />
+      )}
+
+      {/* Decorative section divider */}
+      <div className="section-gradient-divider" />
+
       {/* Passport Power Index - At a glance overview */}
       {!loading && countries.length > 0 && (
-        <section className="glass-section p-4 md:p-5 rounded-xl">
-          <h2 className="text-sm font-bold flex items-center gap-2 mb-3">
-            <Globe className="w-4 h-4 text-amber-500" />
+        <section className="glass-section p-5 md:p-6 rounded-xl">
+          <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+            <Globe className="w-5 h-5 text-amber-500" />
             Pakistani Passport Overview
           </h2>
           <PassportPowerIndex countries={countries} stats={stats} />
         </section>
       )}
 
+      {/* Decorative section divider */}
+      <div className="section-gradient-divider" />
+
       {/* Visa Requirement World Map */}
       {!loading && countries.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-4 py-2">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2">
@@ -370,6 +487,9 @@ export function ExploreTab() {
           <InteractiveWorldMap countries={countries} onSelectCountry={setSelectedCountry} />
         </section>
       )}
+
+      {/* Decorative section divider */}
+      <div className="section-gradient-divider" />
 
       {/* Country Directory - Filter Toolbar + Grid */}
       <section id="country-grid" className="space-y-3">
@@ -422,7 +542,8 @@ export function ExploreTab() {
           </div>
         </div>
 
-        {/* Search + Sort + View Mode + Month Filter Toolbar */}
+        {/* Search + Sort + View Mode + Month Filter Toolbar - Sticky on desktop */}
+        <div className="sticky-filter-bar bg-background/95 backdrop-blur-sm sm:rounded-xl sm:border sm:border-border/50 sm:shadow-sm sm:px-4 sm:py-3 -mx-0 sm:-mx-4">
         <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -554,6 +675,7 @@ export function ExploreTab() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* Grid / List */}
         {loading ? (
@@ -563,7 +685,7 @@ export function ExploreTab() {
             <AnimatePresence mode="popLayout">
               {displayCountries.map((country, idx) => (
                 <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>
-                  <CountryCard country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={idx >= displayCountries.length - 5} />
+                  <CountryCard country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -573,7 +695,7 @@ export function ExploreTab() {
             <AnimatePresence mode="popLayout">
               {displayCountries.map((country, idx) => (
                 <motion.div key={country.code} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.15 }}>
-                  <CountryListRow country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={idx >= displayCountries.length - 5} />
+                  <CountryListRow country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -596,7 +718,9 @@ export function ExploreTab() {
 
       {/* Trending Destinations - After country grid */}
       {!loading && trendingCountries.length > 0 && (
-        <section className="space-y-3">
+        <>
+        <div className="section-gradient-divider" />
+        <section className="space-y-4 py-2">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2">
@@ -613,7 +737,7 @@ export function ExploreTab() {
               const status = getHeroVisaStatus(c);
               return (
                 <motion.div key={c.code} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow p-3" onClick={() => setSelectedCountry(c)}>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow p-4" onClick={() => setSelectedCountry(c)}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-2xl"><FlagImage code={c.code} flagUrl={c.flagUrl} size={28} emoji={c.flagEmoji} /></span>
                       <div className="min-w-0 flex-1">
@@ -632,10 +756,11 @@ export function ExploreTab() {
             })}
           </div>
         </section>
+        </>
       )}
 
-      {/* FAQ Section - SEO Optimized (Beginners First, Visa-Specific Last) */}
-      <section className="glass-section p-4 md:p-6 rounded-xl">
+      {/* FAQ Section - SEO Optimized with amber tint background */}
+      <section className="faq-section-tint rounded-xl p-5 md:p-6">
         <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
           <HelpCircle className="w-5 h-5 text-amber-500" />
           Frequently Asked Questions

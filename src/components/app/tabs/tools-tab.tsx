@@ -17,7 +17,7 @@ import {
   LayoutGrid, List, RefreshCw, Passports, Flame, Languages, CircleDollarSign, CircleCheckBig, FileWarning,
   Bell, Bookmark, AlertCircle, CalendarClock, Luggage, FileCheck2,
   Check, CalendarDays, AlarmClock, PackageOpen, PlaneTakeoff, UtensilsCrossed, MoreHorizontal, Calculator,
-  Copy, SlidersHorizontal, BookOpen,
+  Copy, SlidersHorizontal, BookOpen, PieChart as PieChartIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,9 +38,110 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, ChecklistItem } from '@/lib/types';
-import { EXCHANGE_RATES, FLAG_ISO_MAP, getFlagUrl } from '../constants';
-import { FlagImage } from '../shared-components-1';
+import { EXCHANGE_RATES, FLAG_ISO_MAP, getFlagUrl, getRegion } from '../constants';
+import { FlagImage, BudgetPieChart } from '../shared-components-1';
 import { ScoringHistoryPanel, TravelCostCalculator } from '../shared-components-2';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+
+const CHART_COLORS = ['#f59e0b', '#f97316', '#fbbf24', '#d97706', '#ea580c', '#c2410c', '#78716c'];
+
+function BudgetDonutChart({ budgetResult, budgetTripDays, budgetViewMode, budgetChartActiveIndex, setBudgetChartActiveIndex, formatNum }: {
+  budgetResult: { visaFee: number; flightEst: number; accommodation: number; food: number; transport: number; insurance: number; misc: number; totalUSD: number; };
+  budgetTripDays: number;
+  budgetViewMode: 'total' | 'daily';
+  budgetChartActiveIndex: number | null;
+  setBudgetChartActiveIndex: (i: number | null) => void;
+  formatNum: (n: number) => string;
+}) {
+  const divisor = budgetViewMode === 'daily' ? budgetTripDays : 1;
+  const chartItems = [
+    { name: 'Visa Fee', value: Math.round(budgetResult.visaFee / divisor), color: CHART_COLORS[0] },
+    { name: 'Flights', value: Math.round(budgetResult.flightEst / divisor), color: CHART_COLORS[1] },
+    { name: 'Accommodation', value: Math.round(budgetResult.accommodation / divisor), color: CHART_COLORS[2] },
+    { name: 'Food', value: Math.round(budgetResult.food / divisor), color: CHART_COLORS[3] },
+    { name: 'Transport', value: Math.round(budgetResult.transport / divisor), color: CHART_COLORS[4] },
+    { name: 'Insurance', value: Math.round(budgetResult.insurance / divisor), color: CHART_COLORS[5] },
+    { name: 'Misc', value: Math.round(budgetResult.misc / divisor), color: CHART_COLORS[6] },
+  ].filter(d => d.value > 0);
+  const chartIcons = [FileText, PlaneTakeoff, Home, UtensilsCrossed, Map, Shield, MoreHorizontal];
+  const chartNames = ['Visa Fee', 'Flights', 'Accommodation', 'Food', 'Transport', 'Insurance', 'Misc'];
+  const totalVal = chartItems.reduce((s, d) => s + d.value, 0);
+
+  const StepIcon = ({ icon: StepIconProp, className }: { icon: React.ElementType; className?: string }) => React.createElement(StepIconProp, { className });
+
+  return (
+    <div className="p-4 rounded-lg border bg-muted/20">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <PieChartIcon className="w-4 h-4 text-amber-500" />
+          <p className="text-xs font-semibold">Budget Breakdown</p>
+        </div>
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+          <button
+            className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${budgetViewMode === 'total' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'text-muted-foreground'}`}
+            onClick={() => setBudgetViewMode('total')}
+          >Total</button>
+          <button
+            className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${budgetViewMode === 'daily' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'text-muted-foreground'}`}
+            onClick={() => setBudgetViewMode('daily')}
+          >Daily</button>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="w-36 h-36 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartItems}
+                cx="50%"
+                cy="50%"
+                innerRadius={35}
+                outerRadius={58}
+                paddingAngle={2}
+                dataKey="value"
+                onMouseEnter={(_, index) => setBudgetChartActiveIndex(index)}
+                onMouseLeave={() => setBudgetChartActiveIndex(null)}
+                stroke="none"
+              >
+                {chartItems.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color}
+                    opacity={budgetChartActiveIndex === null || budgetChartActiveIndex === index ? 1 : 0.4}
+                    stroke="none"
+                  />
+                ))}
+              </Pie>
+              <RechartsTooltip
+                contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', fontSize: '11px', padding: '6px 10px' }}
+                formatter={(value: number) => [`$${formatNum(value)}`, undefined]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex-1 space-y-1.5">
+          {chartItems.map((item, idx) => {
+            const pct = Math.round((item.value / totalVal) * 100);
+            return (
+              <div
+                key={item.name}
+                className={`flex items-center gap-2 text-[11px] px-1.5 py-0.5 rounded transition-all ${budgetChartActiveIndex === idx ? 'bg-muted font-semibold' : ''}`}
+                onMouseEnter={() => setBudgetChartActiveIndex(idx)}
+                onMouseLeave={() => setBudgetChartActiveIndex(null)}
+              >
+                <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
+                <StepIcon icon={chartIcons[idx]} className="w-3 h-3 text-muted-foreground shrink-0" />
+                <span className="flex-1 truncate">{chartNames[idx]}</span>
+                <span className="font-medium tabular-nums">${formatNum(item.value)}</span>
+                <span className="text-muted-foreground w-8 text-right">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ToolsTab() {
   // --- Currency Converter State ---
@@ -73,6 +174,8 @@ export function ToolsTab() {
   const [customMultiplier, setCustomMultiplier] = useState<Record<string, number>>({
     accommodation: 1, food: 1, transport: 1, insurance: 1,
   });
+  const [budgetViewMode, setBudgetViewMode] = useState<'total' | 'daily'>('total');
+  const [budgetChartActiveIndex, setBudgetChartActiveIndex] = useState<number | null>(null);
 
   // Currency list for converter
   const currencies = useMemo(() => [
@@ -850,6 +953,9 @@ export function ToolsTab() {
               </div>
             </div>
 
+            {/* Donut Chart - Budget Breakdown Visualization (Task 12-B Feature 4) */}
+            <BudgetDonutChart budgetResult={budgetResult} budgetTripDays={budgetTripDays} budgetViewMode={budgetViewMode} budgetChartActiveIndex={budgetChartActiveIndex} setBudgetChartActiveIndex={setBudgetChartActiveIndex} formatNum={formatNum} />
+
             {/* Visual Cost Breakdown Bar */}
             <div className="p-3 rounded-lg border bg-muted/20">
               <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Cost Distribution</p>
@@ -911,7 +1017,7 @@ export function ToolsTab() {
                   <div key={item.label} className="p-3 rounded-lg border bg-muted/30 space-y-2">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg ${item.color} flex items-center justify-center flex-shrink-0`}>
-                        <item.icon className="w-4 h-4" />
+                        {React.createElement(item.icon, { className: 'w-4 h-4' })}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-muted-foreground">{item.label}</p>
@@ -951,6 +1057,23 @@ export function ToolsTab() {
                 <p className="text-sm font-bold">${formatNum(budgetResult.misc)}</p>
               </div>
               <p className="text-xs text-muted-foreground">₨ {formatNum(budgetResult.misc * (EXCHANGE_RATES.USD || 278.5))}</p>
+            </div>
+
+            {/* Budget Pie Chart (Feature 12-C) */}
+            <div className="p-4 rounded-lg border bg-muted/20">
+              <div className="flex items-center gap-2 mb-3">
+                <PieChartIcon className="w-4 h-4 text-amber-500" />
+                <p className="text-xs font-semibold">Budget Overview</p>
+              </div>
+              <BudgetPieChart data={[
+                { name: 'Visa Fee', value: Math.round(budgetResult.visaFee), color: '#F59E0B' },
+                { name: 'Flights', value: Math.round(budgetResult.flightEst), color: '#D97706' },
+                { name: 'Accommodation', value: Math.round(budgetResult.accommodation), color: '#B45309' },
+                { name: 'Food', value: Math.round(budgetResult.food), color: '#EA580C' },
+                { name: 'Transport', value: Math.round(budgetResult.transport), color: '#DC2626' },
+                { name: 'Activities', value: Math.round(budgetResult.misc), color: '#FB923C' },
+                { name: 'Insurance', value: Math.round(budgetResult.insurance), color: '#FBBF24' },
+              ].filter(d => d.value > 0)} />
             </div>
 
             {/* Budget Optimization Tips */}

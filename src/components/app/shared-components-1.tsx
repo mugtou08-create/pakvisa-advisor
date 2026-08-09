@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -34,7 +35,32 @@ import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem } from '@/lib/types';
 import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, SUCCESS_STORIES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES } from './constants';
 import Image from 'next/image';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { formatCountryCode } from './shared-components-2';
+
+const BUDGET_PIE_COLORS = ['#F59E0B', '#D97706', '#B45309', '#EA580C', '#DC2626', '#FB923C', '#FBBF24'];
+
+interface BudgetPieTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string; value: number; color: string } }> };
+
+function BudgetPieCustomTooltip({ active, payload }: BudgetPieTooltipProps) {
+  if (!active || !payload || !payload.length) return null;
+  const item = payload[0].payload;
+  const total = payload.reduce((sum, p) => sum + p.payload.value, 0);
+  return (
+    <div className="rounded-lg border bg-popover px-3 py-2 shadow-md text-xs">
+      <div className="flex items-center gap-2 mb-0.5">
+        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+        <span className="font-medium">{item.name}</span>
+      </div>
+      <div className="text-muted-foreground">
+        ${item.value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        <span className="ml-1 text-[10px]">({Math.round((item.value / total) * 100)}%)</span>
+      </div>
+    </div>
+  );
+}
 
 /** Mini radar chart for country cards (3-axis) */
 export function MiniRadarChart({ safety, cost, ease }: { safety: number; cost: number; ease: number }) {
@@ -1179,14 +1205,9 @@ export function PrintReportDialog({ open, onClose, scoreResults, userProfile }: 
 
 // ============ COUNTRY CARD (ENHANCED WITH TILT + RANK + SHIMMER) ============
 export function CountryCard({ country, onSelect, rank, isNew }: { country: CountryData; onSelect: (c: CountryData) => void; rank?: number; isNew?: boolean }) {
-  const tod = getTimeOfDay(country.timezone);
   const countryTime = useCountryTime(country.timezone);
   const visaStatus = country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'On Arrival' : country.etaAvailable ? 'e-Visa' : 'Embassy';
   const statusColor = country.visaFree ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : country.visaOnArrival ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : country.etaAvailable ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400';
-  const borderColor = country.visaFree ? 'border-l-amber-500' : country.visaOnArrival ? 'border-l-amber-500' : country.etaAvailable ? 'border-l-amber-500' : 'border-l-orange-500';
-  const accentBarClass = country.visaFree ? 'card-accent-visa-free' : country.visaOnArrival ? 'card-accent-voa' : country.etaAvailable ? 'card-accent-evisa' : 'card-accent-embassy';
-  const bottomGradient = country.visaFree ? 'bg-gradient-to-r from-amber-500 via-orange-400 to-amber-500' : country.visaOnArrival ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500' : country.etaAvailable ? 'bg-gradient-to-r from-amber-500 via-sky-400 to-amber-500' : 'bg-gradient-to-r from-gray-400 via-gray-300 to-gray-400';
-  const glowColor = country.visaFree ? 'hover:shadow-amber-500/10' : country.visaOnArrival ? 'hover:shadow-amber-500/10' : country.etaAvailable ? 'hover:shadow-amber-500/10' : 'hover:shadow-gray-400/10';
   const easeScore = country.visaFree ? 1 : country.visaOnArrival ? 0.85 : country.etaAvailable ? 0.7 : 0.3;
 
   // Score badge from batch results
@@ -1211,10 +1232,12 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
       <Tooltip>
         <TooltipTrigger asChild>
           <div>
-            <motion.div whileHover={{ scale: 1.02, y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-              <Card className={`group card-tilt-enhanced card-glow-border card-frosted card-shimmer-hover card-inner-highlight overflow-hidden cursor-pointer transition-all duration-300 border-border/50 border-l-4 ${borderColor} hover:shadow-xl hover:shadow-amber-500/10 hover:border-border hover:scale-[1.02] relative ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
-                {/* Card accent bar */}
-                <div className={`card-accent-bar ${accentBarClass}`} />
+            <Popover>
+              <PopoverTrigger asChild>
+                <motion.div whileHover={{ scale: 1.02, y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+                  <Card className={`group card-tilt-enhanced card-glow-border card-shimmer-hover card-inner-highlight card-hover-lift overflow-hidden cursor-pointer border-border/50 hover:shadow-amber-500/10 hover:border-amber-300/50 dark:hover:border-amber-600/30 relative ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
+                {/* Subtle gradient top border based on visa category */}
+                <div className={`h-[3px] ${country.visaFree ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-400' : country.visaOnArrival ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400' : country.etaAvailable ? 'bg-gradient-to-r from-amber-400 via-orange-300 to-amber-400' : 'bg-gradient-to-r from-orange-400 via-red-400 to-orange-400'}`} />
                 {/* NEW badge */}
                 {isNew && <div className="new-card-badge">NEW</div>}
                 {/* Score top accent line for scored cards */}
@@ -1233,16 +1256,16 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
                     {Math.round(countryScore)}
                   </div>
                 )}
-                {/* Favorite & WhatsApp Buttons */}
+                {/* Favorite & WhatsApp Buttons - subtle, appear on hover */}
                 <button
-                  className={`absolute top-2 right-2 ${countryScore !== null ? 'top-12' : ''} z-20 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 ${isFav ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-500' : 'bg-white/60 dark:bg-black/30 text-muted-foreground hover:text-amber-500 opacity-0 group-hover:opacity-100'}`}
+                  className={`absolute top-3 right-2 ${countryScore !== null ? 'top-12' : ''} z-20 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${isFav ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-500 opacity-100' : 'bg-white/40 dark:bg-black/20 text-muted-foreground hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/30 opacity-40 group-hover:opacity-100'}`}
                   onClick={(e) => { e.stopPropagation(); toggleFavorite(country.code); }}
                   aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
                 >
                   <Bookmark className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
                 </button>
                 <button
-                  className={`absolute top-2 right-10 ${countryScore !== null ? 'top-12' : ''} z-20 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 bg-white/60 dark:bg-black/30 text-muted-foreground hover:text-orange-500 opacity-0 group-hover:opacity-100`}
+                  className={`absolute top-3 right-10 ${countryScore !== null ? 'top-12' : ''} z-20 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 bg-white/40 dark:bg-black/20 text-muted-foreground hover:text-orange-500 hover:bg-amber-50 dark:hover:bg-amber-900/30 opacity-40 group-hover:opacity-100`}
                   onClick={(e) => {
                     e.stopPropagation();
                     const text = encodeURIComponent(`Check visa requirements for ${country.name} on Pakistani passport: ${window.location.origin}`);
@@ -1252,34 +1275,35 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                 </button>
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 pt-3 px-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="shrink-0 flag-glow-ring p-0.5"><FlagImage code={country.code} flagUrl={country.flagUrl} size={28} /></span>
                     <div className="min-w-0">
-                      <CardTitle className="text-sm font-semibold leading-tight truncate">{country.name}</CardTitle>
-                      <CardDescription className="text-[11px]">{formatCountryCode(country.code)} · {country.continent}</CardDescription>
+                      <CardTitle className="text-[15px] font-bold leading-tight truncate">{country.name}</CardTitle>
+                      <CardDescription className="text-[11px] text-muted-foreground">{formatCountryCode(country.code)} · {country.continent}</CardDescription>
                     </div>
                   </div>
-                  <Badge className={`${statusColor} text-[10px] shrink-0`} variant="secondary">{visaStatus}</Badge>
+                  <Badge className={`${statusColor} text-[10px] shrink-0 font-medium`} variant="secondary">{visaStatus}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2.5 pb-3">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+              <CardContent className="space-y-3 pb-3 px-4">
+                {/* Key metrics row */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <DollarSign className="w-3 h-3 shrink-0" />{country.currencyCode}
+                    <DollarSign className="w-3 h-3 shrink-0 opacity-60" />{country.currencyCode}
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <MapPin className="w-3 h-3 shrink-0" />{country.timezone.split('/')[1]?.replace('_', ' ') || country.timezone}
+                    <MapPin className="w-3 h-3 shrink-0 opacity-60" />{country.timezone.split('/')[1]?.replace('_', ' ') || country.timezone}
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground hidden sm:flex">
-                    <Clock className="w-3 h-3 shrink-0" />
+                    <Clock className="w-3 h-3 shrink-0 opacity-60" />
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-normal">
                       {country.processingDaysMin}-{country.processingDaysMax} days
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Thermometer className="w-3 h-3 shrink-0" />
+                    <Thermometer className="w-3 h-3 shrink-0 opacity-60" />
                     <span>{country.avgTempC}°C</span>
                     <div className="w-8 h-1.5 rounded-full overflow-hidden ml-1">
                       <div
@@ -1298,6 +1322,7 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
                     )}
                   </div>
                 </div>
+                {/* Safety + Radar + Local Time */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <SafetyDots rating={country.safetyRating} />
@@ -1310,18 +1335,70 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                  <span className="text-xs text-muted-foreground">${country.costProfile?.totalMonthlyUSD || 0}/mo</span>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-0.5">
+                {/* View button with amber glow hover */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                  <span className="text-xs text-muted-foreground font-medium">${country.costProfile?.totalMonthlyUSD || 0}/mo</span>
+                  <span className="view-cta-btn text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-0.5 px-2 py-1 rounded-md transition-all duration-200 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:shadow-[0_0_8px_rgba(249,115,22,0.2)]">
                     View <ChevronRight className="w-3 h-3" />
                   </span>
                 </div>
               </CardContent>
-              {/* Bottom gradient bar enhanced */}
-              <div className={`h-[3px] ${bottomGradient} bottom-bar-animated`} />
             </Card>
-          </motion.div>
-        </div>
+                </motion.div>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="center" className="w-64 p-3 rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-white dark:bg-card shadow-lg" sideOffset={8}>
+                <div className="space-y-2.5">
+                  {/* Header */}
+                  <div className="flex items-center gap-2">
+                    <FlagImage code={country.code} flagUrl={country.flagUrl} size={20} />
+                    <span className="text-xs font-bold flex-1 truncate">{country.name}</span>
+                    <Badge className={`${statusColor} text-[9px]`} variant="secondary">{visaStatus}</Badge>
+                  </div>
+                  <div className="h-px bg-border/50" />
+                  {/* Quick Stats Grid */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <CreditCard className="w-3 h-3 text-amber-500" />
+                        <span>Visa Fee</span>
+                      </div>
+                      <span className="text-[11px] font-semibold">${country.costProfile?.visaFeeUSD || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Clock className="w-3 h-3 text-amber-500" />
+                        <span>Processing</span>
+                      </div>
+                      <span className="text-[11px] font-semibold">{country.processingDaysMin === 0 && country.processingDaysMax === 0 ? 'N/A' : `${country.processingDaysMin}-${country.processingDaysMax} days`}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Shield className="w-3 h-3 text-amber-500" />
+                        <span>Safety</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star key={s} className={`w-2.5 h-2.5 ${country.safetyRating >= s * 2 ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30'}`} />
+                          ))}
+                        </div>
+                        <span className="text-[11px] font-semibold ml-1">{country.safetyRating}/10</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Sun className="w-3 h-3 text-orange-500" />
+                        <span>Best Months</span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-right max-w-[120px] truncate">{country.bestTravelMonths || 'Any'}</span>
+                    </div>
+                  </div>
+                  <div className="h-px bg-border/50" />
+                  <p className="text-[10px] text-muted-foreground text-center">Click card for full visa details</p>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[260px]">
           <div className="space-y-1.5">
@@ -1330,7 +1407,7 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
               <div><span className="text-muted-foreground">Visa:</span> <span className="font-medium">{visaStatus}</span></div>
               <div><span className="text-muted-foreground">Safety:</span> <span className="font-medium">{country.safetyRating}/10</span></div>
               <div><span className="text-muted-foreground">Cost:</span> <span className="font-medium">${country.costProfile?.totalMonthlyUSD || 0}/mo</span></div>
-              <div><span className="text-muted-foreground">Process:</span> <span className="font-medium">{country.processingDaysMin}-{country.processingDaysMax}d</span></div>
+              <div><span className="text-muted-foreground">Process:</span> <span className="font-medium">{country.processingDaysMin === 0 ? '0' : ''}{country.processingDaysMin}-{country.processingDaysMax} days</span></div>
             </div>
             <p className="text-[10px] text-muted-foreground pt-0.5 border-t">Click to view full details</p>
           </div>
@@ -1371,7 +1448,7 @@ export function CountryListRow({ country, onSelect, rank, isNew }: { country: Co
       {/* Processing */}
       <div className="text-xs text-muted-foreground shrink-0 hidden md:flex items-center gap-1">
         <Clock className="w-3 h-3" />
-        {country.processingDaysMin}-{country.processingDaysMax}d
+        {country.processingDaysMin === 0 ? '0' : ''}{country.processingDaysMin}-{country.processingDaysMax} days
       </div>
       {/* Safety */}
       <div className="hidden lg:flex items-center gap-0.5 shrink-0">
@@ -1568,4 +1645,161 @@ export function QuickScoreInline({ countryCode, onScored }: { countryCode: strin
   );
 }
 
+// ============ VISA COUNTDOWN TIMER (Task 11) ============
+export function VisaCountdownTimer() {
+  const { targetTravelDate, setTargetTravelDate } = useAppStore();
+  const [now, setNow] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const target = targetTravelDate ? new Date(targetTravelDate + 'T00:00:00') : null;
+  const diffMs = target ? target.getTime() - now.getTime() : 0;
+  const totalDays = target ? Math.max(0, Math.ceil(diffMs / 86400000)) : 0;
+  const hours = target ? Math.max(0, Math.floor((diffMs % 86400000) / 3600000)) : 0;
+  const mins = target ? Math.max(0, Math.floor((diffMs % 3600000) / 60000)) : 0;
+
+  // Determine color based on urgency
+  const getColorClass = () => {
+    if (!target) return 'text-amber-600 dark:text-amber-400';
+    if (totalDays === 0) return 'text-red-500 dark:text-red-400';
+    if (totalDays < 7) return 'text-red-500 dark:text-red-400';
+    if (totalDays < 30) return 'text-amber-500 dark:text-amber-400';
+    return 'text-emerald-500 dark:text-emerald-400';
+  };
+
+  const isUrgent = target && totalDays < 7 && totalDays > 0;
+
+  if (!target) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-2 mb-2"
+      >
+        <button
+          onClick={() => setShowPicker(!showPicker)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/25 dark:bg-black/15 hover:bg-white/40 dark:hover:bg-black/25 transition-all duration-200 border border-white/30 dark:border-white/10 text-amber-950 dark:text-amber-100 text-xs font-medium"
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>Set your travel date!</span>
+        </button>
+        {showPicker && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative"
+          >
+            <Input
+              type="date"
+              className="h-8 text-xs bg-white/90 dark:bg-black/30 border-amber-400/40 text-amber-950 dark:text-amber-100 rounded-lg w-auto"
+              onChange={(e) => {
+                setTargetTravelDate(e.target.value);
+                setShowPicker(false);
+              }}
+              min={new Date().toISOString().split('T')[0]}
+              autoFocus
+            />
+          </motion.div>
+        )}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-2 mb-2"
+    >
+      <button
+        onClick={() => setShowPicker(!showPicker)}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/25 dark:bg-black/15 hover:bg-white/40 dark:hover:bg-black/25 transition-all duration-200 border border-white/30 dark:border-white/10 text-xs font-medium ${isUrgent ? 'countdown-pulse-ring' : ''}`}
+      >
+        <Calendar className="w-3.5 h-3.5" />
+        <span className={`${getColorClass()} font-bold tabular-nums`}>{totalDays}d</span>
+        <span className="text-amber-950/60 dark:text-amber-100/60">:</span>
+        <span className={`${getColorClass()} font-bold tabular-nums`}>{String(hours).padStart(2, '0')}h</span>
+        <span className="text-amber-950/60 dark:text-amber-100/60">:</span>
+        <span className={`${getColorClass()} font-bold tabular-nums`}>{String(mins).padStart(2, '0')}m</span>
+        <span className="text-amber-950/60 dark:text-amber-100/60 ml-0.5">until trip</span>
+      </button>
+      {showPicker && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative"
+        >
+          <Input
+            type="date"
+            className="h-8 text-xs bg-white/90 dark:bg-black/30 border-amber-400/40 text-amber-950 dark:text-amber-100 rounded-lg w-auto"
+            onChange={(e) => {
+              setTargetTravelDate(e.target.value);
+              setShowPicker(false);
+            }}
+            min={new Date().toISOString().split('T')[0]}
+            autoFocus
+          />
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
 // ============ COUNTRY DETAIL DIALOG (IMPROVED) ============
+
+/** Budget Pie Chart - Reusable donut chart with center total and legend */
+export function BudgetPieChart({ data }: { data: Array<{ name: string; value: number; color: string }> }) {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const formattedTotal = total >= 1000
+    ? `$${(total / 1000).toFixed(1)}k`
+    : `$${Math.round(total)}`;
+
+  return (
+    <div className="w-full">
+      {/* Chart area */}
+      <div className="relative w-full" style={{ height: 220 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={55}
+              outerRadius={85}
+              paddingAngle={3}
+              dataKey="value"
+              animationBegin={0}
+              animationDuration={800}
+              animationEasing="ease-out"
+              stroke="hsl(var(--background))"
+              strokeWidth={2}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+            <RechartsTooltip content={<BudgetPieCustomTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+        {/* Center text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</span>
+          <span className="text-xl font-bold text-foreground tabular-nums">{formattedTotal}</span>
+        </div>
+      </div>
+      {/* Legend */}
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-3">
+        {data.map((item) => (
+          <div key={item.name} className="flex items-center gap-1.5 text-xs">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+            <span className="text-muted-foreground">{item.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

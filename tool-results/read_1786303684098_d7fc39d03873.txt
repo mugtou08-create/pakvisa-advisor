@@ -1,0 +1,892 @@
+  1383→export function VisaTimelineEstimator({ country }: { country: CountryData }) {
+  1384→  const today = new Date();
+  1385→  const procMin = country.processingDaysMin || 5;
+  1386→  const procMax = country.processingDaysMax || 30;
+  1387→  const prepDays = Math.max(7, Math.round(procMin * 0.6));
+  1388→  const avgProcDays = Math.round((procMin + procMax) / 2);
+  1389→
+  1390→  const stages = [
+  1391→    { id: 'prep', label: 'Preparation', icon: Lightbulb, start: 0, end: prepDays, color: '#f59e0b', desc: 'Gather documents, photos, forms' },
+  1392→    { id: 'submit', label: 'Submission', icon: Send, start: prepDays, end: prepDays + 2, color: '#f97316', desc: 'Submit at embassy/online' },
+  1393→    { id: 'proc', label: 'Processing', icon: Clock, start: prepDays + 2, end: prepDays + 2 + avgProcDays, color: '#8b5cf6', desc: `${procMin}-${procMax} business days` },
+  1394→    { id: 'decision', label: 'Decision', icon: CheckCircle2, start: prepDays + 2 + avgProcDays, end: prepDays + 2 + avgProcDays + 3, color: '#f59e0b', desc: 'Receive visa decision' },
+  1395→  ];
+  1396→
+  1397→  const totalDays = stages[stages.length - 1].end;
+  1398→  const earliestArrival = new Date(today); earliestArrival.setDate(today.getDate() + stages[1].end);
+  1399→  const latestDecision = new Date(today); latestDecision.setDate(today.getDate() + totalDays);
+  1400→
+  1401→  const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  1402→
+  1403→  return (
+  1404→    <div className="space-y-3">
+  1405→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1406→        <CalendarClock className="w-4 h-4 text-violet-500" />
+  1407→        Visa Timeline Estimator
+  1408→        <Badge variant="secondary" className="text-[10px]">~{totalDays} days total</Badge>
+  1409→      </h3>
+  1410→      {/* Timeline Bar */}
+  1411→      <div className="relative">
+  1412→        <div className="flex gap-1 h-8 rounded-lg overflow-hidden">
+  1413→          {stages.map((s) => (
+  1414→            <div key={s.id} className="relative flex-1 group" style={{ backgroundColor: s.color }}>
+  1415→              <div className="absolute inset-0 flex items-center justify-center">
+  1416→                <s.icon className="w-3.5 h-3.5 text-white drop-shadow" />
+  1417→              </div>
+  1418→              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-popover border shadow-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+  1419→                <span className="font-medium">{s.label}</span>
+  1420→                <br /><span className="text-muted-foreground">{s.desc}</span>
+  1421→              </div>
+  1422→            </div>
+  1423→          ))}
+  1424→        </div>
+  1425→        <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+  1426→          {stages.map((s) => (
+  1427→            <span key={s.id}>Day {s.start}</span>
+  1428→          ))}
+  1429→          <span>Day {totalDays}</span>
+  1430→        </div>
+  1431→      </div>
+  1432→      {/* Key dates */}
+  1433→      <div className="grid grid-cols-2 gap-3">
+  1434→        <div className="p-2.5 rounded-lg border bg-muted/30 text-center">
+  1435→          <div className="text-[10px] text-muted-foreground">Earliest Submission</div>
+  1436→          <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatDate(earliestArrival)}</div>
+  1437→        </div>
+  1438→        <div className="p-2.5 rounded-lg border bg-muted/30 text-center">
+  1439→          <div className="text-[10px] text-muted-foreground">Expected Decision By</div>
+  1440→          <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatDate(latestDecision)}</div>
+  1441→        </div>
+  1442→      </div>
+  1443→    </div>
+  1444→  );
+  1445→}
+  1446→
+  1447→// ============ SIMILAR COUNTRIES PANEL ============
+  1448→export function SimilarCountriesPanel({ country }: { country: CountryData }) {
+  1449→  const { countries, setSelectedCountry } = useAppStore();
+  1450→
+  1451→  const similar = useMemo(() => {
+  1452→    const allCountries = countries || [];
+  1453→    return allCountries
+  1454→      .filter(c => c.code !== country.code)
+  1455→      .filter(c => {
+  1456→        // Same visa difficulty category
+  1457→        const isFree = c.visaFree || c.visaOnArrival || c.etaAvailable;
+  1458→        const isTargetFree = country.visaFree || country.visaOnArrival || country.etaAvailable;
+  1459→        if (isFree !== isTargetFree) return false;
+  1460→        // Same continent or similar safety rating
+  1461→        if (c.continent === country.continent) return true;
+  1462→        if (Math.abs(c.safetyRating - country.safetyRating) <= 1) return true;
+  1463→        if (Math.abs((c.costProfile?.totalMonthlyUSD || 1000) - (country.costProfile?.totalMonthlyUSD || 1000)) <= 300) return true;
+  1464→        return false;
+  1465→      })
+  1466→      .slice(0, 4);
+  1467→  }, [countries, country]);
+  1468→
+  1469→  if (similar.length === 0) return null;
+  1470→
+  1471→  return (
+  1472→    <div className="space-y-2.5">
+  1473→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1474→        <Globe className="w-4 h-4 text-sky-500" />
+  1475→        Similar Countries
+  1476→        <Badge variant="secondary" className="text-[10px]">{similar.length} matches</Badge>
+  1477→      </h3>
+  1478→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  1479→        {similar.map((c) => {
+  1480→          const visaStatus = c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'On Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy';
+  1481→          const statusColor = c.visaFree ? 'text-amber-600' : c.visaOnArrival ? 'text-amber-600' : c.etaAvailable ? 'text-amber-600' : 'text-red-600';
+  1482→          return (
+  1483→            <button
+  1484→              key={c.code}
+  1485→              onClick={() => setSelectedCountry(c)}
+  1486→              className="flex items-center gap-2 p-2 rounded-lg border text-left hover:bg-muted/50 hover:shadow-sm transition-all cursor-pointer"
+  1487→            >
+  1488→              <FlagImage code={c.code} flagUrl={c.flagUrl} size={24} emoji={c.flagEmoji} />
+  1489→              <div className="min-w-0 flex-1">
+  1490→                <p className="text-xs font-medium truncate">{c.name}</p>
+  1491→                <p className={`text-[10px] ${statusColor}`}>{visaStatus}</p>
+  1492→              </div>
+  1493→            </button>
+  1494→          );
+  1495→        })}
+  1496→      </div>
+  1497→    </div>
+  1498→  );
+  1499→}
+  1500→
+  1501→// ============ EMBASSY INFO SECTION ============
+  1502→export function EmbassyInfoSection({ countryCode, countryName }: { countryCode: string; countryName: string }) {
+  1503→  const embassy = EMBASSY_DATA[countryCode] || GENERIC_EMBASSY;
+  1504→  const hasNote = 'note' in embassy && embassy.note;
+  1505→  return (
+  1506→    <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+  1507→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1508→        <Building className="w-4 h-4 text-amber-500" />
+  1509→        Embassy & Consulate Information
+  1510→      </h3>
+  1511→      {hasNote && (
+  1512→        <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+  1513→          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+  1514→          <span className="text-xs text-amber-700 dark:text-amber-400 break-words">{embassy.note}</span>
+  1515→        </div>
+  1516→      )}
+  1517→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+  1518→        <div className="flex items-start gap-2 min-w-0">
+  1519→          <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1520→          <span className="break-words min-w-0">{embassy.address}</span>
+  1521→        </div>
+  1522→        <div className="flex items-start gap-2 min-w-0">
+  1523→          <Phone className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1524→          <span className="break-words min-w-0">{embassy.phone}</span>
+  1525→        </div>
+  1526→        <div className="flex items-start gap-2 min-w-0">
+  1527→          <Mail className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1528→          <span className="text-xs break-all min-w-0">{embassy.email}</span>
+  1529→        </div>
+  1530→        <div className="flex items-start gap-2 min-w-0">
+  1531→          <Clock className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1532→          <span className="break-words min-w-0">{embassy.hours}</span>
+  1533→        </div>
+  1534→      </div>
+  1535→      <div className="flex flex-wrap gap-2 pt-2 border-t">
+  1536→        <Button variant="outline" size="sm" className="text-xs" asChild>
+  1537→          <a href={embassy.website} target="_blank" rel="noopener noreferrer">
+  1538→            <ExternalLink className="w-3 h-3 mr-1" /> Official Website
+  1539→          </a>
+  1540→        </Button>
+  1541→        <Button variant="outline" size="sm" className="text-xs bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800" asChild>
+  1542→          <a href={embassy.appointmentUrl} target="_blank" rel="noopener noreferrer">
+  1543→            <Calendar className="w-3 h-3 mr-1" /> Book Appointment
+  1544→          </a>
+  1545→        </Button>
+  1546→      </div>
+  1547→    </div>
+  1548→  );
+  1549→}
+  1550→
+  1551→// ============ DESTINATION DISCOVERY PANEL ============
+  1552→export function DestinationDiscoveryPanel({ countries, onSelectCountry }: { countries: CountryData[]; onSelectCountry: (c: CountryData) => void }) {
+  1553→  const { userProfile } = useAppStore();
+  1554→
+  1555→  const recommendations = useMemo(() => {
+  1556→    const popular = countries
+  1557→      .filter(c => c.visaFree || c.visaOnArrival)
+  1558→      .sort((a, b) => b.safetyRating - a.safetyRating)
+  1559→      .slice(0, 5);
+  1560→    return popular;
+  1561→  }, [countries]);
+  1562→
+  1563→  if (recommendations.length === 0) return null;
+  1564→
+  1565→  return (
+  1566→    <div className="mt-8">
+  1567→      <div className="flex items-center gap-2 mb-4">
+  1568→        <Sparkles className="w-5 h-5 text-amber-500" />
+  1569→        <h2 className="text-lg font-semibold">
+  1570→          {userProfile ? 'Recommended for You' : 'Popular Destinations'}
+  1571→        </h2>
+  1572→        <Badge variant="secondary" className="text-[10px]">Visa-Free & On-Arrival</Badge>
+  1573→      </div>
+  1574→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+  1575→        {recommendations.map((country, idx) => {
+  1576→          const visaStatus = country.visaFree ? 'Visa Free' : 'On Arrival';
+  1577→          const statusColor = country.visaFree ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+  1578→          return (
+  1579→            <motion.div
+  1580→              key={country.code}
+  1581→              initial={{ opacity: 0, y: 20 }}
+  1582→              animate={{ opacity: 1, y: 0 }}
+  1583→              transition={{ delay: idx * 0.1 }}
+  1584→              whileHover={{ scale: 1.03 }}
+  1585→            >
+  1586→              <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 group" onClick={() => onSelectCountry(country)}>
+  1587→                <CardContent className="p-4 space-y-2">
+  1588→                  <div className="flex items-center gap-2">
+  1589→                    <FlagImage code={country.code} flagUrl={country.flagUrl} size={28} />
+  1590→                    <div className="min-w-0 flex-1">
+  1591→                      <p className="text-sm font-semibold truncate">{country.name}</p>
+  1592→                      <Badge className={`${statusColor} text-[9px]`} variant="secondary">{visaStatus}</Badge>
+  1593→                    </div>
+  1594→                  </div>
+  1595→                  <div className="grid grid-cols-3 gap-1 text-[10px] text-muted-foreground">
+  1596→                    <div className="text-center">
+  1597→                      <Shield className="w-3 h-3 mx-auto mb-0.5 text-amber-500" />
+  1598→                      <span>{country.safetyRating}/10</span>
+  1599→                    </div>
+  1600→                    <div className="text-center">
+  1601→                      <DollarSign className="w-3 h-3 mx-auto mb-0.5 text-amber-500" />
+  1602→                      <span>${country.costProfile?.totalMonthlyUSD || 0}</span>
+  1603→                    </div>
+  1604→                    <div className="text-center">
+  1605→                      <Thermometer className="w-3 h-3 mx-auto mb-0.5 text-orange-500" />
+  1606→                      <span>{country.avgTempC}°C</span>
+  1607→                    </div>
+  1608→                  </div>
+  1609→                  <Button variant="outline" size="sm" className="w-full text-xs btn-glow">
+  1610→                    <Zap className="w-3 h-3 mr-1" /> Quick Score
+  1611→                  </Button>
+  1612→                </CardContent>
+  1613→              </Card>
+  1614→            </motion.div>
+  1615→          );
+  1616→        })}
+  1617→      </div>
+  1618→    </div>
+  1619→  );
+  1620→}
+  1621→
+  1622→// ============ APPLICATION TIMELINE TRACKER ============
+  1623→export function ApplicationTimelineTracker() {
+  1624→  const [checkedStages, setCheckedStages] = useState<Set<string>>(new Set());
+  1625→  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  1626→
+  1627→  const toggleStage = (stageId: string) => {
+  1628→    setCheckedStages(prev => {
+  1629→      const next = new Set(prev);
+  1630→      if (next.has(stageId)) next.delete(stageId);
+  1631→      else next.add(stageId);
+  1632→      return next;
+  1633→    });
+  1634→  };
+  1635→
+  1636→  const toggleItem = (key: string) => {
+  1637→    setCheckedItems(prev => {
+  1638→      const next = new Set(prev);
+  1639→      if (next.has(key)) next.delete(key);
+  1640→      else next.add(key);
+  1641→      return next;
+  1642→    });
+  1643→  };
+  1644→
+  1645→  const totalItems = TIMELINE_STAGES.reduce((sum, s) => sum + s.items.length, 0);
+  1646→  const completedItems = checkedItems.size;
+  1647→  const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+  1648→
+  1649→  return (
+  1650→    <div className="space-y-4">
+  1651→      <div className="space-y-2">
+  1652→        <div className="flex items-center justify-between text-sm">
+  1653→          <span className="font-medium">Application Progress</span>
+  1654→          <span className="text-muted-foreground">{completedItems}/{totalItems} completed</span>
+  1655→        </div>
+  1656→        <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
+  1657→          <motion.div
+  1658→            className="h-full rounded-full"
+  1659→            style={{ background: getScoreGradient(progress) }}
+  1660→            initial={{ width: 0 }}
+  1661→            animate={{ width: `${progress}%` }}
+  1662→            transition={{ duration: 0.5 }}
+  1663→          />
+  1664→        </div>
+  1665→        {progress === 100 && (
+  1666→          <p className="text-xs text-amber-600 flex items-center gap-1">
+  1667→            <CheckCircle2 className="w-3 h-3" /> All stages complete! Ready for submission.
+  1668→          </p>
+  1669→        )}
+  1670→      </div>
+  1671→
+  1672→      <div className="relative space-y-0">
+  1673→        {TIMELINE_STAGES.map((stage, stageIdx) => {
+  1674→          const stageComplete = checkedStages.has(stage.id);
+  1675→          const stageItemsComplete = stage.items.filter((_, i) => checkedItems.has(`${stage.id}-${i}`)).length;
+  1676→          const isLast = stageIdx === TIMELINE_STAGES.length - 1;
+  1677→          return (
+  1678→            <Fragment key={stage.id}>
+  1679→              <div className="flex gap-3">
+  1680→                <div className="flex flex-col items-center">
+  1681→                  <button
+  1682→                    onClick={() => toggleStage(stage.id)}
+  1683→                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
+  1684→                      stageComplete
+  1685→                        ? 'bg-amber-600 border-amber-600 text-white timeline-dot-active'
+  1686→                        : 'bg-background border-muted-foreground/30 text-muted-foreground hover:border-amber-400'
+  1687→                    }`}
+  1688→                  >
+  1689→                    {stageComplete ? <CheckCircle2 className="w-5 h-5" /> : React.createElement(stage.icon, { className: 'w-4 h-4' })}
+  1690→                  </button>
+  1691→                  {!isLast && (
+  1692→                    <div className={`w-0.5 flex-1 min-h-[20px] transition-colors ${stageComplete ? 'bg-amber-500' : 'bg-muted-foreground/20'}`} />
+  1693→                  )}
+  1694→                </div>
+  1695→                <div className="flex-1 pb-6">
+  1696→                  <div className="flex items-center justify-between">
+  1697→                    <h4 className={`text-sm font-semibold ${stageComplete ? 'text-amber-600' : ''}`}>{stage.title}</h4>
+  1698→                    <span className="text-[10px] text-muted-foreground">{stageItemsComplete}/{stage.items.length}</span>
+  1699→                  </div>
+  1700→                  <div className="mt-1 space-y-1">
+  1701→                    {stage.items.map((item, itemIdx) => {
+  1702→                      const key = `${stage.id}-${itemIdx}`;
+  1703→                      const checked = checkedItems.has(key);
+  1704→                      return (
+  1705→                        <label key={key} className="flex items-center gap-2 cursor-pointer group">
+  1706→                          <Checkbox checked={checked} onCheckedChange={() => toggleItem(key)} className="w-3.5 h-3.5" />
+  1707→                          <span className={`text-xs transition-colors ${checked ? 'line-through text-muted-foreground' : 'group-hover:text-amber-600'}`}>{item}</span>
+  1708→                        </label>
+  1709→                      );
+  1710→                    })}
+  1711→                  </div>
+  1712→                </div>
+  1713→              </div>
+  1714→            </Fragment>
+  1715→          );
+  1716→        })}
+  1717→      </div>
+  1718→    </div>
+  1719→  );
+  1720→}
+  1721→
+  1722→// ============ VISA FEE COMPARISON CHART ============
+  1723→export function VisaFeeComparisonChart({ results }: { results: ScoreBreakdown[] }) {
+  1724→  if (results.length === 0) return null;
+  1725→  const metrics = [
+  1726→    { label: 'Eligibility', key: 'eligibility' as const, color: '#f59e0b' },
+  1727→    { label: 'Visa Likelihood', key: 'visaLikelihood' as const, color: '#f97316' },
+  1728→    { label: 'Cost Suitability', key: 'costSuitability' as const, color: '#f59e0b' },
+  1729→  ];
+  1730→  const maxScore = 100;
+  1731→  return (
+  1732→    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+  1733→      <h4 className="text-sm font-semibold flex items-center gap-2">
+  1734→        <BarChart3 className="w-4 h-4 text-amber-500" />
+  1735→        Side-by-Side Comparison
+  1736→      </h4>
+  1737→      {metrics.map(metric => (
+  1738→        <div key={metric.key}>
+  1739→          <p className="text-xs font-medium text-muted-foreground mb-2">{metric.label}</p>
+  1740→          <div className="space-y-1.5">
+  1741→            {results.map((r) => (
+  1742→              <div key={r.country} className="flex items-center gap-2">
+  1743→                <span className="w-20 text-xs truncate text-muted-foreground shrink-0">{r.country}</span>
+  1744→                <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+  1745→                  <motion.div
+  1746→                    className="h-full rounded bar-animated"
+  1747→                    style={{ backgroundColor: metric.color, width: `${(r[metric.key] / maxScore) * 100}%` }}
+  1748→                    initial={{ width: 0 }}
+  1749→                    animate={{ width: `${(r[metric.key] / maxScore) * 100}%` }}
+  1750→                    transition={{ duration: 0.6, delay: 0.1 }}
+  1751→                  />
+  1752→                </div>
+  1753→                <span className="w-10 text-xs text-right font-mono">{Math.round(r[metric.key])}%</span>
+  1754→              </div>
+  1755→            ))}
+  1756→          </div>
+  1757→        </div>
+  1758→      ))}
+  1759→    </div>
+  1760→  );
+  1761→}
+  1762→
+  1763→// ============ VISA DOCUMENT CHECKLIST ============
+  1764→
+  1765→function generateDefaultChecklist(country: CountryData): VisaDocChecklistItem[] {
+  1766→  const isEasy = country.visaFree || country.visaOnArrival;
+  1767→  const isMedium = country.etaAvailable;
+  1768→
+  1769→  const basicDocs: VisaDocChecklistItem[] = [
+  1770→    { id: 'passport', name: 'Valid Passport (6+ months validity)', category: 'required', checked: false },
+  1771→    { id: 'return-ticket', name: 'Return/Onward Flight Ticket', category: 'required', checked: false },
+  1772→    { id: 'hotel', name: 'Hotel Booking Confirmation', category: 'required', checked: false },
+  1773→    { id: 'insurance', name: 'Travel Insurance', category: 'required', checked: false },
+  1774→    { id: 'bank-statement', name: 'Bank Statement (last 3 months)', category: 'recommended', checked: false },
+  1775→    { id: 'photos', name: 'Passport-sized Photographs (2)', category: 'recommended', checked: false },
+  1776→  ];
+  1777→
+  1778→  if (isEasy) return basicDocs;
+  1779→
+  1780→  const mediumDocs: VisaDocChecklistItem[] = [
+  1781→    ...basicDocs,
+  1782→    { id: 'application-form', name: 'Visa Application Form (completed)', category: 'required', checked: false },
+  1783→    { id: 'bank-6months', name: 'Bank Statement (last 6 months)', category: 'required', checked: false },
+  1784→    { id: 'employment', name: 'Employment Verification Letter', category: 'required', checked: false },
+  1785→  ];
+  1786→
+  1787→  if (isMedium) return mediumDocs;
+  1788→
+  1789→  const fullDocs: VisaDocChecklistItem[] = [
+  1790→    ...mediumDocs,
+  1791→    { id: 'tax-returns', name: 'Tax Returns (last 2 years)', category: 'required', checked: false },
+  1792→    { id: 'itinerary', name: 'Detailed Travel Itinerary', category: 'required', checked: false },
+  1793→    { id: 'sponsor', name: 'Sponsor Letter (if applicable)', category: 'recommended', checked: false },
+  1794→    { id: 'education', name: 'Educational Certificates', category: 'recommended', checked: false },
+  1795→    { id: 'cover-letter', name: 'Cover Letter / Purpose of Visit', category: 'required', checked: false },
+  1796→    { id: 'income-proof', name: 'Proof of Income / Payslips', category: 'required', checked: false },
+  1797→  ];
+  1798→
+  1799→  return fullDocs;
+  1800→}
+  1801→
+  1802→export function VisaChecklistPanel({ country }: { country: CountryData }) {
+  1803→  const [items, setItems] = useState<VisaDocChecklistItem[]>([]);
+  1804→  const [loaded, setLoaded] = useState(false);
+  1805→
+  1806→  useEffect(() => {
+  1807→    const storageKey = `pakvisa-checklist-${country.code}`;
+  1808→    const loadChecklist = () => {
+  1809→      try {
+  1810→        const saved = localStorage.getItem(storageKey);
+  1811→        if (saved) {
+  1812→          setItems(JSON.parse(saved));
+  1813→        } else {
+  1814→          const defaults = generateDefaultChecklist(country);
+  1815→          setItems(defaults);
+  1816→          localStorage.setItem(storageKey, JSON.stringify(defaults));
+  1817→        }
+  1818→      } catch {
+  1819→        const defaults = generateDefaultChecklist(country);
+  1820→        setItems(defaults);
+  1821→      }
+  1822→      setLoaded(true);
+  1823→    };
+  1824→    requestAnimationFrame(loadChecklist);
+  1825→  }, [country.code]);
+  1826→
+  1827→  useEffect(() => {
+  1828→    if (loaded) {
+  1829→      const storageKey = `pakvisa-checklist-${country.code}`;
+  1830→      localStorage.setItem(storageKey, JSON.stringify(items));
+  1831→    }
+  1832→  }, [items, loaded, country.code]);
+  1833→
+  1834→  const toggleItem = (id: string) => {
+  1835→    setItems(prev => prev.map(item =>
+  1836→      item.id === id ? { ...item, checked: !item.checked } : item
+  1837→    ));
+  1838→  };
+  1839→
+  1840→  const checkedCount = items.filter(i => i.checked).length;
+  1841→  const totalCount = items.length;
+  1842→  const progressPct = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+  1843→
+  1844→  const requiredItems = items.filter(i => i.category === 'required');
+  1845→  const recommendedItems = items.filter(i => i.category === 'recommended');
+  1846→
+  1847→  if (!loaded) {
+  1848→    return (
+  1849→      <div className="glass-section p-4 rounded-lg animate-pulse">
+  1850→        <div className="h-5 w-48 bg-muted rounded mb-3" />
+  1851→        <div className="space-y-2">
+  1852→          {[1, 2, 3].map(i => (
+  1853→            <div key={i} className="h-4 w-full bg-muted rounded" />
+  1854→          ))}
+  1855→        </div>
+  1856→      </div>
+  1857→    );
+  1858→  }
+  1859→
+  1860→  return (
+  1861→    <div className="glass-section p-4 rounded-lg space-y-3">
+  1862→      <div className="flex items-center justify-between">
+  1863→        <h3 className="text-sm font-semibold flex items-center gap-2">
+  1864→          <ClipboardList className="w-4 h-4 text-amber-500" />
+  1865→          Visa Document Checklist
+  1866→        </h3>
+  1867→        <div className="flex items-center gap-2">
+  1868→          <span className="text-xs font-medium text-muted-foreground">
+  1869→            {checkedCount}/{totalCount} documents ready
+  1870→          </span>
+  1871→          <Badge
+  1872→            variant="outline"
+  1873→            className={`text-[10px] px-1.5 py-0 ${
+  1874→              progressPct === 100
+  1875→                ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/20'
+  1876→                : 'border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/20'
+  1877→            }`}
+  1878→          >
+  1879→            {progressPct === 100 ? '✓ Complete' : `${progressPct}%`}
+  1880→          </Badge>
+  1881→        </div>
+  1882→      </div>
+  1883→
+  1884→      {/* Progress bar */}
+  1885→      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+  1886→        <motion.div
+  1887→          className="h-full rounded-full"
+  1888→          style={{
+  1889→            background: progressPct === 100
+  1890→              ? 'linear-gradient(90deg, #22c55e, #4ade80)'
+  1891→              : 'linear-gradient(90deg, #f59e0b, #f97316)',
+  1892→          }}
+  1893→          initial={{ width: 0 }}
+  1894→          animate={{ width: `${progressPct}%` }}
+  1895→          transition={{ duration: 0.5, ease: 'easeOut' }}
+  1896→        />
+  1897→      </div>
+  1898→
+  1899→      {/* Required Documents */}
+  1900→      {requiredItems.length > 0 && (
+  1901→        <div className="space-y-1">
+  1902→          <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400">
+  1903→            Required Documents
+  1904→          </p>
+  1905→          {requiredItems.map((item) => (
+  1906→            <label
+  1907→              key={item.id}
+  1908→              className="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer group transition-colors"
+  1909→            >
+  1910→              <Checkbox
+  1911→                checked={item.checked}
+  1912→                onCheckedChange={() => toggleItem(item.id)}
+  1913→                className="w-4 h-4 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+  1914→              />
+  1915→              <span className={`text-sm flex-1 transition-colors ${
+  1916→                item.checked ? 'line-through text-muted-foreground' : 'group-hover:text-amber-600'
+  1917→              }`}>
+  1918→                {item.name}
+  1919→              </span>
+  1920→              {item.checked && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+  1921→            </label>
+  1922→          ))}
+  1923→        </div>
+  1924→      )}
+  1925→
+  1926→      {/* Recommended Documents */}
+  1927→      {recommendedItems.length > 0 && (
+  1928→        <div className="space-y-1">
+  1929→          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+  1930→            Recommended
+  1931→          </p>
+  1932→          {recommendedItems.map((item) => (
+  1933→            <label
+  1934→              key={item.id}
+  1935→              className="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer group transition-colors"
+  1936→            >
+  1937→              <Checkbox
+  1938→                checked={item.checked}
+  1939→                onCheckedChange={() => toggleItem(item.id)}
+  1940→                className="w-4 h-4 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+  1941→              />
+  1942→              <span className={`text-sm flex-1 transition-colors ${
+  1943→                item.checked ? 'line-through text-muted-foreground' : 'group-hover:text-orange-500'
+  1944→              }`}>
+  1945→                {item.name}
+  1946→              </span>
+  1947→              {item.checked && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+  1948→            </label>
+  1949→          ))}
+  1950→        </div>
+  1951→      )}
+  1952→
+  1953→      {/* Reset button */}
+  1954→      <div className="flex justify-end pt-1">
+  1955→        <Button
+  1956→          variant="ghost"
+  1957→          size="sm"
+  1958→          className="text-xs text-muted-foreground hover:text-orange-600 h-7"
+  1959→          onClick={() => {
+  1960→            const defaults = generateDefaultChecklist(country);
+  1961→            setItems(defaults);
+  1962→            toast.success('Checklist reset to defaults');
+  1963→          }}
+  1964→        >
+  1965→          <RotateCcw className="w-3 h-3 mr-1" /> Reset
+  1966→        </Button>
+  1967→      </div>
+  1968→    </div>
+  1969→  );
+  1970→}
+  1971→
+  1972→// ============ TRAVEL TIPS PANEL ============
+  1973→
+  1974→type TipType = 'info' | 'warning' | 'success';
+  1975→
+  1976→interface TravelTip {
+  1977→  icon: React.ElementType;
+  1978→  text: string;
+  1979→  type: TipType;
+  1980→}
+  1981→
+  1982→function generateTips(country: CountryData): TravelTip[] {
+  1983→  const tips: TravelTip[] = [];
+  1984→
+  1985→  // Best travel time
+  1986→  if (country.bestTravelMonths) {
+  1987→    tips.push({
+  1988→      icon: Sun,
+  1989→      text: `Best time to visit: ${country.bestTravelMonths}. Plan your trip during these months for ideal weather.`,
+  1990→      type: 'success',
+  1991→    });
+  1992→  }
+  1993→
+  1994→  // Safety
+  1995→  if (country.safetyRating >= 8) {
+  1996→    tips.push({
+  1997→      icon: Shield,
+  1998→      text: `${country.name} has a high safety rating (${country.safetyRating}/10). Generally safe for tourists.`,
+  1999→      type: 'success',
+  2000→    });
+  2001→  } else if (country.safetyRating <= 5) {
+  2002→    tips.push({
+  2003→      icon: AlertTriangle,
+  2004→      text: `Safety rating is ${country.safetyRating}/10. Exercise caution and check travel advisories.`,
+  2005→      type: 'warning',
+  2006→    });
+  2007→  }
+  2008→
+  2009→  // Budget
+  2010→  if (country.costProfile) {
+  2011→    const monthlyCost = country.costProfile.totalMonthlyUSD;
+  2012→    if (monthlyCost > 2000) {
+  2013→      tips.push({
+  2014→        icon: Wallet,
+  2015→        text: `Monthly living cost is ~$${monthlyCost}. Budget accordingly for a comfortable stay.`,
+  2016→        type: 'info',
+  2017→      });
+  2018→    } else {
+  2019→      tips.push({
+  2020→        icon: Wallet,
+  2021→        text: `Affordable destination! Monthly costs ~$${monthlyCost}. Great value for Pakistani travelers.`,
+  2022→        type: 'success',
+  2023→      });
+  2024→    }
+  2025→  }
+  2026→
+  2027→  // Visa type tip
+  2028→  if (country.visaFree) {
+  2029→    tips.push({
+  2030→      icon: CheckCircle2,
+  2031→      text: 'No visa required! Just carry your valid Pakistani passport.',
+  2032→      type: 'success',
+  2033→    });
+  2034→  } else if (country.visaOnArrival) {
+  2035→    tips.push({
+  2036→      icon: Plane,
+  2037→      text: 'Visa on arrival at the airport. Carry USD cash for visa fees and ensure passport has blank pages.',
+  2038→      type: 'info',
+  2039→    });
+  2040→  } else if (country.etaAvailable) {
+  2041→    tips.push({
+  2042→      icon: FileText,
+  2043→      text: 'Apply for e-Visa online before travel. Processing takes a few days. Print the approval.',
+  2044→      type: 'info',
+  2045→    });
+  2046→  } else {
+  2047→    tips.push({
+  2048→      icon: Building,
+  2049→      text: 'Apply at the embassy well in advance. Processing can take 15-30 business days.',
+  2050→      type: 'warning',
+  2051→    });
+  2052→  }
+  2053→
+  2054→  // Temperature
+  2055→  tips.push({
+  2056→    icon: Thermometer,
+  2057→    text: `Average temperature: ${country.avgTempC}°C. Check seasonal weather before packing.`,
+  2058→    type: 'info',
+  2059→  });
+  2060→
+  2061→  // Cultural tip based on continent
+  2062→  const continent = country.continent.toLowerCase();
+  2063→  if (continent.includes('asia') || continent.includes('east') || continent.includes('south') || continent.includes('southeast')) {
+  2064→    tips.push({
+  2065→      icon: Globe,
+  2066→      text: 'Dress modestly and respect local customs. Learn a few basic phrases in the local language.',
+  2067→      type: 'info',
+  2068→    });
+  2069→  } else if (continent.includes('europe')) {
+  2070→    tips.push({
+  2071→      icon: Globe,
+  2072→      text: 'Europe is generally tourist-friendly. Carry a universal power adapter and travel card.',
+  2073→      type: 'info',
+  2074→    });
+  2075→  } else if (continent.includes('africa')) {
+  2076→    tips.push({
+  2077→      icon: Globe,
+  2078→      text: 'Research local customs and carry copies of important documents. Stay aware of surroundings.',
+  2079→      type: 'info',
+  2080→    });
+  2081→  } else if (continent.includes('america') || continent.includes('north') || continent.includes('south')) {
+  2082→    tips.push({
+  2083→      icon: Globe,
+  2084→      text: 'Keep your passport and valuables secure. Tipping culture varies by country.',
+  2085→      type: 'info',
+  2086→    });
+  2087→  }
+  2088→
+  2089→  return tips.slice(0, 6);
+  2090→}
+  2091→
+  2092→const TIP_STYLES: Record<TipType, { bg: string; border: string; iconColor: string }> = {
+  2093→  success: {
+  2094→    bg: 'bg-green-50 dark:bg-green-950/20',
+  2095→    border: 'border-green-200 dark:border-green-900/40',
+  2096→    iconColor: 'text-green-600 dark:text-green-400',
+  2097→  },
+  2098→  warning: {
+  2099→    bg: 'bg-amber-50 dark:bg-amber-950/20',
+  2100→    border: 'border-amber-200 dark:border-amber-900/40',
+  2101→    iconColor: 'text-amber-600 dark:text-amber-400',
+  2102→  },
+  2103→  info: {
+  2104→    bg: 'bg-orange-50 dark:bg-orange-950/20',
+  2105→    border: 'border-orange-200 dark:border-orange-900/40',
+  2106→    iconColor: 'text-orange-600 dark:text-orange-400',
+  2107→  },
+  2108→};
+  2109→
+  2110→export function TravelTipsPanel({ country }: { country: CountryData }) {
+  2111→  const tips = useMemo(() => generateTips(country), [country]);
+  2112→
+  2113→  return (
+  2114→    <div className="glass-section p-4 rounded-lg space-y-3">
+  2115→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  2116→        <Lightbulb className="w-4 h-4 text-amber-500" />
+  2117→        Travel Tips for {country.name}
+  2118→      </h3>
+  2119→      <div className="space-y-2">
+  2120→        {tips.map((tip, idx) => {
+  2121→          const style = TIP_STYLES[tip.type];
+  2122→          const IconComp = tip.icon;
+  2123→          return (
+  2124→            <motion.div
+  2125→              key={idx}
+  2126→              initial={{ opacity: 0, x: -8 }}
+  2127→              animate={{ opacity: 1, x: 0 }}
+  2128→              transition={{ duration: 0.3, delay: idx * 0.05 }}
+  2129→              className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${style.bg} ${style.border}`}
+  2130→            >
+  2131→              <IconComp className={`w-4 h-4 mt-0.5 shrink-0 ${style.iconColor}`} />
+  2132→              <p className="text-xs leading-relaxed text-foreground/90">{tip.text}</p>
+  2133→            </motion.div>
+  2134→          );
+  2135→        })}
+  2136→      </div>
+  2137→    </div>
+  2138→  );
+  2139→}
+  2140→
+  2141→// ============ DESTINATION SPOTLIGHT CAROUSEL (Task 11) ============
+  2142→interface SpotlightDestination {
+  2143→  name: string;
+  2144→  code: string;
+  2145→  flagEmoji: string;
+  2146→  visaType: string;
+  2147→  bestMonth: string;
+  2148→  avgCost: number;
+  2149→  rating: number;
+  2150→}
+  2151→
+  2152→const FEATURED_DESTINATIONS: SpotlightDestination[] = [
+  2153→  { name: 'Malaysia', code: 'MY', flagEmoji: '\u{1F1F2}\u{1F1FE}', visaType: 'Visa Free', bestMonth: 'Mar-May', avgCost: 850, rating: 9.2 },
+  2154→  { name: 'UAE', code: 'AE', flagEmoji: '\u{1F1E6}\u{1F1EA}', visaType: 'Visa on Arrival', bestMonth: 'Nov-Mar', avgCost: 1200, rating: 8.8 },
+  2155→  { name: 'Turkey', code: 'TR', flagEmoji: '\u{1F1F9}\u{1F1F7}', visaType: 'e-Visa', bestMonth: 'Apr-Jun', avgCost: 750, rating: 9.0 },
+  2156→  { name: 'Saudi Arabia', code: 'SA', flagEmoji: '\u{1F1F8}\u{1F1E6}', visaType: 'Visa on Arrival', bestMonth: 'Oct-Apr', avgCost: 1100, rating: 8.5 },
+  2157→  { name: 'Qatar', code: 'QA', flagEmoji: '\u{1F1F6}\u{1F1E6}', visaType: 'Visa on Arrival', bestMonth: 'Nov-Mar', avgCost: 1400, rating: 8.7 },
+  2158→];
+  2159→
+  2160→export function DestinationSpotlight({ onSelectCountry }: { onSelectCountry: (c: CountryData) => void }) {
+  2161→  const [currentIndex, setCurrentIndex] = useState(0);
+  2162→  const scrollRef = useRef<HTMLDivElement>(null);
+  2163→  const [hovered, setHovered] = useState(false);
+  2164→
+  2165→  // Auto-advance every 6 seconds
+  2166→  useEffect(() => {
+  2167→    if (hovered) return;
+  2168→    const interval = setInterval(() => {
+  2169→      setCurrentIndex(prev => (prev + 1) % FEATURED_DESTINATIONS.length);
+  2170→    }, 6000);
+  2171→    return () => clearInterval(interval);
+  2172→  }, [hovered]);
+  2173→
+  2174→  // Scroll to current card
+  2175→  useEffect(() => {
+  2176→    const container = scrollRef.current;
+  2177→    if (!container) return;
+  2178→    const card = container.children[currentIndex] as HTMLElement;
+  2179→    if (card) {
+  2180→      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  2181→    }
+  2182→  }, [currentIndex]);
+  2183→
+  2184→  const getVisaBadgeClass = (type: string) => {
+  2185→    if (type === 'Visa Free') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+  2186→    if (type === 'Visa on Arrival') return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400';
+  2187→    return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400';
+  2188→  };
+  2189→
+  2190→  const handleClick = (dest: SpotlightDestination) => {
+  2191→    // Fetch country data and open detail dialog
+  2192→    fetch(`/api/countries/${dest.code}`)
+  2193→      .then(r => r.json())
+  2194→      .then(data => {
+  2195→        if (data.data) onSelectCountry(data.data);
+  2196→      })
+  2197→      .catch(() => {});
+  2198→  };
+  2199→
+  2200→  return (
+  2201→    <section className="space-y-3">
+  2202→      <div className="flex items-center justify-between">
+  2203→        <div>
+  2204→          <h2 className="text-lg font-bold flex items-center gap-2">
+  2205→            <Sparkles className="w-5 h-5 text-amber-500" /> Featured Destinations
+  2206→          </h2>
+  2207→          <p className="text-xs text-muted-foreground">Top picks for Pakistani travelers</p>
+  2208→        </div>
+  2209→        <div className="flex items-center gap-2">
+  2210→          <Button
+  2211→            variant="outline"
+  2212→            size="icon"
+  2213→            className="h-8 w-8"
+  2214→            onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev - 1 + FEATURED_DESTINATIONS.length) % FEATURED_DESTINATIONS.length); }}
+  2215→          >
+  2216→            <ChevronDown className="w-4 h-4 -rotate-90" />
+  2217→          </Button>
+  2218→          <Button
+  2219→            variant="outline"
+  2220→            size="icon"
+  2221→            className="h-8 w-8"
+  2222→            onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev + 1) % FEATURED_DESTINATIONS.length); }}
+  2223→          >
+  2224→            <ChevronDown className="w-4 h-4 rotate-90" />
+  2225→          </Button>
+  2226→        </div>
+  2227→      </div>
+  2228→
+  2229→      <div
+  2230→        ref={scrollRef}
+  2231→        className="flex gap-4 overflow-x-auto scroll-smooth filter-scroll pb-2 snap-x snap-mandatory"
+  2232→        onMouseEnter={() => setHovered(true)}
+  2233→        onMouseLeave={() => setHovered(false)}
+  2234→      >
+  2235→        {FEATURED_DESTINATIONS.map((dest, idx) => (
+  2236→          <motion.button
+  2237→            key={dest.code}
+  2238→            initial={{ opacity: 0, y: 10 }}
+  2239→            animate={{ opacity: 1, y: 0 }}
+  2240→            transition={{ duration: 0.3, delay: idx * 0.08 }}
+  2241→            onClick={() => handleClick(dest)}
+  2242→            className={`shrink-0 w-52 p-4 rounded-xl border bg-card text-left snap-start transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-300 dark:hover:border-amber-700 group ${idx === currentIndex ? 'ring-2 ring-amber-400 dark:ring-amber-600 shadow-md' : ''}`}
+  2243→          >
+  2244→            <div className="relative overflow-hidden rounded-lg mb-3 h-24 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+  2245→              <span className="text-5xl group-hover:scale-110 transition-transform duration-500">{dest.flagEmoji}</span>
+  2246→            </div>
+  2247→
+  2248→            <h3 className="text-sm font-bold mb-1">{dest.name}</h3>
+  2249→
+  2250→            <Badge className={`${getVisaBadgeClass(dest.visaType)} text-[10px] mb-2`} variant="secondary">
+  2251→              {dest.visaType}
+  2252→            </Badge>
+  2253→
+  2254→            <div className="space-y-1 text-[11px] text-muted-foreground">
+  2255→              <div className="flex items-center gap-1.5">
+  2256→                <Sun className="w-3 h-3" />
+  2257→                <span>Best: {dest.bestMonth}</span>
+  2258→              </div>
+  2259→              <div className="flex items-center gap-1.5">
+  2260→                <Wallet className="w-3 h-3" />
+  2261→                <span>~${dest.avgCost}/mo</span>
+  2262→              </div>
+  2263→              <div className="flex items-center gap-1.5">
+  2264→                <Star className="w-3 h-3 text-amber-500" />
+  2265→                <span className="font-medium text-foreground">{dest.rating}</span>/10
+  2266→              </div>
+  2267→            </div>
+  2268→          </motion.button>
+  2269→        ))}
+  2270→      </div>
+  2271→    </section>
+  2272→  );
+  2273→}
+  2274→

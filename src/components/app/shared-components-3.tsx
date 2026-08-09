@@ -130,7 +130,7 @@ export function NotificationBell() {
   
   return (
     <div className="relative" ref={bellRef}>
-      <Button variant="ghost" size="icon" className="relative" onClick={() => setOpen(!open)}>
+      <Button variant="ghost" size="icon" className="relative" onClick={() => setOpen(!open)} aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}>
         <Bell className={`w-4 h-4 transition-transform ${open ? 'animate-bell-ring' : ''}`} />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
@@ -243,7 +243,8 @@ export function PassportPowerIndex({ countries, stats }: { countries: CountryDat
   const embassyCount = stats?.embassyRequiredCount || countries.filter(c => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length;
   const total = 199;
   const rank = 106;
-  const rankPct = (rank / total) * 100;
+  const accessible = visaFreeCount + voaCount + eVisaCount;
+  const powerScore = Math.round((accessible / total) * 100);
   const segments = [
     { label: 'Visa Free', count: visaFreeCount, color: '#f59e0b' },
     { label: 'Visa on Arrival', count: voaCount, color: '#f59e0b' },
@@ -251,32 +252,147 @@ export function PassportPowerIndex({ countries, stats }: { countries: CountryDat
     { label: 'Embassy Required', count: embassyCount, color: '#ef4444' },
   ];
 
+  // Circular gauge animation state
+  const [animatedScore, setAnimatedScore] = useState(0);
+  const [animatedRank, setAnimatedRank] = useState(0);
+  const [animatedAccessible, setAnimatedAccessible] = useState(0);
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
+  const gaugeRef = useRef<HTMLDivElement>(null);
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    const el = gaugeRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimated.current) {
+          hasAnimated.current = true;
+          const duration = 1500;
+          const start = performance.now();
+          const animate = (currentTime: number) => {
+            const elapsed = currentTime - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setAnimatedScore(Math.round(eased * powerScore));
+            setAnimatedRank(Math.round(eased * rank));
+            setAnimatedAccessible(Math.round(eased * accessible));
+            if (progress < 1) requestAnimationFrame(animate);
+          };
+          requestAnimationFrame(animate);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [powerScore, rank, accessible]);
+
+  // SVG circular gauge params
+  const radius = 54;
+  const strokeWidth = 8;
+  const circumference = 2 * Math.PI * radius;
+  const gaugeProgress = (animatedScore / 100) * circumference;
+
+  // Color based on score zones
+  const getGaugeColor = (score: number) => {
+    if (score < 30) return '#ef4444';
+    if (score < 60) return '#f97316';
+    if (score < 80) return '#f59e0b';
+    return '#22c55e';
+  };
+  const gaugeColor = getGaugeColor(animatedScore);
+
+  const comparisonDots = [
+    { flag: '\u{1F1EE}\u{1F1F3}', name: 'India', rank: 84 },
+    { flag: '\u{1F1EE}\u{1F1F7}', name: 'Iran', rank: 94 },
+    { flag: '\u{1F1F5}\u{1F1F0}', name: 'Pakistan', rank: 106 },
+    { flag: '\u{1F1E7}\u{1F1E9}', name: 'Bangladesh', rank: 101 },
+    { flag: '\u{1F1E6}\u{1F1EB}', name: 'Afghanistan', rank: 111 },
+  ];
+
   return (
-    <div className="glass-section p-5">
-      <div className="flex items-center justify-between mb-3">
+    <div className="glass-section p-5" ref={gaugeRef}>
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Globe className="w-4 h-4 text-amber-500" />
           Passport Power Index
         </h3>
         <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-          {visaFreeCount + voaCount + eVisaCount} accessible
+          {animatedAccessible} accessible
         </Badge>
       </div>
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl">🇵🇰</span>
-        <div className="flex-1">
+
+      <div className="flex flex-col sm:flex-row items-center gap-6 mb-4">
+        {/* Circular Gauge */}
+        <div className="relative shrink-0">
+          <svg width={140} height={140} className="-rotate-90">
+            {/* Background track */}
+            <circle
+              cx={70} cy={70} r={radius}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={strokeWidth}
+              className="text-muted/30"
+            />
+            {/* Color zone markers */}
+            {[
+              { pct: 30, color: '#ef4444' },
+              { pct: 60, color: '#f97316' },
+              { pct: 80, color: '#f59e0b' },
+            ].map(zone => {
+              const angle = (zone.pct / 100) * 360 - 90;
+              const rad = (angle * Math.PI) / 180;
+              const x1 = 70 + (radius - strokeWidth) * Math.cos(rad);
+              const y1 = 70 + (radius - strokeWidth) * Math.sin(rad);
+              const x2 = 70 + (radius + 2) * Math.cos(rad);
+              const y2 = 70 + (radius + 2) * Math.sin(rad);
+              return <line key={zone.pct} x1={x1} y1={y1} x2={x2} y2={y2} stroke={zone.color} strokeWidth={2} strokeLinecap="round" />;
+            })}
+            {/* Animated progress arc */}
+            <circle
+              cx={70} cy={70} r={radius}
+              fill="none"
+              stroke={gaugeColor}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference - gaugeProgress}
+              style={{ transition: 'stroke 0.3s ease' }}
+            />
+          </svg>
+          {/* Center content */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center rotate-0">
+            <span className="text-3xl">🇵🇰</span>
+            <span className="text-2xl font-extrabold tabular-nums" style={{ color: gaugeColor }}>
+              #{animatedRank}
+            </span>
+            <span className="text-[10px] text-muted-foreground">of {total}</span>
+          </div>
+        </div>
+
+        {/* Right side info */}
+        <div className="flex-1 text-center sm:text-left">
           <p className="text-sm font-semibold">Pakistan Passport</p>
-          <p className="text-xs text-muted-foreground">Rank <span className="text-amber-600 dark:text-amber-400 font-bold">#{rank}</span> / {total} passports</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            <span className="text-amber-600 dark:text-amber-400 font-bold">{animatedAccessible}</span> countries accessible out of {total}
+          </p>
+
+          {/* Comparison dots */}
+          <div className="flex items-center gap-1.5 mt-3 justify-center sm:justify-start flex-wrap">
+            {comparisonDots.map(dot => (
+              <div
+                key={dot.name}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${dot.name === 'Pakistan' ? 'bg-amber-100 dark:bg-amber-900/30 font-bold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}
+              >
+                <span>{dot.flag}</span>
+                <span>#{dot.rank}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      {/* Rank bar */}
-      <div className="relative h-5 bg-muted rounded-full overflow-hidden mb-4">
-        <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-red-400 via-amber-400 to-amber-400 transition-all duration-1000" style={{ width: `${100 - rankPct + 5}%` }} />
-        <div className="absolute inset-y-0 left-0 w-0.5 bg-slate-900 dark:bg-white transition-all duration-1000" style={{ left: `${rankPct}%` }} />
-        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white mix-blend-difference">
-          Weak ←→ Strong
-        </div>
-      </div>
+
       {/* Segmented bar */}
       <div className="flex rounded-lg overflow-hidden h-2.5 mb-4">
         {segments.map((seg) => (
@@ -291,6 +407,7 @@ export function PassportPowerIndex({ countries, stats }: { countries: CountryDat
           />
         ))}
       </div>
+
       {/* Legend */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         {segments.map((seg) => (
@@ -301,6 +418,34 @@ export function PassportPowerIndex({ countries, stats }: { countries: CountryDat
           </div>
         ))}
       </div>
+
+      {/* How it's calculated */}
+      <button
+        onClick={() => setShowCalcInfo(!showCalcInfo)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+      >
+        <Info className="w-3.5 h-3.5" />
+        How it&apos;s calculated
+        <ChevronDown className={`w-3 h-3 transition-transform ${showCalcInfo ? 'rotate-180' : ''}`} />
+      </button>
+      {showCalcInfo && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="text-xs text-muted-foreground space-y-1.5 mb-4 pl-5"
+        >
+          <p>The <strong>Passport Power Index</strong> measures how many destinations a passport holder can visit without traditional embassy visa application.</p>
+          <p>It counts countries accessible via <strong>visa-free entry</strong>, <strong>visa on arrival</strong>, and <strong>electronic visa (e-Visa)</strong> out of {total} total destinations worldwide.</p>
+          <p>Rank #{rank} means {total - rank} passports are stronger. Data is based on the latest ICAO and government sources.</p>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="w-2 h-2 rounded-full bg-red-500" /><span>Weak (0-30)</span>
+            <div className="w-2 h-2 rounded-full bg-orange-500" /><span>Fair (30-60)</span>
+            <div className="w-2 h-2 rounded-full bg-amber-500" /><span>Moderate (60-80)</span>
+            <div className="w-2 h-2 rounded-full bg-green-500" /><span>Strong (80+)</span>
+          </div>
+        </motion.div>
+      )}
+
       <Button
         variant="outline"
         size="sm"
@@ -527,5 +672,101 @@ export function VisaTypeQuickGuide() {
         </motion.div>
       )}
     </div>
+  );
+}
+
+// ============ VISA ALERT BANNER SYSTEM (Task 11) ============
+const ALERT_DATA = [
+  { id: 'a1', country: 'UAE', code: 'AE', flagEmoji: '\u{1F1E6}\u{1F1EA}', type: 'CHANGED' as const, text: 'Visa on arrival policy updated — insurance requirement added', color: 'bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-200' },
+  { id: 'a2', country: 'Azerbaijan', code: 'AZ', flagEmoji: '\u{1F1E6}\u{1F1FF}', type: 'NEW' as const, text: 'e-Visa now available for Pakistani passport holders', color: 'bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200' },
+  { id: 'a3', country: 'Saudi Arabia', code: 'SA', flagEmoji: '\u{1F1F8}\u{1F1E6}', type: 'ALERT' as const, text: 'Visa fee revised — check updated costs before applying', color: 'bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200' },
+  { id: 'a4', country: 'Bahrain', code: 'BH', flagEmoji: '\u{1F1E7}\u{1F1ED}', type: 'NEW' as const, text: 'New e-Visa option launched with 30-day validity', color: 'bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200' },
+  { id: 'a5', country: 'Jordan', code: 'JO', flagEmoji: '\u{1F1EF}\u{1F1F4}', type: 'CHANGED' as const, text: 'Processing time reduced from 5 to 3 business days', color: 'bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-200' },
+];
+
+export function VisaAlertBanner() {
+  const { setSelectedCountry } = useAppStore();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Auto-scroll every 5 seconds, pause on hover
+  useEffect(() => {
+    if (hovered) return;
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % ALERT_DATA.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hovered]);
+
+  // Scroll to current index
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const cardWidth = 320; // approximate card width + gap
+    container.scrollTo({ left: currentIndex * cardWidth, behavior: 'smooth' });
+  }, [currentIndex]);
+
+  const handleAlertClick = (code: string) => {
+    // Try to find the country in our data and open the detail dialog
+    fetch(`/api/countries/${code}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.data) setSelectedCountry(data.data);
+      })
+      .catch(() => {});
+  };
+
+  const typeIcon = (type: string) => {
+    switch (type) {
+      case 'NEW': return <Sparkles className="w-3 h-3" />;
+      case 'CHANGED': return <ArrowUpDown className="w-3 h-3" />;
+      case 'ALERT': return <AlertTriangle className="w-3 h-3" />;
+      default: return null;
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2 }}
+      className="overflow-hidden"
+    >
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto py-2 px-4 scroll-smooth filter-scroll"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {ALERT_DATA.map((alert) => (
+          <button
+            key={alert.id}
+            onClick={() => handleAlertClick(alert.code)}
+            className={`shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] min-w-[280px] max-w-[340px] ${alert.color}`}
+          >
+            <span className="text-xl">{alert.flagEmoji}</span>
+            <div className="flex-1 text-left min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold">{alert.country}</span>
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-bold bg-white/60 dark:bg-black/20 border-0">
+                  {typeIcon(alert.type)} {alert.type}
+                </Badge>
+              </div>
+              <p className="text-[11px] opacity-80 truncate mt-0.5">{alert.text}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+      {/* Dot indicators */}
+      <div className="flex items-center justify-center gap-1.5 pb-1">
+        {ALERT_DATA.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1 rounded-full transition-all duration-300 ${i === currentIndex ? 'w-4 bg-amber-500' : 'w-1.5 bg-muted-foreground/30'}`}
+          />
+        ))}
+      </div>
+    </motion.div>
   );
 }

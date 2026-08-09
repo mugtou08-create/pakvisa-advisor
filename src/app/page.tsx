@@ -26,12 +26,13 @@ import { AIChatTab } from '@/components/app/tabs/ai-chat-tab';
 import { ReportsTab } from '@/components/app/tabs/reports-tab';
 import { ToolsTab } from '@/components/app/tabs/tools-tab';
 import { PassportExpiryWarning } from '@/components/app/shared-components-1';
-import { NotificationBell } from '@/components/app/shared-components-3';
+import { NotificationBell, VisaAlertBanner } from '@/components/app/shared-components-3';
 import { AdminDialog } from '@/components/app/admin-dialog';
 import {
   KeyboardShortcutsDialog, HelpCenterDialog, FloatingChatWidget,
   KeyboardShortcutsTooltip, BackToTopButton, NewsletterInput,
   AboutDialog, DisclaimerDialog, TermsDialog, PrivacyDialog,
+  QuickActionsToolbar,
 } from '@/components/app/dialogs';
 
 // ============ MAIN PAGE (IMPROVED) ============
@@ -202,7 +203,7 @@ export default function HomePage() {
               </div>
 
               {/* Desktop Nav with Pill Indicator */}
-              <nav className="hidden md:flex items-center gap-2 pill-nav rounded-lg p-1 bg-muted/40 transition-all duration-100" ref={navRef}>
+              <nav className="hidden md:flex items-center gap-1 pill-nav rounded-xl p-1 bg-muted/50 transition-all duration-200" ref={navRef}>
                 <span
                   className="pill-indicator"
                   style={{
@@ -223,7 +224,7 @@ export default function HomePage() {
                     key={tab.id}
                     variant="ghost"
                     size="sm"
-                    className={`rounded-lg ${activeTab === tab.id ? 'tab-gradient-text font-semibold' : 'text-muted-foreground hover:text-foreground hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
+                    className={`rounded-lg transition-all duration-200 ${activeTab === tab.id ? 'tab-gradient-text font-semibold shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-amber-50 dark:hover:bg-amber-900/20 active:scale-95'}`}
                     onClick={() => setActiveTab(tab.id)}
                     ref={(el) => { tabRefs.current[tab.id] = el; }}
                   >
@@ -242,7 +243,7 @@ export default function HomePage() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => setShowShortcuts(!showShortcuts)}>
+                      <Button variant="ghost" size="icon" onClick={() => setShowShortcuts(!showShortcuts)} aria-label="Keyboard shortcuts">
                         <Keyboard className="w-4 h-4" />
                       </Button>
                     </TooltipTrigger>
@@ -255,7 +256,7 @@ export default function HomePage() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => setShowHelpCenter(true)} className="bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30">
+                      <Button variant="ghost" size="icon" onClick={() => setShowHelpCenter(true)} aria-label="Help Center" className="bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30">
                         <HelpCircle className="w-4 h-4 text-amber-600" />
                       </Button>
                     </TooltipTrigger>
@@ -266,7 +267,7 @@ export default function HomePage() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => setShowAdmin(true)} className="hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                      <Button variant="ghost" size="icon" onClick={() => setShowAdmin(true)} aria-label="Admin Dashboard" className="hover:bg-amber-50 dark:hover:bg-amber-900/20">
                         <Settings className="w-4 h-4 text-muted-foreground" />
                       </Button>
                     </TooltipTrigger>
@@ -315,6 +316,11 @@ export default function HomePage() {
           </div>
         </header>
 
+        {/* Visa Alert Banner */}
+        <div className="border-b bg-background/50">
+          <VisaAlertBanner />
+        </div>
+
         {/* Main Content */}
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="page-load-animation">
@@ -343,14 +349,14 @@ export default function HomePage() {
         </main>
 
         {/* Footer - Enhanced with Gradient Background & Animated Separator */}
-        <footer className="border-t border-border/50 footer-gradient-bg print:hidden mt-auto sm:block">
+        <footer className="footer-gradient-bg print:hidden mt-auto sm:block" style={{ borderTop: '2px solid rgba(249, 115, 22, 0.3)' }}>
           <div className="footer-separator-dots mx-4 mt-6 mb-2" />
-          <div className="container mx-auto px-4 py-8">
+          <div className="container mx-auto px-4 py-10">
             {/* Bento Grid Footer - 5 columns */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 mb-8">
               {/* Brand - Large */}
               <div className="sm:col-span-2 lg:col-span-1">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-4">
                   <div className="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center shadow-sm">
                     <Globe className="w-5 h-5 text-white" />
                   </div>
@@ -359,6 +365,21 @@ export default function HomePage() {
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   AI-powered visa intelligence for Pakistani passport holders. Explore requirements, compare destinations, and plan your travels with confidence.
                 </p>
+                {/* Social Media Icons */}
+                <div className="flex items-center gap-3 mt-4">
+                  {[
+                    { label: 'Twitter', path: 'M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z' },
+                    { label: 'Facebook', path: 'M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z' },
+                    { label: 'Instagram', path: 'M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 017.8 2m-.2 2A3.6 3.6 0 004 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 003.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5M12 7a5 5 0 110 10 5 5 0 010-10m0 2a3 3 0 100 6 3 3 0 000-6z' },
+                    { label: 'YouTube', path: 'M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43zM9.75 15.02V8.48l5.75 3.27-5.75 3.27z' },
+                  ].map(social => (
+                    <button key={social.label} className="w-8 h-8 rounded-lg bg-muted/60 dark:bg-muted/30 flex items-center justify-center text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all duration-200 hover:scale-110" title={social.label}>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d={social.path} />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Quick Links */}
@@ -524,6 +545,9 @@ export default function HomePage() {
         {/* Back to Top Button */}
         <BackToTopButton />
 
+        {/* Quick Actions Toolbar */}
+        <QuickActionsToolbar />
+
         {/* Floating Chat Widget - only shown when AI is enabled */}
         {aiEnabled && <FloatingChatWidget />}
 
@@ -542,7 +566,7 @@ export default function HomePage() {
         <TermsDialog open={legalDialog === 'terms'} onClose={() => setLegalDialog(null)} />
         <PrivacyDialog open={legalDialog === 'privacy'} onClose={() => setLegalDialog(null)} />
 
-        {/* C1: Mobile Bottom Navigation */}
+        {/* C1: Mobile Bottom Navigation - Frosted Glass */}
         <nav className="mobile-bottom-nav sm:hidden">
           <div className="flex items-center justify-around relative">
             <div
@@ -556,7 +580,9 @@ export default function HomePage() {
               <button
                 key={tab.id}
                 className={`mobile-nav-item ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                }}
               >
                 <tab.icon className="w-5 h-5" />
                 <span>{tab.label}</span>
