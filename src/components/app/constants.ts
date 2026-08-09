@@ -35,12 +35,13 @@ export const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Au
 export const SCORING_HISTORY_KEY = 'pakvisa-scoring-history';
 export const RECENT_SEARCHES_KEY = 'pakvisa-recent-searches';
 export const TYPING_PHRASES = [
-  'Pakistani Passport Visa Guide 2025',
-  '62+ Countries with Visa Data',
-  'Schengen Visa Requirements',
-  'e-Visa & Visa on Arrival',
-  'Smart Score Breakdowns',
-  'AI-Powered Visa Intelligence',
+  'Check visa for UAE  •',
+  'e-Visa for Turkey  •',
+  'Visa-free Malaysia  •',
+  'Schengen visa requirements  •',
+  'Visa on Arrival Thailand  •',
+  'Pakistani Passport Visa Guide 2025  •',
+  'AI-Powered Visa Intelligence  •',
 ];
 
 // ============ REGION HELPER ============

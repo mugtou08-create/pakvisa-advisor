@@ -10,7 +10,7 @@ import {
   Eye, ClipboardList, Send, ChevronDown, ChevronUp, Compass, Gavel, CheckCircle2, X, XCircle,
   AlertTriangle, Info, Lock, FileWarning, PackageOpen, PlaneTakeoff, UtensilsCrossed, Bookmark, SearchX, Timer, Wallet, Languages, BadgePercent,
   Share2, Thermometer, CreditCard, CircleDollarSign, Save, History, RotateCcw, CalendarClock, Phone, Mail,
-  ShoppingBag, Banknote, Hotel,
+  ShoppingBag, Banknote, Hotel, Sun,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
-import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem } from '@/lib/types';
+import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem, VisaDocChecklistItem } from '@/lib/types';
 import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion } from './constants';
 import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist } from './shared-components-1';
 import { PremiumBadge } from './dialogs';
@@ -160,6 +160,9 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
               })}
             </div>
           </div>
+
+          {/* Travel Tips */}
+          <TravelTipsPanel country={country} />
 
           {/* Essential Travel Services - Monetization */}
           <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/10">
@@ -753,7 +756,7 @@ export function TypingText({ phrases, className = '' }: { phrases: string[]; cla
   return (
     <span className={className}>
       {text}
-      <span className="inline-block w-[2px] h-[1em] bg-white/80 ml-0.5 align-middle typing-cursor-blink" />
+      <span className="inline-block w-0 h-[1.1em] ml-0.5 align-middle typing-text-cursor" />
     </span>
   );
 }
@@ -775,15 +778,16 @@ export function FloatingParticles() {
   }>>([]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-only initialization for particles to avoid hydration mismatch with random values
-    setParticles(Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      size: 2 + Math.random() * 5,
-      delay: Math.random() * 12,
-      duration: 10 + Math.random() * 14,
-      opacity: 0.15 + Math.random() * 0.25,
-    })));
+    requestAnimationFrame(() => {
+      setParticles(Array.from({ length: 20 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        size: 2 + Math.random() * 5,
+        delay: Math.random() * 12,
+        duration: 10 + Math.random() * 14,
+        opacity: 0.15 + Math.random() * 0.25,
+      })));
+    });
   }, []);
 
   return (
@@ -1749,6 +1753,384 @@ export function VisaFeeComparisonChart({ results }: { results: ScoreBreakdown[] 
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ============ VISA DOCUMENT CHECKLIST ============
+
+function generateDefaultChecklist(country: CountryData): VisaDocChecklistItem[] {
+  const isEasy = country.visaFree || country.visaOnArrival;
+  const isMedium = country.etaAvailable;
+
+  const basicDocs: VisaDocChecklistItem[] = [
+    { id: 'passport', name: 'Valid Passport (6+ months validity)', category: 'required', checked: false },
+    { id: 'return-ticket', name: 'Return/Onward Flight Ticket', category: 'required', checked: false },
+    { id: 'hotel', name: 'Hotel Booking Confirmation', category: 'required', checked: false },
+    { id: 'insurance', name: 'Travel Insurance', category: 'required', checked: false },
+    { id: 'bank-statement', name: 'Bank Statement (last 3 months)', category: 'recommended', checked: false },
+    { id: 'photos', name: 'Passport-sized Photographs (2)', category: 'recommended', checked: false },
+  ];
+
+  if (isEasy) return basicDocs;
+
+  const mediumDocs: VisaDocChecklistItem[] = [
+    ...basicDocs,
+    { id: 'application-form', name: 'Visa Application Form (completed)', category: 'required', checked: false },
+    { id: 'bank-6months', name: 'Bank Statement (last 6 months)', category: 'required', checked: false },
+    { id: 'employment', name: 'Employment Verification Letter', category: 'required', checked: false },
+  ];
+
+  if (isMedium) return mediumDocs;
+
+  const fullDocs: VisaDocChecklistItem[] = [
+    ...mediumDocs,
+    { id: 'tax-returns', name: 'Tax Returns (last 2 years)', category: 'required', checked: false },
+    { id: 'itinerary', name: 'Detailed Travel Itinerary', category: 'required', checked: false },
+    { id: 'sponsor', name: 'Sponsor Letter (if applicable)', category: 'recommended', checked: false },
+    { id: 'education', name: 'Educational Certificates', category: 'recommended', checked: false },
+    { id: 'cover-letter', name: 'Cover Letter / Purpose of Visit', category: 'required', checked: false },
+    { id: 'income-proof', name: 'Proof of Income / Payslips', category: 'required', checked: false },
+  ];
+
+  return fullDocs;
+}
+
+export function VisaChecklistPanel({ country }: { country: CountryData }) {
+  const [items, setItems] = useState<VisaDocChecklistItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const storageKey = `pakvisa-checklist-${country.code}`;
+    const loadChecklist = () => {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          setItems(JSON.parse(saved));
+        } else {
+          const defaults = generateDefaultChecklist(country);
+          setItems(defaults);
+          localStorage.setItem(storageKey, JSON.stringify(defaults));
+        }
+      } catch {
+        const defaults = generateDefaultChecklist(country);
+        setItems(defaults);
+      }
+      setLoaded(true);
+    };
+    requestAnimationFrame(loadChecklist);
+  }, [country.code]);
+
+  useEffect(() => {
+    if (loaded) {
+      const storageKey = `pakvisa-checklist-${country.code}`;
+      localStorage.setItem(storageKey, JSON.stringify(items));
+    }
+  }, [items, loaded, country.code]);
+
+  const toggleItem = (id: string) => {
+    setItems(prev => prev.map(item =>
+      item.id === id ? { ...item, checked: !item.checked } : item
+    ));
+  };
+
+  const checkedCount = items.filter(i => i.checked).length;
+  const totalCount = items.length;
+  const progressPct = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+
+  const requiredItems = items.filter(i => i.category === 'required');
+  const recommendedItems = items.filter(i => i.category === 'recommended');
+
+  if (!loaded) {
+    return (
+      <div className="glass-section p-4 rounded-lg animate-pulse">
+        <div className="h-5 w-48 bg-muted rounded mb-3" />
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-4 w-full bg-muted rounded" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass-section p-4 rounded-lg space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <ClipboardList className="w-4 h-4 text-amber-500" />
+          Visa Document Checklist
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            {checkedCount}/{totalCount} documents ready
+          </span>
+          <Badge
+            variant="outline"
+            className={`text-[10px] px-1.5 py-0 ${
+              progressPct === 100
+                ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/20'
+                : 'border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/20'
+            }`}
+          >
+            {progressPct === 100 ? '✓ Complete' : `${progressPct}%`}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{
+            background: progressPct === 100
+              ? 'linear-gradient(90deg, #22c55e, #4ade80)'
+              : 'linear-gradient(90deg, #f59e0b, #f97316)',
+          }}
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPct}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
+      </div>
+
+      {/* Required Documents */}
+      {requiredItems.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400">
+            Required Documents
+          </p>
+          {requiredItems.map((item) => (
+            <label
+              key={item.id}
+              className="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer group transition-colors"
+            >
+              <Checkbox
+                checked={item.checked}
+                onCheckedChange={() => toggleItem(item.id)}
+                className="w-4 h-4 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+              />
+              <span className={`text-sm flex-1 transition-colors ${
+                item.checked ? 'line-through text-muted-foreground' : 'group-hover:text-amber-600'
+              }`}>
+                {item.name}
+              </span>
+              {item.checked && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+            </label>
+          ))}
+        </div>
+      )}
+
+      {/* Recommended Documents */}
+      {recommendedItems.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+            Recommended
+          </p>
+          {recommendedItems.map((item) => (
+            <label
+              key={item.id}
+              className="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer group transition-colors"
+            >
+              <Checkbox
+                checked={item.checked}
+                onCheckedChange={() => toggleItem(item.id)}
+                className="w-4 h-4 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+              />
+              <span className={`text-sm flex-1 transition-colors ${
+                item.checked ? 'line-through text-muted-foreground' : 'group-hover:text-orange-500'
+              }`}>
+                {item.name}
+              </span>
+              {item.checked && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+            </label>
+          ))}
+        </div>
+      )}
+
+      {/* Reset button */}
+      <div className="flex justify-end pt-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs text-muted-foreground hover:text-orange-600 h-7"
+          onClick={() => {
+            const defaults = generateDefaultChecklist(country);
+            setItems(defaults);
+            toast.success('Checklist reset to defaults');
+          }}
+        >
+          <RotateCcw className="w-3 h-3 mr-1" /> Reset
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ============ TRAVEL TIPS PANEL ============
+
+type TipType = 'info' | 'warning' | 'success';
+
+interface TravelTip {
+  icon: React.ElementType;
+  text: string;
+  type: TipType;
+}
+
+function generateTips(country: CountryData): TravelTip[] {
+  const tips: TravelTip[] = [];
+
+  // Best travel time
+  if (country.bestTravelMonths) {
+    tips.push({
+      icon: Sun,
+      text: `Best time to visit: ${country.bestTravelMonths}. Plan your trip during these months for ideal weather.`,
+      type: 'success',
+    });
+  }
+
+  // Safety
+  if (country.safetyRating >= 8) {
+    tips.push({
+      icon: Shield,
+      text: `${country.name} has a high safety rating (${country.safetyRating}/10). Generally safe for tourists.`,
+      type: 'success',
+    });
+  } else if (country.safetyRating <= 5) {
+    tips.push({
+      icon: AlertTriangle,
+      text: `Safety rating is ${country.safetyRating}/10. Exercise caution and check travel advisories.`,
+      type: 'warning',
+    });
+  }
+
+  // Budget
+  if (country.costProfile) {
+    const monthlyCost = country.costProfile.totalMonthlyUSD;
+    if (monthlyCost > 2000) {
+      tips.push({
+        icon: Wallet,
+        text: `Monthly living cost is ~$${monthlyCost}. Budget accordingly for a comfortable stay.`,
+        type: 'info',
+      });
+    } else {
+      tips.push({
+        icon: Wallet,
+        text: `Affordable destination! Monthly costs ~$${monthlyCost}. Great value for Pakistani travelers.`,
+        type: 'success',
+      });
+    }
+  }
+
+  // Visa type tip
+  if (country.visaFree) {
+    tips.push({
+      icon: CheckCircle2,
+      text: 'No visa required! Just carry your valid Pakistani passport.',
+      type: 'success',
+    });
+  } else if (country.visaOnArrival) {
+    tips.push({
+      icon: Plane,
+      text: 'Visa on arrival at the airport. Carry USD cash for visa fees and ensure passport has blank pages.',
+      type: 'info',
+    });
+  } else if (country.etaAvailable) {
+    tips.push({
+      icon: FileText,
+      text: 'Apply for e-Visa online before travel. Processing takes a few days. Print the approval.',
+      type: 'info',
+    });
+  } else {
+    tips.push({
+      icon: Building,
+      text: 'Apply at the embassy well in advance. Processing can take 15-30 business days.',
+      type: 'warning',
+    });
+  }
+
+  // Temperature
+  tips.push({
+    icon: Thermometer,
+    text: `Average temperature: ${country.avgTempC}°C. Check seasonal weather before packing.`,
+    type: 'info',
+  });
+
+  // Cultural tip based on continent
+  const continent = country.continent.toLowerCase();
+  if (continent.includes('asia') || continent.includes('east') || continent.includes('south') || continent.includes('southeast')) {
+    tips.push({
+      icon: Globe,
+      text: 'Dress modestly and respect local customs. Learn a few basic phrases in the local language.',
+      type: 'info',
+    });
+  } else if (continent.includes('europe')) {
+    tips.push({
+      icon: Globe,
+      text: 'Europe is generally tourist-friendly. Carry a universal power adapter and travel card.',
+      type: 'info',
+    });
+  } else if (continent.includes('africa')) {
+    tips.push({
+      icon: Globe,
+      text: 'Research local customs and carry copies of important documents. Stay aware of surroundings.',
+      type: 'info',
+    });
+  } else if (continent.includes('america') || continent.includes('north') || continent.includes('south')) {
+    tips.push({
+      icon: Globe,
+      text: 'Keep your passport and valuables secure. Tipping culture varies by country.',
+      type: 'info',
+    });
+  }
+
+  return tips.slice(0, 6);
+}
+
+const TIP_STYLES: Record<TipType, { bg: string; border: string; iconColor: string }> = {
+  success: {
+    bg: 'bg-green-50 dark:bg-green-950/20',
+    border: 'border-green-200 dark:border-green-900/40',
+    iconColor: 'text-green-600 dark:text-green-400',
+  },
+  warning: {
+    bg: 'bg-amber-50 dark:bg-amber-950/20',
+    border: 'border-amber-200 dark:border-amber-900/40',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  info: {
+    bg: 'bg-orange-50 dark:bg-orange-950/20',
+    border: 'border-orange-200 dark:border-orange-900/40',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+  },
+};
+
+export function TravelTipsPanel({ country }: { country: CountryData }) {
+  const tips = useMemo(() => generateTips(country), [country]);
+
+  return (
+    <div className="glass-section p-4 rounded-lg space-y-3">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Lightbulb className="w-4 h-4 text-amber-500" />
+        Travel Tips for {country.name}
+      </h3>
+      <div className="space-y-2">
+        {tips.map((tip, idx) => {
+          const style = TIP_STYLES[tip.type];
+          const IconComp = tip.icon;
+          return (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.05 }}
+              className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${style.bg} ${style.border}`}
+            >
+              <IconComp className={`w-4 h-4 mt-0.5 shrink-0 ${style.iconColor}`} />
+              <p className="text-xs leading-relaxed text-foreground/90">{tip.text}</p>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }

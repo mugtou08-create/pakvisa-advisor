@@ -1,0 +1,1756 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  FileText, BarChart3, Search, ChevronRight, Star, Clock,
+     7→  DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin, Globe,
+     8→  Home, Users, Lightbulb, TrendingUp, TrendingDown,
+     9→  ArrowRight, ArrowUpDown, Printer, ExternalLink, Zap, Target, Sparkles,
+    10→  Eye, ClipboardList, Send, ChevronDown, ChevronUp, Compass, Gavel, CheckCircle2, X, XCircle,
+    11→  AlertTriangle, Info, Lock, FileWarning, PackageOpen, PlaneTakeoff, UtensilsCrossed, Bookmark, SearchX, Timer, Wallet, Languages, BadgePercent,
+    12→  Share2, Thermometer, CreditCard, CircleDollarSign, Save, History, RotateCcw, CalendarClock, Phone, Mail,
+    13→  ShoppingBag, Banknote, Hotel,
+    14→} from 'lucide-react';
+    15→import { Button } from '@/components/ui/button';
+    16→import { Input } from '@/components/ui/input';
+    17→import { Label } from '@/components/ui/label';
+    18→import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+    19→import { Badge } from '@/components/ui/badge';
+    20→import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+    21→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    22→import { Checkbox } from '@/components/ui/checkbox';
+    23→import { Progress } from '@/components/ui/progress';
+    24→import { Separator } from '@/components/ui/separator';
+    25→import { ScrollArea } from '@/components/ui/scroll-area';
+    26→import { Skeleton } from '@/components/ui/skeleton';
+    27→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+    28→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+    29→import { Switch } from '@/components/ui/switch';
+    30→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+    31→import { Slider } from '@/components/ui/slider';
+    32→import { toast } from 'sonner';
+    33→import { useAppStore } from '@/lib/store';
+    34→import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem } from '@/lib/types';
+    35→import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion } from './constants';
+    36→import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist } from './shared-components-1';
+    37→import { PremiumBadge } from './dialogs';
+    38→
+    39→export function CountryDetailDialog({ country, open, onClose }: { country: CountryData | null; open: boolean; onClose: () => void }) {
+    40→  const { addScoreResult, setSelectedCountry, setActiveTab } = useAppStore();
+    41→  const [printMode, setPrintMode] = useState(false);
+    42→  if (!country) return null;
+    43→  let monthlyTemps: number[] = [];
+    44→  try {
+    45→    monthlyTemps = typeof country.monthlyTemps === 'string' ? JSON.parse(country.monthlyTemps) : (country.monthlyTemps || []);
+    46→  } catch { monthlyTemps = []; }
+    47→  const months = MONTH_NAMES;
+    48→
+    49→  const handleScored = (score: ScoreBreakdown) => {
+    50→    addScoreResult(score);
+    51→  };
+    52→
+    53→  const handlePrintReport = () => {
+    54→    setPrintMode(true);
+    55→    setTimeout(() => {
+    56→      window.print();
+    57→      setPrintMode(false);
+    58→    }, 300);
+    59→  };
+    60→
+    61→  const difficultyLevel = country.visaFree ? 1 : country.visaOnArrival ? 1 : country.etaAvailable ? 2 : 4;
+    62→  const difficultyClass = difficultyLevel <= 2 ? 'active-easy' : difficultyLevel <= 3 ? 'active-medium' : 'active-hard';
+    63→  const headerGradient = country.visaFree ? 'bg-gradient-to-r from-amber-600 to-amber-500' : country.visaOnArrival ? 'bg-gradient-to-r from-amber-500 to-yellow-500' : country.etaAvailable ? 'bg-gradient-to-r from-amber-600 to-sky-500' : 'bg-gradient-to-r from-orange-500 to-red-500';
+    64→
+    65→  return (
+    66→    <Dialog open={open} onOpenChange={onClose}>
+    67→      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0" id="country-detail-print-area">
+    68→        {/* Colored gradient header strip */}
+    69→        <div className={`${headerGradient} h-2 rounded-t-lg`} />
+    70→        <div className="px-6 pt-4">
+    71→        <DialogHeader>
+    72→          <div className="flex items-center gap-3">
+    73→            <FlagImage code={country.code} flagUrl={country.flagUrl} size={48} className="rounded" />
+    74→            <div className="flex-1">
+    75→              <DialogTitle className="text-xl">{country.name}</DialogTitle>
+    76→              <DialogDescription>{country.code} · {country.continent} · {country.timezone}</DialogDescription>
+    77→            </div>
+    78→            <div className="flex gap-1.5">
+    79→              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handlePrintReport}>
+    80→                <Printer className="w-3.5 h-3.5 mr-1" /> Print Report <PremiumBadge />
+    81→              </Button>
+    82→              <Button variant="outline" size="sm" className="text-xs" onClick={() => { navigator.clipboard.writeText(`${window.location.origin} — ${country.name} Visa Guide for Pakistani Passport`); toast.success('Link copied to clipboard!'); }}>
+    83→                <Share2 className="w-3.5 h-3.5 mr-1" /> Share
+    84→              </Button>
+    85→            </div>
+    86→          </div>
+    87→          {/* Difficulty Indicator */}
+    88→          <div className="flex items-center gap-3 mt-3">
+    89→            <span className="text-xs text-muted-foreground">Visa Difficulty:</span>
+    90→            <div className="difficulty-bar flex-1 max-w-[200px]">
+    91→              {[1, 2, 3, 4, 5].map((i) => (
+    92→                <div key={i} className={`difficulty-segment ${i <= difficultyLevel ? difficultyClass : ''}`} />
+    93→              ))}
+    94→            </div>
+    95→            <span className={`text-xs font-medium ${difficultyLevel <= 2 ? 'text-amber-600' : difficultyLevel <= 3 ? 'text-amber-600' : 'text-red-600'}`}>
+    96→              {difficultyLevel <= 2 ? 'Easy' : difficultyLevel <= 3 ? 'Medium' : 'Hard'}
+    97→            </span>
+    98→          </div>
+    99→        </DialogHeader>
+   100→        </div>
+   101→
+   102→        <div className="space-y-6 px-6 pb-6">
+   103→          {/* Overview */}
+   104→          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   105→            <div className="text-center p-3 rounded-lg bg-muted/50">
+   106→              <Shield className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+   107→              <div className="text-xs text-muted-foreground">Safety</div>
+   108→              <div className="font-semibold">{country.safetyRating}/10</div>
+   109→            </div>
+   110→            <div className="text-center p-3 rounded-lg bg-muted/50">
+   111→              <Thermometer className="w-5 h-5 mx-auto mb-1 text-orange-500" />
+   112→              <div className="text-xs text-muted-foreground">Avg Temp</div>
+   113→              <div className="font-semibold">{country.avgTempC}°C</div>
+   114→            </div>
+   115→            <div className="text-center p-3 rounded-lg bg-muted/50">
+   116→              <Calendar className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+   117→              <div className="text-xs text-muted-foreground">Processing</div>
+   118→              <div className="font-semibold">{country.processingDaysMin}-{country.processingDaysMax} days</div>
+   119→            </div>
+   120→            <div className="text-center p-3 rounded-lg bg-muted/50">
+   121→              <CreditCard className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+   122→              <div className="text-xs text-muted-foreground">Visa Fee</div>
+   123→              <div className="font-semibold">${country.costProfile?.visaFeeUSD || 0}</div>
+   124→            </div>
+   125→          </div>
+   126→
+   127→          {/* Safety Summary with accent dot */}
+   128→          <div className="p-3 rounded-lg border bg-muted/30">
+   129→            <div className="flex items-center gap-2 mb-1">
+   130→              <span className="section-dot" />
+   131→              <span className="text-sm font-medium">Safety Summary</span>
+   132→            </div>
+   133→            <p className="text-sm text-muted-foreground">{country.safetySummary}</p>
+   134→          </div>
+   135→
+   136→          {/* Temperature Chart with accent dot */}
+   137→          <div className="overflow-hidden">
+   138→            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   139→              <span className="section-dot" style={{ background: '#f97316', boxShadow: '0 0 6px rgba(249,115,22,0.4)' }} />
+   140→              Monthly Temperatures (°C)
+   141→            </h3>
+   142→            <div className="flex items-end gap-1" style={{ height: '120px' }}>
+   143→              {months.map((m) => {
+   144→                const temp = monthlyTemps[m] || 0;
+   145→                const maxTemp = Math.max(...Object.values(monthlyTemps));
+   146→                const height = maxTemp > 0 ? (temp / maxTemp) * 100 : 50;
+   147→                const isBest = country.bestTravelMonths.toLowerCase().includes(m.toLowerCase());
+   148→                return (
+   149→                  <div key={m} className="flex-1 flex flex-col items-center justify-end min-w-0">
+   150→                    <span className="text-[8px] font-medium tabular-nums leading-none mb-1">{temp}°</span>
+   151→                    <div className="w-full flex items-end justify-center" style={{ height: '72px' }}>
+   152→                      <div
+   153→                        className={`w-full rounded-t-sm transition-all ${isBest ? 'bg-amber-500' : 'bg-muted-foreground/30'}`}
+   154→                        style={{ height: `${Math.max(4, height)}%` }}
+   155→                      />
+   156→                    </div>
+   157→                    <span className="text-[8px] text-muted-foreground leading-none mt-1">{m}</span>
+   158→                  </div>
+   159→                );
+   160→              })}
+   161→            </div>
+   162→          </div>
+   163→
+   164→          {/* Essential Travel Services - Monetization */}
+   165→          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/10">
+   166→            <CardHeader className="pb-3">
+   167→              <CardTitle className="text-base flex items-center gap-2">
+   168→                <ShoppingBag className="w-4 h-4 text-orange-600" />
+   169→                Essential Travel Services
+   170→              </CardTitle>
+   171→              <CardDescription>Everything you need for your {country.name} trip</CardDescription>
+   172→            </CardHeader>
+   173→            <CardContent className="grid grid-cols-2 gap-3">
+   174→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   175→                <Shield className="w-5 h-5 text-orange-500" />
+   176→                <div>
+   177→                  <div className="text-sm font-medium">Travel Insurance</div>
+   178→                  <div className="text-[10px] text-muted-foreground">From $3/day</div>
+   179→                </div>
+   180→              </a>
+   181→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   182→                <Plane className="w-5 h-5 text-orange-500" />
+   183→                <div>
+   184→                  <div className="text-sm font-medium">Book Flights</div>
+   185→                  <div className="text-[10px] text-muted-foreground">Compare prices</div>
+   186→                </div>
+   187→              </a>
+   188→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   189→                <Hotel className="w-5 h-5 text-orange-500" />
+   190→                <div>
+   191→                  <div className="text-sm font-medium">Find Hotels</div>
+   192→                  <div className="text-[10px] text-muted-foreground">Best rates</div>
+   193→                </div>
+   194→              </a>
+   195→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   196→                <Banknote className="w-5 h-5 text-orange-500" />
+   197→                <div>
+   198→                  <div className="text-sm font-medium">Send Money</div>
+   199→                  <div className="text-[10px] text-muted-foreground">Forex rates</div>
+   200→                </div>
+   201→              </a>
+   202→            </CardContent>
+   203→          </Card>
+   204→
+   205→          {/* Visa Types with accent dot */}
+   206→          <div className="overflow-hidden">
+   207→            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   208→              <span className="section-dot" style={{ background: '#f97316', boxShadow: '0 0 6px rgba(249,115,22,0.4)' }} />
+   209→              Available Visa Types
+   210→            </h3>
+   211→            <div className="space-y-2">
+   212→              {country.visaTypes.map((vt) => (
+   213→                <div key={vt.id} className="p-2 rounded-lg border text-sm">
+   214→                  <div className="flex items-center justify-between gap-2">
+   215→                    <span className="font-medium truncate">{vt.type}</span>
+   216→                    <Badge variant="outline" className="text-xs shrink-0">{vt.maxDuration}</Badge>
+   217→                  </div>
+   218→                  <p className="text-xs text-muted-foreground mt-1 break-words">{vt.description}</p>
+   219→                  <div className="flex gap-2 mt-1 flex-wrap">
+   220→                    {vt.extensions && <Badge variant="secondary" className="text-[10px]">Extendable</Badge>}
+   221→                    {vt.multipleEntry && <Badge variant="secondary" className="text-[10px]">Multiple Entry</Badge>}
+   222→                  </div>
+   223→                </div>
+   224→              ))}
+   225→            </div>
+   226→          </div>
+   227→
+   228→          {/* Requirements with accent dot */}
+   229→          <div className="overflow-hidden">
+   230→            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   231→              <span className="section-dot" style={{ background: '#f59e0b', boxShadow: '0 0 6px rgba(245,158,11,0.4)' }} />
+   232→              Requirements
+   233→            </h3>
+   234→            <div className="space-y-2">
+   235→              {country.requirements.map((req, i) => (
+   236→                <div key={req.id || i} className="flex items-start gap-2 text-sm">
+   237→                  <Badge variant={req.mandatory ? 'default' : 'secondary'} className="text-[10px] mt-0.5 shrink-0">
+   238→                    {req.category}
+   239→                  </Badge>
+   240→                  <div className="min-w-0 flex-1">
+   241→                    <span className="text-sm break-words">{req.requirement}</span>
+   242→                    {req.description && (
+   243→                      <p className="text-xs text-muted-foreground break-words mt-0.5">{req.description}</p>
+   244→                    )}
+   245→                  </div>
+   246→                </div>
+   247→              ))}
+   248→            </div>
+   249→          </div>
+   250→
+   251→          {/* Cost Breakdown - Enhanced with bar chart */}
+   252→          {country.costProfile && (
+   253→            <div>
+   254→              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   255→                <Wallet className="w-4 h-4 text-amber-500" />
+   256→                Cost Breakdown (Monthly, USD)
+   257→              </h3>
+   258→              <div className="space-y-2.5">
+   259→                {[
+   260→                  { label: 'Visa Fee', value: country.costProfile.visaFeeUSD, icon: CreditCard, color: '#f59e0b' },
+   261→                  { label: 'Service Fee', value: country.costProfile.serviceFeeUSD, icon: Building, color: '#f59e0b' },
+   262→                  { label: 'Rent', value: country.costProfile.monthlyRentUSD, icon: Home, color: '#f97316' },
+   263→                  { label: 'Food', value: country.costProfile.monthlyFoodUSD, icon: Heart, color: '#f97316' },
+   264→                  { label: 'Transport', value: country.costProfile.monthlyTransportUSD, icon: Plane, color: '#8b5cf6' },
+   265→                  { label: 'Insurance', value: country.costProfile.healthInsuranceUSD, icon: Shield, color: '#ec4899' },
+   266→                ].map((item) => {
+   267→                  const maxVal = Math.max(country.costProfile.monthlyRentUSD, country.costProfile.totalMonthlyUSD);
+   268→                  const pct = maxVal > 0 ? (item.value / maxVal) * 100 : 0;
+   269→                  return (
+   270→                    <div key={item.label} className="space-y-1">
+   271→                      <div className="flex items-center justify-between text-xs">
+   272→                        <div className="flex items-center gap-1.5">
+   273→                          <item.icon className="w-3.5 h-3.5 text-muted-foreground" />
+   274→                          <span className="text-muted-foreground">{item.label}</span>
+   275→                        </div>
+   276→                        <span className="font-medium">${item.value}</span>
+   277→                      </div>
+   278→                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+   279→                        <div
+   280→                          className="h-full rounded-full transition-all duration-700"
+   281→                          style={{ width: `${Math.max(3, pct)}%`, backgroundColor: item.color }}
+   282→                        />
+   283→                      </div>
+   284→                    </div>
+   285→                  );
+   286→                })}
+   287→                <Separator className="my-2" />
+   288→                <div className="flex items-center justify-between text-sm font-semibold">
+   289→                  <div className="flex items-center gap-1.5">
+   290→                    <DollarSign className="w-4 h-4 text-amber-500" />
+   291→                    Total Monthly
+   292→                  </div>
+   293→                  <span className="text-amber-600 dark:text-amber-400 text-base">${country.costProfile.totalMonthlyUSD}</span>
+   294→                </div>
+   295→              </div>
+   296→            </div>
+   297→          )}
+   298→
+   299→          {/* Quick Score This Country */}
+   300→          <Separator />
+   301→          <div className="overflow-hidden">
+   302→            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   303→              <Zap className="w-4 h-4 text-amber-500" /> Quick Score Assessment
+   304→            </h3>
+   305→            <QuickScoreInline countryCode={country.code} onScored={handleScored} />
+   306→          </div>
+   307→
+   308→          {/* Visa Timeline Estimator */}
+   309→          <Separator />
+   310→          <div className="overflow-hidden">
+   311→            <VisaTimelineEstimator country={country} />
+   312→          </div>
+   313→
+   314→          {/* Application Tips Panel */}
+   315→          <div className="overflow-hidden">
+   316→            <ApplicationTipsPanel country={country} />
+   317→          </div>
+   318→
+   319→          {/* Visa Document Checklist */}
+   320→          <Separator />
+   321→          <div className="overflow-hidden">
+   322→            <VisaDocumentChecklist country={country} />
+   323→          </div>
+   324→
+   325→          {/* Currency Converter - Links to Tools tab instead of duplicating */}
+   326→          <div className="overflow-hidden">
+   327→            <div className="p-3 rounded-lg border bg-muted/30 text-center">
+   328→              <p className="text-xs text-muted-foreground mb-2">Need to convert {country.currencyCode} to PKR?</p>
+   329→              <Button variant="outline" size="sm" className="text-xs" onClick={() => { setSelectedCountry(null); setActiveTab('tools'); }}>
+   330→                <CircleDollarSign className="w-3.5 h-3.5 mr-1" /> Open Currency Converter
+   331→              </Button>
+   332→            </div>
+   333→          </div>
+   334→
+   335→          {/* Travel Checklist - Task 10 */}
+   336→          <Separator />
+   337→          <div className="overflow-hidden">
+   338→            <TravelChecklist country={country} />
+   339→          </div>
+   340→
+   341→          {/* Budget Calculator - Links to Tools tab instead of duplicating */}
+   342→          <div className="overflow-hidden">
+   343→            <div className="p-3 rounded-lg border bg-muted/30 text-center">
+   344→              <p className="text-xs text-muted-foreground mb-2">Estimate your total trip cost to {country.name}</p>
+   345→              <Button variant="outline" size="sm" className="text-xs" onClick={() => { setSelectedCountry(null); setActiveTab('tools'); }}>
+   346→                <Wallet className="w-3.5 h-3.5 mr-1" /> Open Budget Calculator
+   347→              </Button>
+   348→            </div>
+   349→          </div>
+   350→
+   351→          {/* Similar Countries */}
+   352→          <Separator />
+   353→          <div className="overflow-hidden">
+   354→            <SimilarCountriesPanel country={country} />
+   355→          </div>
+   356→
+   357→          {/* Embassy Information */}
+   358→          <div className="overflow-hidden">
+   359→            <EmbassyInfoSection countryCode={country.code} countryName={country.name} />
+   360→          </div>
+   361→
+   362→          {/* Source & Confidence with accent dot */}
+   363→          <div className="p-3 rounded-lg border bg-muted/30 text-xs">
+   364→            <div className="flex items-center gap-2 mb-1">
+   365→              <span className="section-dot" style={{ background: '#fb923c', boxShadow: '0 0 6px rgba(251,146,60,0.4)' }} />
+   366→              <span className="font-medium">Data Source</span>
+   367→            </div>
+   368→            <a href={country.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-amber-500 underline break-all">
+   369→              {country.sourceUrl}
+   370→            </a>
+   371→            <div className="mt-1 flex items-center gap-2 flex-wrap">
+   372→              <span>Confidence: {Math.round((country.parserConfidence || 0.8) * 100)}%</span>
+   373→              <span>·</span>
+   374→              <span>Parser: v{country.parserVersion}</span>
+   375→              <span>·</span>
+   376→              <span>Fetched: {new Date(country.fetchTimestamp).toLocaleDateString()}</span>
+   377→            </div>
+   378→          </div>
+   379→        </div>
+   380→      </DialogContent>
+   381→    </Dialog>
+   382→  );
+   383→}
+   384→
+   385→// ============ SCORE QUICK VIEW DIALOG ============
+   386→export function ScoreQuickViewDialog({ score, open, onClose }: { score: ScoreBreakdown | null; open: boolean; onClose: () => void }) {
+   387→  if (!score) return null;
+   388→  return (
+   389→    <Dialog open={open} onOpenChange={onClose}>
+   390→      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+   391→        <DialogHeader>
+   392→          <DialogTitle className="flex items-center gap-2">
+   393→            <BarChart3 className="w-5 h-5 text-amber-500" />
+   394→            {score.country} - Full Breakdown
+   395→          </DialogTitle>
+   396→          <DialogDescription>{score.visaType} · Confidence: {Math.round(score.confidence * 100)}%</DialogDescription>
+   397→        </DialogHeader>
+   398→        <div className="space-y-4">
+   399→          <div className="grid grid-cols-4 gap-3">
+   400→            {[
+   401→              { label: 'Eligibility', value: score.eligibility },
+   402→              { label: 'Likelihood', value: score.visaLikelihood },
+   403→              { label: 'Cost Fit', value: score.costSuitability },
+   404→              { label: 'Final', value: score.finalScore },
+   405→            ].map((item) => (
+   406→              <div key={item.label} className="text-center p-2 rounded-lg bg-muted/50">
+   407→                <div className={`text-xl font-bold ${item.value >= 70 ? 'text-amber-600' : item.value >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+   408→                  {Math.round(item.value)}
+   409→                </div>
+   410→                <div className="text-[10px] text-muted-foreground">{item.label}</div>
+   411→              </div>
+   412→            ))}
+   413→          </div>
+   414→          <div className="space-y-2">
+   415→            <h4 className="text-sm font-semibold">Components</h4>
+   416→            {score.components.map((c, i) => (
+   417→              <div key={i} className="flex items-center gap-3">
+   418→                <span className="w-32 text-xs text-muted-foreground truncate">{c.name}</span>
+   419→                <ColorProgress value={c.score} className="flex-1" />
+   420→                <span className="w-10 text-xs text-right font-medium">{Math.round(c.score)}%</span>
+   421→                <span className="w-10 text-[10px] text-muted-foreground">×{(c.weight * 100).toFixed(0)}%</span>
+   422→              </div>
+   423→            ))}
+   424→          </div>
+   425→          {score.hardFilters.length > 0 && (
+   426→            <div>
+   427→              <h4 className="text-sm font-semibold mb-2">Hard Filters</h4>
+   428→              {score.hardFilters.map((f, i) => (
+   429→                <div key={i} className={`flex items-center gap-2 p-2 rounded text-xs mb-1 ${f.passed ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+   430→                  {f.passed ? <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" /> : <XCircle className="w-3.5 h-3.5 text-red-600" />}
+   431→                  <span>{f.filter}: {f.message}</span>
+   432→                </div>
+   433→              ))}
+   434→            </div>
+   435→          )}
+   436→          {score.tips.length > 0 && (
+   437→            <div>
+   438→              <h4 className="text-sm font-semibold mb-2">Tips</h4>
+   439→              {score.tips.map((tip, i) => (
+   440→                <div key={i} className="flex items-start gap-2 text-xs mb-1">
+   441→                  <Star className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+   442→                  <span>{tip}</span>
+   443→                </div>
+   444→              ))}
+   445→            </div>
+   446→          )}
+   447→        </div>
+   448→      </DialogContent>
+   449→    </Dialog>
+   450→  );
+   451→}
+   452→
+   453→// ============ APPLICATION TIPS PANEL ============
+   454→export function ApplicationTipsPanel({ country }: { country: CountryData }) {
+   455→  const { userProfile } = useAppStore();
+   456→  const profile = userProfile;
+   457→
+   458→  const tips = useMemo(() => {
+   459→    if (!profile) {
+   460→      return [
+   461→        { tip: 'Complete the questionnaire to get personalized tips', severity: 'info' as const },
+   462→      ];
+   463→    }
+   464→
+   465→    const result: { tip: string; severity: 'critical' | 'warning' | 'success' | 'info' }[] = [];
+   466→
+   467→    // Financial tips
+   468→    if (profile.monthlyIncomeUSD < 500 && !profile.hasSponsor) {
+   469→      result.push({ tip: 'Your income is low — consider showing additional bank statements or adding a financial sponsor to boost approval chances.', severity: 'warning' });
+   470→    }
+   471→    if (profile.savingsUSD < 2000) {
+   472→      result.push({ tip: 'Low savings detected. Most embassies require 3-6 months of bank statements showing sufficient balance.', severity: 'warning' });
+   473→    }
+   474→
+   475→    // Insurance tip
+   476→    if (!profile.hasHealthInsurance) {
+   477→      result.push({ tip: `Adding travel health insurance will boost your health score by ~80 points and is mandatory for ${country.name}.`, severity: 'critical' });
+   478→    }
+   479→
+   480→    // Travel documents
+   481→    if (!profile.hasReturnTicket) {
+   482→      result.push({ tip: 'Booking a return flight ticket (even a refundable one) significantly improves your purpose-of-travel score.', severity: 'warning' });
+   483→    }
+   484→    if (!profile.hasHotelBooking) {
+   485→      result.push({ tip: 'Hotel booking or a letter of invitation from a host in ' + country.name + ' will strengthen your application.', severity: 'warning' });
+   486→    }
+   487→
+   488→    // Education/Language
+   489→    if (profile.education === 'other' || !profile.education) {
+   490→      result.push({ tip: 'Providing your highest education level helps the qualification score. If you have a degree, make sure to include it.', severity: 'info' });
+   491→    }
+   492→    if (profile.languages.length <= 1) {
+   493→      result.push({ tip: 'Speaking additional languages (especially the destination country language) can improve your language score.', severity: 'info' });
+   494→    }
+   495→
+   496→    // Prior travel
+   497→    if (!profile.hasPriorTravel) {
+   498→      result.push({ tip: 'Having prior travel history to other countries demonstrates you are a genuine traveler and return to your home country.', severity: 'info' });
+   499→    }
+   500→
+   501→    // Passport
+   502→    if (!profile.passportExpiry || new Date(profile.passportExpiry) < new Date(Date.now() + 180 * 24 * 60 * 60 * 1000)) {
+   503→      result.push({ tip: 'Your passport must be valid for at least 6 months beyond your intended stay. Renew it before applying.', severity: 'critical' });
+   504→    }
+   505→
+   506→    // Country-specific tips
+   507→    if (country.visaFree) {
+   508→      result.push({ tip: `Great news! ${country.name} offers visa-free entry for Pakistani passport holders. Just ensure you have a valid passport and return ticket.`, severity: 'success' });
+   509→    } else if (country.visaOnArrival) {
+   510→      result.push({ tip: `${country.name} offers visa on arrival. Carry printed proof of accommodation, return ticket, and sufficient funds.`, severity: 'success' });
+   511→    } else if (country.etaAvailable) {
+   512→      result.push({ tip: `${country.name} requires an e-Visa. Apply online at least 2 weeks before travel through the official portal.`, severity: 'info' });
+   513→    } else {
+   514→      result.push({ tip: `${country.name} requires an embassy visa. Book your appointment early as slots fill quickly. Processing takes ${country.processingDaysMin}-${country.processingDaysMax} days.`, severity: 'info' });
+   515→    }
+   516→
+   517→    // Cost
+   518→    if (country.costProfile) {
+   519→      const monthlyNeed = country.costProfile.totalMonthlyUSD;
+   520→      const stayMonths = profile.intendedStayDays / 30;
+   521→      if (profile.budgetUSD < monthlyNeed * stayMonths * 0.5) {
+   522→        result.push({ tip: `Your budget ($${profile.budgetUSD}) may not cover ${stayMonths.toFixed(1)} months in ${country.name} (estimated $${monthlyNeed * stayMonths}/mo total). Consider a shorter stay or more savings.`, severity: 'warning' });
+   523→      }
+   524→    }
+   525→
+   526→    return result.slice(0, 6);
+   527→  }, [country, profile]);
+   528→
+   529→  const severityStyles = {
+   530→    critical: 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400',
+   531→    warning: 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400',
+   532→    success: 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400',
+   533→    info: 'bg-amber-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400',
+   534→  };
+   535→
+   536→  const severityIcons = {
+   537→    critical: <XCircle className="w-3.5 h-3.5" />,
+   538→    warning: <AlertTriangle className="w-3.5 h-3.5" />,
+   539→    success: <CheckCircle2 className="w-3.5 h-3.5" />,
+   540→    info: <Info className="w-3.5 h-3.5" />,
+   541→  };
+   542→
+   543→  return (
+   544→    <div className="space-y-2">
+   545→      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   546→        <Lightbulb className="w-4 h-4 text-amber-500" />
+   547→        Application Tips for {country.name}
+   548→      </h3>
+   549→      <div className="space-y-2">
+   550→        {tips.map((item, i) => (
+   551→          <div key={i} className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs overflow-hidden ${severityStyles[item.severity]}`}>
+   552→            <span className="shrink-0 mt-0.5">{severityIcons[item.severity]}</span>
+   553→            <span className="min-w-0 break-words">{item.tip}</span>
+   554→          </div>
+   555→        ))}
+   556→      </div>
+   557→    </div>
+   558→  );
+   559→}
+   560→
+   561→// ============ PROFILE STRENGTH METER ============
+   562→export function ProfileStrengthMeter({ profile }: { profile: UserProfileData }) {
+   563→  const strength = useMemo(() => {
+   564→    let filled = 0;
+   565→    let total = 0;
+   566→
+   567→    const fields: { label: string; check: boolean }[] = [
+   568→      { label: 'Full Name', check: !!profile.fullName },
+   569→      { label: 'Age', check: profile.age > 0 },
+   570→      { label: 'Gender', check: !!profile.gender },
+   571→      { label: 'Passport Number', check: !!profile.passportNumber },
+   572→      { label: 'Passport Expiry', check: !!profile.passportExpiry },
+   573→      { label: 'Occupation', check: !!profile.occupation },
+   574→      { label: 'Monthly Income', check: profile.monthlyIncomeUSD > 0 },
+   575→      { label: 'Education', check: !!profile.education && profile.education !== 'other' },
+   576→      { label: 'Languages', check: profile.languages.length >= 1 },
+   577→      { label: 'Savings', check: profile.savingsUSD > 0 },
+   578→      { label: 'Travel Budget', check: profile.budgetUSD > 0 },
+   579→      { label: 'Travel Purpose', check: !!profile.travelPurpose },
+   580→      { label: 'Return Ticket', check: profile.hasReturnTicket },
+   581→      { label: 'Hotel Booking', check: profile.hasHotelBooking },
+   582→      { label: 'Health Insurance', check: profile.hasHealthInsurance },
+   583→      { label: 'Marital Status', check: !!profile.maritalStatus },
+   584→      { label: 'Criminal Record', check: profile.hasCriminalRecord !== undefined },
+   585→    ];
+   586→
+   587→    total = fields.length;
+   588→    filled = fields.filter(f => f.check).length;
+   589→
+   590→    const missing = fields.filter(f => !f.check).map(f => f.label);
+   591→
+   592→    return {
+   593→      percentage: Math.round((filled / total) * 100),
+   594→      filled,
+   595→      total,
+   596→      missing,
+   597→    };
+   598→  }, [profile]);
+   599→
+   600→  const color = strength.percentage >= 80 ? '#f59e0b' : strength.percentage >= 50 ? '#f59e0b' : '#ef4444';
+   601→  const label = strength.percentage >= 80 ? 'Strong' : strength.percentage >= 50 ? 'Moderate' : 'Needs Work';
+   602→
+   603→  return (
+   604→    <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+   605→      <div className="flex items-center justify-between">
+   606→        <h4 className="text-sm font-semibold flex items-center gap-2">
+   607→          <BadgePercent className="w-4 h-4 text-amber-500" />
+   608→          Profile Strength
+   609→        </h4>
+   610→        <Badge variant="outline" className="text-xs" style={{ borderColor: color, color }}>
+   611→          {label} · {strength.percentage}%
+   612→        </Badge>
+   613→      </div>
+   614→      <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+   615→        <div
+   616→          className="h-full rounded-full profile-gradient-bar"
+   617→          style={{ width: `${strength.percentage}%` }}
+   618→        />
+   619→      </div>
+   620→      <div className="flex items-center justify-between">
+   621→        <span className="text-xs text-muted-foreground">{strength.filled} of {strength.total} fields</span>
+   622→        <span className="text-sm font-bold tabular-nums" style={{ color }}>{strength.percentage}%</span>
+   623→      </div>
+   624→      {strength.missing.length > 0 && strength.missing.length < 10 && (
+   625→        <div className="space-y-1">
+   626→          <p className="text-xs text-muted-foreground">Add these to improve your profile:</p>
+   627→          <div className="flex flex-wrap gap-1.5">
+   628→            {strength.missing.slice(0, 5).map((item, i) => (
+   629→              <Badge key={i} variant="secondary" className="text-[10px]">
+   630→                {item}
+   631→              </Badge>
+   632→            ))}
+   633→            {strength.missing.length > 5 && (
+   634→              <Badge variant="secondary" className="text-[10px]">
+   635→                +{strength.missing.length - 5} more
+   636→              </Badge>
+   637→            )}
+   638→          </div>
+   639→        </div>
+   640→      )}
+   641→      {strength.missing.length === 0 && (
+   642→        <p className="text-xs text-amber-600 flex items-center gap-1">
+   643→          <CheckCircle2 className="w-3 h-3" /> Profile is complete! Ready for scoring.
+   644→        </p>
+   645→      )}
+   646→    </div>
+   647→  );
+   648→}
+   649→
+   650→// ============ SKELETON COUNTRY CARDS ============
+   651→export function SkeletonCountryCards() {
+   652→  return (
+   653→    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   654→      {[1, 2, 3, 4, 5, 6].map((i) => (
+   655→        <div key={i} className="rounded-xl border overflow-hidden">
+   656→          <div className="p-4 space-y-3">
+   657→            <div className="flex items-start justify-between">
+   658→              <div className="flex items-center gap-2.5">
+   659→                <div className="w-8 h-8 rounded-full skeleton-shimmer" />
+   660→                <div className="space-y-2">
+   661→                  <div className="w-24 h-3.5 rounded skeleton-shimmer" />
+   662→                  <div className="w-16 h-2.5 rounded skeleton-shimmer" />
+   663→                </div>
+   664→              </div>
+   665→              <div className="w-16 h-5 rounded-full skeleton-shimmer" />
+   666→            </div>
+   667→            <div className="grid grid-cols-2 gap-2">
+   668→              {[1, 2, 3, 4].map((j) => (
+   669→                <div key={j} className="h-4 rounded skeleton-shimmer" />
+   670→              ))}
+   671→            </div>
+   672→            <div className="flex items-center justify-between pt-2 border-t">
+   673→              <div className="w-16 h-3 rounded skeleton-shimmer" />
+   674→              <div className="w-12 h-3 rounded skeleton-shimmer" />
+   675→            </div>
+   676→          </div>
+   677→          <div className="h-[4px] skeleton-shimmer" />
+   678→        </div>
+   679→      ))}
+   680→    </div>
+   681→  );
+   682→}
+   683→
+   684→// ============ CONFETTI ANIMATION ============
+   685→export function ConfettiAnimation({ trigger }: { trigger: boolean }) {
+   686→  const [active, setActive] = useState(false);
+   687→
+   688→  useEffect(() => {
+   689→    if (trigger && !active) {
+   690→      setActive(true);
+   691→      setTimeout(() => setActive(false), 4000);
+   692→    }
+   693→  }, [trigger, active]);
+   694→
+   695→  if (!active) return null;
+   696→
+   697→  const colors = ['#f59e0b', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316'];
+   698→  const pieces = Array.from({ length: 50 }, (_, i) => ({
+   699→    id: i,
+   700→    left: Math.random() * 100,
+   701→    delay: Math.random() * 2,
+   702→    duration: 2 + Math.random() * 2,
+   703→    color: colors[i % colors.length],
+   704→    size: 6 + Math.random() * 8,
+   705→  }));
+   706→
+   707→  return (
+   708→    <div className="fixed inset-0 z-[200] pointer-events-none" aria-hidden="true">
+   709→      {pieces.map((p) => (
+   710→        <div
+   711→          key={p.id}
+   712→          className="confetti-piece"
+   713→          style={{
+   714→            left: `${p.left}%`,
+   715→            animationDelay: `${p.delay}s`,
+   716→            animationDuration: `${p.duration}s`,
+   717→            width: `${p.size}px`,
+   718→            height: `${p.size}px`,
+   719→            backgroundColor: p.color,
+   720→            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+   721→          }}
+   722→        />
+   723→      ))}
+   724→    </div>
+   725→  );
+   726→}
+   727→
+   728→// ============ TYPING TEXT ANIMATION ============
+   729→export function TypingText({ phrases, className = '' }: { phrases: string[]; className?: string }) {
+   730→  const [current, setCurrent] = useState(0);
+   731→  const [text, setText] = useState('');
+   732→  const [isDeleting, setIsDeleting] = useState(false);
+   733→
+   734→  useEffect(() => {
+   735→    const phrase = phrases[current];
+   736→    const timeout = setTimeout(() => {
+   737→      if (!isDeleting) {
+   738→        setText(phrase.substring(0, text.length + 1));
+   739→        if (text.length === phrase.length) {
+   740→          setTimeout(() => setIsDeleting(true), 2200);
+   741→        }
+   742→      } else {
+   743→        setText(phrase.substring(0, text.length - 1));
+   744→        if (text.length === 0) {
+   745→          setIsDeleting(false);
+   746→          setCurrent((current + 1) % phrases.length);
+   747→        }
+   748→      }
+   749→    }, isDeleting ? 25 : 55);
+   750→    return () => clearTimeout(timeout);
+   751→  }, [text, isDeleting, current, phrases]);
+   752→
+   753→  return (
+   754→    <span className={className}>
+   755→      {text}
+   756→      <span className="inline-block w-[2px] h-[1em] bg-white/80 ml-0.5 align-middle typing-cursor-blink" />
+   757→    </span>
+   758→  );
+   759→}
+   760→
+   761→// ============ HELPERS ============
+   762→export function formatCountryCode(code: string): string {
+   763→  return code.replace(/([a-z])([A-Z])/g, '$1 $2');
+   764→}
+   765→
+   766→// ============ FLOATING PARTICLES (CSS ONLY) ============
+   767→export function FloatingParticles() {
+   768→  const [particles, setParticles] = useState<Array<{
+   769→    id: number;
+   770→    left: number;
+   771→    size: number;
+   772→    delay: number;
+   773→    duration: number;
+   774→    opacity: number;
+   775→  }>>([]);
+   776→
+   777→  useEffect(() => {
+   778→    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-only initialization for particles to avoid hydration mismatch with random values
+   779→    setParticles(Array.from({ length: 20 }, (_, i) => ({
+   780→      id: i,
+   781→      left: Math.random() * 100,
+   782→      size: 2 + Math.random() * 5,
+   783→      delay: Math.random() * 12,
+   784→      duration: 10 + Math.random() * 14,
+   785→      opacity: 0.15 + Math.random() * 0.25,
+   786→    })));
+   787→  }, []);
+   788→
+   789→  return (
+   790→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   791→      {particles.map(p => (
+   792→        <div
+   793→          key={p.id}
+   794→          className="absolute rounded-full bg-white/20 particle-float"
+   795→          style={{
+   796→            left: `${p.left}%`,
+   797→            bottom: '-10px',
+   798→            width: `${p.size}px`,
+   799→            height: `${p.size}px`,
+   800→            animationDelay: `${p.delay}s`,
+   801→            animationDuration: `${p.duration}s`,
+   802→            opacity: p.opacity,
+   803→          }}
+   804→        />
+   805→      ))}
+   806→    </div>
+   807→  );
+   808→}
+   809→
+   810→// ============ MINI RADAR CHART (3-axis for country cards) ============
+   811→export function MiniRadarChart({ safety, cost, ease }: { safety: number; cost: number; ease: number }) {
+   812→  const cx = 28, cy = 28, r = 22;
+   813→  const axes = 3;
+   814→  const angleStep = (2 * Math.PI) / axes;
+   815→  const startAngle = -Math.PI / 2;
+   816→  const s = safety / 10;
+   817→  const c = Math.max(0.05, 1 - cost / 3000);
+   818→  const e = ease;
+   819→  const values = [s, c, e];
+   820→  const points = values.map((val, i) => {
+   821→    const angle = startAngle + i * angleStep;
+   822→    return `${cx + val * r * Math.cos(angle)},${cy + val * r * Math.sin(angle)}`;
+   823→  }).join(' ');
+   824→  const gridLines = [0.33, 0.66, 1].map(level => {
+   825→    const pts = Array.from({ length: axes }, (_, i) => {
+   826→      const angle = startAngle + i * angleStep;
+   827→      return `${cx + level * r * Math.cos(angle)},${cy + level * r * Math.sin(angle)}`;
+   828→    }).join(' ');
+   829→    return <polygon key={level} points={pts} fill="none" stroke="currentColor" strokeWidth="0.3" className="text-white/20" />;
+   830→  });
+   831→
+   832→  return (
+   833→    <svg width="56" height="56" viewBox="0 0 56 56" className="inline-block opacity-80">
+   834→      {gridLines}
+   835→      {Array.from({ length: axes }, (_, i) => {
+   836→        const angle = startAngle + i * angleStep;
+   837→        return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke="currentColor" strokeWidth="0.3" className="text-white/20" />;
+   838→      })}
+   839→      <polygon points={points} fill="rgba(249,115,22,0.15)" stroke="#fbbf24" strokeWidth="1" />
+   840→      {values.map((val, i) => {
+   841→        const angle = startAngle + i * angleStep;
+   842→        return <circle key={i} cx={cx + val * r * Math.cos(angle)} cy={cy + val * r * Math.sin(angle)} r="1.5" fill="#fbbf24" />;
+   843→      })}
+   844→    </svg>
+   845→  );
+   846→}
+   847→
+   848→// ============ RADIAL GAUGE (SEMICIRCLE) ============
+   849→export function RadialGauge({ score, size = 140 }: { score: number; size?: number }) {
+   850→  const strokeWidth = 12;
+   851→  const r = (size - strokeWidth) / 2;
+   852→  const cx = size / 2;
+   853→  const cy = size - 15;
+   854→  const startX = cx - r;
+   855→  const endX = cx + r;
+   856→  const arcLength = Math.PI * r;
+   857→  const filledLength = (score / 100) * arcLength;
+   858→  const color = score >= 70 ? '#f59e0b' : score >= 40 ? '#f59e0b' : '#ef4444';
+   859→
+   860→  return (
+   861→    <div className="flex flex-col items-center">
+   862→      <svg width={size} height={size / 2 + 25} viewBox={`0 0 ${size} ${size / 2 + 25}`}>
+   863→        <path d={`M ${startX} ${cy} A ${r} ${r} 0 0 1 ${endX} ${cy}`} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted/20" strokeLinecap="round" />
+   864→        <path
+   865→          d={`M ${startX} ${cy} A ${r} ${r} 0 0 1 ${endX} ${cy}`}
+   866→          fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"
+   867→          strokeDasharray={`${arcLength}`}
+   868→          strokeDashoffset={arcLength - filledLength}
+   869→          className="transition-all duration-1000 ease-out"
+   870→        />
+   871→        <text x={cx} y={cy - 12} textAnchor="middle" dominantBaseline="middle" style={{ fill: color, fontSize: '28px', fontWeight: 'bold' }}>{Math.round(score)}</text>
+   872→        <text x={cx} y={cy + 8} textAnchor="middle" style={{ fill: 'var(--muted-foreground)', fontSize: '10px' }}>Final Score</text>
+   873→      </svg>
+   874→    </div>
+   875→  );
+   876→}
+   877→
+   878→// ============ ANIMATED SCORE NUMBER ============
+   879→export function AnimatedScoreNumber({ value, delay = 0 }: { value: number; delay?: number }) {
+   880→  const [displayed, setDisplayed] = useState(0);
+   881→  const hasAnimated = useRef(false);
+   882→
+   883→  useEffect(() => {
+   884→    if (hasAnimated.current) return;
+   885→    hasAnimated.current = true;
+   886→    const start = performance.now() + delay;
+   887→    const duration = 1200;
+   888→    const animate = (now: number) => {
+   889→      const elapsed = now - start;
+   890→      if (elapsed < 0) { requestAnimationFrame(animate); return; }
+   891→      const progress = Math.min(elapsed / duration, 1);
+   892→      const eased = 1 - Math.pow(1 - progress, 3);
+   893→      setDisplayed(Math.round(eased * value));
+   894→      if (progress < 1) requestAnimationFrame(animate);
+   895→    };
+   896→    requestAnimationFrame(animate);
+   897→  }, [value, delay]);
+   898→
+   899→  return <span>{displayed}</span>;
+   900→}
+   901→
+   902→// ============ VISA DOCUMENT CHECKLIST ============
+   903→export function VisaDocumentChecklist({ country }: { country: CountryData }) {
+   904→  const [checked, setChecked] = useState<Set<string>>(new Set());
+   905→
+   906→  const categories = useMemo(() => {
+   907→    // Normalize category names from DB to match our standard categories
+   908→    const categoryMap: Record<string, string> = {
+   909→      passport: 'Identity', photograph: 'Identity', identity: 'Identity',
+   910→      financial: 'Financial', bank: 'Financial', income: 'Financial',
+   911→      travel: 'Travel', flight: 'Travel', hotel: 'Travel', accommodation: 'Travel',
+   912→      health: 'Health', medical: 'Health', vaccination: 'Health', insurance: 'Health',
+   913→      employment: 'Supporting', supporting: 'Supporting', education: 'Supporting',
+   914→    };
+   915→    const cats: Record<string, { name: string; items: { name: string; mandatory: boolean; time: string }[] }> = {
+   916→      Identity: { name: 'Identity Documents', items: [] },
+   917→      Financial: { name: 'Financial Documents', items: [] },
+   918→      Travel: { name: 'Travel Documents', items: [] },
+   919→      Health: { name: 'Health Documents', items: [] },
+   920→      Supporting: { name: 'Supporting Documents', items: [] },
+   921→    };
+   922→    // Add DB requirements with normalized category names
+   923→    country.requirements.forEach(req => {
+   924→      const cat = categoryMap[(req.category || '').toLowerCase()] || 'Supporting';
+   925→      if (!cats[cat]) cats[cat] = { name: cat, items: [] };
+   926→      cats[cat].items.push({ name: req.requirement, mandatory: req.mandatory, time: req.mandatory ? '1-3 days' : '3-7 days' });
+   927→    });
+   928→    // Extract keywords from existing DB requirements for dedup
+   929→    const existingKeywords = new Set<string>();
+   930→    country.requirements.forEach(r => {
+   931→      const words = r.requirement.toLowerCase().split(/[\s(),]+/).filter(w => w.length > 3);
+   932→      words.forEach(w => existingKeywords.add(w));
+   933→    });
+   934→    const standard = [
+   935→      { cat: 'Identity', name: 'Valid Passport (6+ months validity)', mandatory: true, time: '1-2 weeks', keywords: ['passport', 'valid'] },
+   936→      { cat: 'Identity', name: 'Passport-sized Photographs (2x2 inch)', mandatory: true, time: '1 day', keywords: ['photograph', 'passport', 'photo'] },
+   937→      { cat: 'Financial', name: 'Bank Statements (last 6 months)', mandatory: true, time: '1-2 days', keywords: ['bank', 'statement', 'financial'] },
+   938→      { cat: 'Financial', name: 'Income Tax Returns (last 2 years)', mandatory: false, time: '3-5 days', keywords: ['tax', 'income', 'return'] },
+   939→      { cat: 'Financial', name: 'Sponsorship Letter (if applicable)', mandatory: false, time: '2-3 days', keywords: ['sponsor', 'sponsorship'] },
+   940→      { cat: 'Travel', name: 'Flight Itinerary / Return Ticket', mandatory: true, time: '1 day', keywords: ['flight', 'return', 'ticket', 'itinerary'] },
+   941→      { cat: 'Travel', name: 'Hotel Reservation / Accommodation Proof', mandatory: true, time: '1 day', keywords: ['hotel', 'reservation', 'accommodation'] },
+   942→      { cat: 'Travel', name: 'Travel Itinerary (day-by-day plan)', mandatory: false, time: '2-4 hours', keywords: ['itinerary', 'travel', 'plan'] },
+   943→      { cat: 'Health', name: 'Travel Health Insurance Certificate', mandatory: true, time: '1-3 days', keywords: ['insurance', 'health'] },
+   944→      { cat: 'Health', name: 'Vaccination Certificate (if required)', mandatory: false, time: '1-4 weeks', keywords: ['vaccination', 'vaccine'] },
+   945→      { cat: 'Supporting', name: 'Employment Verification Letter', mandatory: false, time: '1-3 days', keywords: ['employment', 'verification', 'letter'] },
+   946→      { cat: 'Supporting', name: 'Leave Approval from Employer', mandatory: false, time: '1 day', keywords: ['leave', 'approval'] },
+   947→      { cat: 'Supporting', name: 'Cover Letter explaining purpose of visit', mandatory: false, time: '2-4 hours', keywords: ['cover', 'letter', 'purpose'] },
+   948→    ];
+   949→    // Add standard items only if no similar requirement already exists from DB (keyword-based dedup)
+   950→    standard.forEach(item => {
+   951→      const hasOverlap = item.keywords.some(kw => existingKeywords.has(kw));
+   952→      if (!hasOverlap) {
+   953→        cats[item.cat].items.push({ name: item.name, mandatory: item.mandatory, time: item.time });
+   954→      }
+   955→    });
+   956→    return Object.entries(cats).filter(([, v]) => v.items.length > 0);
+   957→  }, [country]);
+   958→
+   959→  const allItems = categories.flatMap(([, v]) => v.items);
+   960→  const progress = allItems.length > 0 ? (checked.size / allItems.length) * 100 : 0;
+   961→  const toggle = (key: string) => {
+   962→    setChecked(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+   963→  };
+   964→
+   965→  return (
+   966→    <div className="space-y-3">
+   967→      <div className="flex items-center justify-between">
+   968→        <h3 className="text-sm font-semibold flex items-center gap-2"><ClipboardList className="w-4 h-4 text-amber-500" /> Document Checklist</h3>
+   969→        <Badge variant="outline" className="text-xs">{Math.round(progress)}%</Badge>
+   970→      </div>
+   971→      <ColorProgress value={progress} />
+   972→      <ScrollArea className="max-h-64">
+   973→        <div className="space-y-3 pr-2">
+   974→          {categories.map(([catKey, cat]) => (
+   975→            <div key={catKey}>
+   976→              <h5 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{cat.name}</h5>
+   977→              <div className="space-y-1">
+   978→                {cat.items.map((item, idx) => {
+   979→                  const key = `${catKey}-${idx}`;
+   980→                  const isChecked = checked.has(key);
+   981→                  return (
+   982→                    <label key={key} className={`flex items-center gap-2 p-1.5 rounded-md cursor-pointer transition-colors text-xs min-w-0 ${isChecked ? 'bg-muted/50' : 'hover:bg-muted/30'}`}>
+   983→                      <Checkbox checked={isChecked} onCheckedChange={() => toggle(key)} className="w-3.5 h-3.5 shrink-0" />
+   984→                      <span className={`flex-1 min-w-0 truncate ${isChecked ? 'line-through text-muted-foreground' : ''}`}>{item.name}</span>
+   985→                      <Badge variant={item.mandatory ? 'default' : 'secondary'} className="text-[8px] px-1 py-0 shrink-0">{item.mandatory ? 'Required' : 'Optional'}</Badge>
+   986→                      <span className="text-[9px] text-muted-foreground whitespace-nowrap hidden sm:inline shrink-0">{item.time}</span>
+   987→                    </label>
+   988→                  );
+   989→                })}
+   990→              </div>
+   991→            </div>
+   992→          ))}
+   993→        </div>
+   994→      </ScrollArea>
+   995→    </div>
+   996→  );
+   997→}
+   998→
+   999→// ============ TRAVEL COST CALCULATOR (ENHANCED) ============
+  1000→export function TravelCostCalculator({ country }: { country: CountryData }) {
+  1001→  const { saveBudget } = useAppStore();
+  1002→  const [days, setDays] = useState(14);
+  1003→  const [tier, setTier] = useState<'budget' | 'moderate' | 'luxury'>('moderate');
+  1004→  const [foodPerDay, setFoodPerDay] = useState(25);
+  1005→  const [transportPerDay, setTransportPerDay] = useState(15);
+  1006→  const [activities, setActivities] = useState(100);
+  1007→  const cp = country.costProfile;
+  1008→  if (!cp) return null;
+  1009→
+  1010→  const tierMultipliers = { budget: 0.6, moderate: 1, luxury: 1.8 };
+  1011→  const tierMultiplier = tierMultipliers[tier];
+  1012→  const daysRatio = days / 30;
+  1013→  const accommodationCost = (cp.monthlyRentUSD || 300) * daysRatio * tierMultiplier;
+  1014→  const foodCost = foodPerDay * days;
+  1015→  const transportCost = transportPerDay * days;
+  1016→  const visaFee = cp.visaFeeUSD;
+  1017→  const insuranceEstimate = Math.max(2, Math.ceil(days / 30)) * (cp.healthInsuranceUSD || 30);
+  1018→  const exchangeRate = EXCHANGE_RATES[country.currencyCode] || 278.5;
+  1019→
+  1020→  const breakdown = [
+  1021→    { name: 'Visa Fee', value: visaFee, color: '#f59e0b' },
+  1022→    { name: 'Accommodation', value: accommodationCost, color: '#f59e0b' },
+  1023→    { name: 'Food', value: foodCost, color: '#f97316' },
+  1024→    { name: 'Transport', value: transportCost, color: '#f97316' },
+  1025→    { name: 'Activities', value: activities, color: '#8b5cf6' },
+  1026→    { name: 'Insurance', value: insuranceEstimate, color: '#ec4899' },
+  1027→  ];
+  1028→  const grandTotal = breakdown.reduce((s, b) => s + b.value, 0);
+  1029→  const totalPKR = Math.round(grandTotal * exchangeRate);
+  1030→
+  1031→  // Donut chart params
+  1032→  const donutR = 50;
+  1033→  const donutC = 2 * Math.PI * donutR;
+  1034→  let cumulativeOffset = 0;
+  1035→
+  1036→  return (
+  1037→    <div className="space-y-4">
+  1038→      <h3 className="text-sm font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-amber-500" /> Travel Cost Calculator</h3>
+  1039→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1040→        <div className="space-y-2">
+  1041→          <div className="flex items-center justify-between"><Label className="text-xs">Trip Duration</Label><span className="text-xs font-mono font-medium">{days} days</span></div>
+  1042→          <Slider value={[days]} onValueChange={v => setDays(v[0])} min={1} max={90} step={1} />
+  1043→        </div>
+  1044→        <div className="space-y-2">
+  1045→          <Label className="text-xs">Accommodation Tier</Label>
+  1046→          <div className="flex gap-1">
+  1047→            {(['budget', 'moderate', 'luxury'] as const).map(t => (
+  1048→              <Button key={t} size="sm" variant={tier === t ? 'default' : 'outline'} className={`flex-1 text-xs capitalize ${tier === t ? 'bg-amber-600 hover:bg-amber-700' : ''}`} onClick={() => setTier(t)}>{t}</Button>
+  1049→            ))}
+  1050→          </div>
+  1051→        </div>
+  1052→        <div className="space-y-2">
+  1053→          <div className="flex items-center justify-between"><Label className="text-xs">Food Budget</Label><span className="text-xs font-mono font-medium">${foodPerDay}/day</span></div>
+  1054→          <Slider value={[foodPerDay]} onValueChange={v => setFoodPerDay(v[0])} min={10} max={100} step={5} />
+  1055→        </div>
+  1056→        <div className="space-y-2">
+  1057→          <div className="flex items-center justify-between"><Label className="text-xs">Transport</Label><span className="text-xs font-mono font-medium">${transportPerDay}/day</span></div>
+  1058→          <Slider value={[transportPerDay]} onValueChange={v => setTransportPerDay(v[0])} min={5} max={50} step={5} />
+  1059→        </div>
+  1060→        <div className="space-y-2 sm:col-span-2">
+  1061→          <div className="flex items-center justify-between"><Label className="text-xs">Activities</Label><span className="text-xs font-mono font-medium">${activities}/trip</span></div>
+  1062→          <Slider value={[activities]} onValueChange={v => setActivities(v[0])} min={0} max={200} step={10} />
+  1063→        </div>
+  1064→      </div>
+  1065→      <div className="flex flex-col sm:flex-row gap-4 items-center">
+  1066→        {/* Donut Chart */}
+  1067→        <svg width="120" height="120" viewBox="0 0 120 120" className="shrink-0">
+  1068→          {breakdown.map((item, i) => {
+  1069→            const pct = grandTotal > 0 ? item.value / grandTotal : 0;
+  1070→            const dashLen = donutC * pct;
+  1071→            const offset = donutC - cumulativeOffset;
+  1072→            cumulativeOffset += dashLen;
+  1073→            return (
+  1074→              <circle
+  1075→                key={i}
+  1076→                cx="60" cy="60" r={donutR}
+  1077→                fill="none"
+  1078→                stroke={item.color}
+  1079→                strokeWidth="14"
+  1080→                strokeDasharray={`${dashLen} ${donutC - dashLen}`}
+  1081→                strokeDashoffset={offset}
+  1082→                strokeLinecap="butt"
+  1083→                transform="rotate(-90 60 60)"
+  1084→                className="donut-segment-animated"
+  1085→                opacity="0.85"
+  1086→              />
+  1087→            );
+  1088→          })}
+  1089→          <text x="60" y="56" textAnchor="middle" className="text-sm font-bold" fill="var(--foreground)" fontSize="14" fontWeight="bold">${Math.round(grandTotal)}</text>
+  1090→          <text x="60" y="70" textAnchor="middle" fill="var(--muted-foreground)" fontSize="8">Total</text>
+  1091→        </svg>
+  1092→        {/* Breakdown list */}
+  1093→        <div className="flex-1 space-y-2 w-full">
+  1094→          {breakdown.map((item) => (
+  1095→            <div key={item.name} className="flex items-center justify-between text-xs">
+  1096→              <div className="flex items-center gap-2">
+  1097→                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+  1098→                <span className="text-muted-foreground">{item.name}</span>
+  1099→              </div>
+  1100→              <span className="font-medium">${Math.round(item.value).toLocaleString()}</span>
+  1101→            </div>
+  1102→          ))}
+  1103→        </div>
+  1104→      </div>
+  1105→      <div className="flex items-center justify-between font-bold text-base pt-2 border-t">
+  1106→        <span className="text-amber-600 dark:text-amber-400">Grand Total</span>
+  1107→        <span className="text-amber-600 dark:text-amber-400">${Math.round(grandTotal).toLocaleString()}</span>
+  1108→      </div>
+  1109→      <div className="flex items-center justify-between text-xs text-muted-foreground">
+  1110→        <span>≈ PKR {totalPKR.toLocaleString()}</span>
+  1111→        <span className="text-[10px]">Rate: 1 {country.currencyCode} = {exchangeRate} PKR</span>
+  1112→      </div>
+  1113→      <Button
+  1114→        size="sm"
+  1115→        variant="outline"
+  1116→        className="w-full text-xs"
+  1117→        onClick={() => {
+  1118→          saveBudget(country.code, { duration: days, tier, foodPerDay, transportPerDay, activities });
+  1119→          toast.success(`Budget saved for ${country.name}!`);
+  1120→        }}
+  1121→      >
+  1122→        <Save className="w-3 h-3 mr-1" />
+  1123→        Save Budget
+  1124→      </Button>
+  1125→    </div>
+  1126→  );
+  1127→}
+  1128→
+  1129→// ============ COMPARISON RADAR CHART ============
+  1130→export function ComparisonRadarChart({ results }: { results: ScoreBreakdown[] }) {
+  1131→  if (results.length < 2) return null;
+  1132→  const labels = results[0].components.map(c => c.name);
+  1133→  const numAxes = labels.length;
+  1134→  const cx = 150, cy = 150, maxR = 100;
+  1135→  const angleStep = (2 * Math.PI) / numAxes;
+  1136→  const startAngle = -Math.PI / 2;
+  1137→  const colors = ['#f59e0b', '#f59e0b', '#f97316', '#ec4899', '#8b5cf6'];
+  1138→
+  1139→  return (
+  1140→    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+  1141→      <h4 className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-amber-500" /> Radar Comparison</h4>
+  1142→      <div className="flex justify-center">
+  1143→        <svg width="300" height="300" viewBox="0 0 300 300">
+  1144→          {[0.25, 0.5, 0.75, 1].map(level => {
+  1145→            const pts = Array.from({ length: numAxes }, (_, i) => {
+  1146→              const angle = startAngle + i * angleStep;
+  1147→              return `${cx + level * maxR * Math.cos(angle)},${cy + level * maxR * Math.sin(angle)}`;
+  1148→            }).join(' ');
+  1149→            return <polygon key={level} points={pts} fill="none" stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground/15" />;
+  1150→          })}
+  1151→          {Array.from({ length: numAxes }, (_, i) => {
+  1152→            const angle = startAngle + i * angleStep;
+  1153→            return <line key={i} x1={cx} y1={cy} x2={cx + maxR * Math.cos(angle)} y2={cy + maxR * Math.sin(angle)} stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground/15" />;
+  1154→          })}
+  1155→          {results.map((r, rIdx) => {
+  1156→            const pts = r.components.map((c, i) => {
+  1157→              const angle = startAngle + i * angleStep;
+  1158→              const val = c.score / 100;
+  1159→              return `${cx + val * maxR * Math.cos(angle)},${cy + val * maxR * Math.sin(angle)}`;
+  1160→            }).join(' ');
+  1161→            return <polygon key={rIdx} points={pts} fill={colors[rIdx % colors.length]} fillOpacity="0.12" stroke={colors[rIdx % colors.length]} strokeWidth="2" />;
+  1162→          })}
+  1163→          {labels.map((label, i) => {
+  1164→            const angle = startAngle + i * angleStep;
+  1165→            const lx = cx + (maxR + 18) * Math.cos(angle);
+  1166→            const ly = cy + (maxR + 18) * Math.sin(angle);
+  1167→            return <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" style={{ fill: 'var(--muted-foreground)', fontSize: '8px' }}>{label.length > 14 ? label.substring(0, 14) + '…' : label}</text>;
+  1168→          })}
+  1169→        </svg>
+  1170→      </div>
+  1171→      <div className="flex flex-wrap justify-center gap-4">
+  1172→        {results.map((r, i) => (
+  1173→          <div key={i} className="flex items-center gap-1.5 text-xs"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} /><span>{r.country}</span></div>
+  1174→        ))}
+  1175→      </div>
+  1176→    </div>
+  1177→  );
+  1178→}
+  1179→
+  1180→// ============ SCORING HISTORY PANEL ============
+  1181→interface ScoringSession { id: string; date: string; profile: { age: number; occupation: string; purpose: string }; topCountries: string[]; scores: ScoreBreakdown[]; }
+  1182→export function ScoringHistoryPanel({ onReload }: { onReload: (scores: ScoreBreakdown[]) => void }) {
+  1183→  const [history, setHistory] = useState<ScoringSession[]>(() => {
+  1184→    try { const stored = localStorage.getItem(SCORING_HISTORY_KEY); return stored ? JSON.parse(stored) : []; } catch { return []; }
+  1185→  });
+  1186→  const reloadSession = (session: ScoringSession) => {
+  1187→    onReload(session.scores);
+  1188→    toast.success(`Loaded ${session.scores.length} results from ${new Date(session.date).toLocaleDateString()}`);
+  1189→  };
+  1190→  const clearHistory = () => { setHistory([]); try { localStorage.removeItem(SCORING_HISTORY_KEY); } catch { /* empty */ } toast.success('History cleared'); };
+  1191→
+  1192→  if (history.length === 0) {
+  1193→    return (
+  1194→      <Card className="p-6 text-center">
+  1195→        <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+  1196→        <h4 className="text-sm font-semibold">No Scoring History</h4>
+  1197→        <p className="text-xs text-muted-foreground mt-1">Complete a questionnaire to start tracking your assessments.</p>
+  1198→      </Card>
+  1199→    );
+  1200→  }
+  1201→
+  1202→  return (
+  1203→    <Card>
+  1204→      <CardHeader className="pb-3">
+  1205→        <div className="flex items-center justify-between">
+  1206→          <CardTitle className="text-sm flex items-center gap-2"><History className="w-4 h-4 text-amber-500" /> Recent Assessments</CardTitle>
+  1207→          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={clearHistory}><RotateCcw className="w-3 h-3 mr-1" /> Clear</Button>
+  1208→        </div>
+  1209→      </CardHeader>
+  1210→      <CardContent>
+  1211→        <ScrollArea className="max-h-64">
+  1212→          <div className="space-y-2">
+  1213→            {history.slice(0, 5).map((session) => (
+  1214→              <button key={session.id} className="w-full text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors" onClick={() => reloadSession(session)}>
+  1215→                <div className="flex items-center justify-between mb-1">
+  1216→                  <span className="text-xs font-medium">{new Date(session.date).toLocaleString()}</span>
+  1217→                  <Badge variant="outline" className="text-[9px]">{session.scores.length} countries</Badge>
+  1218→                </div>
+  1219→                <div className="text-[10px] text-muted-foreground">Age {session.profile.age} · {session.profile.occupation} · {session.profile.purpose}</div>
+  1220→                <div className="flex gap-1 mt-1.5 flex-wrap">{session.topCountries.map((c, i) => (<Badge key={i} variant="secondary" className="text-[9px]">{i + 1}. {c}</Badge>))}</div>
+  1221→              </button>
+  1222→            ))}
+  1223→          </div>
+  1224→        </ScrollArea>
+  1225→      </CardContent>
+  1226→    </Card>
+  1227→  );
+  1228→}
+  1229→
+  1230→// ============ SMART QUICK SEARCH ============
+  1231→export function SmartQuickSearch() {
+  1232→  const { setSelectedCountry, setActiveTab } = useAppStore();
+  1233→  const [query, setQuery] = useState('');
+  1234→  const [open, setOpen] = useState(false);
+  1235→  const [highlighted, setHighlighted] = useState(0);
+  1236→  const [countries, setCountries] = useState<{ code: string; name: string; flagEmoji: string; flagUrl: string; visaType: string }[]>([]);
+  1237→  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+  1238→    try { const stored = localStorage.getItem(RECENT_SEARCHES_KEY); return stored ? JSON.parse(stored) : []; } catch { return []; }
+  1239→  });
+  1240→  const inputRef = useRef<HTMLInputElement>(null);
+  1241→  const containerRef = useRef<HTMLDivElement>(null);
+  1242→
+  1243→  useEffect(() => {
+  1244→    fetch('/api/countries?limit=100').then(r => r.json()).then(data => {
+  1245→      setCountries((data.data || []).map((c: CountryData) => ({ code: c.code, name: c.name, flagEmoji: c.flagEmoji, flagUrl: c.flagUrl || '', visaType: c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'On Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy' })));
+  1246→    }).catch(() => {});
+  1247→    const handleClick = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false); };
+  1248→    document.addEventListener('mousedown', handleClick);
+  1249→    return () => document.removeEventListener('mousedown', handleClick);
+  1250→  }, []);
+  1251→
+  1252→  const filtered = query.length > 0 ? countries.filter(c => c.name.toLowerCase().includes(query.toLowerCase()) || c.code.toLowerCase().includes(query.toLowerCase())).slice(0, 6) : [];
+  1253→
+  1254→  const handleSelect = async (code: string) => {
+  1255→    const updated = [code, ...recentSearches.filter(c => c !== code)].slice(0, 5);
+  1256→    setRecentSearches(updated);
+  1257→    try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated)); } catch { /* empty */ }
+  1258→    try {
+  1259→      const res = await fetch(`/api/countries/${code}`);
+  1260→      const data = await res.json();
+  1261→      if (data.data) { setSelectedCountry(data.data); setActiveTab('explore'); }
+  1262→    } catch { /* empty */ }
+  1263→    setQuery(''); setOpen(false);
+  1264→  };
+  1265→
+  1266→  const handleKeyDown = (e: React.KeyboardEvent) => {
+  1267→    const totalItems = filtered.length + (query.length === 0 ? recentSearches.length : 0);
+  1268→    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, totalItems - 1)); }
+  1269→    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+  1270→    else if (e.key === 'Enter' && highlighted >= 0) {
+  1271→      e.preventDefault();
+  1272→      if (query.length === 0 && recentSearches[highlighted]) handleSelect(recentSearches[highlighted]);
+  1273→      else if (filtered[highlighted]) handleSelect(filtered[highlighted].code);
+  1274→    } else if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); }
+  1275→  };
+  1276→
+  1277→  return (
+  1278→    <div ref={containerRef} className="relative hidden md:block">
+  1279→      <div className="search-input-expand relative rounded-lg border border-border bg-background">
+  1280→        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+  1281→        <input ref={inputRef} type="text" placeholder="Quick search... (Ctrl+K)" value={query} onChange={e => { setQuery(e.target.value); setOpen(true); setHighlighted(0); }} onFocus={() => setOpen(true)} onKeyDown={handleKeyDown} className="w-48 focus:w-72 pl-8 pr-7 py-1.5 text-sm bg-transparent outline-none placeholder:text-muted-foreground" />
+  1282→        {query && <button onClick={() => { setQuery(''); inputRef.current?.focus(); }} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="w-3 h-3 text-muted-foreground hover:text-foreground" /></button>}
+  1283→      </div>
+  1284→      {open && (filtered.length > 0 || (query.length === 0 && recentSearches.length > 0)) && (
+  1285→        <div className="absolute top-full mt-1 left-0 w-72 bg-popover border rounded-lg shadow-lg z-50 overflow-hidden">
+  1286→          {query.length === 0 && recentSearches.length > 0 && (
+  1287→            <>
+  1288→              <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Recent Searches</div>
+  1289→              {recentSearches.map((code, i) => {
+  1290→                const c = countries.find(x => x.code === code);
+  1291→                if (!c) return null;
+  1292→                return (<button key={code} className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50 transition-colors ${highlighted === i ? 'bg-muted/50' : ''}`} onClick={() => handleSelect(code)} onMouseEnter={() => setHighlighted(i)}><FlagImage code={c.code} flagUrl={c.flagUrl} size={20} emoji={c.flagEmoji} /><span className="flex-1 truncate">{c.name}</span><Badge variant="outline" className="text-[9px]">{c.visaType}</Badge></button>);
+  1293→              })}
+  1294→            </>
+  1295→          )}
+  1296→          {filtered.length > 0 && (
+  1297→            <>
+  1298→              {query.length > 0 && <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Countries</div>}
+  1299→              {filtered.map((c, i) => (
+  1300→                <button key={c.code} className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50 transition-colors ${highlighted === (query.length === 0 ? recentSearches.length + i : i) ? 'bg-muted/50' : ''}`} onClick={() => handleSelect(c.code)} onMouseEnter={() => setHighlighted(query.length === 0 ? recentSearches.length + i : i)}>
+  1301→                  <FlagImage code={c.code} flagUrl={c.flagUrl} size={20} emoji={c.flagEmoji} /><span className="flex-1 truncate">{c.name}</span><Badge variant="outline" className="text-[9px]">{c.visaType}</Badge>
+  1302→                  <div className="flex gap-1 ml-auto pl-2"><span className="p-0.5 rounded hover:bg-muted cursor-pointer" onClick={e => { e.stopPropagation(); handleSelect(c.code); }} title="View Details"><Eye className="w-3 h-3 text-muted-foreground" /></span></div>
+  1303→                </button>
+  1304→              ))}
+  1305→            </>
+  1306→          )}
+  1307→          <div className="border-t px-3 py-1.5"><p className="text-[10px] text-muted-foreground">↑↓ Navigate · Enter Select · Esc Close</p></div>
+  1308→        </div>
+  1309→      )}
+  1310→    </div>
+  1311→  );
+  1312→}
+  1313→
+  1314→// ============ CHECK FLASH INDICATOR ============
+  1315→export function CheckFlash({ show }: { show: boolean }) {
+  1316→  if (!show) return null;
+  1317→  return <span className="check-flash absolute right-2 top-1/2 -translate-y-1/2 text-amber-500"><CheckCircle2 className="w-4 h-4" /></span>;
+  1318→}
+  1319→
+  1320→// ============ ANIMATED SCORE RING ============
+  1321→export function AnimatedScoreRing({ score, size = 80, label }: { score: number; size?: number; label?: string }) {
+  1322→  const radius = (size - 8) / 2;
+  1323→  const circumference = 2 * Math.PI * radius;
+  1324→  const offset = circumference - (score / 100) * circumference;
+  1325→  const color = score >= 70 ? '#f59e0b' : score >= 40 ? '#f59e0b' : '#ef4444';
+  1326→  const [animatedOffset, setAnimatedOffset] = useState(circumference);
+  1327→  const isHighScore = score > 80;
+  1328→
+  1329→  useEffect(() => {
+  1330→    const timer = setTimeout(() => setAnimatedOffset(offset), 100);
+  1331→    return () => clearTimeout(timer);
+  1332→  }, [offset, circumference]);
+  1333→
+  1334→  return (
+  1335→    <div className="flex flex-col items-center gap-1 relative">
+  1336→      <div className={isHighScore ? 'score-pulse rounded-full' : ''}>
+  1337→        <svg width={size} height={size} className="transform -rotate-90">
+  1338→          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/20" />
+  1339→          <circle
+  1340→            cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color}
+  1341→            strokeWidth="4" strokeLinecap="round"
+  1342→            strokeDasharray={circumference}
+  1343→            strokeDashoffset={animatedOffset}
+  1344→            className="transition-all duration-1000 ease-out"
+  1345→          />
+  1346→        </svg>
+  1347→        <div className="absolute inset-0 flex flex-col items-center justify-center">
+  1348→          <span className="text-lg font-bold" style={{ color }}>{Math.round(score)}</span>
+  1349→        </div>
+  1350→      </div>
+  1351→      {label && <span className="text-xs text-muted-foreground">{label}</span>}
+  1352→    </div>
+  1353→  );
+  1354→}
+  1355→
+  1356→// ============ MICRO SPARKLINE ============
+  1357→export function MicroSparkline({ data, color, width = 60, height = 20 }: { data: number[]; color?: string; width?: number; height?: number }) {
+  1358→  if (!data || data.length === 0) return null;
+  1359→  const maxVal = Math.max(...data);
+  1360→  const minVal = Math.min(...data);
+  1361→  const range = maxVal - minVal || 1;
+  1362→  const points = data.map((v, i) => {
+  1363→    const x = (i / (data.length - 1)) * width;
+  1364→    const y = height - ((v - minVal) / range) * (height - 4) - 2;
+  1365→    return `${x},${y}`;
+  1366→  }).join(' ');
+  1367→  const lineColor = color || (data[data.length - 1] >= data[0] ? '#f59e0b' : '#ef4444');
+  1368→  return (
+  1369→    <svg width={width} height={height} className="inline-block" aria-hidden="true">
+  1370→      <polyline points={points} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  1371→    </svg>
+  1372→  );
+  1373→}
+  1374→
+  1375→// ============ VISA TIMELINE ESTIMATOR ============
+  1376→export function VisaTimelineEstimator({ country }: { country: CountryData }) {
+  1377→  const today = new Date();
+  1378→  const procMin = country.processingDaysMin || 5;
+  1379→  const procMax = country.processingDaysMax || 30;
+  1380→  const prepDays = Math.max(7, Math.round(procMin * 0.6));
+  1381→  const avgProcDays = Math.round((procMin + procMax) / 2);
+  1382→
+  1383→  const stages = [
+  1384→    { id: 'prep', label: 'Preparation', icon: Lightbulb, start: 0, end: prepDays, color: '#f59e0b', desc: 'Gather documents, photos, forms' },
+  1385→    { id: 'submit', label: 'Submission', icon: Send, start: prepDays, end: prepDays + 2, color: '#f97316', desc: 'Submit at embassy/online' },
+  1386→    { id: 'proc', label: 'Processing', icon: Clock, start: prepDays + 2, end: prepDays + 2 + avgProcDays, color: '#8b5cf6', desc: `${procMin}-${procMax} business days` },
+  1387→    { id: 'decision', label: 'Decision', icon: CheckCircle2, start: prepDays + 2 + avgProcDays, end: prepDays + 2 + avgProcDays + 3, color: '#f59e0b', desc: 'Receive visa decision' },
+  1388→  ];
+  1389→
+  1390→  const totalDays = stages[stages.length - 1].end;
+  1391→  const earliestArrival = new Date(today); earliestArrival.setDate(today.getDate() + stages[1].end);
+  1392→  const latestDecision = new Date(today); latestDecision.setDate(today.getDate() + totalDays);
+  1393→
+  1394→  const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  1395→
+  1396→  return (
+  1397→    <div className="space-y-3">
+  1398→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1399→        <CalendarClock className="w-4 h-4 text-violet-500" />
+  1400→        Visa Timeline Estimator
+  1401→        <Badge variant="secondary" className="text-[10px]">~{totalDays} days total</Badge>
+  1402→      </h3>
+  1403→      {/* Timeline Bar */}
+  1404→      <div className="relative">
+  1405→        <div className="flex gap-1 h-8 rounded-lg overflow-hidden">
+  1406→          {stages.map((s) => (
+  1407→            <div key={s.id} className="relative flex-1 group" style={{ backgroundColor: s.color }}>
+  1408→              <div className="absolute inset-0 flex items-center justify-center">
+  1409→                <s.icon className="w-3.5 h-3.5 text-white drop-shadow" />
+  1410→              </div>
+  1411→              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-popover border shadow-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+  1412→                <span className="font-medium">{s.label}</span>
+  1413→                <br /><span className="text-muted-foreground">{s.desc}</span>
+  1414→              </div>
+  1415→            </div>
+  1416→          ))}
+  1417→        </div>
+  1418→        <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+  1419→          {stages.map((s) => (
+  1420→            <span key={s.id}>Day {s.start}</span>
+  1421→          ))}
+  1422→          <span>Day {totalDays}</span>
+  1423→        </div>
+  1424→      </div>
+  1425→      {/* Key dates */}
+  1426→      <div className="grid grid-cols-2 gap-3">
+  1427→        <div className="p-2.5 rounded-lg border bg-muted/30 text-center">
+  1428→          <div className="text-[10px] text-muted-foreground">Earliest Submission</div>
+  1429→          <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatDate(earliestArrival)}</div>
+  1430→        </div>
+  1431→        <div className="p-2.5 rounded-lg border bg-muted/30 text-center">
+  1432→          <div className="text-[10px] text-muted-foreground">Expected Decision By</div>
+  1433→          <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatDate(latestDecision)}</div>
+  1434→        </div>
+  1435→      </div>
+  1436→    </div>
+  1437→  );
+  1438→}
+  1439→
+  1440→// ============ SIMILAR COUNTRIES PANEL ============
+  1441→export function SimilarCountriesPanel({ country }: { country: CountryData }) {
+  1442→  const { countries, setSelectedCountry } = useAppStore();
+  1443→
+  1444→  const similar = useMemo(() => {
+  1445→    const allCountries = countries || [];
+  1446→    return allCountries
+  1447→      .filter(c => c.code !== country.code)
+  1448→      .filter(c => {
+  1449→        // Same visa difficulty category
+  1450→        const isFree = c.visaFree || c.visaOnArrival || c.etaAvailable;
+  1451→        const isTargetFree = country.visaFree || country.visaOnArrival || country.etaAvailable;
+  1452→        if (isFree !== isTargetFree) return false;
+  1453→        // Same continent or similar safety rating
+  1454→        if (c.continent === country.continent) return true;
+  1455→        if (Math.abs(c.safetyRating - country.safetyRating) <= 1) return true;
+  1456→        if (Math.abs((c.costProfile?.totalMonthlyUSD || 1000) - (country.costProfile?.totalMonthlyUSD || 1000)) <= 300) return true;
+  1457→        return false;
+  1458→      })
+  1459→      .slice(0, 4);
+  1460→  }, [countries, country]);
+  1461→
+  1462→  if (similar.length === 0) return null;
+  1463→
+  1464→  return (
+  1465→    <div className="space-y-2.5">
+  1466→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1467→        <Globe className="w-4 h-4 text-sky-500" />
+  1468→        Similar Countries
+  1469→        <Badge variant="secondary" className="text-[10px]">{similar.length} matches</Badge>
+  1470→      </h3>
+  1471→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  1472→        {similar.map((c) => {
+  1473→          const visaStatus = c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'On Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy';
+  1474→          const statusColor = c.visaFree ? 'text-amber-600' : c.visaOnArrival ? 'text-amber-600' : c.etaAvailable ? 'text-amber-600' : 'text-red-600';
+  1475→          return (
+  1476→            <button
+  1477→              key={c.code}
+  1478→              onClick={() => setSelectedCountry(c)}
+  1479→              className="flex items-center gap-2 p-2 rounded-lg border text-left hover:bg-muted/50 hover:shadow-sm transition-all cursor-pointer"
+  1480→            >
+  1481→              <FlagImage code={c.code} flagUrl={c.flagUrl} size={24} emoji={c.flagEmoji} />
+  1482→              <div className="min-w-0 flex-1">
+  1483→                <p className="text-xs font-medium truncate">{c.name}</p>
+  1484→                <p className={`text-[10px] ${statusColor}`}>{visaStatus}</p>
+  1485→              </div>
+  1486→            </button>
+  1487→          );
+  1488→        })}
+  1489→      </div>
+  1490→    </div>
+  1491→  );
+  1492→}
+  1493→
+  1494→// ============ EMBASSY INFO SECTION ============
+  1495→export function EmbassyInfoSection({ countryCode, countryName }: { countryCode: string; countryName: string }) {
+  1496→  const embassy = EMBASSY_DATA[countryCode] || GENERIC_EMBASSY;
+  1497→  const hasNote = 'note' in embassy && embassy.note;
+  1498→  return (
+  1499→    <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+  1500→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1501→        <Building className="w-4 h-4 text-amber-500" />
+  1502→        Embassy & Consulate Information
+  1503→      </h3>
+  1504→      {hasNote && (
+  1505→        <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+  1506→          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+  1507→          <span className="text-xs text-amber-700 dark:text-amber-400 break-words">{embassy.note}</span>
+  1508→        </div>
+  1509→      )}
+  1510→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+  1511→        <div className="flex items-start gap-2 min-w-0">
+  1512→          <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1513→          <span className="break-words min-w-0">{embassy.address}</span>
+  1514→        </div>
+  1515→        <div className="flex items-start gap-2 min-w-0">
+  1516→          <Phone className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1517→          <span className="break-words min-w-0">{embassy.phone}</span>
+  1518→        </div>
+  1519→        <div className="flex items-start gap-2 min-w-0">
+  1520→          <Mail className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1521→          <span className="text-xs break-all min-w-0">{embassy.email}</span>
+  1522→        </div>
+  1523→        <div className="flex items-start gap-2 min-w-0">
+  1524→          <Clock className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1525→          <span className="break-words min-w-0">{embassy.hours}</span>
+  1526→        </div>
+  1527→      </div>
+  1528→      <div className="flex flex-wrap gap-2 pt-2 border-t">
+  1529→        <Button variant="outline" size="sm" className="text-xs" asChild>
+  1530→          <a href={embassy.website} target="_blank" rel="noopener noreferrer">
+  1531→            <ExternalLink className="w-3 h-3 mr-1" /> Official Website
+  1532→          </a>
+  1533→        </Button>
+  1534→        <Button variant="outline" size="sm" className="text-xs bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800" asChild>
+  1535→          <a href={embassy.appointmentUrl} target="_blank" rel="noopener noreferrer">
+  1536→            <Calendar className="w-3 h-3 mr-1" /> Book Appointment
+  1537→          </a>
+  1538→        </Button>
+  1539→      </div>
+  1540→    </div>
+  1541→  );
+  1542→}
+  1543→
+  1544→// ============ DESTINATION DISCOVERY PANEL ============
+  1545→export function DestinationDiscoveryPanel({ countries, onSelectCountry }: { countries: CountryData[]; onSelectCountry: (c: CountryData) => void }) {
+  1546→  const { userProfile } = useAppStore();
+  1547→
+  1548→  const recommendations = useMemo(() => {
+  1549→    const popular = countries
+  1550→      .filter(c => c.visaFree || c.visaOnArrival)
+  1551→      .sort((a, b) => b.safetyRating - a.safetyRating)
+  1552→      .slice(0, 5);
+  1553→    return popular;
+  1554→  }, [countries]);
+  1555→
+  1556→  if (recommendations.length === 0) return null;
+  1557→
+  1558→  return (
+  1559→    <div className="mt-8">
+  1560→      <div className="flex items-center gap-2 mb-4">
+  1561→        <Sparkles className="w-5 h-5 text-amber-500" />
+  1562→        <h2 className="text-lg font-semibold">
+  1563→          {userProfile ? 'Recommended for You' : 'Popular Destinations'}
+  1564→        </h2>
+  1565→        <Badge variant="secondary" className="text-[10px]">Visa-Free & On-Arrival</Badge>
+  1566→      </div>
+  1567→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+  1568→        {recommendations.map((country, idx) => {
+  1569→          const visaStatus = country.visaFree ? 'Visa Free' : 'On Arrival';
+  1570→          const statusColor = country.visaFree ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+  1571→          return (
+  1572→            <motion.div
+  1573→              key={country.code}
+  1574→              initial={{ opacity: 0, y: 20 }}
+  1575→              animate={{ opacity: 1, y: 0 }}
+  1576→              transition={{ delay: idx * 0.1 }}
+  1577→              whileHover={{ scale: 1.03 }}
+  1578→            >
+  1579→              <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 group" onClick={() => onSelectCountry(country)}>
+  1580→                <CardContent className="p-4 space-y-2">
+  1581→                  <div className="flex items-center gap-2">
+  1582→                    <FlagImage code={country.code} flagUrl={country.flagUrl} size={28} />
+  1583→                    <div className="min-w-0 flex-1">
+  1584→                      <p className="text-sm font-semibold truncate">{country.name}</p>
+  1585→                      <Badge className={`${statusColor} text-[9px]`} variant="secondary">{visaStatus}</Badge>
+  1586→                    </div>
+  1587→                  </div>
+  1588→                  <div className="grid grid-cols-3 gap-1 text-[10px] text-muted-foreground">
+  1589→                    <div className="text-center">
+  1590→                      <Shield className="w-3 h-3 mx-auto mb-0.5 text-amber-500" />
+  1591→                      <span>{country.safetyRating}/10</span>
+  1592→                    </div>
+  1593→                    <div className="text-center">
+  1594→                      <DollarSign className="w-3 h-3 mx-auto mb-0.5 text-amber-500" />
+  1595→                      <span>${country.costProfile?.totalMonthlyUSD || 0}</span>
+  1596→                    </div>
+  1597→                    <div className="text-center">
+  1598→                      <Thermometer className="w-3 h-3 mx-auto mb-0.5 text-orange-500" />
+  1599→                      <span>{country.avgTempC}°C</span>
+  1600→                    </div>
+  1601→                  </div>
+  1602→                  <Button variant="outline" size="sm" className="w-full text-xs btn-glow">
+  1603→                    <Zap className="w-3 h-3 mr-1" /> Quick Score
+  1604→                  </Button>
+  1605→                </CardContent>
+  1606→              </Card>
+  1607→            </motion.div>
+  1608→          );
+  1609→        })}
+  1610→      </div>
+  1611→    </div>
+  1612→  );
+  1613→}
+  1614→
+  1615→// ============ APPLICATION TIMELINE TRACKER ============
+  1616→export function ApplicationTimelineTracker() {
+  1617→  const [checkedStages, setCheckedStages] = useState<Set<string>>(new Set());
+  1618→  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  1619→
+  1620→  const toggleStage = (stageId: string) => {
+  1621→    setCheckedStages(prev => {
+  1622→      const next = new Set(prev);
+  1623→      if (next.has(stageId)) next.delete(stageId);
+  1624→      else next.add(stageId);
+  1625→      return next;
+  1626→    });
+  1627→  };
+  1628→
+  1629→  const toggleItem = (key: string) => {
+  1630→    setCheckedItems(prev => {
+  1631→      const next = new Set(prev);
+  1632→      if (next.has(key)) next.delete(key);
+  1633→      else next.add(key);
+  1634→      return next;
+  1635→    });
+  1636→  };
+  1637→
+  1638→  const totalItems = TIMELINE_STAGES.reduce((sum, s) => sum + s.items.length, 0);
+  1639→  const completedItems = checkedItems.size;
+  1640→  const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+  1641→
+  1642→  return (
+  1643→    <div className="space-y-4">
+  1644→      <div className="space-y-2">
+  1645→        <div className="flex items-center justify-between text-sm">
+  1646→          <span className="font-medium">Application Progress</span>
+  1647→          <span className="text-muted-foreground">{completedItems}/{totalItems} completed</span>
+  1648→        </div>
+  1649→        <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
+  1650→          <motion.div
+  1651→            className="h-full rounded-full"
+  1652→            style={{ background: getScoreGradient(progress) }}
+  1653→            initial={{ width: 0 }}
+  1654→            animate={{ width: `${progress}%` }}
+  1655→            transition={{ duration: 0.5 }}
+  1656→          />
+  1657→        </div>
+  1658→        {progress === 100 && (
+  1659→          <p className="text-xs text-amber-600 flex items-center gap-1">
+  1660→            <CheckCircle2 className="w-3 h-3" /> All stages complete! Ready for submission.
+  1661→          </p>
+  1662→        )}
+  1663→      </div>
+  1664→
+  1665→      <div className="relative space-y-0">
+  1666→        {TIMELINE_STAGES.map((stage, stageIdx) => {
+  1667→          const stageComplete = checkedStages.has(stage.id);
+  1668→          const stageItemsComplete = stage.items.filter((_, i) => checkedItems.has(`${stage.id}-${i}`)).length;
+  1669→          const isLast = stageIdx === TIMELINE_STAGES.length - 1;
+  1670→          return (
+  1671→            <Fragment key={stage.id}>
+  1672→              <div className="flex gap-3">
+  1673→                <div className="flex flex-col items-center">
+  1674→                  <button
+  1675→                    onClick={() => toggleStage(stage.id)}
+  1676→                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
+  1677→                      stageComplete
+  1678→                        ? 'bg-amber-600 border-amber-600 text-white timeline-dot-active'
+  1679→                        : 'bg-background border-muted-foreground/30 text-muted-foreground hover:border-amber-400'
+  1680→                    }`}
+  1681→                  >
+  1682→                    {stageComplete ? <CheckCircle2 className="w-5 h-5" /> : React.createElement(stage.icon, { className: 'w-4 h-4' })}
+  1683→                  </button>
+  1684→                  {!isLast && (
+  1685→                    <div className={`w-0.5 flex-1 min-h-[20px] transition-colors ${stageComplete ? 'bg-amber-500' : 'bg-muted-foreground/20'}`} />
+  1686→                  )}
+  1687→                </div>
+  1688→                <div className="flex-1 pb-6">
+  1689→                  <div className="flex items-center justify-between">
+  1690→                    <h4 className={`text-sm font-semibold ${stageComplete ? 'text-amber-600' : ''}`}>{stage.title}</h4>
+  1691→                    <span className="text-[10px] text-muted-foreground">{stageItemsComplete}/{stage.items.length}</span>
+  1692→                  </div>
+  1693→                  <div className="mt-1 space-y-1">
+  1694→                    {stage.items.map((item, itemIdx) => {
+  1695→                      const key = `${stage.id}-${itemIdx}`;
+  1696→                      const checked = checkedItems.has(key);
+  1697→                      return (
+  1698→                        <label key={key} className="flex items-center gap-2 cursor-pointer group">
+  1699→                          <Checkbox checked={checked} onCheckedChange={() => toggleItem(key)} className="w-3.5 h-3.5" />
+  1700→                          <span className={`text-xs transition-colors ${checked ? 'line-through text-muted-foreground' : 'group-hover:text-amber-600'}`}>{item}</span>
+  1701→                        </label>
+  1702→                      );
+  1703→                    })}
+  1704→                  </div>
+  1705→                </div>
+  1706→              </div>
+  1707→            </Fragment>
+  1708→          );
+  1709→        })}
+  1710→      </div>
+  1711→    </div>
+  1712→  );
+  1713→}
+  1714→
+  1715→// ============ VISA FEE COMPARISON CHART ============
+  1716→export function VisaFeeComparisonChart({ results }: { results: ScoreBreakdown[] }) {
+  1717→  if (results.length === 0) return null;
+  1718→  const metrics = [
+  1719→    { label: 'Eligibility', key: 'eligibility' as const, color: '#f59e0b' },
+  1720→    { label: 'Visa Likelihood', key: 'visaLikelihood' as const, color: '#f97316' },
+  1721→    { label: 'Cost Suitability', key: 'costSuitability' as const, color: '#f59e0b' },
+  1722→  ];
+  1723→  const maxScore = 100;
+  1724→  return (
+  1725→    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+  1726→      <h4 className="text-sm font-semibold flex items-center gap-2">
+  1727→        <BarChart3 className="w-4 h-4 text-amber-500" />
+  1728→        Side-by-Side Comparison
+  1729→      </h4>
+  1730→      {metrics.map(metric => (
+  1731→        <div key={metric.key}>
+  1732→          <p className="text-xs font-medium text-muted-foreground mb-2">{metric.label}</p>
+  1733→          <div className="space-y-1.5">
+  1734→            {results.map((r) => (
+  1735→              <div key={r.country} className="flex items-center gap-2">
+  1736→                <span className="w-20 text-xs truncate text-muted-foreground shrink-0">{r.country}</span>
+  1737→                <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+  1738→                  <motion.div
+  1739→                    className="h-full rounded bar-animated"
+  1740→                    style={{ backgroundColor: metric.color, width: `${(r[metric.key] / maxScore) * 100}%` }}
+  1741→                    initial={{ width: 0 }}
+  1742→                    animate={{ width: `${(r[metric.key] / maxScore) * 100}%` }}
+  1743→                    transition={{ duration: 0.6, delay: 0.1 }}
+  1744→                  />
+  1745→                </div>
+  1746→                <span className="w-10 text-xs text-right font-mono">{Math.round(r[metric.key])}%</span>
+  1747→              </div>
+  1748→            ))}
+  1749→          </div>
+  1750→        </div>
+  1751→      ))}
+  1752→    </div>
+  1753→  );
+  1754→}
+  1755→
+  1756→

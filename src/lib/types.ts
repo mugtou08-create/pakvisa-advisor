@@ -229,3 +229,11 @@ export interface ChecklistItem {
   sourceUrl?: string;
   notes?: string;
 }
+
+export interface VisaDocChecklistItem {
+  id: string;
+  name: string;
+  category: 'required' | 'recommended';
+  checked: boolean;
+  note?: string;
+}

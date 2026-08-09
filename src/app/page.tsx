@@ -47,6 +47,16 @@ export default function HomePage() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
 
+  const TABS = [
+    { id: 'explore', label: 'Explore', icon: Globe },
+    { id: 'questionnaire', label: 'Assess', icon: FileText },
+    { id: 'compare', label: 'Compare', icon: BarChart3 },
+    { id: 'chat', label: 'AI Chat', icon: MessageSquare },
+    { id: 'tools', label: 'Tools', icon: Compass },
+    { id: 'reports', label: 'Reports', icon: FileCheck },
+  ];
+  const TAB_IDS = TABS.map(t => t.id);
+
   // Fetch AI enabled setting on app load
   useEffect(() => {
     fetch('/api/admin/ai-status')
@@ -534,15 +544,15 @@ export default function HomePage() {
 
         {/* C1: Mobile Bottom Navigation */}
         <nav className="mobile-bottom-nav sm:hidden">
-          <div className="flex items-center justify-around">
-            {[
-              { id: 'explore', label: 'Explore', icon: Globe },
-              { id: 'questionnaire', label: 'Assess', icon: FileText },
-              { id: 'compare', label: 'Compare', icon: BarChart3 },
-              { id: 'chat', label: 'AI Chat', icon: MessageSquare },
-              { id: 'tools', label: 'Tools', icon: Compass },
-              { id: 'reports', label: 'Reports', icon: FileCheck },
-            ].map(tab => (
+          <div className="flex items-center justify-around relative">
+            <div
+              className="mobile-nav-indicator"
+              style={{
+                left: `${(TAB_IDS.indexOf(activeTab) / TAB_IDS.length) * 100}%`,
+                width: `${100 / TAB_IDS.length}%`,
+              }}
+            />
+            {TABS.map(tab => (
               <button
                 key={tab.id}
                 className={`mobile-nav-item ${activeTab === tab.id ? 'active' : ''}`}

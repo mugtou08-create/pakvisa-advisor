@@ -234,7 +234,14 @@ export function ExploreTab() {
   return (
     <div className="space-y-4" ref={scrollRevealRef}>
       {/* Hero Section - Yellow Mango Themed Compact */}
-      <section id="visa-guide" className="relative overflow-hidden rounded-xl p-3 sm:p-5 md:p-8 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-500 dark:via-orange-500 dark:to-yellow-500">
+      <section id="visa-guide" className="relative overflow-hidden rounded-xl p-3 sm:p-5 md:p-8 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600">
+        {/* Gradient mesh overlay */}
+        <div className="hero-mesh-bg" />
+        {/* Floating decorative orbs */}
+        <div className="hero-orb hero-orb-1" />
+        <div className="hero-orb hero-orb-2" />
+        <div className="hero-orb hero-orb-3" />
+        <div className="hero-orb hero-orb-4" />
         <div className="relative z-10 text-amber-950 dark:text-amber-100">
           <motion.h1
             className="text-[17px] sm:text-2xl md:text-3xl font-bold leading-snug mb-0.5"
@@ -244,9 +251,13 @@ export function ExploreTab() {
           >
             Does a Pakistani need a visa for...
           </motion.h1>
-          <p className="text-xs sm:text-sm mb-3 opacity-90">
+          <p className="text-xs sm:text-sm mb-1 opacity-90">
             Check visa requirements instantly for {countries.length}+ countries
           </p>
+          {/* Typing animation */}
+          <div className="h-5 sm:h-6 mb-2">
+            <TypingText phrases={TYPING_PHRASES} className="text-[11px] sm:text-sm font-medium opacity-80" />
+          </div>
 
           {/* Search bar */}
           <div ref={heroSearchRef} className="relative max-w-xl">
@@ -260,7 +271,7 @@ export function ExploreTab() {
             />
             <Button
               onClick={handleHeroCheckVisa}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-9 px-4 text-sm font-medium"
+              className="hero-btn-glow absolute right-1.5 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-9 px-4 text-sm font-medium"
             >
               Check Visa
             </Button>

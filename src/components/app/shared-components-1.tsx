@@ -1184,6 +1184,7 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
   const visaStatus = country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'On Arrival' : country.etaAvailable ? 'e-Visa' : 'Embassy';
   const statusColor = country.visaFree ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : country.visaOnArrival ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : country.etaAvailable ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400';
   const borderColor = country.visaFree ? 'border-l-amber-500' : country.visaOnArrival ? 'border-l-amber-500' : country.etaAvailable ? 'border-l-amber-500' : 'border-l-orange-500';
+  const accentBarClass = country.visaFree ? 'card-accent-visa-free' : country.visaOnArrival ? 'card-accent-voa' : country.etaAvailable ? 'card-accent-evisa' : 'card-accent-embassy';
   const bottomGradient = country.visaFree ? 'bg-gradient-to-r from-amber-500 via-orange-400 to-amber-500' : country.visaOnArrival ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500' : country.etaAvailable ? 'bg-gradient-to-r from-amber-500 via-sky-400 to-amber-500' : 'bg-gradient-to-r from-gray-400 via-gray-300 to-gray-400';
   const glowColor = country.visaFree ? 'hover:shadow-amber-500/10' : country.visaOnArrival ? 'hover:shadow-amber-500/10' : country.etaAvailable ? 'hover:shadow-amber-500/10' : 'hover:shadow-gray-400/10';
   const easeScore = country.visaFree ? 1 : country.visaOnArrival ? 0.85 : country.etaAvailable ? 0.7 : 0.3;
@@ -1211,7 +1212,11 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
         <TooltipTrigger asChild>
           <div>
             <motion.div whileHover={{ scale: 1.02, y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-              <Card className={`group card-tilt-enhanced card-glow-border card-frosted card-shimmer-hover card-inner-highlight overflow-hidden cursor-pointer transition-all duration-300 border-border/50 border-l-4 ${borderColor} hover:shadow-xl hover:border-border ${glowColor} hover:-translate-y-1 relative ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
+              <Card className={`group card-tilt-enhanced card-glow-border card-frosted card-shimmer-hover card-inner-highlight overflow-hidden cursor-pointer transition-all duration-300 border-border/50 border-l-4 ${borderColor} hover:shadow-xl hover:shadow-amber-500/10 hover:border-border hover:scale-[1.02] relative ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
+                {/* Card accent bar */}
+                <div className={`card-accent-bar ${accentBarClass}`} />
+                {/* NEW badge */}
+                {isNew && <div className="new-card-badge">NEW</div>}
                 {/* Score top accent line for scored cards */}
                 {countryScore !== null && (
                   <div className={`score-accent-top ${countryScore >= 70 ? 'bg-amber-500' : countryScore >= 40 ? 'bg-amber-500' : 'bg-red-500'}`} />
@@ -1251,7 +1256,6 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="shrink-0 flag-glow-ring p-0.5"><FlagImage code={country.code} flagUrl={country.flagUrl} size={28} /></span>
-                    {isNew && <span className="new-badge-pulse absolute -top-2 left-10 text-[8px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">NEW</span>}
                     <div className="min-w-0">
                       <CardTitle className="text-sm font-semibold leading-tight truncate">{country.name}</CardTitle>
                       <CardDescription className="text-[11px]">{formatCountryCode(country.code)} · {country.continent}</CardDescription>
