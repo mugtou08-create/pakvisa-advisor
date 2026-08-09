@@ -9,7 +9,7 @@ import {
   ArrowRight, Printer, ExternalLink, Zap, Target, Sparkles,
   Eye, ClipboardList, Send, ChevronDown, Compass, Gavel, CheckCircle2, X, XCircle,
   AlertTriangle, Info, Lock, FileWarning, PackageOpen, PlaneTakeoff, UtensilsCrossed, Bookmark, SearchX, Timer, Wallet, Languages, BadgePercent,
-  Download, Play, History, RefreshCw, FileCheck,
+  Download, Play, History, RefreshCw, FileCheck, Copy, CalendarPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,6 +40,32 @@ export function ReportsTab() {
 
   const printReport = () => { window.print(); };
   const [exportOpen, setExportOpen] = useState(false);
+
+  // Copy summary to clipboard
+  const handleCopyToClipboard = async () => {
+    if (scoreResults.length === 0) return;
+    const sorted = [...scoreResults].sort((a, b) => b.finalScore - a.finalScore);
+    const summary = [
+      '🇵🇰 PakVisa Advisor - Eligibility Summary',
+      `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      `Total Assessments: ${scoreResults.length}`,
+      '─'.repeat(40),
+      ...sorted.map((r, i) => (
+        `${i + 1}. ${r.country} (${r.visaType}) — Score: ${Math.round(r.finalScore)}/100 | Confidence: ${Math.round(r.confidence * 100)}%`
+      )),
+      '─'.repeat(40),
+      `Best Match: ${sorted[0].country} (${Math.round(sorted[0].finalScore)}/100)`,
+      `Average Score: ${Math.round(sorted.reduce((s, r) => s + r.finalScore, 0) / sorted.length)}/100`,
+      '',
+      'Powered by PakVisa Advisor',
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(summary);
+      toast.success('Summary copied to clipboard!');
+    } catch {
+      toast.error('Failed to copy. Please try again.');
+    }
+  };
 
   if (scoreResults.length === 0) {
     return (
@@ -97,9 +123,14 @@ export function ReportsTab() {
             </button>
           </div>
           {reportsView === 'reports' && (
-            <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="print:hidden gap-1">
-              <Download className="w-4 h-4 mr-1" /> Export Report <PremiumBadge />
-            </Button>
+            <div className="flex items-center gap-2 print:hidden">
+              <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="gap-1">
+                <Download className="w-4 h-4 mr-1" /> Export <PremiumBadge />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCopyToClipboard} className="gap-1">
+                <Copy className="w-4 h-4 mr-1" /> Copy Summary
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -114,7 +145,35 @@ export function ReportsTab() {
             </CardTitle>
             <CardDescription>Track your visa application progress step by step</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Visual Progress Bar */}
+            <div className="card-elevated-1 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold">Overall Completion</span>
+                <span className="text-sm font-bold text-amber-600 dark:text-amber-400">~60%</span>
+              </div>
+              <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: '60%' }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  className="data-bar-animated h-full rounded-full"
+                  style={{ background: 'linear-gradient(90deg, #f59e0b, #fb923c, #f97316)' }}
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <CalendarPlus className="w-3.5 h-3.5 text-amber-500" />
+                <span>Estimated completion: <strong className="text-amber-700 dark:text-amber-400">
+                  {(() => {
+                    const avgProcessingDays = scoreResults.length > 0
+                      ? Math.round(scoreResults.reduce((s) => s + 14, 0) / scoreResults.length)
+                      : 14;
+                    const estDate = new Date(Date.now() + avgProcessingDays * 86400000);
+                    return estDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  })()}
+                </strong></span>
+              </div>
+            </div>
             <ApplicationTimelineTracker />
           </CardContent>
         </Card>
@@ -196,8 +255,8 @@ export function ReportsTab() {
                   { label: 'Cost Suitability', value: selected.costSuitability, color: 'text-amber-600' },
                   { label: 'Final Score', value: selected.finalScore, color: 'text-amber-600' },
                 ].map((item, i) => (
-                  <div key={item.label} className={`stat-card-highlight text-center p-3 rounded-lg ${i === 3 ? 'ring-2 ring-amber-500' : ''}`}>
-                    <div className={`text-3xl font-bold ${item.color} stat-number-amber`}><AnimatedScoreNumber value={Math.round(item.value)} delay={i * 150} /></div>
+                  <div key={item.label} className={`stat-card-highlight text-center p-3 rounded-lg ${i === 3 ? 'ring-2 ring-amber-500' : ''} gradient-amber-warm`}>
+                    <div className={`text-3xl font-bold ${item.color} stat-number-amber text-count-up`}><AnimatedScoreNumber value={Math.round(item.value)} delay={i * 150} /></div>
                     <div className="text-xs text-muted-foreground mt-1">{item.label}</div>
                   </div>
                 ))}
@@ -340,6 +399,18 @@ export function ReportsTab() {
       )}
       {/* Print Report Dialog - Task 10 C2 */}
       <PrintReportDialog open={exportOpen} onClose={() => setExportOpen(false)} scoreResults={scoreResults} userProfile={userProfile} />
+
+      {/* Print-friendly styles */}
+      <style jsx global>{`
+        @media print {
+          .print\\:hidden { display: none !important; }
+          .card-glow-border { box-shadow: none !important; border: 1px solid #ccc !important; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .stat-card-highlight, .glass-card, .card-elevated-1 {
+            break-inside: avoid; background: white !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

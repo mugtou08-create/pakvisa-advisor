@@ -1235,7 +1235,7 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
             <Popover>
               <PopoverTrigger asChild>
                 <motion.div whileHover={{ scale: 1.02, y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-                  <Card className={`group card-tilt-enhanced card-glow-border card-shimmer-hover card-inner-highlight card-hover-lift overflow-hidden cursor-pointer border-border/50 hover:shadow-amber-500/10 hover:border-amber-300/50 dark:hover:border-amber-600/30 relative card-elevated-1 press-effect card-hover-reveal ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
+                  <Card className={`group card-tilt-enhanced card-glow-border card-shimmer-hover card-inner-highlight card-hover-lift overflow-hidden cursor-pointer border-border/50 hover:shadow-amber-500/10 hover:border-amber-300/50 dark:hover:border-amber-600/30 relative card-elevated-1 press-effect card-hover-reveal hover-reveal-content ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
                 {/* Subtle gradient top border based on visa category */}
                 <div className={`h-[3px] ${country.visaFree ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-400' : country.visaOnArrival ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400' : country.etaAvailable ? 'bg-gradient-to-r from-amber-400 via-orange-300 to-amber-400' : 'bg-gradient-to-r from-orange-400 via-red-400 to-orange-400'}`} />
                 {/* NEW badge */}
@@ -1341,6 +1341,14 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
                   <span className="view-cta-btn text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-0.5 px-2 py-1 rounded-md transition-all duration-200 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:shadow-[0_0_8px_rgba(249,115,22,0.2)]">
                     View <ChevronRight className="w-3 h-3" />
                   </span>
+                </div>
+                {/* Hover reveal quick details */}
+                <div className="hover-reveal-target px-4 pb-3 pt-1">
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1"><Shield className="w-3 h-3 text-amber-500" />{country.safetyRating}/10</span>
+                    <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-amber-500" />${country.costProfile?.visaFeeUSD || 0}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-amber-500" />{country.processingDaysMin === 0 && country.processingDaysMax === 0 ? 'N/A' : `${country.processingDaysMin}-${country.processingDaysMax}d`}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -680,7 +680,7 @@ export function BackToTopButton() {
           <Button
             onClick={scrollToTop}
             size="icon"
-            className="rounded-full w-10 h-10 bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/30"
+            className="rounded-full w-10 h-10 bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/30 press-glow"
           >
             <ChevronUp className="w-5 h-5" />
           </Button>

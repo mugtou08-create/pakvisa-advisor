@@ -227,7 +227,7 @@ export function AIChatTab() {
               <Bot className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">AI Visa Consultant</h3>
+              <h3 className="font-semibold text-sm text-shimmer">AI Visa Consultant</h3>
               <p className="text-xs text-muted-foreground">Powered by AI · English only · Official sources cited</p>
             </div>
             <div className="ml-auto flex items-center gap-1.5">
@@ -355,7 +355,7 @@ export function AIChatTab() {
                   <Bot className="w-4 h-4 text-amber-600" />
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-lg p-3 text-sm relative group ${
+              <div className={`max-w-[80%] rounded-lg p-3 text-sm relative group transition-smooth-in ${
                 msg.role === 'user'
                   ? 'chat-bubble-user'
                   : 'chat-bubble-bot'

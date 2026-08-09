@@ -326,7 +326,7 @@ export function CompareTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {results.map((r, i) => (
-            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 card-glow-border card-accent-top ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
+            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 card-glow-border card-accent-top card-3d-tilt ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base card-section-title">{r.country}</CardTitle>

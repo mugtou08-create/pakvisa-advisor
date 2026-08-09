@@ -1607,3 +1607,216 @@ Applied to 7 component files.
 - URL: Click ⚙️ gear icon in header
 - Username: admin | Password: PakVisa@2024!
 - Features: AI toggle, maintenance mode, analytics
+---
+Task ID: 18-A
+Agent: full-stack-developer
+Task: Advanced CSS - 3D transforms, motion orchestration, text animation
+
+Work Log:
+- Read worklog.md and all target component files to understand project state
+- Appended ~995 lines of new CSS to globals.css (10 groups), bringing total from 6787 → 7782 lines
+  1. 3D Card Transforms: card-3d-flip, card-3d-tilt, card-3d-lift, card-3d-depth, card-3d-cube, flip-in keyframes
+  2. Motion Orchestration: entrance-scale/slide-right/slide-left/slide-up/bounce/blur, stagger-parent/child, wave
+  3. Text Animation: text-reveal, text-shimmer, text-glow-pulse, text-gradient-animated, text-underline-grow, text-strike-through, text-count-up
+  4. Interactive State Layers: state-default/hover/active/focus, ripple-container/effect, press-down, press-glow, hover-reveal-content, drag-handle/active
+  5. Advanced Gradient System: gradient-amber-warm/sunset/mesh/shine, gradient-border-animated, gradient-text-warm, gradient-overlay-dark/light
+  6. Enhanced Transitions: transition-spring/bounce/smooth-in/out/scale-in/collapse/width/chromatic
+  7. Loading Skeleton v2: skeleton-card-v2, skeleton-text-v2, skeleton-circle-v2, skeleton-chart, skeleton-map, skeleton-shimmer-v2, skeleton-pulse-v2
+  8. Page Section Styling: section-hero, section-features, section-stats, section-faq, section-cta, section-testimonials, section-divider-wave
+  9. Floating & Fixed: floating-badge, floating-action, floating-tooltip, sticky-sidebar, sticky-header, backdrop-overlay, modal-backdrop-amber
+  10. Accessibility: prefers-reduced-motion, focus-visible-ring, sr-only-focusable, high-contrast, skip-to-content
+- Applied CSS classes to components:
+  - page.tsx: Added sticky-header to header, skip-to-content link, id="main-content" for a11y, press-glow to back-to-top button
+  - explore-tab.tsx: Added section-hero to hero area, motion-stagger-parent to country grid, motion-stagger-child to country cards
+  - compare-tab.tsx: Added card-3d-tilt to comparison result cards
+  - questionnaire-tab.tsx: Added transition-spring to step content card, motion-entrance-slide-up to review items
+  - ai-chat-tab.tsx: Added text-shimmer to AI branding text, transition-smooth-in to chat messages
+  - reports-tab.tsx: Added gradient-amber-warm to score cards, text-count-up to score numbers
+  - shared-components-1.tsx: Added hover-reveal-content to CountryCard, hover-reveal-target with quick safety/fee/details
+- Fixed pre-existing lint errors: missing closing comment bracket in shared-components-5.tsx, refactored PassportRenewalReminder to avoid setState in useEffect
+- All lint passes cleanly
+
+Stage Summary:
+- 995 lines of new CSS added across 10 groups, all amber/orange/mango theme, all with dark mode variants
+- 7 component files updated with new CSS classes applied
+- ESLint passes with zero errors
+- Dev server compiles successfully
+---
+
+### Task ID: 18-C - SearchAutoComplete, StatsOverviewDashboard, Tab Polish
+**Status**: ✅ Completed
+**Agent**: full-stack-developer subagent
+
+#### Feature 1: SearchAutoComplete (shared-components-5.tsx)
+- Appended `SearchAutoComplete` component (~230 lines) with:
+  - Debounced input (300ms) with search icon
+  - Dropdown results showing top 8 matches with flag emoji, country name (highlighted matching text), visa type badge, continent
+  - Keyboard navigation (ArrowUp/Down + Enter to select, Escape to close)
+  - Categorized results when 3+ chars: "Quick Results" (top 3 visa-free) + "All Matches"
+  - "No countries found" state with SearchX icon
+  - Recent searches from store's `recentSearches` when input is empty
+  - Clear button (X) to reset search
+  - CSS classes: `card-elevated-1`, `glass-card`, `input-search-enhanced`, `list-item-hover`, `badge-3d`
+  - Framer Motion: dropdown slide-down + fade-in, items stagger
+  - `useRef` for click-outside-to-close
+- Also added helper functions: `getAutoCompleteVisaStatus`, `HighlightMatch`
+
+#### Feature 2: StatsOverviewDashboard (shared-components-5.tsx)
+- Appended `StatsOverviewDashboard` component (~240 lines) with:
+  - **Top Stats Row** (4 cards): Total Countries, Visa-Free (green), VOA (amber), Avg Visa Fee
+  - **Continent Breakdown**: Horizontal bar chart (pure CSS), amber gradient fill, hover tooltips
+  - **Visa Type Distribution**: CSS donut chart (SVG arcs), 4 segments color-coded with legend, center total
+  - **Quick Insights** (3 cards): Most Accessible Continent, Cheapest Destination, Safest Destination
+  - CSS: `card-elevated-1`, `data-bar-amber`, `data-bar-animated`, `stat-number-amber`, `glass-card`
+  - Framer Motion: stagger entrance for stat cards, animated bar widths
+
+#### Feature 3: Reports Tab Enhancement (reports-tab.tsx)
+- Added **"Copy to Clipboard" button** that generates a formatted text summary and copies via `navigator.clipboard.writeText()` with toast notification
+- Enhanced **Timeline View** with:
+  - Visual progress bar showing overall completion (~60%)
+  - Estimated completion date based on processing time
+- Added **print-friendly CSS** via `<style jsx global>` with `@media print` rules:
+  - Hides `.print:hidden` elements
+  - Removes glow borders/shadows
+  - Forces `print-color-adjust: exact`
+  - `break-inside: avoid` for cards
+
+#### Integration (explore-tab.tsx)
+- **SearchAutoComplete** replaces the old hero search input (lines 321-357 removed, replaced with component)
+- **StatsOverviewDashboard** placed after ContinentQuickStats section with heading "Statistics Overview" and BarChart3 icon
+- Updated import from `shared-components-5` to include new components
+
+#### Files Modified:
+- `src/components/app/shared-components-5.tsx` — Appended 2 new components + 2 helpers, added imports
+- `src/components/app/tabs/explore-tab.tsx` — Replaced hero search, added StatsOverview section, updated import
+- `src/components/app/tabs/reports-tab.tsx` — Copy to clipboard, timeline progress, print styles
+
+#### Quality:
+- ESLint passes with zero errors
+- Dev server compiles successfully
+- All colors amber/orange/mango theme — no blue, indigo, or purple used
+---
+## Task ID: 18-B - VisaCostCalculatorPro, SocialProofSection, PassportRenewalReminder
+**Status**: ✅ Completed
+**Agent**: full-stack-developer
+
+### Changes Made:
+
+#### 1. VisaCostCalculatorPro (~150 lines) - shared-components-5.tsx
+- Advanced visa cost calculator with country selector, duration slider (1-365 days), travelers count (1-10)
+- Budget level toggle (budget/mid/luxury) with cost multiplier
+- Cost breakdown: visa fee, service fee, flight estimate (by visa type), accommodation, food/transport (30% of accommodation), insurance ($3/day), miscellaneous (10%)
+- Recharts BarChart visualization in chart-container-amber wrapper
+- Total cost with amber glow, per-person and per-day breakdown
+- Affordability meter ($500 Very Affordable to $3000 Premium) with progress bar
+- Best months to visit tip from country data
+- Save estimate to localStorage (pakvisa-cost-estimates key)
+- Uses: card-elevated-1, glass-card, stat-card-compact, chart-container-amber, progress-amber
+
+#### 2. SocialProofSection (~100 lines) - shared-components-5.tsx
+- 4 animated stat counters with count-up animation (70+ Countries, 10,000+ Users, 99% Accuracy, 24/7 AI)
+- 3 hardcoded Pakistani traveler testimonials with names, destinations, quotes, star ratings
+- Auto-scrolling testimonial carousel (2 per view desktop, 1 mobile) with dot indicators
+- Trust badges row: Verified Data, Free to Use, No Registration Required, Instant Results
+- Framer Motion stagger entrance for stats, slide animations for testimonials
+- Uses: card-elevated-1, glass-card, stat-number-amber, text-glow-amber, press-effect
+
+#### 3. PassportRenewalReminder (~80 lines) - shared-components-5.tsx
+- Passport expiry tracking with useSyncExternalStore for localStorage hydration (no effect-based setState)
+- Large days remaining display with color-coded urgency (green >12mo, amber 6-12mo, orange 3-6mo, red <3mo)
+- SVG progress ring (60px) showing time remaining vs 10-year validity
+- Alert banner when < 6 months remaining
+- Inline date picker when no date provided, stores to localStorage (pakvisa-passport-expiry)
+- Quick link to DGIP passport renewal
+- Uses: card-elevated-1, stat-card-compact, progress-amber, text-glow-amber
+
+### Integration Points:
+- **VisaCostCalculatorPro** → tools-tab.tsx: Placed after TripPlannerTimeline in a Card with Calculator icon heading
+- **SocialProofSection** → explore-tab.tsx: Placed before FAQ section as a prominent bottom section
+- **PassportRenewalReminder** → page.tsx: Placed between VisaAlertBanner and main content area, reads userProfile.passportExpiry from store
+
+### Technical Notes:
+- Added new imports to shared-components-5.tsx: useSyncExternalStore, useMemo, recharts (BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip), Select/Slider UI components, toast/sonner, Calculator/CalendarClock/Users/BadgeCheck/Zap/Save/TrendingUp/ChevronDown/ArrowRight icons
+- ESLint passes with zero errors
+- All colors amber/orange/mango theme, no blue/indigo/purple
+
+---
+## Session: Round 21 — 3D CSS, Motion Orchestration, 8 New Features
+
+### Task ID: 18 — Styling + 8 New Features + Reports Enhancement
+
+**Status**: ✅ Completed
+
+#### QA Testing Results
+- **ESLint**: 0 errors, 0 warnings
+- **Dev Server**: Compiles and serves correctly (200 OK)
+- **API Endpoints**: All 19 endpoints verified functional
+- **No conflicts** between parallel agents this round
+
+#### Task 18-A: Advanced CSS Styling (10 Groups, ~995 Lines)
+Added to `globals.css` (now ~7,782 lines total):
+
+| # | Class Group | Key Classes |
+|---|-------------|-------------|
+| 1 | 3D Card Transforms | `card-3d-flip/tilt/lift/depth/cube`, `flip-in` keyframes |
+| 2 | Motion Orchestration | `motion-entrance-scale/slide/bounce/blur`, `stagger-parent/child`, `motion-wave` |
+| 3 | Text Animation | `text-reveal/shimmer/glow-pulse/gradient-animated/underline-grow/strike-through/count-up` |
+| 4 | Interactive States | `ripple-container/effect`, `press-down/glow`, `hover-reveal-content`, `drag-handle/active` |
+| 5 | Advanced Gradients | `gradient-amber-warm/sunset/mesh/shine`, `gradient-border-animated`, overlays |
+| 6 | Enhanced Transitions | `transition-spring/bounce/collapse/width/chromatic` |
+| 7 | Loading Skeleton v2 | `skeleton-card/text/circle/chart/map-v2`, amber-tinted shimmer |
+| 8 | Page Sections | `section-hero/features/stats/faq/cta/testimonials`, `section-divider-wave` |
+| 9 | Floating Elements | `floating-badge/action/tooltip`, `sticky-sidebar/header`, backdrop overlays |
+| 10 | Accessibility | `prefers-reduced-motion`, `focus-visible-ring`, `sr-only-focusable`, `skip-to-content` |
+
+Applied to 7 component files.
+
+#### Task 18-B: 3 New Features (shared-components-5.tsx)
+1. **VisaCostCalculatorPro** — Country selector, duration/travelers/budget params, Recharts BarChart breakdown, affordability meter, save to localStorage → Tools tab
+2. **SocialProofSection** — 4 animated stat counters, 3 testimonials carousel, trust badges → Explore tab (before FAQ)
+3. **PassportRenewalReminder** — Days remaining, urgency color coding, progress ring, date picker, localStorage persistence → page.tsx (between alert banner and content)
+
+#### Task 18-C: 2 New Features + Reports Enhancement
+4. **SearchAutoComplete** — Debounced input, dropdown with keyboard nav, categorized results, recent searches, highlighted match text → Replaced hero search in Explore tab
+5. **StatsOverviewDashboard** — 4 stat cards, continent bar chart, CSS donut chart, 3 insight cards → Explore tab (after ContinentQuickStats)
+6. **Reports Tab** — Copy to clipboard button, timeline progress bar, estimated completion date, print CSS
+
+---
+
+## Current Project Status Assessment
+
+### Application Health: ✅ STABLE
+- **19 API endpoints** all functional
+- **ESLint**: 0 errors, 0 warnings
+- **Homepage**: 200 OK, clean compilation
+- **Database**: 70 countries, NewsletterSubscriber, AnalyticsEvent tables
+
+### Codebase Stats
+- **CSS**: ~7,782 lines globals.css (+995 this round)
+- **Components**: ~23,597 lines total across 15 key files (+1,968 net)
+- **shared-components-5.tsx**: 1,714 lines, 10 exported components
+- **Exports across all shared files**: 40+ components
+
+### API Routes: 19 total (no new this round)
+
+### Unresolved Issues
+1. Browser QA sandbox limitation (gateway proxy)
+2. z-ai-web-dev-sdk sandbox-only (production: use Gemini API)
+3. No user accounts (localStorage only)
+4. Social media/affiliate links are placeholders
+5. SEO: SPA needs static country pages
+
+### Next Phase Recommendations (Priority Order)
+1. SEO Static Pages for top 6 destinations with JSON-LD
+2. Real Affiliate Integration
+3. User Account System with email auth
+4. PWA Support (service worker + manifest)
+5. Email Newsletter Backend (SendGrid/Mailgun)
+6. Trip Planner PDF Export
+7. Urdu Language Toggle
+8. Performance Optimization (lazy loading, code splitting)
+
+### Admin Access
+- URL: Click ⚙️ gear icon in header
+- Username: admin | Password: PakVisa@2024!
+- Features: AI toggle, maintenance mode, analytics

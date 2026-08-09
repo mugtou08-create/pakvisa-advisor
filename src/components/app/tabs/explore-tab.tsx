@@ -30,7 +30,7 @@ import {
 import { CountryDetailDialog, SimilarCountriesPanel, EmbassyInfoSection, DestinationDiscoveryPanel, ApplicationTimelineTracker, VisaFeeComparisonChart, SkeletonCountryCards, TypingText, FloatingParticles, SmartQuickSearch, DestinationSpotlight } from '../shared-components-2';
 import { VisaStatsDashboard, PassportPowerIndex } from '../shared-components-3';
 import { VisaPolicyChangeTracker, ContinentQuickStats, VisaReadinessDashboard, SmartRecommendations, EnhancedFAQ } from '../shared-components-4';
-import { CountryComparisonSwiper, VisaEligibilityMap } from '../shared-components-5';
+import { CountryComparisonSwiper, VisaEligibilityMap, SocialProofSection, SearchAutoComplete, StatsOverviewDashboard } from '../shared-components-5';
 
 export function ExploreTab() {
   const [countries, setCountries] = useState<CountryData[]>([]);
@@ -290,7 +290,7 @@ export function ExploreTab() {
   return (
     <div className="space-y-10" ref={scrollRevealRef}>
       {/* Hero Section - Yellow Mango Themed Compact */}
-      <section id="visa-guide" className="relative overflow-hidden rounded-2xl p-4 sm:p-6 md:p-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600 glass-card-strong">
+      <section id="visa-guide" className="relative overflow-hidden rounded-2xl p-4 sm:p-6 md:p-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600 glass-card-strong section-hero" style={{ padding: 'clamp(1rem, 4vw, 2.5rem)', textAlign: 'left' }}>
         {/* Gradient mesh overlay */}
         <div className="hero-mesh-bg" />
         {/* Floating decorative orbs */}
@@ -318,43 +318,19 @@ export function ExploreTab() {
           {/* Visa Countdown Timer */}
           <VisaCountdownTimer />
 
-          {/* Search bar with animated gradient border */}
-          <div ref={heroSearchRef} className="relative max-w-xl">
-            <div className="hero-search-glow">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-700/60 dark:text-amber-200/60 z-10" />
-              <Input
-                placeholder="Type a country name..."
-                value={heroSearch}
-                onFocus={() => { setHeroSearchFocused(true); setShowSuggestions(true); }}
-                onBlur={() => { setHeroSearchFocused(false); }}
-                onChange={(e) => { setHeroSearch(e.target.value); setShowSuggestions(true); setHeroQuickResult(null); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleHeroCheckVisa(); }}
-                className="pl-12 h-12 sm:h-14 rounded-xl text-base bg-white/90 dark:bg-black/20 border-amber-500/30 placeholder:text-amber-700/40 dark:placeholder:text-amber-200/40 text-amber-950 dark:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-400/60 shadow-lg shadow-amber-900/10 input-amber"
-              />
-            </div>
-            <Button
-              onClick={handleHeroCheckVisa}
-              className="hero-btn-glow hero-btn-pulse hover-glow-amber absolute right-2 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-10 px-5 text-sm font-bold shine-sweep"
-            >
-              Check Visa
-            </Button>
-
-            {/* Suggestions dropdown */}
-            {showSuggestions && heroSuggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-popover rounded-xl shadow-lg border z-50 max-h-64 overflow-y-auto">
-                {heroSuggestions.map((c) => (
-                  <button
-                    key={c.code}
-                    onClick={() => { handleHeroSelectCountry(c); handleHeroCheckVisa(); }}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/50 transition-colors text-left text-sm"
-                  >
-                    <FlagImage code={c.code} flagUrl={c.flagUrl} size={24} emoji={c.flagEmoji} />
-                    <span className="flex-1 font-medium text-foreground">{c.name}</span>
-                    <Badge className={`${getHeroVisaStatus(c).color} text-[10px]`} variant="secondary">{getHeroVisaStatus(c).label}</Badge>
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* Search bar with autocomplete */}
+          <div className="max-w-xl">
+            <SearchAutoComplete
+              countries={countries}
+              onSelectCountry={(code) => {
+                const match = countries.find(c => c.code === code);
+                if (match) {
+                  setSelectedCountry(match);
+                  setHeroQuickResult(match);
+                  saveRecentSearch(match);
+                }
+              }}
+            />
           </div>
 
           {/* Quick Result Card */}
@@ -520,6 +496,17 @@ export function ExploreTab() {
       {!loading && countries.length > 0 && (
         <section className="glass-section p-5 md:p-6 rounded-xl card-accent-left">
           <ContinentQuickStats countries={countries} />
+        </section>
+      )}
+
+      {/* Statistics Overview */}
+      {!loading && countries.length > 0 && (
+        <section className="glass-section p-5 md:p-6 rounded-xl">
+          <h2 className="text-lg font-bold flex items-center gap-2 mb-5">
+            <BarChart3 className="w-5 h-5 text-amber-500" />
+            Statistics Overview
+          </h2>
+          <StatsOverviewDashboard countries={countries} />
         </section>
       )}
 
@@ -754,11 +741,11 @@ export function ExploreTab() {
         {loading ? (
           <div className="loading-dots"><SkeletonCountryCards /></div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 responsive-grid-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 responsive-grid-2 motion-stagger-parent">
             <AnimatePresence mode="popLayout">
               {displayCountries.map((country, idx) => (
-                <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>
-                  <div className="card-accent-top rounded-xl">
+                <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }} style={{ '--stagger-index': idx } as React.CSSProperties}>
+                  <div className="card-accent-top rounded-xl motion-stagger-child">
                   <CountryCard country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
                   </div>
                 </motion.div>
@@ -833,6 +820,11 @@ export function ExploreTab() {
         </section>
         </>
       )}
+
+      {/* Social Proof Section */}
+      <section className="mb-6">
+        <SocialProofSection />
+      </section>
 
       {/* FAQ Section - Enhanced with Search & Categories */}
       <section className="faq-section-tint rounded-xl p-5 md:p-6">

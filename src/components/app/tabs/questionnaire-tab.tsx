@@ -303,7 +303,7 @@ export function QuestionnaireTab() {
       {/* Step Content */}
       <AnimatePresence mode="wait">
         <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-          <Card className="dark-surface-1">
+          <Card className="dark-surface-1 transition-spring">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 {React.createElement(STEPS[step].icon, { className: 'w-5 h-5 text-amber-500' })}
@@ -553,8 +553,8 @@ export function QuestionnaireTab() {
                       { label: 'Return Ticket', value: profile.hasReturnTicket ? 'Yes' : 'No', icon: Plane },
                       { label: 'Accommodation', value: profile.hasHotelBooking ? 'Yes' : 'No', icon: Home },
                       { label: 'Sponsor', value: profile.hasSponsor ? 'Yes' : 'No', icon: Users },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center gap-2 p-3 rounded-lg border text-sm card-accent-top">
+                    ].map((item, i) => (
+                      <div key={item.label} className="flex items-center gap-2 p-3 rounded-lg border text-sm card-accent-top motion-entrance-slide-up" style={{ '--stagger-index': i } as React.CSSProperties}>
                         <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
                         <div>
                           <div className="text-xs text-muted-foreground">{item.label}</div>

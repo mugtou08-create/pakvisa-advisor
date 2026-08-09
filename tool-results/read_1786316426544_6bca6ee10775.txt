@@ -1,0 +1,842 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  ChevronLeft, ChevronRight, Star, Clock, DollarSign,
+     7→  Sparkles, Settings, RotateCcw, Check,
+     8→  Plus, Minus, ZoomIn, ZoomOut, MapPin, Shield, Plane,
+     9→  Gavel, Bell, AlertTriangle, Trash2, Eye, EyeOff, Info, User, Briefcase, Wallet, Globe, Luggage, X,
+    10→} from 'lucide-react';
+    11→import { Button } from '@/components/ui/button';
+    12→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+    15→import type { CountryData, UserProfileData } from '@/lib/types';
+    16→
+    17→// ============================================================
+    18→// Feature 1: CountryComparisonSwiper
+    19→// ============================================================
+    20→
+    21→function getVisaStatus(c: CountryData) {
+    22→  if (c.visaFree) return { label: 'Visa Free', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' };
+    23→  if (c.visaOnArrival) return { label: 'Visa on Arrival', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' };
+    24→  if (c.etaAvailable) return { label: 'e-Visa', color: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' };
+    25→  return { label: 'Embassy Required', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' };
+    26→}
+    27→
+    28→function SafetyStars({ rating }: { rating: number }) {
+    29→  return (
+    30→    <div className="flex items-center gap-0.5">
+    31→      {[1, 2, 3, 4, 5].map((i) => (
+    32→        <Star
+    33→          key={i}
+    34→          className={`w-3 h-3 ${i <= Math.round(rating / 2) ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30'}`}
+    35→        />
+    36→      ))}
+    37→    </div>
+    38→  );
+    39→}
+    40→
+    41→export function CountryComparisonSwiper({ countries, onSelectCountry }: {
+    42→  countries: CountryData[];
+    43→  onSelectCountry: (code: string) => void;
+    44→}) {
+    45→  const [currentIndex, setCurrentIndex] = useState(0);
+    46→  const [isPaused, setIsPaused] = useState(false);
+    47→  const [direction, setDirection] = useState(0);
+    48→  const dragRef = useRef<HTMLDivElement>(null);
+    49→  const startXRef = useRef(0);
+    50→
+    51→  // Take top 8 countries for the swiper
+    52→  const swiperCountries = countries.slice(0, 8);
+    53→  const total = swiperCountries.length;
+    54→
+    55→  const goTo = useCallback((newIndex: number, dir: number) => {
+    56→    setDirection(dir);
+    57→    setCurrentIndex((newIndex + total) % total);
+    58→  }, [total]);
+    59→
+    60→  const goNext = useCallback(() => goTo(currentIndex + 1, 1), [currentIndex, goTo]);
+    61→  const goPrev = useCallback(() => goTo(currentIndex - 1, -1), [currentIndex, goTo]);
+    62→
+    63→  // Auto-rotate every 5 seconds
+    64→  useEffect(() => {
+    65→    if (isPaused || total === 0) return;
+    66→    const timer = setInterval(goNext, 5000);
+    67→    return () => clearInterval(timer);
+    68→  }, [isPaused, goNext, total]);
+    69→
+    70→  // Touch/drag handlers
+    71→  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    72→    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    73→    startXRef.current = clientX;
+    74→  };
+    75→
+    76→  const handleDragEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    77→    const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
+    78→    const diff = startXRef.current - clientX;
+    79→    if (Math.abs(diff) > 50) {
+    80→      if (diff > 0) goNext();
+    81→      else goPrev();
+    82→    }
+    83→  };
+    84→
+    85→  if (swiperCountries.length === 0) return null;
+    86→
+    87→  // Get visible indices for 3-card desktop, 1-card mobile
+    88→  const getVisibleIndices = () => {
+    89→    const indices: number[] = [];
+    90→    for (let offset = -1; offset <= 1; offset++) {
+    91→      indices.push((currentIndex + offset + total) % total);
+    92→    }
+    93→    return indices;
+    94→  };
+    95→
+    96→  const visibleIndices = getVisibleIndices();
+    97→  const centerIdx = visibleIndices[1]; // center card
+    98→  const centerCountry = swiperCountries[centerIdx];
+    99→
+   100→  return (
+   101→    <div
+   102→      className="relative"
+   103→      onMouseEnter={() => setIsPaused(true)}
+   104→      onMouseLeave={() => setIsPaused(false)}
+   105→    >
+   106→      {/* Desktop: 3-card 3D stack */}
+   107→      <div className="hidden md:flex items-center justify-center gap-4 py-4">
+   108→        {/* Left card */}
+   109→        <motion.div
+   110→          key={visibleIndices[0]}
+   111→          initial={{ opacity: 0, x: direction > 0 ? -80 : -40, scale: 0.85 }}
+   112→          animate={{ opacity: 0.5, x: 0, scale: 0.85 }}
+   113→          exit={{ opacity: 0, x: direction > 0 ? 40 : -80, scale: 0.85 }}
+   114→          transition={{ duration: 0.4, ease: 'easeInOut' }}
+   115→          className="w-64 shrink-0 cursor-pointer"
+   116→          style={{ perspective: '1000px', transform: 'rotateY(8deg)' }}
+   117→          onClick={() => goTo(visibleIndices[0], -1)}
+   118→        >
+   119→          <SwipeCard country={swiperCountries[visibleIndices[0]]} onSelect={onSelectCountry} isSide />
+   120→        </motion.div>
+   121→
+   122→        {/* Center card */}
+   123→        <motion.div
+   124→          key={centerIdx}
+   125→          initial={{ opacity: 0, x: direction * 120, scale: 0.9 }}
+   126→          animate={{ opacity: 1, x: 0, scale: 1 }}
+   127→          exit={{ opacity: 0, x: -direction * 120, scale: 0.9 }}
+   128→          transition={{ duration: 0.4, ease: 'easeInOut' }}
+   129→          className="w-72 shrink-0 z-10"
+   130→        >
+   131→          <SwipeCard country={centerCountry} onSelect={onSelectCountry} isCenter />
+   132→        </motion.div>
+   133→
+   134→        {/* Right card */}
+   135→        <motion.div
+   136→          key={visibleIndices[2]}
+   137→          initial={{ opacity: 0, x: direction > 0 ? 80 : 40, scale: 0.85 }}
+   138→          animate={{ opacity: 0.5, x: 0, scale: 0.85 }}
+   139→          exit={{ opacity: 0, x: direction > 0 ? -40 : 80, scale: 0.85 }}
+   140→          transition={{ duration: 0.4, ease: 'easeInOut' }}
+   141→          className="w-64 shrink-0 cursor-pointer"
+   142→          style={{ perspective: '1000px', transform: 'rotateY(-8deg)' }}
+   143→          onClick={() => goTo(visibleIndices[2], 1)}
+   144→        >
+   145→          <SwipeCard country={swiperCountries[visibleIndices[2]]} onSelect={onSelectCountry} isSide />
+   146→        </motion.div>
+   147→      </div>
+   148→
+   149→      {/* Mobile: single card with swipe */}
+   150→      <div
+   151→        className="md:hidden overflow-hidden px-4"
+   152→        ref={dragRef}
+   153→        onMouseDown={handleDragStart}
+   154→        onMouseUp={handleDragEnd}
+   155→        onTouchStart={handleDragStart}
+   156→        onTouchEnd={handleDragEnd}
+   157→      >
+   158→        <AnimatePresence mode="wait" custom={direction}>
+   159→          <motion.div
+   160→            key={currentIndex}
+   161→            custom={direction}
+   162→            initial={{ opacity: 0, x: direction * 200 }}
+   163→            animate={{ opacity: 1, x: 0 }}
+   164→            exit={{ opacity: 0, x: -direction * 200 }}
+   165→            transition={{ duration: 0.35, ease: 'easeInOut' }}
+   166→            drag="x"
+   167→            dragConstraints={{ left: 0, right: 0 }}
+   168→            dragElastic={0.2}
+   169→            onDragEnd={(_, info) => {
+   170→              if (info.offset.x > 60) goPrev();
+   171→              else if (info.offset.x < -60) goNext();
+   172→            }}
+   173→          >
+   174→            <SwipeCard country={swiperCountries[currentIndex]} onSelect={onSelectCountry} isCenter />
+   175→          </motion.div>
+   176→        </AnimatePresence>
+   177→      </div>
+   178→
+   179→      {/* Navigation buttons */}
+   180→      <div className="flex items-center justify-center gap-3 mt-3">
+   181→        <Button
+   182→          variant="outline"
+   183→          size="icon"
+   184→          className="h-8 w-8 rounded-full border-amber-300 hover:bg-amber-50 dark:border-amber-700 dark:hover:bg-amber-900/30"
+   185→          onClick={goPrev}
+   186→          aria-label="Previous country"
+   187→        >
+   188→          <ChevronLeft className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+   189→        </Button>
+   190→
+   191→        {/* Dot indicators */}
+   192→        <div className="flex items-center gap-1.5">
+   193→          {swiperCountries.map((_, i) => (
+   194→            <button
+   195→              key={i}
+   196→              onClick={() => goTo(i, i > currentIndex ? 1 : -1)}
+   197→              className={`rounded-full transition-all duration-300 ${
+   198→                i === currentIndex
+   199→                  ? 'w-6 h-2 bg-amber-500'
+   200→                  : 'w-2 h-2 bg-amber-300 dark:bg-amber-700 hover:bg-amber-400'
+   201→              }`}
+   202→              aria-label={`Go to slide ${i + 1}`}
+   203→            />
+   204→          ))}
+   205→        </div>
+   206→
+   207→        <Button
+   208→          variant="outline"
+   209→          size="icon"
+   210→          className="h-8 w-8 rounded-full border-amber-300 hover:bg-amber-50 dark:border-amber-700 dark:hover:bg-amber-900/30"
+   211→          onClick={goNext}
+   212→          aria-label="Next country"
+   213→        >
+   214→          <ChevronRight className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+   215→        </Button>
+   216→      </div>
+   217→    </div>
+   218→  );
+   219→}
+   220→
+   221→function SwipeCard({ country, onSelect, isCenter, isSide }: {
+   222→  country: CountryData;
+   223→  onSelect: (code: string) => void;
+   224→  isCenter?: boolean;
+   225→  isSide?: boolean;
+   226→}) {
+   227→  const status = getVisaStatus(country);
+   228→
+   229→  return (
+   230→    <div
+   231→      className={`rounded-xl p-5 transition-shadow duration-300 ${
+   232→        isCenter
+   233→          ? 'card-elevated-2 glass-card shadow-lg shadow-amber-500/10'
+   234→          : 'card-elevated-1 glass-card opacity-70'
+   235→      } ${isSide ? 'hover:opacity-90' : ''}`}
+   236→    >
+   237→      {/* Flag + Name */}
+   238→      <div className="flex items-center gap-3 mb-3">
+   239→        <span className="text-4xl leading-none">{country.flagEmoji}</span>
+   240→        <div className="min-w-0 flex-1">
+   241→          <h3 className={`font-bold truncate ${isCenter ? 'text-base' : 'text-sm'}`}>{country.name}</h3>
+   242→          <p className="text-[11px] text-muted-foreground">{country.continent}</p>
+   243→        </div>
+   244→      </div>
+   245→
+   246→      {/* Visa type badge */}
+   247→      <Badge className={`${status.color} text-[10px] mb-3 badge-3d`} variant="secondary">
+   248→        {status.label}
+   249→      </Badge>
+   250→
+   251→      {/* Safety rating */}
+   252→      <div className="flex items-center gap-2 mb-2">
+   253→        <span className="text-[11px] text-muted-foreground">Safety</span>
+   254→        <SafetyStars rating={country.safetyRating} />
+   255→        <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">{country.safetyRating}/10</span>
+   256→      </div>
+   257→
+   258→      {/* Processing time */}
+   259→      <div className="flex items-center gap-2 mb-2 text-[11px] text-muted-foreground">
+   260→        <Clock className="w-3 h-3 text-amber-500" />
+   261→        <span>{country.processingDaysMin === country.processingDaysMax
+   262→          ? `${country.processingDaysMin} days`
+   263→          : `${country.processingDaysMin}–${country.processingDaysMax} days`
+   264→        }</span>
+   265→      </div>
+   266→
+   267→      {/* Monthly cost */}
+   268→      <div className="flex items-center gap-2 mb-4 text-[11px] text-muted-foreground">
+   269→        <DollarSign className="w-3 h-3 text-amber-500" />
+   270→        <span>~${country.costProfile?.totalMonthlyUSD?.toLocaleString() || 'N/A'}/mo</span>
+   271→      </div>
+   272→
+   273→      {/* View Details button */}
+   274→      <Button
+   275→        size="sm"
+   276→        className={`w-full press-effect ${
+   277→          isCenter
+   278→            ? 'bg-amber-600 hover:bg-amber-700 text-white'
+   279→            : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
+   280→        }`}
+   281→        onClick={() => onSelect(country.code)}
+   282→      >
+   283→        View Details
+   284→      </Button>
+   285→    </div>
+   286→  );
+   287→}
+   288→
+   289→// ============================================================
+   290→// Feature 2: ThemeAccentCustomizer
+   291→// ============================================================
+   292→
+   293→const ACCENT_PRESETS = [
+   294→  { name: 'Amber', color: '#F59E0B', primary: '245, 158, 11' },
+   295→  { name: 'Orange', color: '#F97316', primary: '249, 115, 22' },
+   296→  { name: 'Mango', color: '#FB923C', primary: '251, 146, 60' },
+   297→  { name: 'Gold', color: '#EAB308', primary: '234, 179, 8' },
+   298→  { name: 'Warm Brown', color: '#A16207', primary: '161, 98, 7' },
+   299→  { name: 'Rose Gold', color: '#E11D48', primary: '225, 29, 72' },
+   300→] as const;
+   301→
+   302→const STORAGE_KEY = 'pakvisa-accent-color';
+   303→
+   304→function applyAccent(preset: typeof ACCENT_PRESETS[number]) {
+   305→  if (typeof document === 'undefined') return;
+   306→  const root = document.documentElement;
+   307→  const [r, g, b] = preset.primary.split(', ');
+   308→  root.style.setProperty('--accent-primary', preset.color);
+   309→  root.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
+   310→  root.style.setProperty('--accent-foreground', '#FFFFFF');
+   311→  root.style.setProperty('--accent-light', `rgba(${r}, ${g}, ${b}, 0.15)`);
+   312→  root.style.setProperty('--accent-medium', `rgba(${r}, ${g}, ${b}, 0.3)`);
+   313→  localStorage.setItem(STORAGE_KEY, preset.name);
+   314→}
+   315→
+   316→export function ThemeAccentCustomizer({ defaultAccent }: { defaultAccent?: string }) {
+   317→  const [selected, setSelected] = useState(defaultAccent || 'Amber');
+   318→
+   319→  useEffect(() => {
+   320→    const saved = localStorage.getItem(STORAGE_KEY);
+   321→    if (saved) {
+   322→      const preset = ACCENT_PRESETS.find(p => p.name === saved);
+   323→      if (preset) {
+   324→        applyAccent(preset);
+   325→      }
+   326→    }
+   327→  }, []);
+   328→
+   329→  const handleSelect = (preset: typeof ACCENT_PRESETS[number]) => {
+   330→    setSelected(preset.name);
+   331→    applyAccent(preset);
+   332→  };
+   333→
+   334→  const handleReset = () => {
+   335→    const defaultPreset = ACCENT_PRESETS[0];
+   336→    setSelected(defaultPreset.name);
+   337→    applyAccent(defaultPreset);
+   338→  };
+   339→
+   340→  const activePreset = ACCENT_PRESETS.find(p => p.name === selected) || ACCENT_PRESETS[0];
+   341→
+   342→  return (
+   343→    <Card className="card-elevated-1 glass-card">
+   344→      <CardHeader className="pb-3">
+   345→        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   346→          <Settings className="w-4 h-4 text-amber-500" />
+   347→          Accent Color
+   348→        </CardTitle>
+   349→      </CardHeader>
+   350→      <CardContent className="space-y-3">
+   351→        {/* Color preset buttons */}
+   352→        <div className="flex items-center justify-center gap-3">
+   353→          {ACCENT_PRESETS.map((preset) => (
+   354→            <button
+   355→              key={preset.name}
+   356→              onClick={() => handleSelect(preset)}
+   357→              className={`press-effect relative w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
+   358→                selected === preset.name
+   359→                  ? 'border-amber-900 dark:border-amber-100 ring-2 ring-offset-2 ring-amber-400 dark:ring-offset-background'
+   360→                  : 'border-transparent hover:border-amber-400/50'
+   361→              }`}
+   362→              style={{ backgroundColor: preset.color }}
+   363→              aria-label={`Select ${preset.name} accent color`}
+   364→              title={preset.name}
+   365→            >
+   366→              {selected === preset.name && (
+   367→                <Check className="w-4 h-4 text-white absolute inset-0 m-auto drop-shadow-sm" strokeWidth={3} />
+   368→              )}
+   369→            </button>
+   370→          ))}
+   371→        </div>
+   372→
+   373→        {/* Current accent name */}
+   374→        <p className="text-center text-xs text-muted-foreground">
+   375→          Current: <span className="font-medium text-amber-700 dark:text-amber-400">{activePreset.name}</span>
+   376→        </p>
+   377→
+   378→        {/* Reset button */}
+   379→        <Button
+   380→          variant="ghost"
+   381→          size="sm"
+   382→          className="w-full text-xs text-muted-foreground hover:text-amber-700 dark:hover:text-amber-400"
+   383→          onClick={handleReset}
+   384→        >
+   385→          <RotateCcw className="w-3 h-3 mr-1" />
+   386→          Reset to Default
+   387→        </Button>
+   388→      </CardContent>
+   389→    </Card>
+   390→  );
+   391→}
+   392→
+   393→// ============================================================
+   394→// Feature 3: VisaEligibilityMap
+   395→// ============================================================
+   396→
+   397→const MAP_COUNTRIES = [
+   398→  { code: 'PK', name: 'Pakistan', flagEmoji: '🇵🇰', x: 62, y: 38 },
+   399→  { code: 'IN', name: 'India', flagEmoji: '🇮🇳', x: 68, y: 42 },
+   400→  { code: 'AE', name: 'UAE', flagEmoji: '🇦🇪', x: 58, y: 40 },
+   401→  { code: 'MY', name: 'Malaysia', flagEmoji: '🇲🇾', x: 75, y: 55 },
+   402→  { code: 'TR', name: 'Turkey', flagEmoji: '🇹🇷', x: 53, y: 30 },
+   403→  { code: 'SA', name: 'Saudi Arabia', flagEmoji: '🇸🇦', x: 55, y: 38 },
+   404→  { code: 'GB', name: 'United Kingdom', flagEmoji: '🇬🇧', x: 45, y: 22 },
+   405→  { code: 'US', name: 'United States', flagEmoji: '🇺🇸', x: 18, y: 32 },
+   406→  { code: 'CN', name: 'China', flagEmoji: '🇨🇳', x: 76, y: 33 },
+   407→  { code: 'TH', name: 'Thailand', flagEmoji: '🇹🇭', x: 74, y: 48 },
+   408→  { code: 'QA', name: 'Qatar', flagEmoji: '🇶🇦', x: 57, y: 38 },
+   409→  { code: 'ID', name: 'Indonesia', flagEmoji: '🇮🇩', x: 77, y: 58 },
+   410→  { code: 'EG', name: 'Egypt', flagEmoji: '🇪🇬', x: 52, y: 38 },
+   411→  { code: 'DE', name: 'Germany', flagEmoji: '🇩🇪', x: 49, y: 22 },
+   412→  { code: 'AU', name: 'Australia', flagEmoji: '🇦🇺', x: 84, y: 70 },
+   413→];
+   414→
+   415→type VisaFilterType = 'all' | 'visa-free' | 'voa' | 'e-visa' | 'embassy';
+   416→
+   417→function getMapVisaType(c: CountryData) {
+   418→  if (c.visaFree) return 'visa-free' as const;
+   419→  if (c.visaOnArrival) return 'voa' as const;
+   420→  if (c.etaAvailable) return 'e-visa' as const;
+   421→  return 'embassy' as const;
+   422→}
+   423→
+   424→function getMapVisaColor(type: string, dimmed: boolean) {
+   425→  if (dimmed) return '#a8a29e';
+   426→  switch (type) {
+   427→    case 'visa-free': return '#22c55e';
+   428→    case 'voa': return '#f59e0b';
+   429→    case 'e-visa': return '#f97316';
+   430→    default: return '#78716c';
+   431→  }
+   432→}
+   433→
+   434→function getMapVisaLabel(type: string) {
+   435→  switch (type) {
+   436→    case 'visa-free': return 'Visa-Free';
+   437→    case 'voa': return 'Visa on Arrival';
+   438→    case 'e-visa': return 'e-Visa';
+   439→    default: return 'Embassy Required';
+   440→  }
+   441→}
+   442→
+   443→export function VisaEligibilityMap({ countries, onSelectCountry }: { countries: CountryData[]; onSelectCountry?: (code: string) => void }) {
+   444→  const [zoom, setZoom] = useState(1);
+   445→  const [filter, setFilter] = useState<VisaFilterType>('all');
+   446→  const [hovered, setHovered] = useState<string | null>(null);
+   447→
+   448→  const enrichedRegions = MAP_COUNTRIES.map(mc => {
+   449→    const match = countries.find(c => c.code === mc.code);
+   450→    const visaType = match ? getMapVisaType(match) : 'embassy';
+   451→    const dimmed = filter !== 'all' && visaType !== filter;
+   452→    return { ...mc, visaType, dimmed, countryData: match };
+   453→  });
+   454→
+   455→  const filters: { key: VisaFilterType; label: string }[] = [
+   456→    { key: 'all', label: 'All' },
+   457→    { key: 'visa-free', label: 'Visa-Free' },
+   458→    { key: 'voa', label: 'VOA' },
+   459→    { key: 'e-visa', label: 'e-Visa' },
+   460→    { key: 'embassy', label: 'Embassy' },
+   461→  ];
+   462→
+   463→  return (
+   464→    <Card className="card-elevated-1 glass-card">
+   465→      <CardContent className="p-4 space-y-3">
+   466→        {/* Controls row */}
+   467→        <div className="flex items-center justify-between flex-wrap gap-2">
+   468→          <div className="flex items-center gap-1.5 flex-wrap">
+   469→            {filters.map(f => (
+   470→              <button
+   471→                key={f.key}
+   472→                onClick={() => setFilter(f.key)}
+   473→                className={`px-2.5 py-1 text-[11px] rounded-full font-medium transition-all press-effect ${
+   474→                  filter === f.key
+   475→                    ? 'bg-amber-500 text-white shadow-sm'
+   476→                    : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+   477→                }`}
+   478→              >
+   479→                {f.label}
+   480→              </button>
+   481→            ))}
+   482→          </div>
+   483→          <div className="flex items-center gap-1">
+   484→            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setZoom(z => Math.min(z + 0.2, 2))}>
+   485→              <ZoomIn className="w-3.5 h-3.5" />
+   486→            </Button>
+   487→            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setZoom(z => Math.max(z - 0.2, 0.6))}>
+   488→              <ZoomOut className="w-3.5 h-3.5" />
+   489→            </Button>
+   490→          </div>
+   491→        </div>
+   492→
+   493→        {/* SVG Map */}
+   494→        <div className="relative w-full overflow-hidden rounded-lg bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-stone-900/50 dark:to-stone-800/50">
+   495→          <svg viewBox="0 0 100 80" className="w-full h-auto" style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}>
+   496→            {/* Background grid */}
+   497→            {[...Array(9)].map((_, i) => (
+   498→              <line key={`h${i}`} x1="0" y1={i * 10} x2="100" y2={i * 10} stroke="currentColor" strokeWidth="0.15" className="text-amber-200/40 dark:text-amber-700/20" />
+   499→            ))}
+   500→            {[...Array(11)].map((_, i) => (
+   501→              <line key={`v${i}`} x1={i * 10} y1="0" x2={i * 10} y2="80" stroke="currentColor" strokeWidth="0.15" className="text-amber-200/40 dark:text-amber-700/20" />
+   502→            ))}
+   503→
+   504→            {/* Simplified continent outlines */}
+   505→            <path d="M5,18 Q8,12 15,14 Q20,10 28,15 Q35,12 42,18 Q44,22 40,28 Q35,32 30,28 Q25,35 20,32 Q12,30 8,25 Z" fill="currentColor" className="text-amber-100/30 dark:text-amber-800/15" stroke="currentColor" strokeWidth="0.3" strokeOpacity="0.2" />
+   506→            <path d="M42,15 Q48,10 55,14 Q60,12 62,18 Q60,25 55,28 Q48,30 44,25 Z" fill="currentColor" className="text-amber-100/30 dark:text-amber-800/15" stroke="currentColor" strokeWidth="0.3" strokeOpacity="0.2" />
+   507→            <path d="M44,30 Q50,28 58,32 Q65,30 72,35 Q78,38 80,45 Q76,52 70,55 Q60,58 52,52 Q46,48 42,40 Z" fill="currentColor" className="text-amber-100/30 dark:text-amber-800/15" stroke="currentColor" strokeWidth="0.3" strokeOpacity="0.2" />
+   508→            <path d="M70,10 Q78,8 88,12 Q94,18 92,28 Q88,35 80,32 Q74,28 70,22 Z" fill="currentColor" className="text-amber-100/30 dark:text-amber-800/15" stroke="currentColor" strokeWidth="0.3" strokeOpacity="0.2" />
+   509→            <path d="M72,58 Q78,54 86,58 Q90,65 86,72 Q80,76 74,72 Z" fill="currentColor" className="text-amber-100/30 dark:text-amber-800/15" stroke="currentColor" strokeWidth="0.3" strokeOpacity="0.2" />
+   510→
+   511→            {/* Country regions */}
+   512→            {enrichedRegions.map(region => (
+   513→              <g key={region.code}>
+   514→                <motion.circle
+   515→                  cx={region.x}
+   516→                  cy={region.y}
+   517→                  r={hovered === region.code ? 2.5 : 1.8}
+   518→                  fill={getMapVisaColor(region.visaType, region.dimmed)}
+   519→                  className="cursor-pointer"
+   520→                  whileHover={{ scale: 1.4 }}
+   521→                  onHoverStart={() => setHovered(region.code)}
+   522→                  onHoverEnd={() => setHovered(null)}
+   523→                  onClick={() => onSelectCountry?.(region.code)}
+   524→                  style={{ transformOrigin: `${region.x}px ${region.y}px` }}
+   525→                />
+   526→                {/* Country label on hover */}
+   527→                {hovered === region.code && (
+   528→                  <>
+   529→                    <rect x={region.x - 12} y={region.y - 8} width="24" height="14" rx="3" fill="black" fillOpacity="0.8" />
+   530→                    <text x={region.x} y={region.y - 2} textAnchor="middle" fontSize="3.5" fill="white" fontWeight="600">
+   531→                      {region.flagEmoji} {region.name}
+   532→                    </text>
+   533→                    <text x={region.x} y={region.y + 3.5} textAnchor="middle" fontSize="2.8" fill={getMapVisaColor(region.visaType, false)} fontWeight="500">
+   534→                      {getMapVisaLabel(region.visaType)}
+   535→                      {region.countryData && ` • ${region.countryData.processingDaysMin}–${region.countryData.processingDaysMax}d`}
+   536→                    </text>
+   537→                  </>
+   538→                )}
+   539→              </g>
+   540→            ))}
+   541→          </svg>
+   542→        </div>
+   543→
+   544→        {/* Legend */}
+   545→        <div className="flex items-center justify-center gap-4 flex-wrap">
+   546→          {[
+   547→            { color: '#22c55e', label: 'Visa-Free' },
+   548→            { color: '#f59e0b', label: 'VOA' },
+   549→            { color: '#f97316', label: 'e-Visa' },
+   550→            { color: '#78716c', label: 'Embassy' },
+   551→          ].map(item => (
+   552→            <div key={item.label} className="flex items-center gap-1.5">
+   553→              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+   554→              <span className="text-[10px] text-muted-foreground">{item.label}</span>
+   555→            </div>
+   556→          ))}
+   557→        </div>
+   558→      </CardContent>
+   559→    </Card>
+   560→  );
+   561→}
+   562→
+   563→// ============================================================
+   564→// Feature 4: UserProfileProgressWidget
+   565→// ============================================================
+   566→
+   567→const PROFILE_CATEGORIES = [
+   568→  { key: 'personal', label: 'Personal Info', fields: ['fullName', 'age', 'gender', 'nationality', 'passportNumber', 'passportExpiry', 'maritalStatus', 'dependents'] },
+   569→  { key: 'professional', label: 'Professional', fields: ['occupation', 'education', 'languages'] },
+   570→  { key: 'financial', label: 'Financial', fields: ['monthlyIncomeUSD', 'savingsUSD', 'budgetUSD'] },
+   571→  { key: 'travel', label: 'Travel Details', fields: ['travelPurpose', 'intendedStayDays', 'hasReturnTicket', 'hasHotelBooking'] },
+   572→  { key: 'additional', label: 'Additional', fields: ['hasHealthInsurance', 'hasSponsor', 'hasCriminalRecord', 'hasPriorTravel', 'hasSpecialNeeds'] },
+   573→];
+   574→
+   575→function isFieldFilled(profile: UserProfileData, field: string): boolean {
+   576→  const val = (profile as Record<string, unknown>)[field];
+   577→  if (val === undefined || val === null || val === '') return false;
+   578→  if (typeof val === 'number') return val > 0;
+   579→  if (Array.isArray(val)) return val.length > 0;
+   580→  if (typeof val === 'boolean') return true;
+   581→  return true;
+   582→}
+   583→
+   584→export function UserProfileProgressWidget({ profile }: { profile: UserProfileData | null }) {
+   585→  const allFields = PROFILE_CATEGORIES.flatMap(c => c.fields);
+   586→  const filledCount = profile ? allFields.filter(f => isFieldFilled(profile, f)).length : 0;
+   587→  const totalFields = allFields.length;
+   588→  const pct = totalFields > 0 ? Math.round((filledCount / totalFields) * 100) : 0;
+   589→  const radius = 34;
+   590→  const circumference = 2 * Math.PI * radius;
+   591→  const offset = circumference * (1 - pct / 100);
+   592→
+   593→  const categoryStatuses = PROFILE_CATEGORIES.map(cat => {
+   594→    const filled = cat.fields.filter(f => profile && isFieldFilled(profile, f)).length;
+   595→    return { ...cat, filled, total: cat.fields.length, complete: filled === cat.fields.length };
+   596→  });
+   597→
+   598→  return (
+   599→    <motion.div
+   600→      initial={{ opacity: 0, y: -10 }}
+   601→      animate={{ opacity: 1, y: 0 }}
+   602→      transition={{ duration: 0.4 }}
+   603→      className="card-elevated-1 stat-card-compact rounded-xl p-4"
+   604→    >
+   605→      <div className="flex items-center gap-4">
+   606→        {/* Circular progress ring */}
+   607→        <div className="relative w-20 h-20 shrink-0">
+   608→          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+   609→            <circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="5" className="text-muted/20" />
+   610→            <circle
+   611→              cx="40" cy="40" r={radius} fill="none"
+   612→              stroke="#f59e0b" strokeWidth="5" strokeLinecap="round"
+   613→              strokeDasharray={circumference}
+   614→              strokeDashoffset={offset}
+   615→              className="transition-all duration-700 progress-amber"
+   616→            />
+   617→          </svg>
+   618→          <div className="absolute inset-0 flex items-center justify-center">
+   619→            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">{pct}%</span>
+   620→          </div>
+   621→        </div>
+   622→
+   623→        {/* Text content */}
+   624→        <div className="flex-1 min-w-0">
+   625→          <p className="text-sm font-semibold mb-1">
+   626→            {pct === 100 ? 'Profile Complete! ✓' : 'Complete your profile'}
+   627→          </p>
+   628→          <p className="text-xs text-muted-foreground mb-2">
+   629→            {filledCount} of {totalFields} fields completed
+   630→          </p>
+   631→
+   632→          {/* Category dots */}
+   633→          <div className="flex items-center gap-2 flex-wrap">
+   634→            {categoryStatuses.map(cat => (
+   635→              <TooltipProvider key={cat.key}>
+   636→                <Tooltip>
+   637→                  <TooltipTrigger asChild>
+   638→                    <div
+   639→                      className={`w-3 h-3 rounded-full transition-colors ${
+   640→                        cat.complete ? 'bg-amber-500' : 'bg-stone-300 dark:bg-stone-600'
+   641→                      }`}
+   642→                    />
+   643→                  </TooltipTrigger>
+   644→                  <TooltipContent side="bottom">
+   645→                    <p className="text-xs font-medium">{cat.label}</p>
+   646→                    <p className="text-[10px] text-muted-foreground">{cat.filled}/{cat.total} fields</p>
+   647→                  </TooltipContent>
+   648→                </Tooltip>
+   649→              </TooltipProvider>
+   650→            ))}
+   651→          </div>
+   652→        </div>
+   653→
+   654→        {/* CTA */}
+   655→        {pct < 100 && (
+   656→          <Button size="sm" className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white press-effect" onClick={() => {}}>
+   657→            Fill Now
+   658→          </Button>
+   659→        )}
+   660→      </div>
+   661→    </motion.div>
+   662→  );
+   663→}
+   664→
+   665→// ============================================================
+   666→// Feature 5: NotificationHistoryPanel
+   667→// ============================================================
+   668→
+   669→interface NotificationItem {
+   670→  id: string;
+   671→  type: 'policy' | 'expiry' | 'new-country' | 'general';
+   672→  title: string;
+   673→  message: string;
+   674→  timestamp: string;
+   675→  read: boolean;
+   676→}
+   677→
+   678→const NOTIF_STORAGE_KEY = 'pakvisa-notifications';
+   679→
+   680→type NotifFilterType = 'all' | 'unread' | 'policy' | 'travel-alert';
+   681→
+   682→const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
+   683→  { id: '1', type: 'policy', title: 'UAE Visa Policy Update', message: 'UAE has introduced a new multiple-entry visa for Pakistani passport holders valid for 5 years.', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), read: false },
+   684→  { id: '2', type: 'expiry', title: 'Passport Expiry Reminder', message: 'Your passport may be expiring soon. Many countries require at least 6 months validity.', timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), read: false },
+   685→  { id: '3', type: 'new-country', title: 'New Destination: Qatar', message: 'Qatar now offers visa on arrival for Pakistani citizens. Check the latest requirements.', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), read: true },
+   686→  { id: '4', type: 'general', title: 'App Update Available', message: 'New features added: Visa Eligibility Map, Profile Progress Widget, and enhanced notifications.', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), read: true },
+   687→  { id: '5', type: 'policy', title: 'Malaysia e-Visa Changes', message: 'Malaysia has simplified the e-Visa application process with reduced documentation.', timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), read: false },
+   688→  { id: '6', type: 'travel-alert', title: 'Travel Advisory: Turkey', message: 'Updated travel advisory for Turkey. Check safety guidelines before planning your trip.', timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), read: true },
+   689→];
+   690→
+   691→function getRelativeTime(iso: string) {
+   692→  const diff = Date.now() - new Date(iso).getTime();
+   693→  const mins = Math.floor(diff / 60000);
+   694→  if (mins < 60) return `${mins}m ago`;
+   695→  const hrs = Math.floor(mins / 60);
+   696→  if (hrs < 24) return `${hrs}h ago`;
+   697→  const days = Math.floor(hrs / 24);
+   698→  return `${days}d ago`;
+   699→}
+   700→
+   701→function getNotifIcon(type: NotificationItem['type']) {
+   702→  switch (type) {
+   703→    case 'policy': return <Gavel className="w-4 h-4" />;
+   704→    case 'expiry': return <AlertTriangle className="w-4 h-4" />;
+   705→    case 'new-country': return <Plane className="w-4 h-4" />;
+   706→    default: return <Bell className="w-4 h-4" />;
+   707→  }
+   708→}
+   709→
+   710→function getNotifColor(type: NotificationItem['type']) {
+   711→  switch (type) {
+   712→    case 'policy': return 'text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400';
+   713→    case 'expiry': return 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400';
+   714→    case 'new-country': return 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400';
+   715→    default: return 'text-stone-600 bg-stone-100 dark:bg-stone-800/30 dark:text-stone-400';
+   716→  }
+   717→}
+   718→
+   719→export function NotificationHistoryPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+   720→  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+   721→    if (typeof window === 'undefined') return DEFAULT_NOTIFICATIONS;
+   722→    try {
+   723→      const stored = localStorage.getItem(NOTIF_STORAGE_KEY);
+   724→      if (stored) return JSON.parse(stored);
+   725→    } catch { /* ignore */ }
+   726→    localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(DEFAULT_NOTIFICATIONS));
+   727→    return DEFAULT_NOTIFICATIONS;
+   728→  });
+   729→  const [filter, setFilter] = useState<NotifFilterType>('all');
+   730→
+   731→  const saveNotifications = useCallback((items: NotificationItem[]) => {
+   732→    setNotifications(items);
+   733→    try { localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(items)); } catch { /* ignore */ }
+   734→  }, []);
+   735→
+   736→  const toggleRead = (id: string) => {
+   737→    saveNotifications(notifications.map(n => n.id === id ? { ...n, read: !n.read } : n));
+   738→  };
+   739→
+   740→  const clearAll = () => {
+   741→    saveNotifications([]);
+   742→  };
+   743→
+   744→  const filtered = notifications.filter(n => {
+   745→    if (filter === 'all') return true;
+   746→    if (filter === 'unread') return !n.read;
+   747→    if (filter === 'policy') return n.type === 'policy';
+   748→    if (filter === 'travel-alert') return n.type === 'expiry' || n.type === 'new-country';
+   749→    return true;
+   750→  });
+   751→
+   752→  const notifFilters: { key: NotifFilterType; label: string }[] = [
+   753→    { key: 'all', label: 'All' },
+   754→    { key: 'unread', label: 'Unread' },
+   755→    { key: 'policy', label: 'Policy Changes' },
+   756→    { key: 'travel-alert', label: 'Travel Alerts' },
+   757→  ];
+   758→
+   759→  return (
+   760→    <AnimatePresence>
+   761→      {isOpen && (
+   762→        <motion.div
+   763→          initial={{ height: 0, opacity: 0 }}
+   764→          animate={{ height: 'auto', opacity: 1 }}
+   765→          exit={{ height: 0, opacity: 0 }}
+   766→          transition={{ duration: 0.3 }}
+   767→          className="overflow-hidden border-b border-amber-200/50 dark:border-amber-800/30 bg-background/50"
+   768→        >
+   769→          <div className="container mx-auto px-4 py-3">
+   770→            <div className="flex items-center justify-between mb-3">
+   771→              <h3 className="text-sm font-semibold text-muted-foreground">Notification History</h3>
+   772→              <div className="flex items-center gap-2">
+   773→                <Button variant="ghost" size="sm" className="h-6 text-[11px] text-muted-foreground hover:text-red-600" onClick={clearAll}>
+   774→                  <Trash2 className="w-3 h-3 mr-1" /> Clear All
+   775→                </Button>
+   776→                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose} aria-label="Close">
+   777→                  <X className="w-3.5 h-3.5" />
+   778→                </Button>
+   779→              </div>
+   780→            </div>
+   781→
+   782→            {/* Filter tabs */}
+   783→            <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+   784→              {notifFilters.map(f => (
+   785→                <button
+   786→                  key={f.key}
+   787→                  onClick={() => setFilter(f.key)}
+   788→                  className={`px-2.5 py-1 text-[10px] rounded-full font-medium transition-all ${
+   789→                    filter === f.key
+   790→                      ? 'bg-amber-500 text-white'
+   791→                      : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+   792→                  }`}
+   793→                >
+   794→                  {f.label}
+   795→                </button>
+   796→              ))}
+   797→            </div>
+   798→
+   799→            {/* Notification list */}
+   800→            {filtered.length === 0 ? (
+   801→              <div className="text-center py-6">
+   802→                <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+   803→                <p className="text-xs text-muted-foreground">No notifications yet</p>
+   804→              </div>
+   805→            ) : (
+   806→              <div className="space-y-2 max-h-64 overflow-y-auto">
+   807→                {filtered.map(n => (
+   808→                  <motion.div
+   809→                    key={n.id}
+   810→                    initial={{ opacity: 0, x: -10 }}
+   811→                    animate={{ opacity: 1, x: 0 }}
+   812→                    className={`card-elevated-1 list-item-hover rounded-lg p-3 flex items-start gap-3 ${!n.read ? 'border-l-2 border-amber-500' : 'opacity-70'}`}
+   813→                  >
+   814→                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${getNotifColor(n.type)}`}>
+   815→                      {getNotifIcon(n.type)}
+   816→                    </div>
+   817→                    <div className="flex-1 min-w-0">
+   818→                      <div className="flex items-center gap-2">
+   819→                        <span className="text-xs font-semibold truncate">{n.title}</span>
+   820→                        {!n.read && <span className="badge-3d bg-amber-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">NEW</span>}
+   821→                      </div>
+   822→                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+   823→                      <span className="text-[10px] text-muted-foreground/60 mt-1 block">{getRelativeTime(n.timestamp)}</span>
+   824→                    </div>
+   825→                    <button
+   826→                      onClick={() => toggleRead(n.id)}
+   827→                      className="shrink-0 p-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+   828→                      aria-label={n.read ? 'Mark unread' : 'Mark read'}
+   829→                    >
+   830→                      {n.read ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-amber-500" />}
+   831→                    </button>
+   832→                  </motion.div>
+   833→                ))}
+   834→              </div>
+   835→            )}
+   836→          </div>
+   837→        </motion.div>
+   838→      )}
+   839→    </AnimatePresence>
+   840→  );
+   841→}
+   842→

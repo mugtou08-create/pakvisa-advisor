@@ -27,7 +27,7 @@ import { ReportsTab } from '@/components/app/tabs/reports-tab';
 import { ToolsTab } from '@/components/app/tabs/tools-tab';
 import { PassportExpiryWarning } from '@/components/app/shared-components-1';
 import { NotificationBell, VisaAlertBanner } from '@/components/app/shared-components-3';
-import { ThemeAccentCustomizer, NotificationHistoryPanel } from '@/components/app/shared-components-5';
+import { ThemeAccentCustomizer, NotificationHistoryPanel, PassportRenewalReminder } from '@/components/app/shared-components-5';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AdminDialog } from '@/components/app/admin-dialog';
 import {
@@ -39,7 +39,7 @@ import {
 
 // ============ MAIN PAGE (IMPROVED) ============
 export default function HomePage() {
-  const { activeTab, setActiveTab, selectedCountry, setSelectedCountry, setViewMode } = useAppStore();
+  const { activeTab, setActiveTab, selectedCountry, setSelectedCountry, setViewMode, userProfile } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -184,6 +184,8 @@ export default function HomePage() {
   return (
     <TooltipProvider>
       <div className="min-h-screen flex flex-col bg-background scroll-smooth custom-scrollbar-thin">
+        {/* Skip to content link for accessibility */}
+        <a href="#main-content" className="skip-to-content">Skip to main content</a>
         {/* Subtle background pattern */}
         <div className="fixed inset-0 -z-10 pointer-events-none grain-overlay" />
         <div className="fixed inset-0 -z-10 pointer-events-none opacity-[0.02] dark:opacity-[0.03]" style={{
@@ -192,7 +194,7 @@ export default function HomePage() {
         }} />
 
         {/* Header */}
-        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden card-elevated-2 glass-frost">
+        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden card-elevated-2 glass-frost sticky-header">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -345,11 +347,16 @@ export default function HomePage() {
           <VisaAlertBanner />
         </div>
 
+        {/* Passport Renewal Reminder Banner */}
+        <div className="container mx-auto px-4 pt-3">
+          <PassportRenewalReminder expiryDate={userProfile?.passportExpiry} />
+        </div>
+
         {/* Collapsible Notification History Panel */}
         <NotificationHistoryPanel isOpen={showNotifHistory} onClose={() => setShowNotifHistory(false)} />
 
         {/* Main Content */}
-        <main className="flex-1 container mx-auto px-4 py-8 card-warm-shadow rounded-2xl my-2 mx-2 sm:mx-auto sm:my-0 shadow-amber-lg">
+        <main id="main-content" className="flex-1 container mx-auto px-4 py-8 card-warm-shadow rounded-2xl my-2 mx-2 sm:mx-auto sm:my-0 shadow-amber-lg">
           <div className="page-load-animation">
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>
