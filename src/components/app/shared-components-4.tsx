@@ -7,7 +7,7 @@ import {
   Globe, CheckCircle2, ChevronDown, ChevronRight, ClipboardCheck,
   PlaneTakeoff, FileText, MapPin, Phone, Wifi, Banknote,
   Building, AlertCircle, Briefcase, GraduationCap, Users, RotateCcw,
-  ExternalLink, Shield, TrendingUp, BarChart3, Map,
+  ExternalLink, Shield, TrendingUp, BarChart3, Map as MapIcon,
   User, Wallet, FileCheck, ArrowRight, Sparkles, Lightbulb,
   Search, HelpCircle, BookOpen, Plane, CheckCircle, UserCircle,
   AlertTriangle, CircleCheckBig, X, ChevronUp, Calendar, Download, Plus, Trash2, Compass, SearchX,
@@ -697,7 +697,7 @@ export const ContinentQuickStats = React.memo(function ContinentQuickStats({ cou
               <p className={`text-sm font-bold ${colors.accent} mb-2`}>{s.name}</p>
 
               <div className="flex items-center gap-1.5 mb-2">
-                <Map className="w-3.5 h-3.5 text-muted-foreground" />
+                <MapIcon className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">
                   <span className={`font-semibold ${colors.text}`}>{s.count}</span> {s.count === 1 ? 'country' : 'countries'}
                 </span>

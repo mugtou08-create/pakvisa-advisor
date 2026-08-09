@@ -1,6 +1,28 @@
 ---
 # PakVisa Advisor - Development Worklog
 
+## Session: Round 20 — Critical Runtime Fix & Verification
+
+### Task ID: 20-1 — Fix "Z Logo Only" Runtime TypeError
+**Status**: ✅ Completed
+**Priority**: Critical (Page-breaking)
+
+**Problem**: The entire page rendered as only a "Z" logo (Next.js error overlay) in the browser. No content was visible.
+
+**Root Cause**: In `src/components/app/shared-components-4.tsx`, the `Map` icon imported from `lucide-react` (line 10) shadowed JavaScript's built-in `Map` constructor. At line 646, `new Map<string, CountryData[]>()` attempted to call the lucide `Map` icon as a constructor, causing a `Runtime TypeError: Map is not a constructor`. This unhandled error triggered Next.js's error overlay, completely blocking the page.
+
+**Fix Applied**:
+- Renamed `Map` import to `MapIcon` via `Map as MapIcon` (line 10 of shared-components-4.tsx)
+- Updated the sole usage of `<Map className=...>` to `<MapIcon className=...>` (line 700)
+
+**Verification**:
+- ESLint: 0 errors
+- Agent-browser snapshot confirms full page renders: Header, Nav tabs (Explore/Questionnaire/Compare/AI Consultant/Tools/Reports), Visa Alert Banners, Passport Renewal Reminder, Main content with search/FAQ/testimonials, Footer with links/newsletter
+- API endpoints verified: `/api/countries/stats` returns 70 countries, `/api/admin/ai-status` returns AI toggle
+- No Runtime TypeError dialogs detected in browser snapshot
+
+---
+
 ## Project Overview
 PakVisa Advisor is an AI-powered visa intelligence platform for Pakistani passport holders. It helps users check visa requirements for 70 countries, get personalized eligibility scores, compare destinations, chat with an AI consultant, convert currencies, and estimate trip budgets.
 
