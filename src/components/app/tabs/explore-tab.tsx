@@ -30,6 +30,7 @@ import {
 } from '../shared-components-1';
 import { CountryDetailDialog, SimilarCountriesPanel, EmbassyInfoSection, DestinationDiscoveryPanel, ApplicationTimelineTracker, VisaFeeComparisonChart, SkeletonCountryCards, TypingText, FloatingParticles, SmartQuickSearch, DestinationSpotlight } from '../shared-components-2';
 import { VisaStatsDashboard, PassportPowerIndex } from '../shared-components-3';
+import { VisaPolicyChangeTracker, ContinentQuickStats } from '../shared-components-4';
 
 export function ExploreTab() {
   const [countries, setCountries] = useState<CountryData[]>([]);
@@ -328,12 +329,12 @@ export function ExploreTab() {
                 onBlur={() => { setHeroSearchFocused(false); }}
                 onChange={(e) => { setHeroSearch(e.target.value); setShowSuggestions(true); setHeroQuickResult(null); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleHeroCheckVisa(); }}
-                className="pl-12 h-12 sm:h-14 rounded-xl text-base bg-white/90 dark:bg-black/20 border-amber-500/30 placeholder:text-amber-700/40 dark:placeholder:text-amber-200/40 text-amber-950 dark:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-400/60 shadow-lg shadow-amber-900/10"
+                className="pl-12 h-12 sm:h-14 rounded-xl text-base bg-white/90 dark:bg-black/20 border-amber-500/30 placeholder:text-amber-700/40 dark:placeholder:text-amber-200/40 text-amber-950 dark:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-400/60 shadow-lg shadow-amber-900/10 input-amber"
               />
             </div>
             <Button
               onClick={handleHeroCheckVisa}
-              className="hero-btn-glow hero-btn-pulse hover-glow-amber absolute right-2 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-10 px-5 text-sm font-bold"
+              className="hero-btn-glow hero-btn-pulse hover-glow-amber absolute right-2 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-10 px-5 text-sm font-bold shine-sweep"
             >
               Check Visa
             </Button>
@@ -456,6 +457,17 @@ export function ExploreTab() {
         <DestinationSpotlight onSelectCountry={setSelectedCountry} />
       )}
 
+      {/* Recent Updates - Visa Policy Change Tracker */}
+      {!loading && countries.length > 0 && (
+        <section className="space-y-3 py-1">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <History className="w-5 h-5 text-amber-500" />
+            Recent Updates
+          </h2>
+          <VisaPolicyChangeTracker countries={filtered.length > 0 ? filtered : countries} />
+        </section>
+      )}
+
       {/* Decorative section divider */}
       <div className="section-gradient-divider-enhanced" />
 
@@ -467,6 +479,16 @@ export function ExploreTab() {
             Pakistani Passport Overview
           </h2>
           <PassportPowerIndex countries={countries} stats={stats} />
+        </section>
+      )}
+
+      {/* Decorative section divider */}
+      <div className="section-gradient-divider-enhanced" />
+
+      {/* Continent Quick Stats */}
+      {!loading && countries.length > 0 && (
+        <section className="glass-section p-5 md:p-6 rounded-xl">
+          <ContinentQuickStats countries={countries} />
         </section>
       )}
 
@@ -679,9 +701,9 @@ export function ExploreTab() {
 
         {/* Grid / List */}
         {loading ? (
-          <SkeletonCountryCards />
+          <div className="loading-dots"><SkeletonCountryCards /></div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 responsive-grid-2">
             <AnimatePresence mode="popLayout">
               {displayCountries.map((country, idx) => (
                 <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>

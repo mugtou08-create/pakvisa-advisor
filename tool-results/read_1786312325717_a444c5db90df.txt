@@ -1,0 +1,413 @@
+   440→                    </motion.button>
+   441→                  ))}
+   442→                </div>
+   443→              </motion.div>
+   444→            )}
+   445→          </AnimatePresence>
+   446→
+   447→          {/* Trust text */}
+   448→          <p className="text-[11px] mt-2 opacity-75">
+   449→            ✓ {countries.length} countries · Updated {(() => { const d = new Date(); return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; })()} · Free to use
+   450→          </p>
+   451→        </div>
+   452→      </section>
+   453→
+   454→      {/* Destination Spotlight Carousel */}
+   455→      {!loading && countries.length > 0 && (
+   456→        <DestinationSpotlight onSelectCountry={setSelectedCountry} />
+   457→      )}
+   458→
+   459→      {/* Decorative section divider */}
+   460→      <div className="section-gradient-divider-enhanced" />
+   461→
+   462→      {/* Passport Power Index - At a glance overview */}
+   463→      {!loading && countries.length > 0 && (
+   464→        <section className="glass-section p-5 md:p-6 rounded-xl">
+   465→          <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+   466→            <Globe className="w-5 h-5 text-amber-500" />
+   467→            Pakistani Passport Overview
+   468→          </h2>
+   469→          <PassportPowerIndex countries={countries} stats={stats} />
+   470→        </section>
+   471→      )}
+   472→
+   473→      {/* Decorative section divider */}
+   474→      <div className="section-gradient-divider-enhanced" />
+   475→
+   476→      {/* Visa Requirement World Map */}
+   477→      {!loading && countries.length > 0 && (
+   478→        <section className="space-y-4 py-2">
+   479→          <div className="flex items-center justify-between">
+   480→            <div>
+   481→              <h2 className="text-lg font-bold flex items-center gap-2">
+   482→                <Map className="w-5 h-5 text-amber-500" /> Visa Requirement World Map
+   483→              </h2>
+   484→              <p className="text-xs text-muted-foreground">Click any country to see visa details</p>
+   485→            </div>
+   486→          </div>
+   487→          <InteractiveWorldMap countries={countries} onSelectCountry={setSelectedCountry} />
+   488→        </section>
+   489→      )}
+   490→
+   491→      {/* Decorative section divider */}
+   492→      <div className="section-gradient-divider-enhanced" />
+   493→
+   494→      {/* Country Directory - Filter Toolbar + Grid */}
+   495→      <section id="country-grid" className="space-y-3">
+   496→        {/* Section Heading */}
+   497→        <div className="flex items-center justify-between">
+   498→          <div>
+   499→            <h2 className="text-lg font-bold flex items-center gap-2">
+   500→              <Compass className="w-5 h-5 text-amber-500" /> Explore All Countries
+   501→            </h2>
+   502→            <p className="text-xs text-muted-foreground">Browse visa requirements for {countries.length} destinations worldwide</p>
+   503→          </div>
+   504→          <div className="flex items-center gap-2">
+   505→            <span className="text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full">{filtered.length} shown</span>
+   506→            <TooltipProvider>
+   507→              <Tooltip>
+   508→                <TooltipTrigger asChild>
+   509→                  <button
+   510→                    onClick={() => {
+   511→                      setLoading(true);
+   512→                      Promise.all([
+   513→                        fetch('/api/countries').then(r => r.json()).then(data => {
+   514→                          setCountries(data.data || []);
+   515→                          setLastDataFetch(new Date().toISOString());
+   516→                          return data.data || [];
+   517→                        }),
+   518→                        fetch('/api/countries/stats').then(r => r.json()).then(data => {
+   519→                          if (data.data) setStats(data.data);
+   520→                        }),
+   521→                      ]).then(([newCountries]) => {
+   522→                        const count = Array.isArray(newCountries) ? newCountries.length : countries.length;
+   523→                        toast.success(`Data refreshed — ${count} countries loaded`);
+   524→                      }).catch(() => {
+   525→                        toast.error('Failed to refresh data');
+   526→                      }).finally(() => {
+   527→                        setLoading(false);
+   528→                      });
+   529→                    }}
+   530→                    disabled={loading}
+   531→                    className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
+   532→                    title="Refresh country data"
+   533→                  >
+   534→                    <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+   535→                  </button>
+   536→                </TooltipTrigger>
+   537→                <TooltipContent side="top">
+   538→                  <p className="text-xs">Refresh visa data for all {countries.length} countries</p>
+   539→                </TooltipContent>
+   540→              </Tooltip>
+   541→            </TooltipProvider>
+   542→          </div>
+   543→        </div>
+   544→
+   545→        {/* Search + Sort + View Mode + Month Filter Toolbar - Sticky on desktop */}
+   546→        <div className="sticky-filter-bar bg-background/95 backdrop-blur-sm sm:rounded-xl sm:border sm:border-border/50 sm:shadow-sm sm:px-4 sm:py-3 -mx-0 sm:-mx-4">
+   547→        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+   548→          <div className="relative flex-1">
+   549→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   550→            <Input placeholder="Filter countries by name..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-10 text-sm" />
+   551→          </div>
+   552→          <div className="flex items-center gap-2 flex-wrap">
+   553→            <Select value={sortBy} onValueChange={setSortBy}>
+   554→              <SelectTrigger className="w-32 h-10 text-sm">
+   555→                <ArrowUpDown className="w-4 h-4 mr-1" />
+   556→                <SelectValue placeholder="Sort" />
+   557→              </SelectTrigger>
+   558→              <SelectContent>
+   559→                <SelectItem value="name">Name A-Z</SelectItem>
+   560→                <SelectItem value="visa-free">Visa-Free First</SelectItem>
+   561→                <SelectItem value="processing">Fastest</SelectItem>
+   562→                <SelectItem value="cost">Lowest Cost</SelectItem>
+   563→                <SelectItem value="safety">Safest First</SelectItem>
+   564→              </SelectContent>
+   565→            </Select>
+   566→            {/* Best Month to Visit Filter */}
+   567→            <Select value={monthFilter} onValueChange={(v) => setMonthFilter(v === 'all' ? '' : v)}>
+   568→              <SelectTrigger className="w-36 h-10 text-sm">
+   569→                <Sun className="w-4 h-4 mr-1" />
+   570→                <SelectValue placeholder="Best Month" />
+   571→              </SelectTrigger>
+   572→              <SelectContent>
+   573→                <SelectItem value="all">Any Month</SelectItem>
+   574→                {MONTH_NAMES.map((m) => (
+   575→                  <SelectItem key={m} value={m}>{m}</SelectItem>
+   576→                ))}
+   577→              </SelectContent>
+   578→            </Select>
+   579→            <div className="flex rounded-lg border p-0.5">
+   580→              <button className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-amber-600 text-white' : 'text-muted-foreground'}`} onClick={() => setViewMode('grid')}><LayoutGrid className="w-4 h-4" /></button>
+   581→              <button className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-amber-600 text-white' : 'text-muted-foreground'}`} onClick={() => setViewMode('list')}><List className="w-4 h-4" /></button>
+   582→            </div>
+   583→            <span className="text-xs text-muted-foreground whitespace-nowrap">{displayCountries.length} of {filtered.length}</span>
+   584→          </div>
+   585→        </div>
+   586→
+   587→        {/* Region + Visa Type Filters - Combined clean layout */}
+   588→        <div className="space-y-2.5">
+   589→          {/* Region Filters */}
+   590→          <div className="flex items-center gap-2 flex-wrap">
+   591→            <span className="text-xs font-medium text-muted-foreground shrink-0">Region:</span>
+   592→            <div className="flex flex-wrap gap-1.5">
+   593→              <motion.button
+   594→                onClick={() => setRegion('All')}
+   595→                whileTap={{ scale: 0.95 }}
+   596→                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+   597→                  region === 'All'
+   598→                    ? 'bg-amber-600 text-white border-amber-600'
+   599→                    : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+   600→                }`}
+   601→              >
+   602→                <Globe className="w-3 h-3" />All
+   603→                <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${region === 'All' ? 'bg-white/20' : 'bg-muted'}`}>{countries.length}</span>
+   604→              </motion.button>
+   605→              {REGIONS.map((r) => {
+   606→                const regionIcons: Record<string, React.ReactNode> = {
+   607→                  'Asia': <Globe className="w-3 h-3" />,
+   608→                  'Middle East': <Building className="w-3 h-3" />,
+   609→                  'Africa': <Sun className="w-3 h-3" />,
+   610→                  'Europe': <Landmark className="w-3 h-3" />,
+   611→                  'Americas': <Map className="w-3 h-3" />,
+   612→                  'Oceania': <Globe className="w-3 h-3" />,
+   613→                };
+   614→                const isActive = region === r;
+   615→                return (
+   616→                  <motion.button
+   617→                    key={r}
+   618→                    onClick={() => setRegion(isActive ? 'All' : r)}
+   619→                    whileTap={{ scale: 0.95 }}
+   620→                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+   621→                      isActive
+   622→                        ? 'bg-amber-600 text-white border-amber-600'
+   623→                        : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+   624→                    }`}
+   625→                  >
+   626→                    {regionIcons[r]}
+   627→                    <span className="shrink-0">{r}</span>
+   628→                    <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${isActive ? 'bg-white/20' : 'bg-muted'}`}>
+   629→                      {countries.filter(c => getRegion(c) === r).length}
+   630→                    </span>
+   631→                  </motion.button>
+   632→                );
+   633→              })}
+   634→            </div>
+   635→          </div>
+   636→
+   637→          {/* Visa Type & Smart Filters */}
+   638→          <div className="flex items-center gap-2 flex-wrap">
+   639→            <span className="text-xs font-medium text-muted-foreground shrink-0">Filters:</span>
+   640→            <div className="flex flex-wrap gap-1.5">
+   641→              {QUICK_FILTERS.map((qf) => {
+   642→                const count = filterCounts[qf.id as keyof typeof filterCounts] ?? null;
+   643→                const isActive = quickFilter === qf.id;
+   644→                return (
+   645→                  <motion.button
+   646→                    key={qf.id}
+   647→                    onClick={() => setQuickFilter(isActive ? '' : qf.id)}
+   648→                    whileTap={{ scale: 0.95 }}
+   649→                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+   650→                      isActive
+   651→                        ? 'bg-amber-600 text-white border-amber-600'
+   652→                        : 'bg-background border-border text-muted-foreground hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+   653→                    }`}
+   654→                  >
+   655→                    <qf.icon className="w-3 h-3" />
+   656→                    {qf.label}
+   657→                    {count !== null && count > 0 && (
+   658→                      <span className={`text-[10px] rounded-full px-1.5 py-0 leading-4 ${isActive ? 'bg-white/20' : 'bg-muted'}`}>{count}</span>
+   659→                    )}
+   660→                  </motion.button>
+   661→                );
+   662→              })}
+   663→              {monthFilter && (
+   664→                <motion.button
+   665→                  initial={{ opacity: 0, scale: 0.9 }}
+   666→                  animate={{ opacity: 1, scale: 1 }}
+   667→                  onClick={() => setMonthFilter('')}
+   668→                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
+   669→                >
+   670→                  <Sun className="w-3 h-3" />
+   671→                  Best in {monthFilter}
+   672→                  <X className="w-3 h-3" />
+   673→                </motion.button>
+   674→              )}
+   675→            </div>
+   676→          </div>
+   677→        </div>
+   678→        </div>
+   679→
+   680→        {/* Grid / List */}
+   681→        {loading ? (
+   682→          <div className="loading-dots"><SkeletonCountryCards /></div>
+   683→        ) : viewMode === 'grid' ? (
+   684→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 responsive-grid-2">
+   685→            <AnimatePresence mode="popLayout">
+   686→              {displayCountries.map((country, idx) => (
+   687→                <motion.div key={country.code} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>
+   688→                  <CountryCard country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
+   689→                </motion.div>
+   690→              ))}
+   691→            </AnimatePresence>
+   692→          </div>
+   693→        ) : (
+   694→          <div className="space-y-2">
+   695→            <AnimatePresence mode="popLayout">
+   696→              {displayCountries.map((country, idx) => (
+   697→                <motion.div key={country.code} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.15 }}>
+   698→                  <CountryListRow country={country} onSelect={setSelectedCountry} rank={quickFilter === 'best-score' ? idx + 1 : undefined} isNew={!!country.createdAt && (Date.now() - new Date(country.createdAt).getTime()) < 30 * 24 * 60 * 60 * 1000} />
+   699→                </motion.div>
+   700→              ))}
+   701→            </AnimatePresence>
+   702→          </div>
+   703→        )}
+   704→
+   705→        {/* Show More / Show All */}
+   706→        {!loading && displayCountries.length < filtered.length && (
+   707→          <div className="flex justify-center pt-2">
+   708→            <Button variant="outline" onClick={() => setVisibleCount(v => v + 12)} className="gap-2 text-sm">
+   709→              Show More Countries ({filtered.length - displayCountries.length} remaining)
+   710→              <ChevronDown className="w-4 h-4" />
+   711→            </Button>
+   712→          </div>
+   713→        )}
+   714→        {!loading && displayCountries.length >= filtered.length && filtered.length > 0 && (
+   715→          <p className="text-center text-xs text-muted-foreground pt-2">Showing all {filtered.length} countries</p>
+   716→        )}
+   717→      </section>
+   718→
+   719→      {/* Trending Destinations - After country grid */}
+   720→      {!loading && trendingCountries.length > 0 && (
+   721→        <>
+   722→        <div className="section-gradient-divider" />
+   723→        <section className="space-y-4 py-2">
+   724→          <div className="flex items-center justify-between">
+   725→            <div>
+   726→              <h2 className="text-lg font-bold flex items-center gap-2">
+   727→                <Flame className="w-5 h-5 text-orange-500" /> Trending Destinations
+   728→              </h2>
+   729→              <p className="text-xs text-muted-foreground">Most checked by Pakistani travelers</p>
+   730→            </div>
+   731→            <button onClick={() => document.getElementById('country-grid')?.scrollIntoView({ behavior: 'smooth' })} className="text-xs text-amber-600 dark:text-amber-400 font-medium hover:underline flex items-center gap-1">
+   732→              Back to top <ChevronUp className="w-3 h-3" />
+   733→            </button>
+   734→          </div>
+   735→          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+   736→            {trendingCountries.map((c) => {
+   737→              const status = getHeroVisaStatus(c);
+   738→              return (
+   739→                <motion.div key={c.code} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+   740→                  <Card className="cursor-pointer hover:shadow-md transition-shadow p-4" onClick={() => setSelectedCountry(c)}>
+   741→                    <div className="flex items-center gap-2 mb-2">
+   742→                      <span className="text-2xl"><FlagImage code={c.code} flagUrl={c.flagUrl} size={28} emoji={c.flagEmoji} /></span>
+   743→                      <div className="min-w-0 flex-1">
+   744→                        <p className="text-sm font-semibold truncate">{c.name}</p>
+   745→                        <p className="text-[11px] text-muted-foreground">{c.continent}</p>
+   746→                      </div>
+   747→                    </div>
+   748→                    <Badge className={`${status.color} text-[10px] mb-2`} variant="secondary">{status.label}</Badge>
+   749→                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+   750→                      <span>{c.processingDaysMin === c.processingDaysMax ? `${c.processingDaysMin} days` : `${c.processingDaysMin}-${c.processingDaysMax}d`}</span>
+   751→                      <span>${c.costProfile?.visaFeeUSD || 0}</span>
+   752→                    </div>
+   753→                  </Card>
+   754→                </motion.div>
+   755→              );
+   756→            })}
+   757→          </div>
+   758→        </section>
+   759→        </>
+   760→      )}
+   761→
+   762→      {/* FAQ Section - SEO Optimized with amber tint background */}
+   763→      <section className="faq-section-tint rounded-xl p-5 md:p-6">
+   764→        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+   765→          <HelpCircle className="w-5 h-5 text-amber-500" />
+   766→          Frequently Asked Questions
+   767→        </h2>
+   768→        <Accordion type="single" collapsible className="w-full">
+   769→          {/* === GROUP 1: GETTING STARTED (Beginners) === */}
+   770→          <div className="mb-3">
+   771→            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Getting Started</p>
+   772→          </div>
+   773→          <AccordionItem value="faq-1">
+   774→            <AccordionTrigger className="text-sm font-medium text-left">What is PakVisa Advisor and how does it work?</AccordionTrigger>
+   775→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">PakVisa Advisor is a free AI-powered tool designed specifically for Pakistani passport holders. It provides instant visa requirement checks for 70+ countries, personalized eligibility scoring, cost breakdowns, embassy information, and travel planning tools. Simply type a country name in the hero search bar to instantly see its visa requirements, processing time, fees, and safety rating — all in one place.</AccordionContent>
+   776→          </AccordionItem>
+   777→          <AccordionItem value="faq-2">
+   778→            <AccordionTrigger className="text-sm font-medium text-left">How do I use the "Explore" tab to find the best countries?</AccordionTrigger>
+   779→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Explore tab is your main dashboard. Use the hero search bar to instantly check any country&apos;s visa status. The Passport Power Index shows your passport&apos;s global ranking. The World Map lets you visually browse visa requirements by clicking any country. The &quot;Explore All Countries&quot; section lets you filter by visa type, region, cost, safety, processing speed, and the best travel month. Click any country card to see full details.</AccordionContent>
+   780→          </AccordionItem>
+   781→          <AccordionItem value="faq-3">
+   782→            <AccordionTrigger className="text-sm font-medium text-left">What do the scores and ratings mean on country cards?</AccordionTrigger>
+   783→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Each country card shows key metrics: <strong>Safety Rating</strong> (1-10 scale), <strong>Ease Score</strong> (how easy the visa process is — 100% means visa-free), <strong>Processing Time</strong> (business days), and <strong>Monthly Cost</strong> (estimated living expenses in USD). These help you quickly compare destinations at a glance.</AccordionContent>
+   784→          </AccordionItem>
+   785→          <AccordionItem value="faq-4">
+   786→            <AccordionTrigger className="text-sm font-medium text-left">Can I save my favorite countries and compare them?</AccordionTrigger>
+   787→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Yes! Click the bookmark icon (♡) on any country card to save it. Your favorites persist across sessions. Use the &quot;Favorites&quot; filter pill in the Explore tab to view saved countries, or go to the Compare tab to see them side-by-side with detailed cost, safety, and visa comparisons.</AccordionContent>
+   788→          </AccordionItem>
+   789→          <AccordionItem value="faq-5">
+   790→            <AccordionTrigger className="text-sm font-medium text-left">What is the Visa Questionnaire and how does it help?</AccordionTrigger>
+   791→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Questionnaire creates a personalized travel profile by asking about your age, income, travel history, education, languages, and travel purpose. It generates a smart eligibility score for each country — showing how likely you are to get approved. It highlights strengths and weaknesses with actionable tips to improve your chances.</AccordionContent>
+   792→          </AccordionItem>
+   793→          <AccordionItem value="faq-6">
+   794→            <AccordionTrigger className="text-sm font-medium text-left">How do I use the Tools tab (Currency Converter & Budget Calculator)?</AccordionTrigger>
+   795→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Tools tab has two essential utilities: <strong>Currency Converter</strong> — convert between PKR and 25+ currencies with live exchange rates. <strong>Travel Budget Calculator</strong> — estimate your total trip cost (visa, flights, accommodation, food, transport, insurance) for any country. Both tools are designed for Pakistani travelers planning trips abroad.</AccordionContent>
+   796→          </AccordionItem>
+   797→          <AccordionItem value="faq-7">
+   798→            <AccordionTrigger className="text-sm font-medium text-left">How do I use the AI Consultant chat?</AccordionTrigger>
+   799→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The AI Consultant tab is like having a visa expert available 24/7. Ask any question about visa requirements, document preparation, interview tips, or travel planning. For example: &quot;What documents do I need for a UK visitor visa?&quot; You can also access it from the floating chat button at the bottom of any page.</AccordionContent>
+   800→          </AccordionItem>
+   801→          <AccordionItem value="faq-8">
+   802→            <AccordionTrigger className="text-sm font-medium text-left">What is the "Reports" tab and how do I generate a report?</AccordionTrigger>
+   803→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Reports tab generates downloadable visa assessment reports based on your questionnaire profile. After completing the questionnaire, you get a comprehensive report showing eligibility scores, document checklists, cost estimates, and personalized recommendations. You can print or download reports for offline reference.</AccordionContent>
+   804→          </AccordionItem>
+   805→          <AccordionItem value="faq-9">
+   806→            <AccordionTrigger className="text-sm font-medium text-left">Is my personal data safe on this platform?</AccordionTrigger>
+   807→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Yes. PakVisa Advisor processes all data locally in your browser. Your questionnaire responses, favorites, and search history are stored only on your device — nothing is sent to external servers. No personal identification documents (passport copies, photos, financial statements) are ever collected.</AccordionContent>
+   808→          </AccordionItem>
+   809→
+   810→          {/* === GROUP 2: VISA-SPECIFIC QUESTIONS === */}
+   811→          <div className="mt-4 mb-3">
+   812→            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Visa Information</p>
+   813→          </div>
+   814→          <AccordionItem value="faq-10">
+   815→            <AccordionTrigger className="text-sm font-medium text-left">Which countries can Pakistani citizens visit without a visa?</AccordionTrigger>
+   816→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Pakistani passport holders can visit several countries visa-free, including Malaysia (30 days), Dominica, Micronesia, Vanuatu, Trinidad &amp; Tobago, and Saint Vincent &amp; the Grenadines. Additionally, many countries offer visa on arrival or e-Visa facilities. Always verify current requirements with the official embassy before travel.</AccordionContent>
+   817→          </AccordionItem>
+   818→          <AccordionItem value="faq-11">
+   819→            <AccordionTrigger className="text-sm font-medium text-left">How strong is the Pakistani passport globally?</AccordionTrigger>
+   820→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">The Pakistani passport is ranked around 100-110th on the Henley Passport Index. However, the situation is improving with more countries introducing e-Visa and visa on arrival facilities. Countries in the Middle East (UAE, Saudi Arabia, Qatar, Oman) and Southeast Asia (Malaysia, Thailand) are generally the most accessible for Pakistani travelers.</AccordionContent>
+   821→          </AccordionItem>
+   822→          <AccordionItem value="faq-12">
+   823→            <AccordionTrigger className="text-sm font-medium text-left">What is the difference between e-Visa and Visa on Arrival?</AccordionTrigger>
+   824→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">An e-Visa must be applied for online before you travel. You receive an electronic visa via email to print and present at immigration. Processing takes 1-5 business days. Visa on Arrival is issued at the airport or border crossing when you arrive, taking 5-30 minutes. Popular e-Visa destinations: Turkey, Kenya, Azerbaijan. Popular VOA destinations: UAE, Saudi Arabia, Qatar, Maldives.</AccordionContent>
+   825→          </AccordionItem>
+   826→          <AccordionItem value="faq-13">
+   827→            <AccordionTrigger className="text-sm font-medium text-left">What is the Schengen visa process for Pakistani citizens?</AccordionTrigger>
+   828→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Pakistani citizens need to apply for a Schengen visa at the embassy/consulate of the primary destination country. Requirements: valid passport (6+ months), bank statements (6 months), travel insurance (€30,000+), flight itinerary, hotel bookings, employment letter, and tax returns. Processing takes 15-30 business days. The visa allows travel across 26 European countries.</AccordionContent>
+   829→          </AccordionItem>
+   830→          <AccordionItem value="faq-14">
+   831→            <AccordionTrigger className="text-sm font-medium text-left">How can I improve my chances of getting a visa approved?</AccordionTrigger>
+   832→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">Key factors: strong financial documentation (6+ months bank statements), valid passport with 6+ months validity, clear travel purpose, confirmed return ticket, hotel bookings, employment verification, travel history, and complete documentation with no discrepancies. Use PakVisa Advisor&apos;s scoring system to identify areas for improvement.</AccordionContent>
+   833→          </AccordionItem>
+   834→          <AccordionItem value="faq-15">
+   835→            <AccordionTrigger className="text-sm font-medium text-left">What does the "Best Month to Visit" filter do?</AccordionTrigger>
+   836→            <AccordionContent className="text-sm text-muted-foreground leading-relaxed">This filter finds countries with ideal weather for your planned travel month. Selecting &quot;January&quot; shows countries where January is within their recommended travel season. Each country&apos;s best travel months are based on temperatures, rainfall patterns, and tourist seasons. Combine with visa type filters to find visa-free destinations great to visit in your preferred month.</AccordionContent>
+   837→          </AccordionItem>
+   838→        </Accordion>
+   839→      </section>
+   840→
+   841→      {/* Floating Mobile CTA */}
+   842→      <div className="fixed bottom-24 right-3 z-40 lg:hidden">
+   843→        <button onClick={() => document.getElementById('visa-guide')?.scrollIntoView({ behavior: 'smooth' })} className="w-10 h-10 rounded-full bg-amber-500/90 backdrop-blur-sm text-white shadow-lg shadow-amber-500/20 flex items-center justify-center hover:bg-amber-600 active:scale-95 transition-all border-2 border-white/80 dark:border-background/80" aria-label="Scroll to search">
+   844→          <Search className="w-3.5 h-3.5" />
+   845→        </button>
+   846→      </div>
+   847→
+   848→      <CountryDetailDialog country={selectedCountry} open={!!selectedCountry} onClose={() => setSelectedCountry(null)} />
+   849→    </div>
+   850→  );
+   851→}
+   852→

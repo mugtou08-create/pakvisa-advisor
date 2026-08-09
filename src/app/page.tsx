@@ -180,7 +180,7 @@ export default function HomePage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen flex flex-col bg-background scroll-smooth">
+      <div className="min-h-screen flex flex-col bg-background scroll-smooth custom-scrollbar-thin">
         {/* Subtle background pattern */}
         <div className="fixed inset-0 -z-10 pointer-events-none grain-overlay" />
         <div className="fixed inset-0 -z-10 pointer-events-none opacity-[0.02] dark:opacity-[0.03]" style={{
@@ -189,7 +189,7 @@ export default function HomePage() {
         }} />
 
         {/* Header */}
-        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden">
+        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden card-elevated-2">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -203,9 +203,9 @@ export default function HomePage() {
               </div>
 
               {/* Desktop Nav with Pill Indicator */}
-              <nav className="hidden md:flex items-center gap-1 pill-nav rounded-xl p-1 bg-muted/50 transition-all duration-200 hover-glow-amber" ref={navRef}>
+              <nav className="hidden md:flex items-center gap-1 pill-nav rounded-xl p-1 bg-muted/50 transition-all duration-200 hover-glow-amber card-interactive" ref={navRef}>
                 <span
-                  className="pill-indicator"
+                  className="pill-indicator gradient-border-static"
                   style={{
                     left: pillStyle.left,
                     width: pillStyle.width,
@@ -353,7 +353,7 @@ export default function HomePage() {
           <div className="footer-separator-dots mx-4 mt-6 mb-2" />
           <div className="container mx-auto px-4 py-10">
             {/* Bento Grid Footer - 5 columns */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 mb-8 stagger-children">
               {/* Brand - Large */}
               <div className="sm:col-span-2 lg:col-span-1">
                 <div className="flex items-center gap-2 mb-4">

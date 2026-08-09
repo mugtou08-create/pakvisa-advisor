@@ -1235,7 +1235,7 @@ export function CountryCard({ country, onSelect, rank, isNew }: { country: Count
             <Popover>
               <PopoverTrigger asChild>
                 <motion.div whileHover={{ scale: 1.02, y: -4 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-                  <Card className={`group card-tilt-enhanced card-glow-border card-shimmer-hover card-inner-highlight card-hover-lift overflow-hidden cursor-pointer border-border/50 hover:shadow-amber-500/10 hover:border-amber-300/50 dark:hover:border-amber-600/30 relative ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
+                  <Card className={`group card-tilt-enhanced card-glow-border card-shimmer-hover card-inner-highlight card-hover-lift overflow-hidden cursor-pointer border-border/50 hover:shadow-amber-500/10 hover:border-amber-300/50 dark:hover:border-amber-600/30 relative card-elevated-1 press-effect ${isFav ? 'fav-card-glow ring-1 ring-amber-400/30' : ''}`} onClick={() => onSelect(country)}>
                 {/* Subtle gradient top border based on visa category */}
                 <div className={`h-[3px] ${country.visaFree ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-400' : country.visaOnArrival ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400' : country.etaAvailable ? 'bg-gradient-to-r from-amber-400 via-orange-300 to-amber-400' : 'bg-gradient-to-r from-orange-400 via-red-400 to-orange-400'}`} />
                 {/* NEW badge */}

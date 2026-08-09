@@ -1,0 +1,707 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  FileText, BarChart3, Search, ChevronRight, Star, Clock,
+     7→  DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin,
+     8→  Users, Lightbulb, TrendingUp, TrendingDown,
+     9→  ArrowRight, ArrowUpDown, Printer, ExternalLink, Zap, Target, Sparkles,
+    10→  Eye, ClipboardList, Send, ChevronDown, ChevronUp, Compass, Gavel, CheckCircle2, X, XCircle,
+    11→  AlertTriangle, Info, Lock, FileWarning, PackageOpen, PlaneTakeoff, UtensilsCrossed, Bookmark, SearchX, Timer, Wallet, Languages, BadgePercent,
+    12→  RotateCcw,
+    13→} from 'lucide-react';
+    14→import { Button } from '@/components/ui/button';
+    15→import { Input } from '@/components/ui/input';
+    16→import { Label } from '@/components/ui/label';
+    17→import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+    18→import { Badge } from '@/components/ui/badge';
+    19→import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+    20→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    21→import { Checkbox } from '@/components/ui/checkbox';
+    22→import { Progress } from '@/components/ui/progress';
+    23→import { Separator } from '@/components/ui/separator';
+    24→import { ScrollArea } from '@/components/ui/scroll-area';
+    25→import { Skeleton } from '@/components/ui/skeleton';
+    26→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+    27→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+    28→import { Switch } from '@/components/ui/switch';
+    29→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+    30→import { Slider } from '@/components/ui/slider';
+    31→import { toast } from 'sonner';
+    32→import { useAppStore } from '@/lib/store';
+    33→import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, ChecklistItem } from '@/lib/types';
+    34→import { FlagImage, ComparisonTable } from '../shared-components-1';
+    35→import { ComparisonRadarChart, VisaFeeComparisonChart } from '../shared-components-2';
+    36→import { QuickCompareCards } from '../shared-components-3';
+    37→import { emptyProfile } from './questionnaire-tab';
+    38→
+    39→export function CompareTab() {
+    40→  const { comparisonCountries, setComparisonCountries, scoreResults } = useAppStore();
+    41→  const [allCountries, setAllCountries] = useState<{ code: string; name: string; flagEmoji: string; flagUrl: string }[]>([]);
+    42→  const [selectedCountriesData, setSelectedCountriesData] = useState<CountryData[]>([]);
+    43→  const [results, setResults] = useState<ScoreBreakdown[]>([]);
+    44→  const [comparing, setComparing] = useState(false);
+    45→  const [compareSearch, setCompareSearch] = useState('');
+    46→  const [compareVisibleCount, setCompareVisibleCount] = useState(16);
+    47→
+    48→  const POPULAR_COMPARISONS: { label: string; codes: string[] }[] = [
+    49→    { label: 'UAE vs Turkey', codes: ['AE', 'TR'] },
+    50→    { label: 'Malaysia vs Saudi Arabia', codes: ['MY', 'SA'] },
+    51→    { label: 'UK vs Schengen', codes: ['GB', 'DE'] },
+    52→  ];
+    53→
+    54→  useEffect(() => {
+    55→    fetch('/api/countries?limit=100').then(r => r.json()).then(data => {
+    56→      setAllCountries((data.data || []).map((c: CountryData) => ({ code: c.code, name: c.name, flagEmoji: c.flagEmoji, flagUrl: c.flagUrl || '' })));
+    57→    });
+    58→  }, []);
+    59→
+    60→  // Fetch full country data when selection changes
+    61→  useEffect(() => {
+    62→    if (comparisonCountries.length === 0) return;
+    63→    fetch('/api/countries?limit=100').then(r => r.json()).then(data => {
+    64→      const all = (data.data || []) as CountryData[];
+    65→      setSelectedCountriesData(all.filter(c => comparisonCountries.includes(c.code)));
+    66→    });
+    67→  }, [comparisonCountries]);
+    68→
+    69→  const filteredCountries = useMemo(() => {
+    70→    if (!compareSearch.trim()) return allCountries;
+    71→    return allCountries.filter(c => c.name.toLowerCase().includes(compareSearch.toLowerCase()) || c.code.toLowerCase().includes(compareSearch.toLowerCase()));
+    72→  }, [allCountries, compareSearch]);
+    73→
+    74→  const toggleCountry = (code: string) => {
+    75→    setComparisonCountries(
+    76→      comparisonCountries.includes(code)
+    77→        ? comparisonCountries.filter(c => c !== code)
+    78→        : comparisonCountries.length < 5
+    79→          ? [...comparisonCountries, code]
+    80→          : comparisonCountries
+    81→    );
+    82→  };
+    83→
+    84→  const compare = async () => {
+    85→    if (comparisonCountries.length < 2) { toast.error('Select at least 2 countries'); return; }
+    86→    setComparing(true);
+    87→    try {
+    88→      const profile = useAppStore.getState().userProfile || emptyProfile;
+    89→      const res = await fetch('/api/compare', {
+    90→        method: 'POST',
+    91→        headers: { 'Content-Type': 'application/json' },
+    92→        body: JSON.stringify({ countryCodes: comparisonCountries, profile }),
+    93→      });
+    94→      const data = await res.json();
+    95→      if (data.data) {
+    96→        setResults(data.data.countries || []);
+    97→        toast.success('Comparison complete!');
+    98→      }
+    99→    } catch { toast.error('Comparison failed'); }
+   100→    setComparing(false);
+   101→  };
+   102→
+   103→  return (
+   104→    <div className="space-y-6 pb-24 sm:pb-8">
+   105→      <Card className="glass-card">
+   106→        <CardHeader>
+   107→          <div className="flex items-center justify-between">
+   108→            <div>
+   109→              <CardTitle className="card-section-title">Compare Countries</CardTitle>
+   110→              <CardDescription>Select 2-5 countries to compare visa eligibility side by side</CardDescription>
+   111→            </div>
+   112→            {comparisonCountries.length > 0 && (
+   113→              <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:text-amber-400">
+   114→                {comparisonCountries.length}/5 selected
+   115→              </Badge>
+   116→            )}
+   117→          </div>
+   118→        </CardHeader>
+   119→        <CardContent className="space-y-4">
+   120→          {/* Selected Countries as Chips */}
+   121→          {comparisonCountries.length > 0 && (
+   122→            <div className="flex flex-wrap gap-2">
+   123→              {comparisonCountries.map(code => {
+   124→                const c = allCountries.find(x => x.code === code);
+   125→                return (
+   126→                  <motion.span
+   127→                    key={code}
+   128→                    initial={{ scale: 0.8, opacity: 0 }}
+   129→                    animate={{ scale: 1, opacity: 1 }}
+   130→                    className="chip-animate inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 text-sm font-medium"
+   131→                  >
+   132→                    <FlagImage code={c?.code || ''} flagUrl={c?.flagUrl} size={18} emoji={c?.flagEmoji} />
+   133→                    <span>{c?.name}</span>
+   134→                    <button onClick={() => toggleCountry(code)} className="ml-0.5 hover:text-red-600 transition-colors">
+   135→                      <X className="w-3 h-3" />
+   136→                    </button>
+   137→                  </motion.span>
+   138→                );
+   139→              })}
+   140→              {comparisonCountries.length < 5 && (
+   141→                <span className="text-xs text-muted-foreground flex items-center px-2 py-1">
+   142→                  {5 - comparisonCountries.length} more available
+   143→                </span>
+   144→              )}
+   145→            </div>
+   146→          )}
+   147→
+   148→          {/* No countries selected - enhanced empty state */}
+   149→          {comparisonCountries.length === 0 && (
+   150→            <div className="text-center py-8">
+   151→              <div className="mx-auto mb-4">
+   152→                <svg width="120" height="100" viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
+   153→                  {/* Left country card */}
+   154→                  <rect x="4" y="25" width="32" height="40" rx="6" stroke="#f59e0b" strokeWidth="2" fill="#fffbeb" />
+   155→                  <circle cx="20" cy="38" r="5" fill="#fcd34d" />
+   156→                  <rect x="12" y="48" width="16" height="3" rx="1.5" fill="#f59e0b" opacity="0.6" />
+   157→                  <rect x="12" y="54" width="12" height="2" rx="1" fill="#f59e0b" opacity="0.3" />
+   158→                  {/* Right country card */}
+   159→                  <rect x="84" y="25" width="32" height="40" rx="6" stroke="#f59e0b" strokeWidth="2" fill="#fffbeb" />
+   160→                  <circle cx="100" cy="38" r="5" fill="#fcd34d" />
+   161→                  <rect x="92" y="48" width="16" height="3" rx="1.5" fill="#f59e0b" opacity="0.6" />
+   162→                  <rect x="92" y="54" width="12" height="2" rx="1" fill="#f59e0b" opacity="0.3" />
+   163→                  {/* VS circle */}
+   164→                  <circle cx="60" cy="45" r="14" fill="#f59e0b" />
+   165→                  <text x="60" y="49" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">VS</text>
+   166→                  {/* Arrows */}
+   167→                  <path d="M38 45 L44 45" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+   168→                  <path d="M76 45 L82 45" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+   169→                  {/* Bottom sparkle */}
+   170→                  <circle cx="60" cy="75" r="3" fill="#fbbf24" />
+   171→                  <line x1="60" y1="68" x2="60" y2="72" stroke="#fbbf24" strokeWidth="1.5" />
+   172→                  <line x1="54" y1="72" x2="57" y2="74" stroke="#fbbf24" strokeWidth="1.5" />
+   173→                  <line x1="66" y1="72" x2="63" y2="74" stroke="#fbbf24" strokeWidth="1.5" />
+   174→                </svg>
+   175→              </div>
+   176→              <h3 className="text-sm font-semibold text-foreground mb-1">Compare Visa Requirements Side by Side</h3>
+   177→              <p className="text-xs text-muted-foreground mb-5 max-w-xs mx-auto">
+   178→                Select 2-5 countries below to see eligibility scores, fees, processing times, and more — all in one place.
+   179→              </p>
+   180→              {/* Popular Comparisons */}
+   181→              <div className="space-y-2">
+   182→                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Popular Comparisons</p>
+   183→                <div className="flex flex-wrap justify-center gap-2">
+   184→                  {POPULAR_COMPARISONS.map((pair) => (
+   185→                    <Button
+   186→                      key={pair.label}
+   187→                      variant="outline"
+   188→                      size="sm"
+   189→                      className="text-xs border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:border-amber-300 badge-3d"
+   190→                      onClick={() => setComparisonCountries(pair.codes)}
+   191→                    >
+   192→                      <ArrowRight className="w-3 h-3 mr-1" />
+   193→                      {pair.label}
+   194→                    </Button>
+   195→                  ))}
+   196→                </div>
+   197→              </div>
+   198→            </div>
+   199→          )}
+   200→
+   201→          {/* Search within compare */}
+   202→          <div className="relative">
+   203→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+   204→            <Input
+   205→              placeholder="Search countries..."
+   206→              value={compareSearch}
+   207→              onChange={(e) => setCompareSearch(e.target.value)}
+   208→              className="pl-9 pr-8"
+   209→            />
+   210→            {compareSearch && (
+   211→              <button onClick={() => setCompareSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+   212→                <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+   213→              </button>
+   214→            )}
+   215→          </div>
+   216→          <div className="text-xs text-muted-foreground mb-2">
+   217→            Showing {Math.min(compareVisibleCount, filteredCountries.length)} of {filteredCountries.length} countries
+   218→          </div>
+   219→
+   220→          <div className="flex flex-wrap gap-2 pb-2">
+   221→            {filteredCountries.slice(0, compareVisibleCount).map(c => (
+   222→              <Button
+   223→                key={c.code}
+   224→                size="sm"
+   225→                variant={comparisonCountries.includes(c.code) ? 'default' : 'outline'}
+   226→                className={`hover-lift-smooth ${comparisonCountries.includes(c.code) ? 'bg-amber-600' : ''}`}
+   227→                onClick={() => toggleCountry(c.code)}
+   228→              >
+   229→                <span className="inline-flex items-center gap-1"><FlagImage code={c.code} flagUrl={c.flagUrl} size={18} emoji={c.flagEmoji} /> {c.name}</span>
+   230→              </Button>
+   231→            ))}
+   232→          </div>
+   233→          {filteredCountries.length > compareVisibleCount && (
+   234→            <Button variant="ghost" size="sm" className="w-full mt-2 text-amber-600 hover:text-amber-700" onClick={() => setCompareVisibleCount(prev => prev + 16)}>
+   235→              Show {Math.min(16, filteredCountries.length - compareVisibleCount)} More Countries
+   236→              <ChevronDown className="w-4 h-4 ml-1" />
+   237→            </Button>
+   238→          )}
+   239→          {compareVisibleCount > 16 && (
+   240→            <Button variant="ghost" size="sm" className="w-full mt-1 text-muted-foreground hover:text-foreground" onClick={() => setCompareVisibleCount(16)}>
+   241→              Show Less
+   242→              <ChevronUp className="w-4 h-4 ml-1" />
+   243→            </Button>
+   244→          )}
+   245→          {/* Quick Compare Cards Preview */}
+   246→          {comparisonCountries.length >= 2 && selectedCountriesData.length >= 2 && (
+   247→            <div className="space-y-2">
+   248→              <p className="text-xs font-medium text-muted-foreground">Quick Preview</p>
+   249→              <QuickCompareCards countries={selectedCountriesData} onRemove={(code) => toggleCountry(code)} />
+   250→            </div>
+   251→          )}
+   252→
+   253→          <Button onClick={compare} disabled={comparing || comparisonCountries.length < 2} className="bg-amber-600 hover:bg-amber-700">
+   254→            {comparing ? 'Comparing...' : 'Compare Now'}
+   255→          </Button>
+   256→        </CardContent>
+   257→      </Card>
+   258→
+   259→      {results.length > 0 && (
+   260→        <div className="space-y-6 pb-4">
+   261→          {/* Fee Comparison Chart */}
+   262→          <VisaFeeComparisonChart results={results} />
+   263→
+   264→          {/* Radar Chart */}
+   265→          <ComparisonRadarChart results={results} />
+   266→
+   267→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   268→          {results.map((r, i) => (
+   269→            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
+   270→              <CardHeader className="pb-2">
+   271→                <div className="flex items-center justify-between">
+   272→                  <CardTitle className="text-base card-section-title">{r.country}</CardTitle>
+   273→                  <div className="stat-card-compact flex flex-col items-center">
+   274→                    <span className="text-2xl font-bold text-amber-600 stat-card-number">{Math.round(r.finalScore)}</span>
+   275→                    <span className="stat-card-label text-[10px] text-muted-foreground">Score</span>
+   276→                  </div>
+   277→                </div>
+   278→              </CardHeader>
+   279→              <CardContent className="space-y-2 text-sm">
+   280→                {r.components.map((c, j) => (
+   281→                  <div key={j} className="flex items-center justify-between">
+   282→                    <span className="text-muted-foreground">{c.name}</span>
+   283→                    <div className="flex items-center gap-2">
+   284→                      <Progress value={c.score} className="w-20 h-1.5" />
+   285→                      <span className="w-8 text-right">{Math.round(c.score)}%</span>
+   286→                    </div>
+   287→                  </div>
+   288→                ))}
+   289→                <Separator />
+   290→                <div className="flex items-center justify-between">
+   291→                  <span className="font-medium">Confidence</span>
+   292→                  <span>{Math.round(r.confidence * 100)}%</span>
+   293→                </div>
+   294→              </CardContent>
+   295→            </Card>
+   296→          ))}
+   297→        </div>
+   298→
+   299→          {/* Comparison Table - Task 10 B4 */}
+   300→          <ComparisonTable results={results} />
+   301→        </div>
+   302→      )}
+   303→    </div>
+   304→  );
+   305→}
+   306→// ============ WHAT-IF SIMULATOR ============
+   307→export function WhatIfSimulator({ scoreResult, userProfile }: { scoreResult: ScoreBreakdown; userProfile: UserProfileData }) {
+   308→  const [healthInsurance, setHealthInsurance] = useState(userProfile.hasHealthInsurance);
+   309→  const [returnTicket, setReturnTicket] = useState(userProfile.hasReturnTicket);
+   310→  const [hotelBooking, setHotelBooking] = useState(userProfile.hasHotelBooking);
+   311→  const [sponsor, setSponsor] = useState(userProfile.hasSponsor);
+   312→  const [priorTravel, setPriorTravel] = useState(userProfile.hasPriorTravel);
+   313→  const [income, setIncome] = useState(userProfile.monthlyIncomeUSD);
+   314→  const [savings, setSavings] = useState(userProfile.savingsUSD);
+   315→  const [budget, setBudget] = useState(userProfile.budgetUSD);
+   316→  const [recalculating, setRecalculating] = useState(false);
+   317→  const [afterScore, setAfterScore] = useState<ScoreBreakdown | null>(null);
+   318→
+   319→  const applyChanges = async () => {
+   320→    setRecalculating(true);
+   321→    const modifiedProfile = {
+   322→      ...userProfile,
+   323→      hasHealthInsurance: healthInsurance,
+   324→      hasReturnTicket: returnTicket,
+   325→      hasHotelBooking: hotelBooking,
+   326→      hasSponsor: sponsor,
+   327→      hasPriorTravel: priorTravel,
+   328→      monthlyIncomeUSD: income,
+   329→      savingsUSD: savings,
+   330→      budgetUSD: budget,
+   331→    };
+   332→    try {
+   333→      const res = await fetch('/api/score', {
+   334→        method: 'POST',
+   335→        headers: { 'Content-Type': 'application/json' },
+   336→        body: JSON.stringify({ countryCode: scoreResult.countryCode, profile: modifiedProfile }),
+   337→      });
+   338→      const data = await res.json();
+   339→      if (data.data) {
+   340→        setAfterScore(data.data);
+   341→      } else {
+   342→        toast.error(data.error || 'Recalculation failed');
+   343→      }
+   344→    } catch {
+   345→      toast.error('Network error during recalculation');
+   346→    }
+   347→    setRecalculating(false);
+   348→  };
+   349→
+   350→  const delta = afterScore ? afterScore.finalScore - scoreResult.finalScore : 0;
+   351→
+   352→  return (
+   353→    <div className="space-y-4">
+   354→      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 responsive-stack-mobile">
+   355→        {/* Toggle Switches */}
+   356→        <div className="space-y-3">
+   357→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</h5>
+   358→          {[
+   359→            { label: 'Add Health Insurance', desc: '+5% health component', checked: healthInsurance, onChange: setHealthInsurance, icon: Shield },
+   360→            { label: 'Book Return Ticket', desc: '+15% purpose component', checked: returnTicket, onChange: setReturnTicket, icon: Plane },
+   361→            { label: 'Book Hotel', desc: '+10% purpose component', checked: hotelBooking, onChange: setHotelBooking, icon: Home },
+   362→            { label: 'Add Financial Sponsor', desc: '+20% funds component', checked: sponsor, onChange: setSponsor, icon: Users },
+   363→            { label: 'Have Prior Travel', desc: '+10% travel history', checked: priorTravel, onChange: setPriorTravel, icon: Globe },
+   364→          ].map((item) => (
+   365→            <div key={item.label} className="flex items-center justify-between p-2.5 rounded-lg border hover:bg-muted/50 transition-colors">
+   366→              <div className="flex items-center gap-2.5">
+   367→                <item.icon className="w-4 h-4 text-muted-foreground" />
+   368→                <div>
+   369→                  <div className="text-sm font-medium">{item.label}</div>
+   370→                  <div className="text-[10px] text-amber-600 dark:text-amber-400">{item.desc}</div>
+   371→                </div>
+   372→              </div>
+   373→              <Switch checked={item.checked} onCheckedChange={item.onChange} />
+   374→            </div>
+   375→          ))}
+   376→        </div>
+   377→
+   378→        {/* Sliders */}
+   379→        <div className="space-y-4">
+   380→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Financial Adjustments</h5>
+   381→          <div className="space-y-2">
+   382→            <div className="flex items-center justify-between text-sm">
+   383→              <Label className="text-muted-foreground">Monthly Income</Label>
+   384→              <span className="font-mono text-xs font-medium">${income.toLocaleString()}</span>
+   385→            </div>
+   386→            <Slider value={[income]} onValueChange={(v) => setIncome(v[0])} min={0} max={10000} step={100} />
+   387→          </div>
+   388→          <div className="space-y-2">
+   389→            <div className="flex items-center justify-between text-sm">
+   390→              <Label className="text-muted-foreground">Savings</Label>
+   391→              <span className="font-mono text-xs font-medium">${savings.toLocaleString()}</span>
+   392→            </div>
+   393→            <Slider value={[savings]} onValueChange={(v) => setSavings(v[0])} min={0} max={100000} step={1000} />
+   394→          </div>
+   395→          <div className="space-y-2">
+   396→            <div className="flex items-center justify-between text-sm">
+   397→              <Label className="text-muted-foreground">Travel Budget</Label>
+   398→              <span className="font-mono text-xs font-medium">${budget.toLocaleString()}</span>
+   399→            </div>
+   400→            <Slider value={[budget]} onValueChange={(v) => setBudget(v[0])} min={0} max={50000} step={500} />
+   401→          </div>
+   402→        </div>
+   403→      </div>
+   404→
+   405→      {/* Apply Button */}
+   406→      <Button
+   407→        onClick={applyChanges}
+   408→        disabled={recalculating}
+   409→        className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+   410→        size="lg"
+   411→      >
+   412→        {recalculating ? (
+   413→          <><RotateCcw className="w-4 h-4 mr-2 animate-spin" /> Recalculating...</>
+   414→        ) : (
+   415→          <><Zap className="w-4 h-4 mr-2" /> Apply Changes & Recalculate</>
+   416→        )}
+   417→      </Button>
+   418→
+   419→      {/* Comparison Result */}
+   420→      {afterScore && (
+   421→        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+   422→          <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+   423→            <h5 className="text-sm font-semibold">Score Comparison</h5>
+   424→            <div className="flex items-center justify-center gap-4">
+   425→              <div className="text-center">
+   426→                <div className="text-xs text-muted-foreground mb-1">Before</div>
+   427→                <div className="text-3xl font-bold">{Math.round(scoreResult.finalScore)}</div>
+   428→              </div>
+   429→              <div className="flex flex-col items-center">
+   430→                <ArrowRight className={`w-6 h-6 ${delta >= 0 ? 'text-amber-500' : 'text-red-500'}`} />
+   431→                <span className={`text-sm font-bold ${delta >= 0 ? 'text-amber-600' : 'text-red-600'}`}>
+   432→                  {delta >= 0 ? '+' : ''}{delta.toFixed(1)}
+   433→                </span>
+   434→              </div>
+   435→              <div className="text-center">
+   436→                <div className="text-xs text-muted-foreground mb-1">After</div>
+   437→                <div className={`text-3xl font-bold ${delta >= 0 ? 'text-amber-600' : 'text-red-600'}`}>
+   438→                  {Math.round(afterScore.finalScore)}
+   439→                </div>
+   440→              </div>
+   441→            </div>
+   442→            {/* Component-level comparison */}
+   443→            <div className="space-y-1.5 pt-2 border-t">
+   444→              {[
+   445→                { label: 'Eligibility', before: scoreResult.eligibility, after: afterScore.eligibility },
+   446→                { label: 'Visa Likelihood', before: scoreResult.visaLikelihood, after: afterScore.visaLikelihood },
+   447→                { label: 'Cost Suitability', before: scoreResult.costSuitability, after: afterScore.costSuitability },
+   448→              ].map((item) => {
+   449→                const diff = item.after - item.before;
+   450→                return (
+   451→                  <div key={item.label} className="flex items-center gap-2 text-sm">
+   452→                    <span className="w-28 text-muted-foreground text-xs">{item.label}</span>
+   453→                    <span className="w-12 text-right font-mono text-xs">{Math.round(item.before)}</span>
+   454→                    <span className={`text-xs font-medium ${diff >= 0 ? 'text-amber-600' : 'text-red-600'} w-12 text-center`}>
+   455→                      {diff >= 0 ? '+' : ''}{diff.toFixed(1)}
+   456→                    </span>
+   457→                    <span className="w-12 text-right font-mono text-xs font-medium">{Math.round(item.after)}</span>
+   458→                  </div>
+   459→                );
+   460→              })}
+   461→            </div>
+   462→            {delta >= 0 ? (
+   463→              <p className="text-xs text-amber-600 text-center">
+   464→                <CheckCircle2 className="w-3 h-3 inline mr-1" />
+   465→                Changes improved your score! Consider applying these in your application.
+   466→              </p>
+   467→            ) : (
+   468→              <p className="text-xs text-red-600 text-center">
+   469→                <AlertTriangle className="w-3 h-3 inline mr-1" />
+   470→                These changes would lower your score. Reconsider before proceeding.
+   471→              </p>
+   472→            )}
+   473→          </div>
+   474→        </motion.div>
+   475→      )}
+   476→    </div>
+   477→  );
+   478→}
+   479→
+   480→// ============ SMART CHECKLIST ============
+   481→export function SmartChecklist({ scoreResult }: { scoreResult: ScoreBreakdown }) {
+   482→  const [checked, setChecked] = useState<Set<string>>(new Set());
+   483→  const checklistRef = useRef<HTMLDivElement>(null);
+   484→
+   485→  const items = useMemo(() => {
+   486→    const generated: ChecklistItem[] = [];
+   487→
+   488→    // From hard filter failures - high priority documents
+   489→    scoreResult.hardFilters.filter(f => !f.passed).forEach((f) => {
+   490→      generated.push({
+   491→        task: `Resolve: ${f.filter} - ${f.message}`,
+   492→        priority: 'high',
+   493→        effort: f.severity === 'critical' ? 'time-consuming' : 'moderate',
+   494→        completed: false,
+   495→        category: 'Documents',
+   496→        notes: f.severity,
+   497→      });
+   498→    });
+   499→
+   500→    // From missing items
+   501→    scoreResult.missingItems.forEach((item, i) => {
+   502→      generated.push({
+   503→        task: item,
+   504→        priority: i < 3 ? 'high' : i < 6 ? 'medium' : 'low',
+   505→        effort: i < 2 ? 'quick' : i < 5 ? 'moderate' : 'time-consuming',
+   506→        completed: false,
+   507→        category: 'Documents',
+   508→      });
+   509→    });
+   510→
+   511→    // Financial items from tips
+   512→    const financialTips = scoreResult.tips.filter(t => /income|fund|bank|financial|money|salary|savings/i.test(t));
+   513→    financialTips.forEach((tip) => {
+   514→      generated.push({
+   515→        task: tip,
+   516→        priority: 'high',
+   517→        effort: 'moderate',
+   518→        completed: false,
+   519→        category: 'Financial',
+   520→      });
+   521→    });
+   522→
+   523→    // Travel items from tips
+   524→    const travelTips = scoreResult.tips.filter(t => /ticket|book|flight|hotel|travel|itinerary/i.test(t));
+   525→    travelTips.forEach((tip) => {
+   526→      generated.push({
+   527→        task: tip,
+   528→        priority: 'medium',
+   529→        effort: 'quick',
+   530→        completed: false,
+   531→        category: 'Travel',
+   532→      });
+   533→    });
+   534→
+   535→    // Health items
+   536→    if (scoreResult.components.find(c => /health|insurance/i.test(c.name))?.score < 70) {
+   537→      generated.push({
+   538→        task: 'Purchase travel health insurance covering your entire stay duration',
+   539→        priority: 'high',
+   540→        effort: 'quick',
+   541→        completed: false,
+   542→        category: 'Health',
+   543→      });
+   544→    }
+   545→
+   546→    // Remaining tips
+   547→    const usedTips = new Set([...financialTips, ...travelTips]);
+   548→    scoreResult.tips.filter(t => !usedTips.has(t)).forEach((tip) => {
+   549→      generated.push({
+   550→        task: tip,
+   551→        priority: 'low',
+   552→        effort: 'moderate',
+   553→        completed: false,
+   554→        category: 'Tips',
+   555→      });
+   556→    });
+   557→
+   558→    // General documents
+   559→    generated.push(
+   560→      { task: 'Ensure passport validity extends 6+ months beyond travel dates', priority: 'high', effort: 'quick', completed: false, category: 'Documents' },
+   561→      { task: 'Get passport-sized photographs (as per destination requirements)', priority: 'medium', effort: 'quick', completed: false, category: 'Documents' },
+   562→      { task: 'Prepare bank statements for last 6 months', priority: 'high', effort: 'moderate', completed: false, category: 'Financial' },
+   563→      { task: 'Book refundable accommodation for visa application', priority: 'medium', effort: 'quick', completed: false, category: 'Travel' },
+   564→      { task: 'Create a day-by-day travel itinerary', priority: 'low', effort: 'time-consuming', completed: false, category: 'Travel' },
+   565→    );
+   566→
+   567→    return generated;
+   568→  }, [scoreResult]);
+   569→
+   570→  const toggleCheck = (idx: number) => {
+   571→    setChecked(prev => {
+   572→      const next = new Set(prev);
+   573→      if (next.has(String(idx))) next.delete(String(idx));
+   574→      else next.add(String(idx));
+   575→      return next;
+   576→    });
+   577→  };
+   578→
+   579→  const progress = items.length > 0 ? (checked.size / items.length) * 100 : 0;
+   580→
+   581→  const exportChecklist = () => {
+   582→    const printWin = window.open('', '_blank');
+   583→    if (!printWin) return;
+   584→    const categories = ['Documents', 'Financial', 'Travel', 'Health', 'Tips'];
+   585→    let html = `<html><head><title>Visa Checklist - ${scoreResult.country}</title>
+   586→      <style>body{font-family:system-ui;max-width:700px;margin:40px auto;padding:20px;color:#1a1a1a}
+   587→      h1{color:#d97706}h2{color:#374151;margin-top:24px;border-bottom:2px solid #e5e7eb;padding-bottom:4px}
+   588→      .item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6}
+   589→      .item input{width:18px;height:18px}.priority{font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:600}
+   590→      .high{background:#fef2f2;color:#dc2626}.medium{background:#fffbeb;color:#d97706}.low{background:#f0fdf4;color:#16a34a}
+   591→      .effort{font-size:10px;color:#6b7280;margin-left:8px}</style></head><body>`;
+   592→    html += `<h1>Visa Checklist: ${scoreResult.country}</h1>`;
+   593→    html += `<p>Generated by PakVisa Advisor · Score: ${Math.round(scoreResult.finalScore)}/100</p>`;
+   594→    categories.forEach(cat => {
+   595→      const catItems = items.filter(it => it.category === cat);
+   596→      if (catItems.length === 0) return;
+   597→      html += `<h2>${cat}</h2>`;
+   598→      catItems.forEach((it, i) => {
+   599→        const realIdx = items.indexOf(it);
+   600→        html += `<div class="item"><input type="checkbox" /><span>${it.task}</span><span class="priority ${it.priority}">${it.priority}</span><span class="effort">${it.effort}</span></div>`;
+   601→      });
+   602→    });
+   603→    html += `</body></html>`;
+   604→    printWin.document.write(html);
+   605→    printWin.document.close();
+   606→    printWin.print();
+   607→  };
+   608→
+   609→  const categoryIcons: Record<string, React.ReactNode> = {
+   610→    Documents: <FileText className="w-4 h-4" />,
+   611→    Financial: <DollarSign className="w-4 h-4" />,
+   612→    Travel: <Plane className="w-4 h-4" />,
+   613→    Health: <Heart className="w-4 h-4" />,
+   614→    Tips: <Lightbulb className="w-4 h-4" />,
+   615→  };
+   616→
+   617→  const priorityColors = {
+   618→    high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+   619→    medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+   620→    low: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+   621→  };
+   622→
+   623→  const effortColors = {
+   624→    quick: 'text-amber-600',
+   625→    moderate: 'text-amber-600',
+   626→    'time-consuming': 'text-red-600',
+   627→  };
+   628→
+   629→  const categories = ['Documents', 'Financial', 'Travel', 'Health', 'Tips'];
+   630→
+   631→  return (
+   632→    <div ref={checklistRef} className="space-y-4">
+   633→      {/* Progress Bar */}
+   634→      <div className="space-y-2">
+   635→        <div className="flex items-center justify-between text-sm">
+   636→          <span className="font-medium">Progress</span>
+   637→          <span className="text-muted-foreground">{checked.size} of {items.length} completed</span>
+   638→        </div>
+   639→        <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+   640→          <motion.div
+   641→            className="h-full rounded-full bg-amber-500"
+   642→            initial={{ width: 0 }}
+   643→            animate={{ width: `${progress}%` }}
+   644→            transition={{ duration: 0.5 }}
+   645→          />
+   646→        </div>
+   647→        {progress === 100 && items.length > 0 && (
+   648→          <p className="text-xs text-amber-600 flex items-center gap-1">
+   649→            <CheckCircle2 className="w-3 h-3" /> All items completed! You are well prepared.
+   650→          </p>
+   651→        )}
+   652→      </div>
+   653→
+   654→      {/* Checklist Items by Category */}
+   655→      <ScrollArea className="max-h-96 overflow-y-auto">
+   656→        <div className="space-y-4 pr-2">
+   657→          {categories.map(cat => {
+   658→            const catItems = items.filter(it => it.category === cat);
+   659→            if (catItems.length === 0) return null;
+   660→            return (
+   661→              <div key={cat}>
+   662→                <div className="flex items-center gap-2 mb-2">
+   663→                  <span className="text-amber-600">{categoryIcons[cat]}</span>
+   664→                  <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{cat}</h5>
+   665→                  <Badge variant="secondary" className="text-[10px]">{catItems.length}</Badge>
+   666→                </div>
+   667→                <div className="space-y-1">
+   668→                  {catItems.map((item) => {
+   669→                    const idx = items.indexOf(item);
+   670→                    const isChecked = checked.has(String(idx));
+   671→                    return (
+   672→                      <motion.div
+   673→                        key={idx}
+   674→                        className={`flex items-start gap-2.5 p-2 rounded-lg transition-colors ${isChecked ? 'bg-muted/50' : 'hover:bg-muted/30'}`}
+   675→                      >
+   676→                        <Checkbox
+   677→                          checked={isChecked}
+   678→                          onCheckedChange={() => toggleCheck(idx)}
+   679→                          className="mt-0.5"
+   680→                        />
+   681→                        <div className="flex-1 min-w-0">
+   682→                          <span className={`text-sm ${isChecked ? 'line-through text-muted-foreground' : ''}`}>{item.task}</span>
+   683→                          <div className="flex items-center gap-1.5 mt-1">
+   684→                            <Badge className={`${priorityColors[item.priority]} text-[9px] px-1.5 py-0`} variant="secondary">
+   685→                              {item.priority}
+   686→                            </Badge>
+   687→                            <span className={`text-[10px] ${effortColors[item.effort]}`}>{item.effort}</span>
+   688→                          </div>
+   689→                        </div>
+   690→                      </motion.div>
+   691→                    );
+   692→                  })}
+   693→                </div>
+   694→              </div>
+   695→            );
+   696→          })}
+   697→        </div>
+   698→      </ScrollArea>
+   699→
+   700→      {/* Export Button */}
+   701→      <Button variant="outline" size="sm" className="w-full" onClick={exportChecklist}>
+   702→        <Printer className="w-4 h-4 mr-2" /> Export Checklist
+   703→      </Button>
+   704→    </div>
+   705→  );
+   706→}
+   707→

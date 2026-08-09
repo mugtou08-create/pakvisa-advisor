@@ -186,7 +186,7 @@ export function CompareTab() {
                       key={pair.label}
                       variant="outline"
                       size="sm"
-                      className="text-xs border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:border-amber-300"
+                      className="text-xs border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:border-amber-300 badge-3d"
                       onClick={() => setComparisonCountries(pair.codes)}
                     >
                       <ArrowRight className="w-3 h-3 mr-1" />
@@ -242,6 +242,66 @@ export function CompareTab() {
               <ChevronUp className="w-4 h-4 ml-1" />
             </Button>
           )}
+          {/* Visa Requirements Matrix - shown when 3+ countries selected */}
+          {selectedCountriesData.length >= 3 && (
+            <div className="space-y-2 mb-4">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <ClipboardList className="w-3.5 h-3.5 text-amber-500" />
+                Visa Requirements Matrix
+              </p>
+              <div className="card-elevated-2 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto custom-scrollbar-thin">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-amber-50/50 dark:bg-amber-950/20">
+                        <th className="text-left p-2.5 font-semibold text-amber-700 dark:text-amber-400 sticky left-0 bg-amber-50/80 dark:bg-amber-950/40 backdrop-blur-sm">Country</th>
+                        <th className="text-left p-2.5 font-semibold text-amber-700 dark:text-amber-400">Visa Type</th>
+                        <th className="text-left p-2.5 font-semibold text-amber-700 dark:text-amber-400">Processing</th>
+                        <th className="text-left p-2.5 font-semibold text-amber-700 dark:text-amber-400">Fee</th>
+                        <th className="text-left p-2.5 font-semibold text-amber-700 dark:text-amber-400">Safety</th>
+                        <th className="text-left p-2.5 font-semibold text-amber-700 dark:text-amber-400">Documents</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedCountriesData.map((c) => {
+                        const visaType = c.visaFree ? 'Visa-Free' : c.visaOnArrival ? 'VOA' : c.etaAvailable ? 'eTA' : 'Embassy';
+                        const visaColor = c.visaFree ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : c.visaOnArrival ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : c.etaAvailable ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-400';
+                        const processing = c.processingDaysMin === 0 && c.processingDaysMax === 0 ? 'N/A' : c.processingDaysMin === c.processingDaysMax ? `${c.processingDaysMin}d` : `${c.processingDaysMin}-${c.processingDaysMax}d`;
+                        const fee = c.costProfile?.visaFeeUSD ?? 0;
+                        const docCount = c.requirements?.length ?? 0;
+                        return (
+                          <tr key={c.code} className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
+                            <td className="p-2.5 font-medium sticky left-0 bg-background">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-base leading-none">{c.flagEmoji}</span>
+                                <span className="whitespace-nowrap">{c.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-2.5">
+                              <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 font-medium ${visaColor}`}>{visaType}</Badge>
+                            </td>
+                            <td className="p-2.5 text-muted-foreground">{processing}</td>
+                            <td className="p-2.5 font-mono">{fee > 0 ? `$${fee}` : 'Free'}</td>
+                            <td className="p-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <div className="h-1.5 w-12 rounded-full bg-muted overflow-hidden">
+                                  <div className="h-full rounded-full bg-amber-500" style={{ width: `${(c.safetyRating / 10) * 100}%` }} />
+                                </div>
+                                <span className="text-muted-foreground">{c.safetyRating}/10</span>
+                              </div>
+                            </td>
+                            <td className="p-2.5">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">{docCount}</Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Quick Compare Cards Preview */}
           {comparisonCountries.length >= 2 && selectedCountriesData.length >= 2 && (
             <div className="space-y-2">
@@ -266,7 +326,7 @@ export function CompareTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {results.map((r, i) => (
-            <Card key={i} className={`glass-card hover-lift-smooth ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
+            <Card key={i} className={`glass-card hover-lift-smooth card-elevated-2 ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base card-section-title">{r.country}</CardTitle>
@@ -351,7 +411,7 @@ export function WhatIfSimulator({ scoreResult, userProfile }: { scoreResult: Sco
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 responsive-stack-mobile">
         {/* Toggle Switches */}
         <div className="space-y-3">
           <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</h5>

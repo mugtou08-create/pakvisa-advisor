@@ -1,0 +1,681 @@
+   449→
+   450→      {/* Currency Converter */}
+   451→      <section className="glass-section p-4 md:p-6 rounded-xl">
+   452→        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+   453→          <h3 className="text-lg font-bold flex items-center gap-2">
+   454→            <CircleDollarSign className="w-5 h-5 text-amber-500" />
+   455→            Currency Converter
+   456→            <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Live Rates</Badge>
+   457→          </h3>
+   458→          <div className="flex gap-1.5">
+   459→            <TooltipProvider>
+   460→              <Tooltip>
+   461→                <TooltipTrigger asChild>
+   462→                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setShowMultiCompare(!showMultiCompare)}>
+   463→                    <BarChart3 className="w-3.5 h-3.5 mr-1" /> Compare
+   464→                  </Button>
+   465→                </TooltipTrigger>
+   466→                <TooltipContent>Compare amount across multiple currencies</TooltipContent>
+   467→              </Tooltip>
+   468→            </TooltipProvider>
+   469→            {convertResult && (
+   470→              <TooltipProvider>
+   471→                <Tooltip>
+   472→                  <TooltipTrigger asChild>
+   473→                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyConversion}>
+   474→                      <Copy className="w-3.5 h-3.5 mr-1" /> Copy
+   475→                    </Button>
+   476→                  </TooltipTrigger>
+   477→                  <TooltipContent>Copy conversion result</TooltipContent>
+   478→                </Tooltip>
+   479→              </TooltipProvider>
+   480→            )}
+   481→          </div>
+   482→        </div>
+   483→        <p className="text-xs text-muted-foreground mb-4">Convert between Pakistani Rupee and 26+ world currencies with live exchange rates.</p>
+   484→
+   485→        {/* Quick Pairs */}
+   486→        <div className="flex flex-wrap gap-2 mb-4">
+   487→          {popularPairs.map(pair => (
+   488→            <button
+   489→              key={pair.label}
+   490→              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+   491→                convertFrom === pair.from && convertTo === pair.to
+   492→                  ? 'bg-amber-600 text-white shadow-sm'
+   493→                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+   494→              }`}
+   495→              onClick={() => { setConvertFrom(pair.from); setConvertTo(pair.to); }}
+   496→            >
+   497→              {pair.label}
+   498→            </button>
+   499→          ))}
+   500→        </div>
+   501→
+   502→        {/* Amount Presets */}
+   503→        <div className="flex items-center gap-2 mb-4">
+   504→          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Quick amounts:</span>
+   505→          <div className="flex gap-1.5">
+   506→            {amountPresets.map(p => (
+   507→              <button
+   508→                key={p.value}
+   509→                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
+   510→                  convertAmount === p.value
+   511→                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+   512→                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+   513→                }`}
+   514→                onClick={() => setConvertAmount(p.value)}
+   515→              >
+   516→                {getCurrencySymbol(convertFrom)}{p.label}
+   517→              </button>
+   518→            ))}
+   519→          </div>
+   520→        </div>
+   521→
+   522→        {/* Converter UI */}
+   523→        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
+   524→          {/* From */}
+   525→          <div className="space-y-2">
+   526→            <Label className="text-xs font-medium">From</Label>
+   527→            <div className="flex gap-2">
+   528→              <Select value={convertFrom} onValueChange={setConvertFrom}>
+   529→                <SelectTrigger className="w-40">
+   530→                  <SelectValue />
+   531→                </SelectTrigger>
+   532→                <SelectContent className="max-h-60">
+   533→                  {currencies.map(c => (
+   534→                    <SelectItem key={c.code} value={c.code}>{c.flag} {c.code} — {c.name}</SelectItem>
+   535→                  ))}
+   536→                </SelectContent>
+   537→              </Select>
+   538→              <Input
+   539→                type="number"
+   540→                value={convertAmount}
+   541→                onChange={e => setConvertAmount(e.target.value)}
+   542→                placeholder="Amount"
+   543→                className="flex-1 text-lg font-semibold input-amber"
+   544→                min="0"
+   545→              />
+   546→            </div>
+   547→          </div>
+   548→
+   549→          {/* Swap Button (desktop) */}
+   550→          <div className="hidden md:flex justify-center">
+   551→            <Button
+   552→              variant="outline"
+   553→              size="icon"
+   554→              className="rounded-full mb-0.5"
+   555→              onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); setSwapRotation(prev => prev + 180); }}
+   556→            >
+   557→              <motion.div
+   558→                animate={{ rotate: swapRotation }}
+   559→                transition={{ duration: 0.3, ease: 'easeInOut' }}
+   560→              >
+   561→                <ArrowUpDown className="w-4 h-4" />
+   562→              </motion.div>
+   563→            </Button>
+   564→          </div>
+   565→
+   566→          {/* To */}
+   567→          <div className="space-y-2">
+   568→            <Label className="text-xs font-medium">To</Label>
+   569→            <div className="flex gap-2">
+   570→              <Select value={convertTo} onValueChange={setConvertTo}>
+   571→                <SelectTrigger className="w-40">
+   572→                  <SelectValue />
+   573→                </SelectTrigger>
+   574→                <SelectContent className="max-h-60">
+   575→                  {currencies.map(c => (
+   576→                    <SelectItem key={c.code} value={c.code}>{c.flag} {c.code} — {c.name}</SelectItem>
+   577→                  ))}
+   578→                </SelectContent>
+   579→              </Select>
+   580→              <div className="flex-1 flex items-center rounded-md border bg-muted/50 px-3 h-9 gap-2">
+   581→                <span className={`text-lg font-bold ${convertResult ? 'text-foreground' : 'text-muted-foreground'}`}>
+   582→                  {convertResult ? formatNum(convertResult.result) : convertLoading ? '...' : '0.00'}
+   583→                </span>
+   584→                {convertResult && (
+   585→                  <span className="text-xs text-muted-foreground">{getCurrencySymbol(convertTo)}</span>
+   586→                )}
+   587→              </div>
+   588→            </div>
+   589→          </div>
+   590→        </div>
+   591→
+   592→        {/* Mobile Swap Button */}
+   593→        <div className="flex md:hidden justify-center my-2">
+   594→          <Button
+   595→            variant="outline"
+   596→            size="sm"
+   597→            className="rounded-full"
+   598→            onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); setSwapRotation(prev => prev + 180); }}
+   599→          >
+   600→            <motion.div
+   601→              animate={{ rotate: swapRotation }}
+   602→              transition={{ duration: 0.3, ease: 'easeInOut' }}
+   603→              className="flex items-center"
+   604→            >
+   605→              <ArrowUpDown className="w-3.5 h-3.5 mr-1" />
+   606→            </motion.div>
+   607→            Swap
+   608→          </Button>
+   609→        </div>
+   610→
+   611→        {/* Rate Info */}
+   612→        {convertResult && (
+   613→          <motion.div
+   614→            initial={{ opacity: 0, y: 4 }}
+   615→            animate={{ opacity: 1, y: 0 }}
+   616→            className="mt-4 stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50"
+   617→          >
+   618→            <div className="flex items-center justify-between flex-wrap gap-2">
+   619→              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+   620→                1 {getCurrencyFlag(convertFrom)} {convertFrom} = {formatNum(convertResult.rate)} {getCurrencyFlag(convertTo)} {convertTo}
+   621→              </p>
+   622→              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+   623→                {formatNum(parseFloat(convertAmount))} {convertFrom} = <span className="font-bold text-base">{formatNum(convertResult.result)}</span> {convertTo}
+   624→              </p>
+   625→            </div>
+   626→          </motion.div>
+   627→        )}
+   628→
+   629→        {convertError && (
+   630→          <p className="text-xs text-red-500 mt-2">{convertError}</p>
+   631→        )}
+   632→
+   633→        {/* Multi-Currency Comparison Panel */}
+   634→        {showMultiCompare && (
+   635→          <motion.div
+   636→            initial={{ opacity: 0, height: 0 }}
+   637→            animate={{ opacity: 1, height: 'auto' }}
+   638→            exit={{ opacity: 0, height: 0 }}
+   639→            className="mt-4 p-4 rounded-lg border bg-muted/20"
+   640→          >
+   641→            <div className="flex items-center justify-between mb-3">
+   642→              <p className="text-xs font-semibold text-muted-foreground">
+   643→                {formatNum(parseFloat(convertAmount))} {convertFrom} in multiple currencies:
+   644→              </p>
+   645→              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5" onClick={doMultiCompare}>
+   646→                <RefreshCw className="w-3 h-3 mr-1" /> Refresh
+   647→              </Button>
+   648→            </div>
+   649→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+   650→              {Object.entries(multiCompareResults).map(([code, value]) => (
+   651→                <div key={code} className="p-2.5 rounded-lg border bg-background text-center hover:shadow-sm transition-all">
+   652→                  <div className="flex items-center justify-center gap-1.5 mb-1">
+   653→                    <span className="text-base">{getCurrencyFlag(code)}</span>
+   654→                    <span className="text-[11px] font-bold text-muted-foreground">{code}</span>
+   655→                  </div>
+   656→                  <p className="text-sm font-bold">{formatNum(value)}</p>
+   657→                  <p className="text-[10px] text-muted-foreground">{getCurrencyName(code)}</p>
+   658→                </div>
+   659→              ))}
+   660→            </div>
+   661→          </motion.div>
+   662→        )}
+   663→
+   664→        {/* Conversion History */}
+   665→        {conversionHistory.length > 0 && (
+   666→          <div className="mt-4">
+   667→            <div className="flex items-center justify-between mb-2">
+   668→              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+   669→                <History className="w-3 h-3" /> Recent Conversions
+   670→              </p>
+   671→              <Button
+   672→                variant="ghost"
+   673→                size="sm"
+   674→                className="h-6 text-[10px] px-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
+   675→                onClick={clearConversionHistory}
+   676→              >
+   677→                <RotateCcw className="w-3 h-3 mr-1" /> Clear History
+   678→              </Button>
+   679→            </div>
+   680→            <div className="rounded-lg border bg-muted/20 overflow-hidden">
+   681→              <table className="w-full text-xs">
+   682→                <thead>
+   683→                  <tr className="border-b bg-muted/30">
+   684→                    <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">From</th>
+   685→                    <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">To</th>
+   686→                    <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">Result</th>
+   687→                    <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">Time</th>
+   688→                  </tr>
+   689→                </thead>
+   690→                <tbody>
+   691→                  {conversionHistory.map((h, i) => (
+   692→                    <motion.tr
+   693→                      key={h.timestamp + i}
+   694→                      initial={{ opacity: 0, x: -8 }}
+   695→                      animate={{ opacity: 1, x: 0 }}
+   696→                      transition={{ delay: i * 0.03 }}
+   697→                      className="border-b last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
+   698→                      onClick={() => { setConvertFrom(h.from); setConvertTo(h.to); setConvertAmount(String(h.amount)); }}
+   699→                    >
+   700→                      <td className="px-3 py-2 font-medium">
+   701→                        {getCurrencyFlag(h.from)} {formatNum(h.amount)} {h.from}
+   702→                      </td>
+   703→                      <td className="px-3 py-2">
+   704→                        <ArrowRight className="w-3 h-3 inline text-muted-foreground mr-1" />
+   705→                        {getCurrencyFlag(h.to)} {h.to}
+   706→                      </td>
+   707→                      <td className="px-3 py-2 text-right font-bold tabular-nums">
+   708→                        {formatNum(h.result)}
+   709→                      </td>
+   710→                      <td className="px-3 py-2 text-right text-muted-foreground">
+   711→                        {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+   712→                      </td>
+   713→                    </motion.tr>
+   714→                  ))}
+   715→                </tbody>
+   716→              </table>
+   717→            </div>
+   718→          </div>
+   719→        )}
+   720→
+   721→        {/* Quick Rate Reference Table */}
+   722→        {Object.keys(ratesInfo).length > 0 && (
+   723→          <div className="mt-5">
+   724→            <p className="text-xs font-semibold mb-2 text-muted-foreground">Quick Reference — 1 PKR equals:</p>
+   725→            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+   726→              {currencies.filter(c => c.code !== 'PKR' && ratesInfo[c.code]).map(c => (
+   727→                <button
+   728→                  key={c.code}
+   729→                  className={`p-2 rounded-lg border text-center transition-all hover:shadow-sm ${
+   730→                    convertTo === c.code ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' : 'border-border/50 bg-muted/30'
+   731→                  }`}
+   732→                  onClick={() => { setConvertTo(c.code); }}
+   733→                >
+   734→                  <div className="text-lg mb-0.5">{c.flag}</div>
+   735→                  <div className="text-[10px] font-bold">{c.code}</div>
+   736→                  <div className="text-[10px] text-muted-foreground">{ratesInfo[c.code] < 1 ? ratesInfo[c.code].toFixed(4) : ratesInfo[c.code].toFixed(2)}</div>
+   737→                </button>
+   738→              ))}
+   739→            </div>
+   740→          </div>
+   741→        )}
+   742→      </section>
+   743→
+   744→      {/* Travel Budget Calculator */}
+   745→      <section className="glass-section p-4 md:p-6 rounded-xl">
+   746→        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+   747→          <h3 className="text-lg font-bold flex items-center gap-2">
+   748→            <Wallet className="w-5 h-5 text-amber-500" />
+   749→            Travel Budget Calculator
+   750→            <Badge variant="secondary" className="text-[10px] bg-amber-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">From Pakistan</Badge>
+   751→          </h3>
+   752→          {budgetResult && (
+   753→            <TooltipProvider>
+   754→              <Tooltip>
+   755→                <TooltipTrigger asChild>
+   756→                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyBudgetSummary}>
+   757→                    <Copy className="w-3.5 h-3.5 mr-1" /> Export
+   758→                  </Button>
+   759→                </TooltipTrigger>
+   760→                <TooltipContent>Copy budget summary to clipboard</TooltipContent>
+   761→              </Tooltip>
+   762→            </TooltipProvider>
+   763→          )}
+   764→        </div>
+   765→        <p className="text-xs text-muted-foreground mb-4">Estimate the total cost of your trip from Pakistan — visa, flights, accommodation, food, transport, and insurance.</p>
+   766→
+   767→        {/* Travel Style & Season */}
+   768→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+   769→          {/* Travel Style Selector */}
+   770→          <div className="space-y-2">
+   771→            <Label className="text-xs font-medium">Travel Style</Label>
+   772→            <div className="grid grid-cols-3 gap-1.5">
+   773→              {([
+   774→                { id: 'budget' as const, label: 'Backpacker', icon: '🎒', desc: 'Hostels & street food', color: 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' },
+   775→                { id: 'standard' as const, label: 'Standard', icon: '🏨', desc: 'Hotels & restaurants', color: 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' },
+   776→                { id: 'luxury' as const, label: 'Luxury', icon: '💎', desc: '5-star & fine dining', color: 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' },
+   777→              ]).map(style => (
+   778→                <button
+   779→                  key={style.id}
+   780→                  className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+   781→                    budgetStyle === style.id
+   782→                      ? style.color + ' shadow-sm'
+   783→                      : 'border-transparent bg-muted/30 hover:bg-muted/50'
+   784→                  }`}
+   785→                  onClick={() => setBudgetStyle(style.id)}
+   786→                >
+   787→                  <div className="text-lg mb-0.5">{style.icon}</div>
+   788→                  <div className="text-[11px] font-bold">{style.label}</div>
+   789→                  <div className="text-[9px] text-muted-foreground leading-tight">{style.desc}</div>
+   790→                </button>
+   791→              ))}
+   792→            </div>
+   793→          </div>
+   794→
+   795→          {/* Season Selector */}
+   796→          <div className="space-y-2">
+   797→            <Label className="text-xs font-medium">Travel Season</Label>
+   798→            <div className="grid grid-cols-3 gap-1.5">
+   799→              {([
+   800→                { id: 'offpeak' as const, label: 'Off-Peak', icon: '🌤️', desc: 'Best prices', color: 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' },
+   801→                { id: 'shoulder' as const, label: 'Shoulder', icon: '⛅', desc: 'Balanced', color: 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' },
+   802→                { id: 'peak' as const, label: 'Peak', icon: '🔥', desc: 'Highest prices', color: 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' },
+   803→              ]).map(s => (
+   804→                <button
+   805→                  key={s.id}
+   806→                  className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+   807→                    budgetSeason === s.id
+   808→                      ? s.color + ' shadow-sm'
+   809→                      : 'border-transparent bg-muted/30 hover:bg-muted/50'
+   810→                  }`}
+   811→                  onClick={() => setBudgetSeason(s.id)}
+   812→                >
+   813→                  <div className="text-lg mb-0.5">{s.icon}</div>
+   814→                  <div className="text-[11px] font-bold">{s.label}</div>
+   815→                  <div className="text-[9px] text-muted-foreground leading-tight">{s.desc}</div>
+   816→                </button>
+   817→              ))}
+   818→            </div>
+   819→          </div>
+   820→        </div>
+   821→
+   822→        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+   823→          {/* Country Select */}
+   824→          <div className="space-y-2">
+   825→            <Label className="text-xs font-medium">Destination Country</Label>
+   826→            <Select value={budgetCountry} onValueChange={setBudgetCountry}>
+   827→              <SelectTrigger>
+   828→                <SelectValue placeholder="Select a country..." />
+   829→              </SelectTrigger>
+   830→              <SelectContent className="max-h-60">
+   831→                {allCountries.sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+   832→                  <SelectItem key={c.name} value={c.name}>
+   833→                    {c.flagEmoji} {c.name}
+   834→                  </SelectItem>
+   835→                ))}
+   836→              </SelectContent>
+   837→            </Select>
+   838→          </div>
+   839→
+   840→          {/* Trip Duration */}
+   841→          <div className="space-y-2">
+   842→            <Label className="text-xs font-medium">Trip Duration (days)</Label>
+   843→            <div className="flex items-center gap-3">
+   844→              <Slider
+   845→                value={[budgetTripDays]}
+   846→                onValueChange={([v]) => setBudgetTripDays(v)}
+   847→                min={1}
+   848→                max={90}
+   849→                step={1}
+   850→                className="flex-1 slider-amber"
+   851→              />
+   852→              <span className="text-sm font-bold w-12 text-right">{budgetTripDays}d</span>
+   853→            </div>
+   854→            <div className="flex gap-1.5">
+   855→              {[3, 7, 14, 30].map(d => (
+   856→                <button
+   857→                  key={d}
+   858→                  className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+   859→                    budgetTripDays === d
+   860→                      ? 'bg-amber-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+   861→                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+   862→                  }`}
+   863→                  onClick={() => setBudgetTripDays(d)}
+   864→                >
+   865→                  {d}d
+   866→                </button>
+   867→              ))}
+   868→            </div>
+   869→          </div>
+   870→
+   871→          {/* Travelers */}
+   872→          <div className="space-y-2">
+   873→            <Label className="text-xs font-medium">Number of Travelers</Label>
+   874→            <div className="flex items-center gap-3">
+   875→              <Slider
+   876→                value={[budgetTravelers]}
+   877→                onValueChange={([v]) => setBudgetTravelers(v)}
+   878→                min={1}
+   879→                max={10}
+   880→                step={1}
+   881→                className="flex-1 slider-amber"
+   882→              />
+   883→              <span className="text-sm font-bold w-8 text-right">{budgetTravelers}</span>
+   884→            </div>
+   885→          </div>
+   886→        </div>
+   887→
+   888→        {/* Customize Toggle */}
+   889→        <div className="flex items-center justify-between mb-3 p-2.5 rounded-lg bg-muted/30 border">
+   890→          <div className="flex items-center gap-2">
+   891→            <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+   892→            <div>
+   893→              <p className="text-xs font-medium">Customize Cost Estimates</p>
+   894→              <p className="text-[10px] text-muted-foreground">Adjust individual expense categories</p>
+   895→            </div>
+   896→          </div>
+   897→          <Switch checked={budgetCustomize} onCheckedChange={setBudgetCustomize} />
+   898→        </div>
+   899→
+   900→        {/* Custom Sliders */}
+   901→        {budgetCustomize && (
+   902→          <motion.div
+   903→            initial={{ opacity: 0, height: 0 }}
+   904→            animate={{ opacity: 1, height: 'auto' }}
+   905→            exit={{ opacity: 0, height: 0 }}
+   906→            className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border bg-muted/20"
+   907→          >
+   908→            {([
+   909→              { key: 'accommodation', label: 'Accommodation', icon: Home, color: 'text-amber-500' },
+   910→              { key: 'food', label: 'Food & Dining', icon: UtensilsCrossed, color: 'text-orange-500' },
+   911→              { key: 'transport', label: 'Transport', icon: MapPin, color: 'text-amber-500' },
+   912→              { key: 'insurance', label: 'Insurance', icon: Shield, color: 'text-amber-500' },
+   913→            ] as const).map(item => (
+   914→              <div key={item.key} className="space-y-1.5">
+   915→                <div className="flex items-center justify-between">
+   916→                  <div className="flex items-center gap-1.5">
+   917→                    <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
+   918→                    <span className="text-[11px] font-medium">{item.label}</span>
+   919→                  </div>
+   920→                  <span className="text-[11px] font-bold">{customMultiplier[item.key] ? Math.round(customMultiplier[item.key] * 100) : 100}%</span>
+   921→                </div>
+   922→                <Slider
+   923→                  value={[customMultiplier[item.key] || 1]}
+   924→                  onValueChange={([v]) => setCustomMultiplier(prev => ({ ...prev, [item.key]: v }))}
+   925→                  min={0.3}
+   926→                  max={3}
+   927→                  step={0.1}
+   928→                  className="w-full slider-amber"
+   929→                />
+   930→                <div className="flex justify-between text-[9px] text-muted-foreground">
+   931→                  <span>30%</span>
+   932→                  <span className="font-medium text-foreground">100% (Standard)</span>
+   933→                  <span>300%</span>
+   934→                </div>
+   935→              </div>
+   936→            ))}
+   937→          </motion.div>
+   938→        )}
+   939→
+   940→        <Button
+   941→          onClick={calculateBudget}
+   942→          disabled={!budgetCountry}
+   943→          className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700"
+   944→        >
+   945→          <Calculator className="w-4 h-4 mr-2" />
+   946→          Calculate Trip Budget
+   947→        </Button>
+   948→
+   949→        {/* Budget Result */}
+   950→        {budgetResult && (
+   951→          <motion.div
+   952→            initial={{ opacity: 0, y: 8 }}
+   953→            animate={{ opacity: 1, y: 0 }}
+   954→            className="mt-5 space-y-4"
+   955→          >
+   956→            {/* Total Banner */}
+   957→            <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5">
+   958→              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+   959→              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+   960→              <div className="relative text-center">
+   961→                <p className="text-xs opacity-80 mb-1">Estimated Total Trip Cost</p>
+   962→                <p className="text-3xl font-bold">₨ {formatNum(budgetResult.totalPKR)}</p>
+   963→                <p className="text-base opacity-90 mt-0.5">≈ ${formatNum(budgetResult.totalUSD)} USD</p>
+   964→                <div className="flex items-center justify-center gap-4 mt-2">
+   965→                  <div className="text-center">
+   966→                    <p className="text-[10px] opacity-60">Per Day</p>
+   967→                    <p className="text-sm font-bold">${formatNum(budgetResult.perDayUSD)}</p>
+   968→                  </div>
+   969→                  <div className="w-px h-6 bg-white/30" />
+   970→                  <div className="text-center">
+   971→                    <p className="text-[10px] opacity-60">Per Person</p>
+   972→                    <p className="text-sm font-bold">${formatNum(budgetResult.perPersonUSD)}</p>
+   973→                  </div>
+   974→                </div>
+   975→                <p className="text-[10px] opacity-60 mt-2">
+   976→                  {budgetTravelers} traveler{budgetTravelers > 1 ? 's' : ''} · {budgetTripDays} days · {budgetCountry} · {budgetStyle === 'budget' ? 'Backpacker' : budgetStyle === 'luxury' ? 'Luxury' : 'Standard'} · {budgetSeason === 'peak' ? 'Peak' : budgetSeason === 'offpeak' ? 'Off-Peak' : 'Shoulder'} Season
+   977→                </p>
+   978→              </div>
+   979→            </div>
+   980→
+   981→            {/* Donut Chart - Budget Breakdown Visualization (Task 12-B Feature 4) */}
+   982→            <BudgetDonutChart budgetResult={budgetResult} budgetTripDays={budgetTripDays} budgetViewMode={budgetViewMode} budgetChartActiveIndex={budgetChartActiveIndex} setBudgetChartActiveIndex={setBudgetChartActiveIndex} formatNum={formatNum} />
+   983→
+   984→            {/* Visual Cost Breakdown Bar */}
+   985→            <div className="p-3 rounded-lg border bg-muted/20">
+   986→              <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Cost Distribution</p>
+   987→              <div className="flex rounded-full overflow-hidden h-4 mb-2">
+   988→                {[
+   989→                  { label: 'Visa', value: budgetResult.visaFee, color: 'bg-blue-500' },
+   990→                  { label: 'Flights', value: budgetResult.flightEst, color: 'bg-purple-500' },
+   991→                  { label: 'Stay', value: budgetResult.accommodation, color: 'bg-amber-500' },
+   992→                  { label: 'Food', value: budgetResult.food, color: 'bg-orange-500' },
+   993→                  { label: 'Transport', value: budgetResult.transport, color: 'bg-amber-500' },
+   994→                  { label: 'Insurance', value: budgetResult.insurance, color: 'bg-amber-500' },
+   995→                  { label: 'Misc', value: budgetResult.misc, color: 'bg-gray-400' },
+   996→                ].map(item => {
+   997→                  const pct = Math.max(Math.round((item.value / budgetResult.totalUSD) * 100), item.value > 0 ? 1 : 0);
+   998→                  return pct > 0 ? (
+   999→                    <TooltipProvider key={item.label}>
+  1000→                      <Tooltip>
+  1001→                        <TooltipTrigger asChild>
+  1002→                          <div className={`${item.color} transition-all`} style={{ width: `${pct}%` }} />
+  1003→                        </TooltipTrigger>
+  1004→                        <TooltipContent>
+  1005→                          {item.label}: ${formatNum(item.value)} ({pct}%)
+  1006→                        </TooltipContent>
+  1007→                      </Tooltip>
+  1008→                    </TooltipProvider>
+  1009→                  ) : null;
+  1010→                })}
+  1011→              </div>
+  1012→              <div className="flex flex-wrap gap-x-3 gap-y-1">
+  1013→                {[
+  1014→                  { label: 'Visa', color: 'bg-blue-500' },
+  1015→                  { label: 'Flights', color: 'bg-purple-500' },
+  1016→                  { label: 'Accommodation', color: 'bg-amber-500' },
+  1017→                  { label: 'Food', color: 'bg-orange-500' },
+  1018→                  { label: 'Transport', color: 'bg-amber-500' },
+  1019→                  { label: 'Insurance', color: 'bg-amber-500' },
+  1020→                  { label: 'Misc', color: 'bg-gray-400' },
+  1021→                ].map(l => (
+  1022→                  <div key={l.label} className="flex items-center gap-1">
+  1023→                    <div className={`w-2 h-2 rounded-full ${l.color}`} />
+  1024→                    <span className="text-[9px] text-muted-foreground">{l.label}</span>
+  1025→                  </div>
+  1026→                ))}
+  1027→              </div>
+  1028→            </div>
+  1029→
+  1030→            {/* Cost Breakdown Cards */}
+  1031→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  1032→              {[
+  1033→                { label: 'Visa & Processing', value: budgetResult.visaFee, icon: FileText, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  1034→                { label: 'Estimated Flights', value: budgetResult.flightEst, icon: PlaneTakeoff, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  1035→                { label: 'Accommodation', value: budgetResult.accommodation, icon: Home, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  1036→                { label: 'Food & Dining', value: budgetResult.food, icon: UtensilsCrossed, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  1037→                { label: 'Transport', value: budgetResult.transport, icon: MapPin, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  1038→                { label: 'Travel Insurance', value: budgetResult.insurance, icon: Shield, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  1039→              ].map(item => {
+  1040→                const pct = Math.round((item.value / budgetResult.totalUSD) * 100);
+  1041→                return (
+  1042→                  <div key={item.label} className="p-3 rounded-lg border bg-muted/30 space-y-2">
+  1043→                    <div className="flex items-center gap-3">
+  1044→                      <div className={`w-9 h-9 rounded-lg ${item.color} flex items-center justify-center flex-shrink-0`}>
+  1045→                        {React.createElement(item.icon, { className: 'w-4 h-4' })}
+  1046→                      </div>
+  1047→                      <div className="flex-1 min-w-0">
+  1048→                        <p className="text-xs text-muted-foreground">{item.label}</p>
+  1049→                        <div className="flex items-baseline gap-1">
+  1050→                          <p className="text-sm font-bold">${formatNum(item.value)}</p>
+  1051→                          <p className="text-[10px] text-muted-foreground">₨ {formatNum(item.value * (EXCHANGE_RATES.USD || 278.5))}</p>
+  1052→                        </div>
+  1053→                      </div>
+  1054→                      <Badge variant="secondary" className="text-[10px] px-1.5">{pct}%</Badge>
+  1055→                    </div>
+  1056→                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+  1057→                      <motion.div
+  1058→                        initial={{ width: 0 }}
+  1059→                        animate={{ width: `${pct}%` }}
+  1060→                        transition={{ duration: 0.6, delay: 0.2 }}
+  1061→                        className={`h-full rounded-full ${
+  1062→                          item.label.includes('Visa') ? 'bg-blue-500' :
+  1063→                          item.label.includes('Flight') ? 'bg-purple-500' :
+  1064→                          item.label.includes('Accommodation') ? 'bg-amber-500' :
+  1065→                          item.label.includes('Food') ? 'bg-orange-500' :
+  1066→                          item.label.includes('Transport') ? 'bg-amber-500' : 'bg-amber-500'
+  1067→                        }`}
+  1068→                      />
+  1069→                    </div>
+  1070→                  </div>
+  1071→                );
+  1072→              })}
+  1073→            </div>
+  1074→
+  1075→            {/* Misc */}
+  1076→            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+  1077→              <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 flex items-center justify-center flex-shrink-0">
+  1078→                <MoreHorizontal className="w-4 h-4" />
+  1079→              </div>
+  1080→              <div className="flex-1">
+  1081→                <p className="text-xs text-muted-foreground">Miscellaneous (10% buffer)</p>
+  1082→                <p className="text-sm font-bold">${formatNum(budgetResult.misc)}</p>
+  1083→              </div>
+  1084→              <p className="text-xs text-muted-foreground">₨ {formatNum(budgetResult.misc * (EXCHANGE_RATES.USD || 278.5))}</p>
+  1085→            </div>
+  1086→
+  1087→            {/* Budget Pie Chart (Feature 12-C) */}
+  1088→            <div className="p-4 rounded-lg border bg-muted/20">
+  1089→              <div className="flex items-center gap-2 mb-3">
+  1090→                <PieChartIcon className="w-4 h-4 text-amber-500" />
+  1091→                <p className="text-xs font-semibold">Budget Overview</p>
+  1092→              </div>
+  1093→              <BudgetPieChart data={[
+  1094→                { name: 'Visa Fee', value: Math.round(budgetResult.visaFee), color: '#F59E0B' },
+  1095→                { name: 'Flights', value: Math.round(budgetResult.flightEst), color: '#D97706' },
+  1096→                { name: 'Accommodation', value: Math.round(budgetResult.accommodation), color: '#B45309' },
+  1097→                { name: 'Food', value: Math.round(budgetResult.food), color: '#EA580C' },
+  1098→                { name: 'Transport', value: Math.round(budgetResult.transport), color: '#DC2626' },
+  1099→                { name: 'Activities', value: Math.round(budgetResult.misc), color: '#FB923C' },
+  1100→                { name: 'Insurance', value: Math.round(budgetResult.insurance), color: '#FBBF24' },
+  1101→              ].filter(d => d.value > 0)} />
+  1102→            </div>
+  1103→
+  1104→            {/* Budget Optimization Tips */}
+  1105→            {getBudgetTips(budgetCountry, budgetResult).length > 0 && (
+  1106→              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30">
+  1107→                <div className="flex items-center gap-1.5 mb-2">
+  1108→                  <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+  1109→                  <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">Budget Optimization Tips</p>
+  1110→                </div>
+  1111→                <div className="space-y-1.5">
+  1112→                  {getBudgetTips(budgetCountry, budgetResult).map((tip, i) => (
+  1113→                    <p key={i} className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">{tip}</p>
+  1114→                  ))}
+  1115→                </div>
+  1116→              </div>
+  1117→            )}
+  1118→
+  1119→            <p className="text-[10px] text-muted-foreground text-center">
+  1120→              ⚠️ Estimates are approximate based on average costs. Actual prices vary by season, booking time, and lifestyle. Flight estimates are from major Pakistani cities (Karachi/Lahore/Islamabad).
+  1121→            </p>
+  1122→          </motion.div>
+  1123→        )}
+  1124→      </section>
+  1125→    </div>
+  1126→  );
+  1127→}
+  1128→
+  1129→

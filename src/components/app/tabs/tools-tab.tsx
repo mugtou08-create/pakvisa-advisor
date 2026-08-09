@@ -41,6 +41,7 @@ import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, Checkli
 import { EXCHANGE_RATES, FLAG_ISO_MAP, getFlagUrl, getRegion } from '../constants';
 import { FlagImage, BudgetPieChart } from '../shared-components-1';
 import { ScoringHistoryPanel, TravelCostCalculator } from '../shared-components-2';
+import { TravelChecklistGenerator } from '../shared-components-4';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 const CHART_COLORS = ['#f59e0b', '#f97316', '#fbbf24', '#d97706', '#ea580c', '#c2410c', '#78716c'];
@@ -157,7 +158,7 @@ export function ToolsTab() {
   const [multiCompareResults, setMultiCompareResults] = useState<Record<string, number>>({});
   const [showMultiCompare, setShowMultiCompare] = useState(false);
   const [swapRotation, setSwapRotation] = useState(0);
-  const { conversionHistory, addConversion, clearConversionHistory } = useAppStore();
+  const { conversionHistory, addConversion, clearConversionHistory, selectedCountry, userProfile } = useAppStore();
 
   // --- Budget Calculator State ---
   const [budgetCountry, setBudgetCountry] = useState('');
@@ -448,7 +449,7 @@ export function ToolsTab() {
       </div>
 
       {/* Currency Converter */}
-      <section className="glass-section p-4 md:p-6 rounded-xl">
+      <section className="glass-section p-4 md:p-6 rounded-xl card-interactive">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
           <h3 className="text-lg font-bold flex items-center gap-2">
             <CircleDollarSign className="w-5 h-5 text-amber-500" />
@@ -540,7 +541,7 @@ export function ToolsTab() {
                 value={convertAmount}
                 onChange={e => setConvertAmount(e.target.value)}
                 placeholder="Amount"
-                className="flex-1 text-lg font-semibold"
+                className="flex-1 text-lg font-semibold input-amber"
                 min="0"
               />
             </div>
@@ -742,7 +743,7 @@ export function ToolsTab() {
       </section>
 
       {/* Travel Budget Calculator */}
-      <section className="glass-section p-4 md:p-6 rounded-xl">
+      <section className="glass-section p-4 md:p-6 rounded-xl card-interactive">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
           <h3 className="text-lg font-bold flex items-center gap-2">
             <Wallet className="w-5 h-5 text-amber-500" />
@@ -847,7 +848,7 @@ export function ToolsTab() {
                 min={1}
                 max={90}
                 step={1}
-                className="flex-1"
+                className="flex-1 slider-amber"
               />
               <span className="text-sm font-bold w-12 text-right">{budgetTripDays}d</span>
             </div>
@@ -878,7 +879,7 @@ export function ToolsTab() {
                 min={1}
                 max={10}
                 step={1}
-                className="flex-1"
+                className="flex-1 slider-amber"
               />
               <span className="text-sm font-bold w-8 text-right">{budgetTravelers}</span>
             </div>
@@ -925,7 +926,7 @@ export function ToolsTab() {
                   min={0.3}
                   max={3}
                   step={0.1}
-                  className="w-full"
+                  className="w-full slider-amber"
                 />
                 <div className="flex justify-between text-[9px] text-muted-foreground">
                   <span>30%</span>
@@ -1122,6 +1123,28 @@ export function ToolsTab() {
           </motion.div>
         )}
       </section>
+
+      {/* Travel Checklist Generator */}
+      <Card className="card-elevated-1">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-amber-500" />
+            Travel Checklist Generator
+          </CardTitle>
+          <CardDescription className="text-xs">Generate a personalized travel checklist for your selected destination</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {selectedCountry ? (
+            <TravelChecklistGenerator country={selectedCountry} profile={userProfile} />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Globe className="w-10 h-10 text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">Select a country first</p>
+              <p className="text-xs text-muted-foreground mt-1">Go to the Explore tab and click on a country to select it</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
