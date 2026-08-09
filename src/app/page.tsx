@@ -32,7 +32,7 @@ import {
   KeyboardShortcutsDialog, HelpCenterDialog, FloatingChatWidget,
   KeyboardShortcutsTooltip, BackToTopButton, NewsletterInput,
   AboutDialog, DisclaimerDialog, TermsDialog, PrivacyDialog,
-  QuickActionsToolbar,
+  QuickActionsToolbar, FeedbackWidget,
 } from '@/components/app/dialogs';
 
 // ============ MAIN PAGE (IMPROVED) ============
@@ -193,7 +193,7 @@ export default function HomePage() {
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-amber-600 flex items-center justify-center shadow-sm logo-glow">
+                <div className="w-9 h-9 rounded-lg bg-amber-600 flex items-center justify-center shadow-sm logo-glow" style={{ animation: 'pulse-glow 3s ease-in-out infinite' }}>
                   <Globe className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -203,7 +203,7 @@ export default function HomePage() {
               </div>
 
               {/* Desktop Nav with Pill Indicator */}
-              <nav className="hidden md:flex items-center gap-1 pill-nav rounded-xl p-1 bg-muted/50 transition-all duration-200" ref={navRef}>
+              <nav className="hidden md:flex items-center gap-1 pill-nav rounded-xl p-1 bg-muted/50 transition-all duration-200 hover-glow-amber" ref={navRef}>
                 <span
                   className="pill-indicator"
                   style={{
@@ -274,10 +274,10 @@ export default function HomePage() {
                     <TooltipContent>Admin Dashboard</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+                <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme" className="transition-transform duration-200 hover:scale-110 focus-ring-amber">
                   {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <div className="w-4 h-4" />}
                 </Button>
-                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)', transform: mobileMenuOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>
                   {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 </Button>
               </div>
@@ -349,7 +349,7 @@ export default function HomePage() {
         </main>
 
         {/* Footer - Enhanced with Gradient Background & Animated Separator */}
-        <footer className="footer-gradient-bg print:hidden mt-auto sm:block" style={{ borderTop: '2px solid rgba(249, 115, 22, 0.3)' }}>
+        <footer className="footer-gradient-bg footer-gradient-enhanced glass-card print:hidden mt-auto sm:block" style={{ borderTop: '2px solid rgba(249, 115, 22, 0.3)' }}>
           <div className="footer-separator-dots mx-4 mt-6 mb-2" />
           <div className="container mx-auto px-4 py-10">
             {/* Bento Grid Footer - 5 columns */}
@@ -373,7 +373,7 @@ export default function HomePage() {
                     { label: 'Instagram', path: 'M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 017.8 2m-.2 2A3.6 3.6 0 004 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 003.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5M12 7a5 5 0 110 10 5 5 0 010-10m0 2a3 3 0 100 6 3 3 0 000-6z' },
                     { label: 'YouTube', path: 'M22.54 6.42a2.78 2.78 0 00-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 00-1.94 2A29 29 0 001 11.75a29 29 0 00.46 5.33A2.78 2.78 0 003.4 19.1c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 001.94-2 29 29 0 00.46-5.25 29 29 0 00-.46-5.43zM9.75 15.02V8.48l5.75 3.27-5.75 3.27z' },
                   ].map(social => (
-                    <button key={social.label} className="w-8 h-8 rounded-lg bg-muted/60 dark:bg-muted/30 flex items-center justify-center text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all duration-200 hover:scale-110" title={social.label}>
+                    <button key={social.label} className="w-8 h-8 rounded-lg bg-muted/60 dark:bg-muted/30 flex items-center justify-center text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all duration-200 hover-scale-breathe" title={social.label}>
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d={social.path} />
                       </svg>
@@ -384,6 +384,7 @@ export default function HomePage() {
 
               {/* Quick Links */}
               <div>
+                <div className="section-divider-dots mb-3" />
                 <h4 className="font-semibold text-sm mb-3">Quick Links</h4>
                 <div className="space-y-2">
                   {[{ label: 'Explore Countries', tab: 'explore' }, { label: 'Visa Assessment', tab: 'questionnaire' }, { label: 'Compare Destinations', tab: 'compare' }, { label: 'AI Consultant', tab: 'chat' }, { label: 'Your Reports', tab: 'reports' }, { label: 'Help Center', tab: 'help' }].map(link => (
@@ -396,6 +397,7 @@ export default function HomePage() {
 
               {/* Trust & Stats with mini stat cards */}
               <div>
+                <div className="section-divider-dots mb-3" />
                 <h4 className="font-semibold text-sm mb-3">Trust & Security</h4>
                 <div className="space-y-3">
                   {/* Mini stat cards */}
@@ -436,6 +438,7 @@ export default function HomePage() {
 
               {/* Legal & Policies */}
               <div>
+                <div className="section-divider-dots mb-3" />
                 <h4 className="font-semibold text-sm mb-3">Legal</h4>
                 <div className="space-y-2">
                   <button className="block text-sm text-muted-foreground hover:text-amber-600 transition-colors min-h-[44px] flex items-center" onClick={() => setLegalDialog('about')}>
@@ -547,6 +550,9 @@ export default function HomePage() {
 
         {/* Quick Actions Toolbar */}
         <QuickActionsToolbar />
+
+        {/* Feedback Widget */}
+        <FeedbackWidget />
 
         {/* Floating Chat Widget - only shown when AI is enabled */}
         {aiEnabled && <FloatingChatWidget />}

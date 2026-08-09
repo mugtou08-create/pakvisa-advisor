@@ -10,7 +10,7 @@ import {
   Eye, ClipboardList, Send, ChevronDown, ChevronUp, Compass, Gavel, CheckCircle2, X, XCircle,
   AlertTriangle, Info, Lock, FileWarning, PackageOpen, PlaneTakeoff, UtensilsCrossed, Bookmark, SearchX, Timer, Wallet, Languages, BadgePercent,
   Share2, Thermometer, CreditCard, CircleDollarSign, Save, History, RotateCcw, CalendarClock, Phone, Mail,
-  ShoppingBag, Banknote, Hotel, Sun, SearchCheck, Briefcase, PlaneLanding, Loader, CircleCheck,
+  ShoppingBag, Banknote, Hotel, Sun, SearchCheck, Briefcase, PlaneLanding, Loader, CircleCheck, FileCheck2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,12 +33,12 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem, VisaDocChecklistItem } from '@/lib/types';
 import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion, TIMELINE_STAGES } from './constants';
-import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist, getScoreGradient, VisaFeeEstimator } from './shared-components-1';
+import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist, getScoreGradient, VisaFeeEstimator, VisaSuccessIndicator } from './shared-components-1';
 import { PremiumBadge } from './dialogs';
 import { TravelWeatherWidget } from './shared-components-3';
 
 export function CountryDetailDialog({ country, open, onClose }: { country: CountryData | null; open: boolean; onClose: () => void }) {
-  const { addScoreResult, setSelectedCountry, setActiveTab } = useAppStore();
+  const { addScoreResult, setSelectedCountry, setActiveTab, userProfile } = useAppStore();
   const [printMode, setPrintMode] = useState(false);
   // Checklist items for DocumentReadinessScore
   const [readinessItems, setReadinessItems] = useState<VisaDocChecklistItem[]>([]);
@@ -343,6 +343,9 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
             </div>
           )}
 
+          {/* Visa Success Indicator */}
+          <VisaSuccessIndicator country={country} profile={userProfile} />
+
           {/* Visa Fee Estimator */}
           <VisaFeeEstimator country={country} avgFee={120} />
 
@@ -415,10 +418,8 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
             <SimilarCountriesPanel country={country} />
           </div>
 
-          {/* Embassy Information */}
-          <div className="overflow-hidden">
-            <EmbassyInfoSection countryCode={country.code} countryName={country.name} />
-          </div>
+          {/* Embassy Locator Panel */}
+          <EmbassyLocatorPanel country={country} />
 
           {/* Source & Confidence with accent dot */}
           <div className="p-3 rounded-lg border bg-muted/30 text-xs">
@@ -1603,6 +1604,144 @@ export function EmbassyInfoSection({ countryCode, countryName }: { countryCode: 
         </Button>
       </div>
     </div>
+  );
+}
+
+// ============ EMBASSY LOCATOR PANEL ============
+export function EmbassyLocatorPanel({ country }: { country: CountryData }) {
+  const embassy = EMBASSY_DATA[country.code] || GENERIC_EMBASSY;
+  const hasNote = 'note' in embassy && embassy.note;
+
+  // Generate a documents checklist reminder based on country requirements
+  const docReminder = useMemo(() => {
+    const items: string[] = [];
+    items.push('Valid passport (6+ months validity, 2+ blank pages)');
+    items.push('Passport-sized photographs (white background, 2x2 inch)');
+    if (!country.visaFree && !country.visaOnArrival) {
+      items.push('Completed visa application form');
+      items.push('Bank statements (last 6 months)');
+      items.push('Employment letter / NOC from employer');
+      items.push('Travel itinerary & flight bookings');
+    }
+    if (country.costProfile?.visaFeeUSD && country.costProfile.visaFeeUSD > 100) {
+      items.push('Visa fee payment receipt');
+    }
+    items.push('Travel health insurance');
+    items.push('Hotel/accommodation confirmation');
+    return items;
+  }, [country]);
+
+  return (
+    <Card className="border-amber-200/50 dark:border-amber-800/30 overflow-hidden">
+      <CardHeader className="pb-2 pt-3 px-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <Building className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          Embassy Locator
+          <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 ml-auto">
+            {country.name}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-3 pb-3 space-y-3">
+        {hasNote && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <span className="text-xs text-amber-700 dark:text-amber-400 break-words">{embassy.note}</span>
+          </motion.div>
+        )}
+
+        {/* Embassy details */}
+        <div className="space-y-2">
+          <div className="flex items-start gap-2.5">
+            <MapPin className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Address</span>
+              <p className="text-xs break-words">{embassy.address}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <Phone className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Phone</span>
+              <p className="text-xs break-words">{embassy.phone}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <Mail className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Email</span>
+              <p className="text-xs break-all">{embassy.email}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Hours</span>
+              <p className="text-xs break-words">{embassy.hours}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/20"
+            asChild
+          >
+            <a
+              href={`https://www.google.com/maps/search/${encodeURIComponent(country.name + ' embassy Pakistan')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MapPin className="w-3.5 h-3.5 mr-1" /> Directions
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs" asChild>
+            <a href={embassy.website} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-3.5 h-3.5 mr-1" /> Website
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs" asChild>
+            <a href={embassy.appointmentUrl} target="_blank" rel="noopener noreferrer">
+              <Calendar className="w-3.5 h-3.5 mr-1" /> Book Appointment
+            </a>
+          </Button>
+        </div>
+
+        {/* Documents Checklist Reminder */}
+        <div className="border-t pt-3 mt-1">
+          <div className="flex items-center gap-2 mb-2">
+            <FileCheck2 className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-semibold">Documents Checklist Reminder</span>
+            <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              {docReminder.length} items
+            </Badge>
+          </div>
+          <ul className="space-y-1">
+            {docReminder.map((item, i) => (
+              <motion.li
+                key={i}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="flex items-start gap-2 text-[11px] text-muted-foreground"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+                <span>{item}</span>
+              </motion.li>
+            ))}
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

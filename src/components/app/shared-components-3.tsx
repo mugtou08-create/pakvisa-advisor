@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Globe, FileText, BarChart3, Search, Star, Clock,
   DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin,
@@ -120,7 +120,27 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
   const bellRef = useRef<HTMLDivElement>(null);
-  
+
+  const notificationIcons: Record<string, React.ReactNode> = {
+    policy: <Gavel className="w-4 h-4 text-amber-500" />,
+    expiry: <AlarmClock className="w-4 h-4 text-red-500" />,
+    'new-country': <PlaneTakeoff className="w-4 h-4 text-amber-500" />,
+  };
+
+  function getTimeAgo(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return `${Math.floor(days / 7)}w ago`;
+  }
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (bellRef.current && !bellRef.current.contains(e.target as Node)) setOpen(false);
@@ -128,7 +148,7 @@ export function NotificationBell() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-  
+
   return (
     <div className="relative" ref={bellRef}>
       <Button variant="ghost" size="icon" className="relative" onClick={() => setOpen(!open)} aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}>
@@ -139,35 +159,56 @@ export function NotificationBell() {
           </span>
         )}
       </Button>
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border bg-card shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center justify-between p-3 border-b">
-            <span className="text-sm font-semibold">Notifications</span>
-            <button className="text-[11px] text-amber-600 hover:underline" onClick={() => markAllNotificationsRead()}>Mark all read</button>
-          </div>
-          <div className="max-h-64 overflow-y-auto">
-            {notifications.map(n => (
-              <button
-                key={n.id}
-                className={`w-full text-left p-3 border-b last:border-0 transition-colors hover:bg-muted/50 ${!n.read ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}`}
-                onClick={() => markNotificationRead(n.id)}
-              >
-                <div className="flex items-start gap-2">
-                  <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.type === 'policy' ? 'bg-amber-500' : n.type === 'expiry' ? 'bg-red-500' : 'bg-amber-500'}`} />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium truncate">{n.title}</span>
-                      {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
-                    <span className="text-[10px] text-muted-foreground/60">{new Date(n.date).toLocaleDateString()}</span>
-                  </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="absolute right-0 top-full mt-2 w-80 rounded-xl border glass-card-strong shadow-xl z-50 overflow-hidden"
+          >
+            <div className="flex items-center justify-between p-3 border-b border-white/10 dark:border-white/5">
+              <span className="text-sm font-semibold">Notifications</span>
+              {unreadCount > 0 && (
+                <button className="text-[11px] text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline font-medium" onClick={() => markAllNotificationsRead()}>
+                  Mark all read
+                </button>
+              )}
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {notifications.length === 0 || notifications.every(n => n.read) ? (
+                <div className="flex flex-col items-center justify-center py-8 px-4">
+                  <Sparkles className="w-8 h-8 text-amber-400/60 mb-2" />
+                  <p className="text-sm text-muted-foreground">You're all caught up! ✨</p>
                 </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+              ) : (
+                notifications.map(n => (
+                  <button
+                    key={n.id}
+                    className={`w-full text-left p-3 border-b last:border-0 transition-all hover:bg-muted/50 ${!n.read ? 'chat-bubble-bot' : ''}`}
+                    onClick={() => markNotificationRead(n.id)}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 shrink-0">
+                        {notificationIcons[n.type] || <Info className="w-4 h-4 text-muted-foreground" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-xs font-medium truncate ${!n.read ? 'text-foreground' : 'text-muted-foreground'}`}>{n.title}</span>
+                          {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                        <span className="text-[10px] text-muted-foreground/60 mt-1 block">{getTimeAgo(n.date)}</span>
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

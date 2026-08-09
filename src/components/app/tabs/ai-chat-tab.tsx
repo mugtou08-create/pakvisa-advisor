@@ -119,7 +119,7 @@ export function AIChatTab() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-280px)] min-h-[500px]">
-      <Card className="mb-4 shrink-0">
+      <Card className="mb-4 shrink-0 glass-card-strong">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
@@ -195,8 +195,8 @@ export function AIChatTab() {
               )}
               <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
                 msg.role === 'user'
-                  ? 'bg-amber-600 text-white rounded-br-none'
-                  : 'bg-muted rounded-bl-none'
+                  ? 'chat-bubble-user'
+                  : 'chat-bubble-bot'
               }`}>
                 <p className="whitespace-pre-wrap">{msg.content}</p>
                 <div className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-amber-200' : 'text-muted-foreground'}`}>
@@ -215,13 +215,15 @@ export function AIChatTab() {
               <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
                 <Bot className="w-4 h-4 text-amber-600 animate-pulse" />
               </div>
-              <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground">Thinking...</div>
+              <div className="chat-bubble-bot">
+                <div className="chat-typing-indicator"><span className="dot" /><span className="dot" /><span className="dot" /></div>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex gap-2 mt-4 shrink-0">
+      <div className="flex gap-2 mt-4 shrink-0 chat-input-container">
         <Input
           placeholder="Ask about visa requirements, eligibility, or application steps..."
           value={input}

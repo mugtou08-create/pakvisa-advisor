@@ -289,7 +289,7 @@ export function ExploreTab() {
   return (
     <div className="space-y-10" ref={scrollRevealRef}>
       {/* Hero Section - Yellow Mango Themed Compact */}
-      <section id="visa-guide" className="relative overflow-hidden rounded-2xl p-4 sm:p-6 md:p-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600">
+      <section id="visa-guide" className="relative overflow-hidden rounded-2xl p-4 sm:p-6 md:p-10 bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-400 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600 glass-card-strong">
         {/* Gradient mesh overlay */}
         <div className="hero-mesh-bg" />
         {/* Floating decorative orbs */}
@@ -333,7 +333,7 @@ export function ExploreTab() {
             </div>
             <Button
               onClick={handleHeroCheckVisa}
-              className="hero-btn-glow hero-btn-pulse absolute right-2 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-10 px-5 text-sm font-bold"
+              className="hero-btn-glow hero-btn-pulse hover-glow-amber absolute right-2 top-1/2 -translate-y-1/2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-10 px-5 text-sm font-bold"
             >
               Check Visa
             </Button>
@@ -393,7 +393,7 @@ export function ExploreTab() {
                   const c = countries.find(x => x.name === name);
                   if (c) { setSelectedCountry(c); setHeroQuickResult(c); saveRecentSearch(c); }
                 }}
-                className="hero-chip px-3 py-1.5 rounded-full text-xs font-semibold bg-white/30 dark:bg-black/15 hover:bg-white/60 dark:hover:bg-black/30 transition-all duration-200 border border-white/30 dark:border-white/10 hover:shadow-md hover:scale-105 active:scale-95"
+                className="hero-chip hover-lift-smooth px-3 py-1.5 rounded-full text-xs font-semibold bg-white/30 dark:bg-black/15 hover:bg-white/60 dark:hover:bg-black/30 transition-all duration-200 border border-white/30 dark:border-white/10 hover:shadow-md hover:scale-105 active:scale-95"
               >
                 {name}
               </button>
@@ -457,7 +457,7 @@ export function ExploreTab() {
       )}
 
       {/* Decorative section divider */}
-      <div className="section-gradient-divider" />
+      <div className="section-gradient-divider-enhanced" />
 
       {/* Passport Power Index - At a glance overview */}
       {!loading && countries.length > 0 && (
@@ -471,7 +471,7 @@ export function ExploreTab() {
       )}
 
       {/* Decorative section divider */}
-      <div className="section-gradient-divider" />
+      <div className="section-gradient-divider-enhanced" />
 
       {/* Visa Requirement World Map */}
       {!loading && countries.length > 0 && (
@@ -489,7 +489,7 @@ export function ExploreTab() {
       )}
 
       {/* Decorative section divider */}
-      <div className="section-gradient-divider" />
+      <div className="section-gradient-divider-enhanced" />
 
       {/* Country Directory - Filter Toolbar + Grid */}
       <section id="country-grid" className="space-y-3">

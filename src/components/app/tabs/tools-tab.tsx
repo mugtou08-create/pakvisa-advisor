@@ -154,9 +154,10 @@ export function ToolsTab() {
   const [ratesInfo, setRatesInfo] = useState<Record<string, number>>({});
   const [currencySearch, setCurrencySearch] = useState('');
   const [showCurrencySearch, setShowCurrencySearch] = useState<'from' | 'to' | null>(null);
-  const [conversionHistory, setConversionHistory] = useState<Array<{ from: string; to: string; amount: string; result: number; rate: number; timestamp: number }>>([]);
   const [multiCompareResults, setMultiCompareResults] = useState<Record<string, number>>({});
   const [showMultiCompare, setShowMultiCompare] = useState(false);
+  const [swapRotation, setSwapRotation] = useState(0);
+  const { conversionHistory, addConversion, clearConversionHistory } = useAppStore();
 
   // --- Budget Calculator State ---
   const [budgetCountry, setBudgetCountry] = useState('');
@@ -233,12 +234,7 @@ export function ToolsTab() {
       const data = await resp.json();
       if (data.success) {
         setConvertResult(data.data);
-        // Add to history
-        setConversionHistory(prev => {
-          const entry = { from: convertFrom, to: convertTo, amount: convertAmount, result: data.data.result, rate: data.data.rate, timestamp: Date.now() };
-          const updated = [entry, ...prev].slice(0, 10);
-          return updated;
-        });
+        addConversion({ from: convertFrom, to: convertTo, amount: parseFloat(convertAmount), result: data.data.result });
       } else {
         setConvertError('Failed to fetch exchange rate');
       }
@@ -556,9 +552,14 @@ export function ToolsTab() {
               variant="outline"
               size="icon"
               className="rounded-full mb-0.5"
-              onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); }}
+              onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); setSwapRotation(prev => prev + 180); }}
             >
-              <ArrowUpDown className="w-4 h-4" />
+              <motion.div
+                animate={{ rotate: swapRotation }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+              >
+                <ArrowUpDown className="w-4 h-4" />
+              </motion.div>
             </Button>
           </div>
 
@@ -594,9 +595,16 @@ export function ToolsTab() {
             variant="outline"
             size="sm"
             className="rounded-full"
-            onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); }}
+            onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); setSwapRotation(prev => prev + 180); }}
           >
-            <ArrowUpDown className="w-3.5 h-3.5 mr-1" /> Swap
+            <motion.div
+              animate={{ rotate: swapRotation }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="flex items-center"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1" />
+            </motion.div>
+            Swap
           </Button>
         </div>
 
@@ -605,7 +613,7 @@ export function ToolsTab() {
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50"
+            className="mt-4 stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50"
           >
             <div className="flex items-center justify-between flex-wrap gap-2">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
@@ -660,35 +668,52 @@ export function ToolsTab() {
               <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                 <History className="w-3 h-3" /> Recent Conversions
               </p>
-              <button
-                className="text-[10px] text-muted-foreground hover:text-foreground"
-                onClick={() => setConversionHistory([])}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10px] px-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
+                onClick={clearConversionHistory}
               >
-                Clear
-              </button>
+                <RotateCcw className="w-3 h-3 mr-1" /> Clear History
+              </Button>
             </div>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto">
-              {conversionHistory.map((h, i) => (
-                <motion.div
-                  key={h.timestamp + i}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="flex items-center justify-between p-2 rounded-lg border bg-muted/20 text-xs hover:bg-muted/40 transition-colors cursor-pointer"
-                  onClick={() => { setConvertFrom(h.from); setConvertTo(h.to); setConvertAmount(h.amount); }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{getCurrencyFlag(h.from)}</span>
-                    <span className="font-medium">{formatNum(parseFloat(h.amount))} {h.from}</span>
-                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                    <span>{getCurrencyFlag(h.to)}</span>
-                    <span className="font-bold">{formatNum(h.result)} {h.to}</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </motion.div>
-              ))}
+            <div className="rounded-lg border bg-muted/20 overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">From</th>
+                    <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">To</th>
+                    <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">Result</th>
+                    <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {conversionHistory.map((h, i) => (
+                    <motion.tr
+                      key={h.timestamp + i}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="border-b last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => { setConvertFrom(h.from); setConvertTo(h.to); setConvertAmount(String(h.amount)); }}
+                    >
+                      <td className="px-3 py-2 font-medium">
+                        {getCurrencyFlag(h.from)} {formatNum(h.amount)} {h.from}
+                      </td>
+                      <td className="px-3 py-2">
+                        <ArrowRight className="w-3 h-3 inline text-muted-foreground mr-1" />
+                        {getCurrencyFlag(h.to)} {h.to}
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold tabular-nums">
+                        {formatNum(h.result)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">
+                        {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

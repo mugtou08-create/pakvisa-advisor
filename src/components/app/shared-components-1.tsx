@@ -1912,3 +1912,169 @@ export function VisaFeeEstimator({ country, avgFee }: { country: CountryData; av
     </div>
   );
 }
+
+// ============ VISA SUCCESS RATE INDICATOR ============
+export function VisaSuccessIndicator({ country, profile }: { country: CountryData; profile: UserProfileData | null }) {
+  const { setActiveTab } = useAppStore();
+
+  // Base rate from visa difficulty
+  const baseRate = country.visaFree ? 99 : country.visaOnArrival ? 95 : country.etaAvailable ? 80 : 50;
+
+  // Profile-based adjustment
+  const profileBonus = useMemo(() => {
+    if (!profile) return 0;
+    let bonus = 0;
+    if (profile.hasPriorTravel) bonus += 8;
+    if (profile.priorCountries.length > 2) bonus += 5;
+    if (profile.monthlyIncomeUSD > 2000) bonus += 5;
+    if (profile.savingsUSD > 10000) bonus += 4;
+    if (profile.education === 'masters' || profile.education === 'phd') bonus += 3;
+    if (profile.hasHealthInsurance) bonus += 3;
+    if (profile.hasReturnTicket) bonus += 2;
+    if (profile.hasHotelBooking) bonus += 2;
+    if (profile.age >= 25 && profile.age <= 55) bonus += 3;
+    if (profile.languages.length > 1) bonus += 2;
+    if (profile.hasCriminalRecord) bonus -= 20;
+    return bonus;
+  }, [profile]);
+
+  const estimatedRate = Math.min(99, Math.max(5, baseRate + profileBonus));
+
+  const tier = estimatedRate >= 80 ? 'high' : estimatedRate >= 50 ? 'moderate' : 'low';
+  const tierLabel = tier === 'high' ? 'High Approval' : tier === 'moderate' ? 'Moderate' : 'Low Approval';
+  const tierColor = tier === 'high'
+    ? 'text-green-600 dark:text-green-400'
+    : tier === 'moderate'
+      ? 'text-amber-600 dark:text-amber-400'
+      : 'text-red-600 dark:text-red-400';
+  const barGradient = tier === 'high'
+    ? 'from-green-400 to-green-500'
+    : tier === 'moderate'
+      ? 'from-amber-400 to-orange-500'
+      : 'from-red-400 to-red-500';
+  const badgeClass = tier === 'high'
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+    : tier === 'moderate'
+      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+
+  // Generate tips based on profile gaps
+  const tips = useMemo(() => {
+    if (!profile) return [];
+    const t: string[] = [];
+    if (!profile.hasPriorTravel) t.push('Add travel history — prior visas significantly boost approval odds');
+    if (profile.monthlyIncomeUSD < 1000) t.push('Show strong financials — bank statements with healthy balance help');
+    if (!profile.hasHealthInsurance) t.push('Get travel health insurance — many countries require or prefer it');
+    if (!profile.hasReturnTicket) t.push('Book a return ticket — demonstrates intent to return');
+    if (!profile.hasHotelBooking) t.push('Secure accommodation proof — hotel bookings or invitation letters');
+    if (profile.languages.length <= 1) t.push('Learn basic phrases in the destination language');
+    if (profile.education === 'high-school' || profile.education === 'other') t.push('Higher education credentials improve credibility');
+    if (profile.savingsUSD < 5000) t.push('Maintain 6+ months of bank statements with steady deposits');
+    return t.slice(0, 4);
+  }, [profile]);
+
+  return (
+    <div className="p-3 rounded-lg border bg-muted/30 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Target className="w-4 h-4 text-amber-500" />
+          Visa Success Rate
+        </h3>
+        <Badge className={`text-[10px] font-semibold ${badgeClass}`} variant="secondary">
+          {tierLabel}
+        </Badge>
+      </div>
+
+      {profile ? (
+        <>
+          {/* Rate display */}
+          <div className="flex items-center gap-3">
+            <motion.span
+              className={`text-2xl font-bold tabular-nums ${tierColor}`}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, type: 'spring' }}
+            >
+              {estimatedRate}%
+            </motion.span>
+            <div className="flex-1">
+              <div className="h-3 rounded-full bg-muted overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full bg-gradient-to-r ${barGradient}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${estimatedRate}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                />
+              </div>
+              <div className="flex justify-between mt-0.5">
+                <span className="text-[9px] text-muted-foreground">0%</span>
+                <span className="text-[9px] text-muted-foreground">100%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Visa type note */}
+          <p className="text-[11px] text-muted-foreground">
+            Based on <strong>{country.name}</strong>&apos;s {country.visaFree ? 'visa-free' : country.visaOnArrival ? 'visa-on-arrival' : country.etaAvailable ? 'e-visa' : 'embassy visa'} policy and your profile strength.
+          </p>
+
+          {/* Tips */}
+          {tips.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Tips to improve</p>
+              {tips.map((tip, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-start gap-2 text-[11px] text-muted-foreground"
+                >
+                  <Lightbulb className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                  <span>{tip}</span>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* No profile — show generic estimate */}
+          <div className="flex items-center gap-3">
+            <span className={`text-2xl font-bold tabular-nums ${tierColor}`}>{baseRate}%</span>
+            <div className="flex-1">
+              <div className="h-3 rounded-full bg-muted overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full bg-gradient-to-r ${barGradient}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${baseRate}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                />
+              </div>
+              <div className="flex justify-between mt-0.5">
+                <span className="text-[9px] text-muted-foreground">0%</span>
+                <span className="text-[9px] text-muted-foreground">100%</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <p className="font-medium text-amber-700 dark:text-amber-400">Complete questionnaire for personalized rate</p>
+              <p className="text-muted-foreground mt-0.5">This is a general estimate. Your profile details can give a more accurate prediction.</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs w-full border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+            onClick={() => setActiveTab('questionnaire')}
+          >
+            <ClipboardList className="w-3.5 h-3.5 mr-1.5" />
+            Complete Profile Questionnaire
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}

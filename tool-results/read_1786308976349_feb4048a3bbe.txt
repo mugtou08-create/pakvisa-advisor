@@ -1,0 +1,1104 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  FileText, BarChart3, Search, ChevronRight, Star, Clock,
+     7→  DollarSign, Shield, Calendar, Heart,
+     8→  Send, Bot, User, Plus, Minus, ArrowUpDown,
+     9→  CheckCircle2, AlertTriangle, XCircle, Info,
+    10→  Globe, Plane, Building, GraduationCap, Briefcase, Landmark, Map,
+    11→  CreditCard, Home, Users, Lock, Lightbulb,
+    12→  RotateCcw, ToggleLeft, ToggleRight, Zap,
+    13→  TrendingUp, TrendingDown, ArrowRight, Printer, Share2,
+    14→  Eye, ClipboardList, Play, Save, Upload, ChevronUp, Compass,
+    15→  Gavel, BadgePercent, Timer, Wallet, Trophy, Phone, Mail,
+    16→  Keyboard, HelpCircle, Sparkles, ChevronDown, History, Target, SearchX,
+    17→  LayoutGrid, List, RefreshCw, Passports, Flame, Languages, CircleDollarSign, CircleCheckBig, FileWarning,
+    18→  Bell, Bookmark, AlertCircle, CalendarClock, Luggage, FileCheck2,
+    19→  Check, CalendarDays, AlarmClock, PackageOpen, PlaneTakeoff, UtensilsCrossed, MoreHorizontal, Calculator,
+    20→  Copy, SlidersHorizontal, BookOpen, PieChart as PieChartIcon,
+    21→} from 'lucide-react';
+    22→import { Button } from '@/components/ui/button';
+    23→import { Input } from '@/components/ui/input';
+    24→import { Label } from '@/components/ui/label';
+    25→import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+    26→import { Badge } from '@/components/ui/badge';
+    27→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    28→import { Checkbox } from '@/components/ui/checkbox';
+    29→import { Progress } from '@/components/ui/progress';
+    30→import { Separator } from '@/components/ui/separator';
+    31→import { ScrollArea } from '@/components/ui/scroll-area';
+    32→import { Skeleton } from '@/components/ui/skeleton';
+    33→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+    34→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+    35→import { Switch } from '@/components/ui/switch';
+    36→import { Slider } from '@/components/ui/slider';
+    37→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+    38→import { toast } from 'sonner';
+    39→import { useAppStore } from '@/lib/store';
+    40→import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, ChecklistItem } from '@/lib/types';
+    41→import { EXCHANGE_RATES, FLAG_ISO_MAP, getFlagUrl, getRegion } from '../constants';
+    42→import { FlagImage, BudgetPieChart } from '../shared-components-1';
+    43→import { ScoringHistoryPanel, TravelCostCalculator } from '../shared-components-2';
+    44→import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+    45→
+    46→const CHART_COLORS = ['#f59e0b', '#f97316', '#fbbf24', '#d97706', '#ea580c', '#c2410c', '#78716c'];
+    47→
+    48→function BudgetDonutChart({ budgetResult, budgetTripDays, budgetViewMode, budgetChartActiveIndex, setBudgetChartActiveIndex, formatNum }: {
+    49→  budgetResult: { visaFee: number; flightEst: number; accommodation: number; food: number; transport: number; insurance: number; misc: number; totalUSD: number; };
+    50→  budgetTripDays: number;
+    51→  budgetViewMode: 'total' | 'daily';
+    52→  budgetChartActiveIndex: number | null;
+    53→  setBudgetChartActiveIndex: (i: number | null) => void;
+    54→  formatNum: (n: number) => string;
+    55→}) {
+    56→  const divisor = budgetViewMode === 'daily' ? budgetTripDays : 1;
+    57→  const chartItems = [
+    58→    { name: 'Visa Fee', value: Math.round(budgetResult.visaFee / divisor), color: CHART_COLORS[0] },
+    59→    { name: 'Flights', value: Math.round(budgetResult.flightEst / divisor), color: CHART_COLORS[1] },
+    60→    { name: 'Accommodation', value: Math.round(budgetResult.accommodation / divisor), color: CHART_COLORS[2] },
+    61→    { name: 'Food', value: Math.round(budgetResult.food / divisor), color: CHART_COLORS[3] },
+    62→    { name: 'Transport', value: Math.round(budgetResult.transport / divisor), color: CHART_COLORS[4] },
+    63→    { name: 'Insurance', value: Math.round(budgetResult.insurance / divisor), color: CHART_COLORS[5] },
+    64→    { name: 'Misc', value: Math.round(budgetResult.misc / divisor), color: CHART_COLORS[6] },
+    65→  ].filter(d => d.value > 0);
+    66→  const chartIcons = [FileText, PlaneTakeoff, Home, UtensilsCrossed, Map, Shield, MoreHorizontal];
+    67→  const chartNames = ['Visa Fee', 'Flights', 'Accommodation', 'Food', 'Transport', 'Insurance', 'Misc'];
+    68→  const totalVal = chartItems.reduce((s, d) => s + d.value, 0);
+    69→
+    70→  const StepIcon = ({ icon: StepIconProp, className }: { icon: React.ElementType; className?: string }) => React.createElement(StepIconProp, { className });
+    71→
+    72→  return (
+    73→    <div className="p-4 rounded-lg border bg-muted/20">
+    74→      <div className="flex items-center justify-between mb-3">
+    75→        <div className="flex items-center gap-2">
+    76→          <PieChartIcon className="w-4 h-4 text-amber-500" />
+    77→          <p className="text-xs font-semibold">Budget Breakdown</p>
+    78→        </div>
+    79→        <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+    80→          <button
+    81→            className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${budgetViewMode === 'total' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'text-muted-foreground'}`}
+    82→            onClick={() => setBudgetViewMode('total')}
+    83→          >Total</button>
+    84→          <button
+    85→            className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${budgetViewMode === 'daily' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'text-muted-foreground'}`}
+    86→            onClick={() => setBudgetViewMode('daily')}
+    87→          >Daily</button>
+    88→        </div>
+    89→      </div>
+    90→      <div className="flex items-center gap-4">
+    91→        <div className="w-36 h-36 shrink-0">
+    92→          <ResponsiveContainer width="100%" height="100%">
+    93→            <PieChart>
+    94→              <Pie
+    95→                data={chartItems}
+    96→                cx="50%"
+    97→                cy="50%"
+    98→                innerRadius={35}
+    99→                outerRadius={58}
+   100→                paddingAngle={2}
+   101→                dataKey="value"
+   102→                onMouseEnter={(_, index) => setBudgetChartActiveIndex(index)}
+   103→                onMouseLeave={() => setBudgetChartActiveIndex(null)}
+   104→                stroke="none"
+   105→              >
+   106→                {chartItems.map((entry, index) => (
+   107→                  <Cell
+   108→                    key={`cell-${index}`}
+   109→                    fill={entry.color}
+   110→                    opacity={budgetChartActiveIndex === null || budgetChartActiveIndex === index ? 1 : 0.4}
+   111→                    stroke="none"
+   112→                  />
+   113→                ))}
+   114→              </Pie>
+   115→              <RechartsTooltip
+   116→                contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', fontSize: '11px', padding: '6px 10px' }}
+   117→                formatter={(value: number) => [`$${formatNum(value)}`, undefined]}
+   118→              />
+   119→            </PieChart>
+   120→          </ResponsiveContainer>
+   121→        </div>
+   122→        <div className="flex-1 space-y-1.5">
+   123→          {chartItems.map((item, idx) => {
+   124→            const pct = Math.round((item.value / totalVal) * 100);
+   125→            return (
+   126→              <div
+   127→                key={item.name}
+   128→                className={`flex items-center gap-2 text-[11px] px-1.5 py-0.5 rounded transition-all ${budgetChartActiveIndex === idx ? 'bg-muted font-semibold' : ''}`}
+   129→                onMouseEnter={() => setBudgetChartActiveIndex(idx)}
+   130→                onMouseLeave={() => setBudgetChartActiveIndex(null)}
+   131→              >
+   132→                <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
+   133→                <StepIcon icon={chartIcons[idx]} className="w-3 h-3 text-muted-foreground shrink-0" />
+   134→                <span className="flex-1 truncate">{chartNames[idx]}</span>
+   135→                <span className="font-medium tabular-nums">${formatNum(item.value)}</span>
+   136→                <span className="text-muted-foreground w-8 text-right">{pct}%</span>
+   137→              </div>
+   138→            );
+   139→          })}
+   140→        </div>
+   141→      </div>
+   142→    </div>
+   143→  );
+   144→}
+   145→
+   146→export function ToolsTab() {
+   147→  // --- Currency Converter State ---
+   148→  const [convertFrom, setConvertFrom] = useState('PKR');
+   149→  const [convertTo, setConvertTo] = useState('USD');
+   150→  const [convertAmount, setConvertAmount] = useState('10000');
+   151→  const [convertResult, setConvertResult] = useState<{ result: number; rate: number } | null>(null);
+   152→  const [convertLoading, setConvertLoading] = useState(false);
+   153→  const [convertError, setConvertError] = useState('');
+   154→  const [ratesInfo, setRatesInfo] = useState<Record<string, number>>({});
+   155→  const [currencySearch, setCurrencySearch] = useState('');
+   156→  const [showCurrencySearch, setShowCurrencySearch] = useState<'from' | 'to' | null>(null);
+   157→  const [conversionHistory, setConversionHistory] = useState<Array<{ from: string; to: string; amount: string; result: number; rate: number; timestamp: number }>>([]);
+   158→  const [multiCompareResults, setMultiCompareResults] = useState<Record<string, number>>({});
+   159→  const [showMultiCompare, setShowMultiCompare] = useState(false);
+   160→
+   161→  // --- Budget Calculator State ---
+   162→  const [budgetCountry, setBudgetCountry] = useState('');
+   163→  const [budgetTripDays, setBudgetTripDays] = useState(7);
+   164→  const [budgetTravelers, setBudgetTravelers] = useState(1);
+   165→  const [budgetStyle, setBudgetStyle] = useState<'budget' | 'standard' | 'luxury'>('standard');
+   166→  const [budgetSeason, setBudgetSeason] = useState<'peak' | 'shoulder' | 'offpeak'>('shoulder');
+   167→  const [budgetResult, setBudgetResult] = useState<{
+   168→    visaFee: number; flightEst: number; accommodation: number;
+   169→    food: number; transport: number; insurance: number; misc: number;
+   170→    totalPKR: number; totalUSD: number;
+   171→    perDayUSD: number; perPersonUSD: number;
+   172→  } | null>(null);
+   173→  const [budgetCustomize, setBudgetCustomize] = useState(false);
+   174→  const [customMultiplier, setCustomMultiplier] = useState<Record<string, number>>({
+   175→    accommodation: 1, food: 1, transport: 1, insurance: 1,
+   176→  });
+   177→  const [budgetViewMode, setBudgetViewMode] = useState<'total' | 'daily'>('total');
+   178→  const [budgetChartActiveIndex, setBudgetChartActiveIndex] = useState<number | null>(null);
+   179→
+   180→  // Currency list for converter
+   181→  const currencies = useMemo(() => [
+   182→    { code: 'PKR', name: 'Pakistani Rupee', symbol: '₨', flag: '🇵🇰' },
+   183→    { code: 'USD', name: 'US Dollar', symbol: '$', flag: '🇺🇸' },
+   184→    { code: 'EUR', name: 'Euro', symbol: '€', flag: '🇪🇺' },
+   185→    { code: 'GBP', name: 'British Pound', symbol: '£', flag: '🇬🇧' },
+   186→    { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ', flag: '🇦🇪' },
+   187→    { code: 'SAR', name: 'Saudi Riyal', symbol: '﷼', flag: '🇸🇦' },
+   188→    { code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM', flag: '🇲🇾' },
+   189→    { code: 'THB', name: 'Thai Baht', symbol: '฿', flag: '🇹🇭' },
+   190→    { code: 'TRY', name: 'Turkish Lira', symbol: '₺', flag: '🇹🇷' },
+   191→    { code: 'CNY', name: 'Chinese Yuan', symbol: '¥', flag: '🇨🇳' },
+   192→    { code: 'JPY', name: 'Japanese Yen', symbol: '¥', flag: '🇯🇵' },
+   193→    { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', flag: '🇦🇺' },
+   194→    { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$', flag: '🇨🇦' },
+   195→    { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$', flag: '🇸🇬' },
+   196→    { code: 'QAR', name: 'Qatari Riyal', symbol: '﷼', flag: '🇶🇦' },
+   197→    { code: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.', flag: '🇴🇲' },
+   198→    { code: 'BHD', name: 'Bahraini Dinar', symbol: 'BD', flag: '🇧🇭' },
+   199→    { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'KD', flag: '🇰🇼' },
+   200→    { code: 'INR', name: 'Indian Rupee', symbol: '₹', flag: '🇮🇳' },
+   201→    { code: 'AZN', name: 'Azerbaijani Manat', symbol: '₼', flag: '🇦🇿' },
+   202→    { code: 'ZAR', name: 'South African Rand', symbol: 'R', flag: '🇿🇦' },
+   203→    { code: 'KRW', name: 'South Korean Won', symbol: '₩', flag: '🇰🇷' },
+   204→    { code: 'IDR', name: 'Indonesian Rupiah', symbol: 'Rp', flag: '🇮🇩' },
+   205→    { code: 'MVR', name: 'Maldivian Rufiyaa', symbol: 'Rf', flag: '🇲🇻' },
+   206→    { code: 'EGP', name: 'Egyptian Pound', symbol: 'E£', flag: '🇪🇬' },
+   207→    { code: 'BND', name: 'Brunei Dollar', symbol: 'B$', flag: '🇧🇳' },
+   208→  ], []);
+   209→
+   210→  const filteredCurrencies = useMemo(() => {
+   211→    if (!currencySearch) return currencies;
+   212→    const q = currencySearch.toLowerCase();
+   213→    return currencies.filter(c =>
+   214→      c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+   215→    );
+   216→  }, [currencySearch, currencies]);
+   217→
+   218→  // Fetch countries for budget calculator
+   219→  const [allCountries, setAllCountries] = useState<CountryData[]>([]);
+   220→  useEffect(() => {
+   221→    fetch('/api/countries').then(r => r.json()).then(data => {
+   222→      if (data.data) setAllCountries(data.data);
+   223→    }).catch(() => {});
+   224→  }, []);
+   225→
+   226→  // Perform currency conversion
+   227→  const doConvert = useCallback(async () => {
+   228→    if (!convertAmount || parseFloat(convertAmount) <= 0) return;
+   229→    setConvertLoading(true);
+   230→    setConvertError('');
+   231→    try {
+   232→      const resp = await fetch(`/api/currency?from=${convertFrom}&to=${convertTo}&amount=${convertAmount}`);
+   233→      const data = await resp.json();
+   234→      if (data.success) {
+   235→        setConvertResult(data.data);
+   236→        // Add to history
+   237→        setConversionHistory(prev => {
+   238→          const entry = { from: convertFrom, to: convertTo, amount: convertAmount, result: data.data.result, rate: data.data.rate, timestamp: Date.now() };
+   239→          const updated = [entry, ...prev].slice(0, 10);
+   240→          return updated;
+   241→        });
+   242→      } else {
+   243→        setConvertError('Failed to fetch exchange rate');
+   244→      }
+   245→    } catch {
+   246→      setConvertError('Network error');
+   247→    } finally {
+   248→      setConvertLoading(false);
+   249→    }
+   250→  }, [convertFrom, convertTo, convertAmount]);
+   251→
+   252→  // Auto-convert on change
+   253→  useEffect(() => {
+   254→    const timeout = setTimeout(doConvert, 300);
+   255→    return () => clearTimeout(timeout);
+   256→  }, [doConvert]);
+   257→
+   258→  // Fetch all PKR rates for the rate table
+   259→  useEffect(() => {
+   260→    Promise.all(
+   261→      currencies.filter(c => c.code !== 'PKR').map(async (c) => {
+   262→        try {
+   263→          const resp = await fetch(`/api/currency?from=PKR&to=${c.code}&amount=1`);
+   264→          const data = await resp.json();
+   265→          if (data.success) {
+   266→            setRatesInfo(prev => ({ ...prev, [c.code]: data.data.rate }));
+   267→          }
+   268→        } catch { /* skip */ }
+   269→      })
+   270→    );
+   271→  }, []);
+   272→
+   273→  // Multi-currency comparison
+   274→  const doMultiCompare = useCallback(async () => {
+   275→    if (!convertAmount || parseFloat(convertAmount) <= 0) return;
+   276→    const topCurrencies = ['USD', 'EUR', 'GBP', 'AED', 'SAR', 'MYR', 'THB', 'TRY', 'CNY', 'JPY', 'SGD', 'KRW'];
+   277→    const results: Record<string, number> = {};
+   278→    await Promise.all(
+   279→      topCurrencies.map(async (code) => {
+   280→        try {
+   281→          const resp = await fetch(`/api/currency?from=${convertFrom}&to=${code}&amount=${convertAmount}`);
+   282→          const data = await resp.json();
+   283→          if (data.success) results[code] = data.data.result;
+   284→        } catch { /* skip */ }
+   285→      })
+   286→    );
+   287→    setMultiCompareResults(results);
+   288→  }, [convertFrom, convertAmount]);
+   289→
+   290→  // Toggle multi-compare
+   291→  useEffect(() => {
+   292→    if (showMultiCompare) doMultiCompare();
+   293→  }, [showMultiCompare, doMultiCompare]);
+   294→
+   295→  // Copy conversion to clipboard
+   296→  const copyConversion = () => {
+   297→    if (!convertResult) return;
+   298→    const text = `${formatNum(parseFloat(convertAmount))} ${convertFrom} = ${formatNum(convertResult.result)} ${convertTo} (Rate: 1 ${convertFrom} = ${formatNum(convertResult.rate)} ${convertTo})`;
+   299→    navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard!')).catch(() => {});
+   300→  };
+   301→
+   302→  // Calculate budget
+   303→  const calculateBudget = useCallback(() => {
+   304→    const country = allCountries.find(c => c.name === budgetCountry);
+   305→    if (!country) return;
+   306→
+   307→    const pkrRate = EXCHANGE_RATES.USD || 278.5; // use same rate as currency converter
+   308→
+   309→    // Travel style multipliers
+   310→    const styleMultipliers = { budget: 0.6, standard: 1, luxury: 2 };
+   311→    const style = styleMultipliers[budgetStyle];
+   312→
+   313→    // Season multipliers
+   314→    const seasonMultipliers = { peak: 1.3, shoulder: 1, offpeak: 0.75 };
+   315→    const season = seasonMultipliers[budgetSeason];
+   316→
+   317→    // Visa fee from DB (not affected by travel style)
+   318→    const visaFeeUSD = country.costProfile?.visaFeeUSD || 50;
+   319→    const serviceFeeUSD = country.costProfile?.serviceFeeUSD || 0;
+   320→
+   321→    // Estimated flight cost from Pakistan (based on region)
+   322→    const flightEstimates: Record<string, number> = {
+   323→      'Asia': 400, 'Middle East': 300, 'Europe': 800, 'Africa': 600,
+   324→      'Americas': 900, 'Oceania': 1000, 'Europe/Asia': 600,
+   325→    };
+   326→    const region = getRegion(country);
+   327→    const flightUSD = (flightEstimates[region] || 500) * season;
+   328→
+   329→    // Accommodation (from DB monthlyRentUSD, convert to daily)
+   330→    const dailyRentUSD = (country.costProfile?.monthlyRentUSD || 500) / 30 * style * season;
+   331→
+   332→    // Food (from DB monthlyFoodUSD, convert to daily)
+   333→    const dailyFoodUSD = (country.costProfile?.monthlyFoodUSD || 200) / 30 * style * season;
+   334→
+   335→    // Transport (from DB monthlyTransportUSD, convert to daily)
+   336→    const dailyTransportUSD = (country.costProfile?.monthlyTransportUSD || 100) / 30 * style * season;
+   337→
+   338→    // Insurance (slightly varies by style)
+   339→    const dailyInsuranceUSD = 3 * (budgetStyle === 'luxury' ? 1.5 : budgetStyle === 'budget' ? 0.7 : 1);
+   340→
+   341→    // Apply custom multipliers
+   342→    const adjRentUSD = dailyRentUSD * (customMultiplier.accommodation || 1);
+   343→    const adjFoodUSD = dailyFoodUSD * (customMultiplier.food || 1);
+   344→    const adjTransportUSD = dailyTransportUSD * (customMultiplier.transport || 1);
+   345→    const adjInsuranceUSD = dailyInsuranceUSD * (customMultiplier.insurance || 1);
+   346→
+   347→    // Misc (10% buffer)
+   348→    const dailyTotal = adjRentUSD + adjFoodUSD + adjTransportUSD + adjInsuranceUSD;
+   349→    const miscUSD = dailyTotal * budgetTripDays * 0.1;
+   350→
+   351→    const totalUSD = (visaFeeUSD + serviceFeeUSD) * budgetTravelers + (flightUSD * budgetTravelers) + (dailyTotal * budgetTripDays * budgetTravelers) + miscUSD;
+   352→
+   353→    setBudgetResult({
+   354→      visaFee: (visaFeeUSD + serviceFeeUSD) * budgetTravelers,
+   355→      flightEst: flightUSD * budgetTravelers,
+   356→      accommodation: adjRentUSD * budgetTripDays * budgetTravelers,
+   357→      food: adjFoodUSD * budgetTripDays * budgetTravelers,
+   358→      transport: adjTransportUSD * budgetTripDays * budgetTravelers,
+   359→      insurance: adjInsuranceUSD * budgetTripDays * budgetTravelers,
+   360→      misc: miscUSD,
+   361→      totalUSD: Math.round(totalUSD),
+   362→      totalPKR: Math.round(totalUSD * pkrRate),
+   363→      perDayUSD: Math.round(totalUSD / budgetTripDays),
+   364→      perPersonUSD: Math.round(totalUSD / budgetTravelers),
+   365→    });
+   366→  }, [budgetCountry, budgetTripDays, budgetTravelers, allCountries, budgetStyle, budgetSeason, customMultiplier]);
+   367→
+   368→  // Get budget tips
+   369→  const getBudgetTips = useCallback((countryName: string, result: typeof budgetResult) => {
+   370→    if (!result || !countryName) return [];
+   371→    const tips: string[] = [];
+   372→    const largestExpense = [
+   373→      { name: 'flights', val: result.flightEst },
+   374→      { name: 'accommodation', val: result.accommodation },
+   375→      { name: 'food', val: result.food },
+   376→      { name: 'visa', val: result.visaFee },
+   377→    ].sort((a, b) => b.val - a.val)[0];
+   378→    if (largestExpense.name === 'flights') tips.push(`✈️ Flights are your biggest expense (${Math.round(result.flightEst / result.totalUSD * 100)}%). Book 2-3 months early for best fares from PIA, Emirates, or Turkish Airlines.`);
+   379→    if (largestExpense.name === 'accommodation') tips.push(`🏨 Accommodation is your biggest expense (${Math.round(result.accommodation / result.totalUSD * 100)}%). Consider hostels, Airbnb, or booking 30+ days in advance for discounts.`);
+   380→    if (largestExpense.name === 'food') tips.push(`🍽️ Food costs are significant (${Math.round(result.food / result.totalUSD * 100)}%). Try local street food and markets — they're often 50-70% cheaper than restaurants.`);
+   381→    if (result.perPersonUSD > 3000) tips.push('💡 Consider a shorter trip or fewer travelers to reduce costs.');
+   382→    if (budgetTripDays > 14) tips.push(`📅 For a ${budgetTripDays}-day trip, consider weekly/monthly accommodation discounts (Airbnb, local guesthouses).`);
+   383→    if (budgetTravelers > 2) tips.push(`👥 With ${budgetTravelers} travelers, group discounts on flights and tours may be available — ask your travel agent.`);
+   384→    if (budgetSeason === 'peak') tips.push('🔴 Peak season prices are ~30% higher. Consider traveling in shoulder season for better deals.');
+   385→    if (budgetStyle === 'budget') tips.push('🎒 Budget mode selected. You can further save by using public transport and eating at local restaurants.');
+   386→    if (budgetStyle === 'luxury') tips.push('💎 Luxury mode selected. Don\'t forget to budget for shopping, spa, and premium experiences.');
+   387→    return tips;
+   388→  }, [budgetTripDays, budgetTravelers, budgetSeason, budgetStyle]);
+   389→
+   390→  // Copy budget summary
+   391→  const copyBudgetSummary = () => {
+   392→    if (!budgetResult) return;
+   393→    const country = allCountries.find(c => c.name === budgetCountry);
+   394→    const text = `Travel Budget Estimate — ${budgetCountry}\n` +
+   395→      `Duration: ${budgetTripDays} days | Travelers: ${budgetTravelers} | Style: ${budgetStyle}\n` +
+   396→      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+   397→      `Visa & Processing: $${formatNum(budgetResult.visaFee)}\n` +
+   398→      `Flights: $${formatNum(budgetResult.flightEst)}\n` +
+   399→      `Accommodation: $${formatNum(budgetResult.accommodation)}\n` +
+   400→      `Food & Dining: $${formatNum(budgetResult.food)}\n` +
+   401→      `Transport: $${formatNum(budgetResult.transport)}\n` +
+   402→      `Insurance: $${formatNum(budgetResult.insurance)}\n` +
+   403→      `Misc (10%): $${formatNum(budgetResult.misc)}\n` +
+   404→      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+   405→      `TOTAL: $${formatNum(budgetResult.totalUSD)} (₨ ${formatNum(budgetResult.totalPKR)})\n` +
+   406→      `Per day: $${formatNum(budgetResult.perDayUSD)} | Per person: $${formatNum(budgetResult.perPersonUSD)}`;
+   407→    navigator.clipboard.writeText(text).then(() => toast.success('Budget summary copied!')).catch(() => {});
+   408→  };
+   409→
+   410→  // Popular currency pairs
+   411→  const popularPairs = [
+   412→    { from: 'PKR', to: 'USD', label: 'PKR → USD' },
+   413→    { from: 'PKR', to: 'AED', label: 'PKR → AED' },
+   414→    { from: 'PKR', to: 'SAR', label: 'PKR → SAR' },
+   415→    { from: 'PKR', to: 'GBP', label: 'PKR → GBP' },
+   416→    { from: 'PKR', to: 'EUR', label: 'PKR → EUR' },
+   417→    { from: 'PKR', to: 'MYR', label: 'PKR → MYR' },
+   418→    { from: 'PKR', to: 'THB', label: 'PKR → THB' },
+   419→    { from: 'PKR', to: 'TRY', label: 'PKR → TRY' },
+   420→  ];
+   421→
+   422→  // Amount presets
+   423→  const amountPresets = [
+   424→    { label: '1,000', value: '1000' },
+   425→    { label: '5,000', value: '5000' },
+   426→    { label: '10,000', value: '10000' },
+   427→    { label: '50,000', value: '50000' },
+   428→    { label: '100,000', value: '100000' },
+   429→    { label: '500,000', value: '500000' },
+   430→  ];
+   431→
+   432→  const formatNum = (n: number) => {
+   433→    if (n < 0.01) return n.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+   434→    if (n < 1) return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+   435→    return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+   436→  };
+   437→  const getCurrencySymbol = (code: string) => currencies.find(c => c.code === code)?.symbol || code;
+   438→  const getCurrencyFlag = (code: string) => currencies.find(c => c.code === code)?.flag || '🌐';
+   439→  const getCurrencyName = (code: string) => currencies.find(c => c.code === code)?.name || code;
+   440→
+   441→  return (
+   442→    <div className="space-y-6">
+   443→      {/* Section Header */}
+   444→      <div className="flex items-center gap-3 mb-2">
+   445→        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
+   446→          <Compass className="w-5 h-5 text-white" />
+   447→        </div>
+   448→        <div>
+   449→          <h2 className="text-xl font-bold">Travel Tools</h2>
+   450→          <p className="text-xs text-muted-foreground">Essential tools for Pakistani travelers — convert currencies, plan budgets</p>
+   451→        </div>
+   452→      </div>
+   453→
+   454→      {/* Currency Converter */}
+   455→      <section className="glass-section p-4 md:p-6 rounded-xl">
+   456→        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+   457→          <h3 className="text-lg font-bold flex items-center gap-2">
+   458→            <CircleDollarSign className="w-5 h-5 text-amber-500" />
+   459→            Currency Converter
+   460→            <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Live Rates</Badge>
+   461→          </h3>
+   462→          <div className="flex gap-1.5">
+   463→            <TooltipProvider>
+   464→              <Tooltip>
+   465→                <TooltipTrigger asChild>
+   466→                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setShowMultiCompare(!showMultiCompare)}>
+   467→                    <BarChart3 className="w-3.5 h-3.5 mr-1" /> Compare
+   468→                  </Button>
+   469→                </TooltipTrigger>
+   470→                <TooltipContent>Compare amount across multiple currencies</TooltipContent>
+   471→              </Tooltip>
+   472→            </TooltipProvider>
+   473→            {convertResult && (
+   474→              <TooltipProvider>
+   475→                <Tooltip>
+   476→                  <TooltipTrigger asChild>
+   477→                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyConversion}>
+   478→                      <Copy className="w-3.5 h-3.5 mr-1" /> Copy
+   479→                    </Button>
+   480→                  </TooltipTrigger>
+   481→                  <TooltipContent>Copy conversion result</TooltipContent>
+   482→                </Tooltip>
+   483→              </TooltipProvider>
+   484→            )}
+   485→          </div>
+   486→        </div>
+   487→        <p className="text-xs text-muted-foreground mb-4">Convert between Pakistani Rupee and 26+ world currencies with live exchange rates.</p>
+   488→
+   489→        {/* Quick Pairs */}
+   490→        <div className="flex flex-wrap gap-2 mb-4">
+   491→          {popularPairs.map(pair => (
+   492→            <button
+   493→              key={pair.label}
+   494→              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+   495→                convertFrom === pair.from && convertTo === pair.to
+   496→                  ? 'bg-amber-600 text-white shadow-sm'
+   497→                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+   498→              }`}
+   499→              onClick={() => { setConvertFrom(pair.from); setConvertTo(pair.to); }}
+   500→            >
+   501→              {pair.label}
+   502→            </button>
+   503→          ))}
+   504→        </div>
+   505→
+   506→        {/* Amount Presets */}
+   507→        <div className="flex items-center gap-2 mb-4">
+   508→          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Quick amounts:</span>
+   509→          <div className="flex gap-1.5">
+   510→            {amountPresets.map(p => (
+   511→              <button
+   512→                key={p.value}
+   513→                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
+   514→                  convertAmount === p.value
+   515→                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+   516→                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+   517→                }`}
+   518→                onClick={() => setConvertAmount(p.value)}
+   519→              >
+   520→                {getCurrencySymbol(convertFrom)}{p.label}
+   521→              </button>
+   522→            ))}
+   523→          </div>
+   524→        </div>
+   525→
+   526→        {/* Converter UI */}
+   527→        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
+   528→          {/* From */}
+   529→          <div className="space-y-2">
+   530→            <Label className="text-xs font-medium">From</Label>
+   531→            <div className="flex gap-2">
+   532→              <Select value={convertFrom} onValueChange={setConvertFrom}>
+   533→                <SelectTrigger className="w-40">
+   534→                  <SelectValue />
+   535→                </SelectTrigger>
+   536→                <SelectContent className="max-h-60">
+   537→                  {currencies.map(c => (
+   538→                    <SelectItem key={c.code} value={c.code}>{c.flag} {c.code} — {c.name}</SelectItem>
+   539→                  ))}
+   540→                </SelectContent>
+   541→              </Select>
+   542→              <Input
+   543→                type="number"
+   544→                value={convertAmount}
+   545→                onChange={e => setConvertAmount(e.target.value)}
+   546→                placeholder="Amount"
+   547→                className="flex-1 text-lg font-semibold"
+   548→                min="0"
+   549→              />
+   550→            </div>
+   551→          </div>
+   552→
+   553→          {/* Swap Button (desktop) */}
+   554→          <div className="hidden md:flex justify-center">
+   555→            <Button
+   556→              variant="outline"
+   557→              size="icon"
+   558→              className="rounded-full mb-0.5"
+   559→              onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); }}
+   560→            >
+   561→              <ArrowUpDown className="w-4 h-4" />
+   562→            </Button>
+   563→          </div>
+   564→
+   565→          {/* To */}
+   566→          <div className="space-y-2">
+   567→            <Label className="text-xs font-medium">To</Label>
+   568→            <div className="flex gap-2">
+   569→              <Select value={convertTo} onValueChange={setConvertTo}>
+   570→                <SelectTrigger className="w-40">
+   571→                  <SelectValue />
+   572→                </SelectTrigger>
+   573→                <SelectContent className="max-h-60">
+   574→                  {currencies.map(c => (
+   575→                    <SelectItem key={c.code} value={c.code}>{c.flag} {c.code} — {c.name}</SelectItem>
+   576→                  ))}
+   577→                </SelectContent>
+   578→              </Select>
+   579→              <div className="flex-1 flex items-center rounded-md border bg-muted/50 px-3 h-9 gap-2">
+   580→                <span className={`text-lg font-bold ${convertResult ? 'text-foreground' : 'text-muted-foreground'}`}>
+   581→                  {convertResult ? formatNum(convertResult.result) : convertLoading ? '...' : '0.00'}
+   582→                </span>
+   583→                {convertResult && (
+   584→                  <span className="text-xs text-muted-foreground">{getCurrencySymbol(convertTo)}</span>
+   585→                )}
+   586→              </div>
+   587→            </div>
+   588→          </div>
+   589→        </div>
+   590→
+   591→        {/* Mobile Swap Button */}
+   592→        <div className="flex md:hidden justify-center my-2">
+   593→          <Button
+   594→            variant="outline"
+   595→            size="sm"
+   596→            className="rounded-full"
+   597→            onClick={() => { const tmp = convertFrom; setConvertFrom(convertTo); setConvertTo(tmp); }}
+   598→          >
+   599→            <ArrowUpDown className="w-3.5 h-3.5 mr-1" /> Swap
+   600→          </Button>
+   601→        </div>
+   602→
+   603→        {/* Rate Info */}
+   604→        {convertResult && (
+   605→          <motion.div
+   606→            initial={{ opacity: 0, y: 4 }}
+   607→            animate={{ opacity: 1, y: 0 }}
+   608→            className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50"
+   609→          >
+   610→            <div className="flex items-center justify-between flex-wrap gap-2">
+   611→              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+   612→                1 {getCurrencyFlag(convertFrom)} {convertFrom} = {formatNum(convertResult.rate)} {getCurrencyFlag(convertTo)} {convertTo}
+   613→              </p>
+   614→              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+   615→                {formatNum(parseFloat(convertAmount))} {convertFrom} = <span className="font-bold text-base">{formatNum(convertResult.result)}</span> {convertTo}
+   616→              </p>
+   617→            </div>
+   618→          </motion.div>
+   619→        )}
+   620→
+   621→        {convertError && (
+   622→          <p className="text-xs text-red-500 mt-2">{convertError}</p>
+   623→        )}
+   624→
+   625→        {/* Multi-Currency Comparison Panel */}
+   626→        {showMultiCompare && (
+   627→          <motion.div
+   628→            initial={{ opacity: 0, height: 0 }}
+   629→            animate={{ opacity: 1, height: 'auto' }}
+   630→            exit={{ opacity: 0, height: 0 }}
+   631→            className="mt-4 p-4 rounded-lg border bg-muted/20"
+   632→          >
+   633→            <div className="flex items-center justify-between mb-3">
+   634→              <p className="text-xs font-semibold text-muted-foreground">
+   635→                {formatNum(parseFloat(convertAmount))} {convertFrom} in multiple currencies:
+   636→              </p>
+   637→              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5" onClick={doMultiCompare}>
+   638→                <RefreshCw className="w-3 h-3 mr-1" /> Refresh
+   639→              </Button>
+   640→            </div>
+   641→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+   642→              {Object.entries(multiCompareResults).map(([code, value]) => (
+   643→                <div key={code} className="p-2.5 rounded-lg border bg-background text-center hover:shadow-sm transition-all">
+   644→                  <div className="flex items-center justify-center gap-1.5 mb-1">
+   645→                    <span className="text-base">{getCurrencyFlag(code)}</span>
+   646→                    <span className="text-[11px] font-bold text-muted-foreground">{code}</span>
+   647→                  </div>
+   648→                  <p className="text-sm font-bold">{formatNum(value)}</p>
+   649→                  <p className="text-[10px] text-muted-foreground">{getCurrencyName(code)}</p>
+   650→                </div>
+   651→              ))}
+   652→            </div>
+   653→          </motion.div>
+   654→        )}
+   655→
+   656→        {/* Conversion History */}
+   657→        {conversionHistory.length > 0 && (
+   658→          <div className="mt-4">
+   659→            <div className="flex items-center justify-between mb-2">
+   660→              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+   661→                <History className="w-3 h-3" /> Recent Conversions
+   662→              </p>
+   663→              <button
+   664→                className="text-[10px] text-muted-foreground hover:text-foreground"
+   665→                onClick={() => setConversionHistory([])}
+   666→              >
+   667→                Clear
+   668→              </button>
+   669→            </div>
+   670→            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+   671→              {conversionHistory.map((h, i) => (
+   672→                <motion.div
+   673→                  key={h.timestamp + i}
+   674→                  initial={{ opacity: 0, x: -8 }}
+   675→                  animate={{ opacity: 1, x: 0 }}
+   676→                  transition={{ delay: i * 0.03 }}
+   677→                  className="flex items-center justify-between p-2 rounded-lg border bg-muted/20 text-xs hover:bg-muted/40 transition-colors cursor-pointer"
+   678→                  onClick={() => { setConvertFrom(h.from); setConvertTo(h.to); setConvertAmount(h.amount); }}
+   679→                >
+   680→                  <div className="flex items-center gap-2">
+   681→                    <span>{getCurrencyFlag(h.from)}</span>
+   682→                    <span className="font-medium">{formatNum(parseFloat(h.amount))} {h.from}</span>
+   683→                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
+   684→                    <span>{getCurrencyFlag(h.to)}</span>
+   685→                    <span className="font-bold">{formatNum(h.result)} {h.to}</span>
+   686→                  </div>
+   687→                  <span className="text-[10px] text-muted-foreground">
+   688→                    {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+   689→                  </span>
+   690→                </motion.div>
+   691→              ))}
+   692→            </div>
+   693→          </div>
+   694→        )}
+   695→
+   696→        {/* Quick Rate Reference Table */}
+   697→        {Object.keys(ratesInfo).length > 0 && (
+   698→          <div className="mt-5">
+   699→            <p className="text-xs font-semibold mb-2 text-muted-foreground">Quick Reference — 1 PKR equals:</p>
+   700→            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+   701→              {currencies.filter(c => c.code !== 'PKR' && ratesInfo[c.code]).map(c => (
+   702→                <button
+   703→                  key={c.code}
+   704→                  className={`p-2 rounded-lg border text-center transition-all hover:shadow-sm ${
+   705→                    convertTo === c.code ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' : 'border-border/50 bg-muted/30'
+   706→                  }`}
+   707→                  onClick={() => { setConvertTo(c.code); }}
+   708→                >
+   709→                  <div className="text-lg mb-0.5">{c.flag}</div>
+   710→                  <div className="text-[10px] font-bold">{c.code}</div>
+   711→                  <div className="text-[10px] text-muted-foreground">{ratesInfo[c.code] < 1 ? ratesInfo[c.code].toFixed(4) : ratesInfo[c.code].toFixed(2)}</div>
+   712→                </button>
+   713→              ))}
+   714→            </div>
+   715→          </div>
+   716→        )}
+   717→      </section>
+   718→
+   719→      {/* Travel Budget Calculator */}
+   720→      <section className="glass-section p-4 md:p-6 rounded-xl">
+   721→        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+   722→          <h3 className="text-lg font-bold flex items-center gap-2">
+   723→            <Wallet className="w-5 h-5 text-amber-500" />
+   724→            Travel Budget Calculator
+   725→            <Badge variant="secondary" className="text-[10px] bg-amber-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">From Pakistan</Badge>
+   726→          </h3>
+   727→          {budgetResult && (
+   728→            <TooltipProvider>
+   729→              <Tooltip>
+   730→                <TooltipTrigger asChild>
+   731→                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyBudgetSummary}>
+   732→                    <Copy className="w-3.5 h-3.5 mr-1" /> Export
+   733→                  </Button>
+   734→                </TooltipTrigger>
+   735→                <TooltipContent>Copy budget summary to clipboard</TooltipContent>
+   736→              </Tooltip>
+   737→            </TooltipProvider>
+   738→          )}
+   739→        </div>
+   740→        <p className="text-xs text-muted-foreground mb-4">Estimate the total cost of your trip from Pakistan — visa, flights, accommodation, food, transport, and insurance.</p>
+   741→
+   742→        {/* Travel Style & Season */}
+   743→        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+   744→          {/* Travel Style Selector */}
+   745→          <div className="space-y-2">
+   746→            <Label className="text-xs font-medium">Travel Style</Label>
+   747→            <div className="grid grid-cols-3 gap-1.5">
+   748→              {([
+   749→                { id: 'budget' as const, label: 'Backpacker', icon: '🎒', desc: 'Hostels & street food', color: 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' },
+   750→                { id: 'standard' as const, label: 'Standard', icon: '🏨', desc: 'Hotels & restaurants', color: 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' },
+   751→                { id: 'luxury' as const, label: 'Luxury', icon: '💎', desc: '5-star & fine dining', color: 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' },
+   752→              ]).map(style => (
+   753→                <button
+   754→                  key={style.id}
+   755→                  className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+   756→                    budgetStyle === style.id
+   757→                      ? style.color + ' shadow-sm'
+   758→                      : 'border-transparent bg-muted/30 hover:bg-muted/50'
+   759→                  }`}
+   760→                  onClick={() => setBudgetStyle(style.id)}
+   761→                >
+   762→                  <div className="text-lg mb-0.5">{style.icon}</div>
+   763→                  <div className="text-[11px] font-bold">{style.label}</div>
+   764→                  <div className="text-[9px] text-muted-foreground leading-tight">{style.desc}</div>
+   765→                </button>
+   766→              ))}
+   767→            </div>
+   768→          </div>
+   769→
+   770→          {/* Season Selector */}
+   771→          <div className="space-y-2">
+   772→            <Label className="text-xs font-medium">Travel Season</Label>
+   773→            <div className="grid grid-cols-3 gap-1.5">
+   774→              {([
+   775→                { id: 'offpeak' as const, label: 'Off-Peak', icon: '🌤️', desc: 'Best prices', color: 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' },
+   776→                { id: 'shoulder' as const, label: 'Shoulder', icon: '⛅', desc: 'Balanced', color: 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' },
+   777→                { id: 'peak' as const, label: 'Peak', icon: '🔥', desc: 'Highest prices', color: 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' },
+   778→              ]).map(s => (
+   779→                <button
+   780→                  key={s.id}
+   781→                  className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+   782→                    budgetSeason === s.id
+   783→                      ? s.color + ' shadow-sm'
+   784→                      : 'border-transparent bg-muted/30 hover:bg-muted/50'
+   785→                  }`}
+   786→                  onClick={() => setBudgetSeason(s.id)}
+   787→                >
+   788→                  <div className="text-lg mb-0.5">{s.icon}</div>
+   789→                  <div className="text-[11px] font-bold">{s.label}</div>
+   790→                  <div className="text-[9px] text-muted-foreground leading-tight">{s.desc}</div>
+   791→                </button>
+   792→              ))}
+   793→            </div>
+   794→          </div>
+   795→        </div>
+   796→
+   797→        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+   798→          {/* Country Select */}
+   799→          <div className="space-y-2">
+   800→            <Label className="text-xs font-medium">Destination Country</Label>
+   801→            <Select value={budgetCountry} onValueChange={setBudgetCountry}>
+   802→              <SelectTrigger>
+   803→                <SelectValue placeholder="Select a country..." />
+   804→              </SelectTrigger>
+   805→              <SelectContent className="max-h-60">
+   806→                {allCountries.sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+   807→                  <SelectItem key={c.name} value={c.name}>
+   808→                    {c.flagEmoji} {c.name}
+   809→                  </SelectItem>
+   810→                ))}
+   811→              </SelectContent>
+   812→            </Select>
+   813→          </div>
+   814→
+   815→          {/* Trip Duration */}
+   816→          <div className="space-y-2">
+   817→            <Label className="text-xs font-medium">Trip Duration (days)</Label>
+   818→            <div className="flex items-center gap-3">
+   819→              <Slider
+   820→                value={[budgetTripDays]}
+   821→                onValueChange={([v]) => setBudgetTripDays(v)}
+   822→                min={1}
+   823→                max={90}
+   824→                step={1}
+   825→                className="flex-1"
+   826→              />
+   827→              <span className="text-sm font-bold w-12 text-right">{budgetTripDays}d</span>
+   828→            </div>
+   829→            <div className="flex gap-1.5">
+   830→              {[3, 7, 14, 30].map(d => (
+   831→                <button
+   832→                  key={d}
+   833→                  className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+   834→                    budgetTripDays === d
+   835→                      ? 'bg-amber-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+   836→                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+   837→                  }`}
+   838→                  onClick={() => setBudgetTripDays(d)}
+   839→                >
+   840→                  {d}d
+   841→                </button>
+   842→              ))}
+   843→            </div>
+   844→          </div>
+   845→
+   846→          {/* Travelers */}
+   847→          <div className="space-y-2">
+   848→            <Label className="text-xs font-medium">Number of Travelers</Label>
+   849→            <div className="flex items-center gap-3">
+   850→              <Slider
+   851→                value={[budgetTravelers]}
+   852→                onValueChange={([v]) => setBudgetTravelers(v)}
+   853→                min={1}
+   854→                max={10}
+   855→                step={1}
+   856→                className="flex-1"
+   857→              />
+   858→              <span className="text-sm font-bold w-8 text-right">{budgetTravelers}</span>
+   859→            </div>
+   860→          </div>
+   861→        </div>
+   862→
+   863→        {/* Customize Toggle */}
+   864→        <div className="flex items-center justify-between mb-3 p-2.5 rounded-lg bg-muted/30 border">
+   865→          <div className="flex items-center gap-2">
+   866→            <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+   867→            <div>
+   868→              <p className="text-xs font-medium">Customize Cost Estimates</p>
+   869→              <p className="text-[10px] text-muted-foreground">Adjust individual expense categories</p>
+   870→            </div>
+   871→          </div>
+   872→          <Switch checked={budgetCustomize} onCheckedChange={setBudgetCustomize} />
+   873→        </div>
+   874→
+   875→        {/* Custom Sliders */}
+   876→        {budgetCustomize && (
+   877→          <motion.div
+   878→            initial={{ opacity: 0, height: 0 }}
+   879→            animate={{ opacity: 1, height: 'auto' }}
+   880→            exit={{ opacity: 0, height: 0 }}
+   881→            className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border bg-muted/20"
+   882→          >
+   883→            {([
+   884→              { key: 'accommodation', label: 'Accommodation', icon: Home, color: 'text-amber-500' },
+   885→              { key: 'food', label: 'Food & Dining', icon: UtensilsCrossed, color: 'text-orange-500' },
+   886→              { key: 'transport', label: 'Transport', icon: MapPin, color: 'text-amber-500' },
+   887→              { key: 'insurance', label: 'Insurance', icon: Shield, color: 'text-amber-500' },
+   888→            ] as const).map(item => (
+   889→              <div key={item.key} className="space-y-1.5">
+   890→                <div className="flex items-center justify-between">
+   891→                  <div className="flex items-center gap-1.5">
+   892→                    <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
+   893→                    <span className="text-[11px] font-medium">{item.label}</span>
+   894→                  </div>
+   895→                  <span className="text-[11px] font-bold">{customMultiplier[item.key] ? Math.round(customMultiplier[item.key] * 100) : 100}%</span>
+   896→                </div>
+   897→                <Slider
+   898→                  value={[customMultiplier[item.key] || 1]}
+   899→                  onValueChange={([v]) => setCustomMultiplier(prev => ({ ...prev, [item.key]: v }))}
+   900→                  min={0.3}
+   901→                  max={3}
+   902→                  step={0.1}
+   903→                  className="w-full"
+   904→                />
+   905→                <div className="flex justify-between text-[9px] text-muted-foreground">
+   906→                  <span>30%</span>
+   907→                  <span className="font-medium text-foreground">100% (Standard)</span>
+   908→                  <span>300%</span>
+   909→                </div>
+   910→              </div>
+   911→            ))}
+   912→          </motion.div>
+   913→        )}
+   914→
+   915→        <Button
+   916→          onClick={calculateBudget}
+   917→          disabled={!budgetCountry}
+   918→          className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700"
+   919→        >
+   920→          <Calculator className="w-4 h-4 mr-2" />
+   921→          Calculate Trip Budget
+   922→        </Button>
+   923→
+   924→        {/* Budget Result */}
+   925→        {budgetResult && (
+   926→          <motion.div
+   927→            initial={{ opacity: 0, y: 8 }}
+   928→            animate={{ opacity: 1, y: 0 }}
+   929→            className="mt-5 space-y-4"
+   930→          >
+   931→            {/* Total Banner */}
+   932→            <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white p-5">
+   933→              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+   934→              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+   935→              <div className="relative text-center">
+   936→                <p className="text-xs opacity-80 mb-1">Estimated Total Trip Cost</p>
+   937→                <p className="text-3xl font-bold">₨ {formatNum(budgetResult.totalPKR)}</p>
+   938→                <p className="text-base opacity-90 mt-0.5">≈ ${formatNum(budgetResult.totalUSD)} USD</p>
+   939→                <div className="flex items-center justify-center gap-4 mt-2">
+   940→                  <div className="text-center">
+   941→                    <p className="text-[10px] opacity-60">Per Day</p>
+   942→                    <p className="text-sm font-bold">${formatNum(budgetResult.perDayUSD)}</p>
+   943→                  </div>
+   944→                  <div className="w-px h-6 bg-white/30" />
+   945→                  <div className="text-center">
+   946→                    <p className="text-[10px] opacity-60">Per Person</p>
+   947→                    <p className="text-sm font-bold">${formatNum(budgetResult.perPersonUSD)}</p>
+   948→                  </div>
+   949→                </div>
+   950→                <p className="text-[10px] opacity-60 mt-2">
+   951→                  {budgetTravelers} traveler{budgetTravelers > 1 ? 's' : ''} · {budgetTripDays} days · {budgetCountry} · {budgetStyle === 'budget' ? 'Backpacker' : budgetStyle === 'luxury' ? 'Luxury' : 'Standard'} · {budgetSeason === 'peak' ? 'Peak' : budgetSeason === 'offpeak' ? 'Off-Peak' : 'Shoulder'} Season
+   952→                </p>
+   953→              </div>
+   954→            </div>
+   955→
+   956→            {/* Donut Chart - Budget Breakdown Visualization (Task 12-B Feature 4) */}
+   957→            <BudgetDonutChart budgetResult={budgetResult} budgetTripDays={budgetTripDays} budgetViewMode={budgetViewMode} budgetChartActiveIndex={budgetChartActiveIndex} setBudgetChartActiveIndex={setBudgetChartActiveIndex} formatNum={formatNum} />
+   958→
+   959→            {/* Visual Cost Breakdown Bar */}
+   960→            <div className="p-3 rounded-lg border bg-muted/20">
+   961→              <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Cost Distribution</p>
+   962→              <div className="flex rounded-full overflow-hidden h-4 mb-2">
+   963→                {[
+   964→                  { label: 'Visa', value: budgetResult.visaFee, color: 'bg-blue-500' },
+   965→                  { label: 'Flights', value: budgetResult.flightEst, color: 'bg-purple-500' },
+   966→                  { label: 'Stay', value: budgetResult.accommodation, color: 'bg-amber-500' },
+   967→                  { label: 'Food', value: budgetResult.food, color: 'bg-orange-500' },
+   968→                  { label: 'Transport', value: budgetResult.transport, color: 'bg-amber-500' },
+   969→                  { label: 'Insurance', value: budgetResult.insurance, color: 'bg-amber-500' },
+   970→                  { label: 'Misc', value: budgetResult.misc, color: 'bg-gray-400' },
+   971→                ].map(item => {
+   972→                  const pct = Math.max(Math.round((item.value / budgetResult.totalUSD) * 100), item.value > 0 ? 1 : 0);
+   973→                  return pct > 0 ? (
+   974→                    <TooltipProvider key={item.label}>
+   975→                      <Tooltip>
+   976→                        <TooltipTrigger asChild>
+   977→                          <div className={`${item.color} transition-all`} style={{ width: `${pct}%` }} />
+   978→                        </TooltipTrigger>
+   979→                        <TooltipContent>
+   980→                          {item.label}: ${formatNum(item.value)} ({pct}%)
+   981→                        </TooltipContent>
+   982→                      </Tooltip>
+   983→                    </TooltipProvider>
+   984→                  ) : null;
+   985→                })}
+   986→              </div>
+   987→              <div className="flex flex-wrap gap-x-3 gap-y-1">
+   988→                {[
+   989→                  { label: 'Visa', color: 'bg-blue-500' },
+   990→                  { label: 'Flights', color: 'bg-purple-500' },
+   991→                  { label: 'Accommodation', color: 'bg-amber-500' },
+   992→                  { label: 'Food', color: 'bg-orange-500' },
+   993→                  { label: 'Transport', color: 'bg-amber-500' },
+   994→                  { label: 'Insurance', color: 'bg-amber-500' },
+   995→                  { label: 'Misc', color: 'bg-gray-400' },
+   996→                ].map(l => (
+   997→                  <div key={l.label} className="flex items-center gap-1">
+   998→                    <div className={`w-2 h-2 rounded-full ${l.color}`} />
+   999→                    <span className="text-[9px] text-muted-foreground">{l.label}</span>
+  1000→                  </div>
+  1001→                ))}
+  1002→              </div>
+  1003→            </div>
+  1004→
+  1005→            {/* Cost Breakdown Cards */}
+  1006→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  1007→              {[
+  1008→                { label: 'Visa & Processing', value: budgetResult.visaFee, icon: FileText, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  1009→                { label: 'Estimated Flights', value: budgetResult.flightEst, icon: PlaneTakeoff, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  1010→                { label: 'Accommodation', value: budgetResult.accommodation, icon: Home, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  1011→                { label: 'Food & Dining', value: budgetResult.food, icon: UtensilsCrossed, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  1012→                { label: 'Transport', value: budgetResult.transport, icon: MapPin, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  1013→                { label: 'Travel Insurance', value: budgetResult.insurance, icon: Shield, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  1014→              ].map(item => {
+  1015→                const pct = Math.round((item.value / budgetResult.totalUSD) * 100);
+  1016→                return (
+  1017→                  <div key={item.label} className="p-3 rounded-lg border bg-muted/30 space-y-2">
+  1018→                    <div className="flex items-center gap-3">
+  1019→                      <div className={`w-9 h-9 rounded-lg ${item.color} flex items-center justify-center flex-shrink-0`}>
+  1020→                        {React.createElement(item.icon, { className: 'w-4 h-4' })}
+  1021→                      </div>
+  1022→                      <div className="flex-1 min-w-0">
+  1023→                        <p className="text-xs text-muted-foreground">{item.label}</p>
+  1024→                        <div className="flex items-baseline gap-1">
+  1025→                          <p className="text-sm font-bold">${formatNum(item.value)}</p>
+  1026→                          <p className="text-[10px] text-muted-foreground">₨ {formatNum(item.value * (EXCHANGE_RATES.USD || 278.5))}</p>
+  1027→                        </div>
+  1028→                      </div>
+  1029→                      <Badge variant="secondary" className="text-[10px] px-1.5">{pct}%</Badge>
+  1030→                    </div>
+  1031→                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+  1032→                      <motion.div
+  1033→                        initial={{ width: 0 }}
+  1034→                        animate={{ width: `${pct}%` }}
+  1035→                        transition={{ duration: 0.6, delay: 0.2 }}
+  1036→                        className={`h-full rounded-full ${
+  1037→                          item.label.includes('Visa') ? 'bg-blue-500' :
+  1038→                          item.label.includes('Flight') ? 'bg-purple-500' :
+  1039→                          item.label.includes('Accommodation') ? 'bg-amber-500' :
+  1040→                          item.label.includes('Food') ? 'bg-orange-500' :
+  1041→                          item.label.includes('Transport') ? 'bg-amber-500' : 'bg-amber-500'
+  1042→                        }`}
+  1043→                      />
+  1044→                    </div>
+  1045→                  </div>
+  1046→                );
+  1047→              })}
+  1048→            </div>
+  1049→
+  1050→            {/* Misc */}
+  1051→            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+  1052→              <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 flex items-center justify-center flex-shrink-0">
+  1053→                <MoreHorizontal className="w-4 h-4" />
+  1054→              </div>
+  1055→              <div className="flex-1">
+  1056→                <p className="text-xs text-muted-foreground">Miscellaneous (10% buffer)</p>
+  1057→                <p className="text-sm font-bold">${formatNum(budgetResult.misc)}</p>
+  1058→              </div>
+  1059→              <p className="text-xs text-muted-foreground">₨ {formatNum(budgetResult.misc * (EXCHANGE_RATES.USD || 278.5))}</p>
+  1060→            </div>
+  1061→
+  1062→            {/* Budget Pie Chart (Feature 12-C) */}
+  1063→            <div className="p-4 rounded-lg border bg-muted/20">
+  1064→              <div className="flex items-center gap-2 mb-3">
+  1065→                <PieChartIcon className="w-4 h-4 text-amber-500" />
+  1066→                <p className="text-xs font-semibold">Budget Overview</p>
+  1067→              </div>
+  1068→              <BudgetPieChart data={[
+  1069→                { name: 'Visa Fee', value: Math.round(budgetResult.visaFee), color: '#F59E0B' },
+  1070→                { name: 'Flights', value: Math.round(budgetResult.flightEst), color: '#D97706' },
+  1071→                { name: 'Accommodation', value: Math.round(budgetResult.accommodation), color: '#B45309' },
+  1072→                { name: 'Food', value: Math.round(budgetResult.food), color: '#EA580C' },
+  1073→                { name: 'Transport', value: Math.round(budgetResult.transport), color: '#DC2626' },
+  1074→                { name: 'Activities', value: Math.round(budgetResult.misc), color: '#FB923C' },
+  1075→                { name: 'Insurance', value: Math.round(budgetResult.insurance), color: '#FBBF24' },
+  1076→              ].filter(d => d.value > 0)} />
+  1077→            </div>
+  1078→
+  1079→            {/* Budget Optimization Tips */}
+  1080→            {getBudgetTips(budgetCountry, budgetResult).length > 0 && (
+  1081→              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30">
+  1082→                <div className="flex items-center gap-1.5 mb-2">
+  1083→                  <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+  1084→                  <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">Budget Optimization Tips</p>
+  1085→                </div>
+  1086→                <div className="space-y-1.5">
+  1087→                  {getBudgetTips(budgetCountry, budgetResult).map((tip, i) => (
+  1088→                    <p key={i} className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">{tip}</p>
+  1089→                  ))}
+  1090→                </div>
+  1091→              </div>
+  1092→            )}
+  1093→
+  1094→            <p className="text-[10px] text-muted-foreground text-center">
+  1095→              ⚠️ Estimates are approximate based on average costs. Actual prices vary by season, booking time, and lifestyle. Flight estimates are from major Pakistani cities (Karachi/Lahore/Islamabad).
+  1096→            </p>
+  1097→          </motion.div>
+  1098→        )}
+  1099→      </section>
+  1100→    </div>
+  1101→  );
+  1102→}
+  1103→
+  1104→

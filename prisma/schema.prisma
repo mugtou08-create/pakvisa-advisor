@@ -202,3 +202,11 @@ model NewsletterSubscriber {
   subscribedAt DateTime @default(now())
   isActive     Boolean  @default(true)
 }
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  event     String
+  data      String   @default("{}")
+  ip        String   @default("unknown")
+  createdAt DateTime @default(now())
+}

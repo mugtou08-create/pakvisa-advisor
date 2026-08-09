@@ -63,7 +63,7 @@ export function ReportsTab() {
         </div>
         <h3 className="text-lg font-semibold">No Reports Yet</h3>
         <p className="text-sm text-muted-foreground mt-1 mb-4">Complete the questionnaire to generate your first visa eligibility report.</p>
-        <Button className="bg-amber-600 hover:bg-amber-700" onClick={() => setActiveTab('questionnaire')}>
+        <Button className="empty-state-cta bg-amber-600 hover:bg-amber-700" onClick={() => setActiveTab('questionnaire')}>
           <Play className="w-4 h-4 mr-1.5" /> Start Assessment
         </Button>
       </Card>
@@ -160,7 +160,7 @@ export function ReportsTab() {
                 {[...scoreResults].sort((a, b) => b.finalScore - a.finalScore).map((r, idx) => (
                   <button
                     key={idx}
-                    className={`w-full flex items-center gap-3 p-2 rounded-lg text-left text-sm hover:bg-muted/50 transition-colors ${selectedIdx === idx ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-500' : ''}`}
+                    className={`w-full flex items-center gap-3 p-2 rounded-lg text-left text-sm hover:bg-muted/50 transition-all duration-200 hover-lift-smooth ${selectedIdx === idx ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-500' : ''}`}
                     onClick={() => setSelectedIdx(idx)}
                   >
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${r.finalScore >= 70 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : r.finalScore >= 40 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
@@ -196,7 +196,7 @@ export function ReportsTab() {
                   { label: 'Cost Suitability', value: selected.costSuitability, color: 'text-amber-600' },
                   { label: 'Final Score', value: selected.finalScore, color: 'text-amber-600' },
                 ].map((item, i) => (
-                  <div key={item.label} className="text-center p-3 rounded-lg bg-muted/50">
+                  <div key={item.label} className={`stat-card-highlight text-center p-3 rounded-lg ${i === 3 ? 'ring-2 ring-amber-500' : ''}`}>
                     <div className={`text-3xl font-bold ${item.color}`}><AnimatedScoreNumber value={Math.round(item.value)} delay={i * 150} /></div>
                     <div className="text-xs text-muted-foreground mt-1">{item.label}</div>
                   </div>
@@ -206,12 +206,14 @@ export function ReportsTab() {
 
               {/* Component Breakdown */}
               <div>
-                <h4 className="text-sm font-semibold mb-3">Score Breakdown</h4>
+                <h4 className="card-section-title text-sm font-semibold mb-3">Score Breakdown</h4>
                 <div className="space-y-2">
                   {selected.components.map((c, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <span className="w-32 text-sm text-muted-foreground truncate">{c.name}</span>
-                      <ColorProgress value={c.score} className="flex-1" />
+                      <div className="flex-1">
+                        <ColorProgress value={c.score} className="progress-amber" />
+                      </div>
                       <MicroSparkline data={[40, 55, 48, 62, 70, c.score, 65 + (c.score * 0.15 + c.name.charCodeAt(0) % 15)]} width={45} height={16} />
                       <span className="w-10 text-sm text-right font-medium">{Math.round(c.score)}%</span>
                     </div>
@@ -222,7 +224,7 @@ export function ReportsTab() {
               {/* Hard Filters */}
               {selected.hardFilters.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold mb-3">Hard Filters</h4>
+                  <h4 className="card-section-title text-sm font-semibold mb-3">Hard Filters</h4>
                   <div className="space-y-2">
                     {selected.hardFilters.map((f, i) => (
                       <div key={i} className={`flex items-center gap-2 p-2 rounded-lg text-sm ${f.passed ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
@@ -240,7 +242,7 @@ export function ReportsTab() {
               {/* Missing Items */}
               {selected.missingItems.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <h4 className="card-section-title text-sm font-semibold mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-500" /> Missing Items
                   </h4>
                   <div className="space-y-1">
@@ -256,7 +258,7 @@ export function ReportsTab() {
 
               {/* Tips */}
               <div>
-                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <h4 className="card-section-title text-sm font-semibold mb-3 flex items-center gap-2">
                   <Lightbulb className="w-4 h-4 text-amber-500" /> Improvement Tips
                 </h4>
                 <div className="space-y-2">
@@ -271,7 +273,7 @@ export function ReportsTab() {
 
               {/* Source Citations */}
               <div>
-                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <h4 className="card-section-title text-sm font-semibold mb-3 flex items-center gap-2">
                   <ExternalLink className="w-4 h-4 text-amber-500" /> Source Citations
                 </h4>
                 <div className="space-y-1">
@@ -287,7 +289,7 @@ export function ReportsTab() {
 
               {/* Modifiers */}
               <div>
-                <h4 className="text-sm font-semibold mb-3">Score Modifiers</h4>
+                <h4 className="card-section-title text-sm font-semibold mb-3">Score Modifiers</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {[
                     { label: 'Policy Strictness', value: selected.modifiers.policyStrictness },

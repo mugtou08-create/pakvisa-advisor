@@ -767,3 +767,181 @@ Stage Summary:
 - Compare tab: enhanced empty state with SVG illustration + 3 popular comparison quick-select buttons
 - QuickCompareCards integrated as visual preview before running full comparison
 - ESLint passed cleanly — zero errors
+
+---
+Task ID: 14-B
+Agent: full-stack-developer
+Task: New features - embassy locator, success indicator, currency converter enhancement
+
+Work Log:
+- Updated Zustand store (`src/lib/store.ts`) — added `conversionHistory` (max 5 entries), `addConversion`, `clearConversionHistory` with persistence
+- Created `VisaSuccessIndicator` component in `shared-components-1.tsx` (~130 lines) — calculates estimated visa approval rate from visa difficulty + profile strength, shows animated progress bar with green/amber/red gradient, tier badge (High Approval/Moderate/Low Approval), personalized improvement tips when profile exists, CTA to complete questionnaire when no profile
+- Created `EmbassyLocatorPanel` component in `shared-components-2.tsx` (~135 lines) — uses shadcn Card with amber styling, shows embassy address/phone/email/hours from EMBASSY_DATA, Google Maps "Directions" button, "Website" button, "Book Appointment" button, animated Documents Checklist Reminder sub-section with country-specific items (adds extra docs for non-VOA/visa-free countries, expensive fees)
+- Integrated `EmbassyLocatorPanel` into `CountryDetailDialog` (replaced old `EmbassyInfoSection`)
+- Integrated `VisaSuccessIndicator` into `CountryDetailDialog` (before Visa Fee Estimator), passes `userProfile` from store
+- Added `FileCheck2` to lucide-react imports in shared-components-2.tsx
+- Enhanced currency converter in `tools-tab.tsx`:
+  - Replaced local `conversionHistory` state with Zustand store
+  - Added `swapRotation` state + Framer Motion `motion.div` wrapper with `rotate` animation (180deg on each click) for both desktop and mobile swap buttons
+  - Applied `.stat-card-compact` class to conversion result display
+  - Replaced old history list with mini table (4 columns: From, To, Result, Time) with clickable rows to re-run conversions
+  - Added "Clear History" button with red styling and RotateCcw icon
+- Ran `bun run lint` — passed with zero errors
+- Dev server running with no compilation errors, all routes 200
+
+Stage Summary:
+- 2 new components: `VisaSuccessIndicator` (~130 lines), `EmbassyLocatorPanel` (~135 lines)
+- Both integrated into `CountryDetailDialog` — appear when viewing any country
+- Currency converter enhanced: Zustand-persisted history, animated swap button, mini table layout, stat-card-compact result display
+- ESLint: 0 errors, 0 warnings
+- All colors in amber/orange/mango range
+---
+Task ID: 14-A
+Agent: full-stack-developer
+Task: Component-level styling enhancements across 8 areas
+
+Work Log:
+- Read worklog.md (from bottom) to understand project state and CSS class inventory in globals.css (~3927 lines)
+- Applied 8 areas of styling enhancements using existing CSS utility classes
+
+1. Header (page.tsx): Logo pulse animation, nav hover-glow-amber, theme toggle scale, mobile menu rotate(90deg)
+2. Footer (page.tsx): glass-card + footer-gradient-enhanced, hover-scale-breathe on social icons, section-divider-dots between sections
+3. Explore Tab (explore-tab.tsx): glass-card-strong on hero, hover-glow-amber on Check Visa button, hover-lift-smooth on chips, section-gradient-divider-enhanced
+4. Compare Tab (compare-tab.tsx): glass-card on containers, stat-card-compact on score cards, hover-lift-smooth on country buttons, card-section-title on headers
+5. Reports Tab (reports-tab.tsx): stat-card-highlight on score cards, progress-amber on bars, card-section-title on all sections, hover-lift-smooth on report items, empty-state-cta
+6. AI Chat Tab (ai-chat-tab.tsx): glass-card-strong on container, chat-bubble-user/bot on messages, chat-typing-indicator on loading, chat-input-container on input
+7. Admin Dialog (admin-dialog.tsx): glass-card on DialogContent, stat-card-compact on analytics, card-section-title on headers, hover-glow-amber on AI toggle, fixed blue/purple to amber/orange
+8. Dialogs (dialogs.tsx): tooltip-premium on floating chat + quick actions tooltips, card-section-title on section headers
+
+- Ran bun run lint - passed with zero errors
+
+Stage Summary:
+- 8 component areas enhanced with existing CSS utility classes from globals.css
+- 0 new CSS added - all styling from the ~637 lines of classes added in Task 13-A
+- All colors kept in amber/orange/mango range (fixed blue/purple in admin analytics to orange/amber)
+- ESLint passed cleanly - zero errors
+- No breaking changes to existing functionality
+
+---
+Task ID: 14-C
+Agent: full-stack-developer
+Task: Analytics tracking API, notification panel, feedback widget
+
+Work Log:
+- Added `AnalyticsEvent` model to `prisma/schema.prisma` (id, event, data as JSON string, ip, createdAt)
+- Ran `bun run db:push` — schema synced, Prisma Client regenerated
+- Created `src/app/api/analytics/track/route.ts`:
+  - POST endpoint accepting `{ event: string, data?: Record<string, unknown> }`
+  - Validates event type against whitelist: page_view, country_view, search, comparison, score_generated, chat_message, newsletter_signup
+  - Rate limited: 30 req/min/IP via existing rate-limit.ts
+  - Stores events in AnalyticsEvent table via Prisma
+  - Returns proper 400/429/500 error responses
+- Enhanced `NotificationBell` component in `shared-components-3.tsx`:
+  - Added `AnimatePresence` import from framer-motion
+  - Replaced static dropdown with Framer Motion animated dropdown (opacity + y + scale)
+  - Applied `.glass-card-strong` to dropdown panel
+  - Applied `.chat-bubble-bot` style to unread notification items
+  - Added type-based icons: Gavel (policy), AlarmClock (expiry), PlaneTakeoff (new-country), Info (fallback)
+  - Added `getTimeAgo()` helper for relative timestamps (Just now, Xm, Xh, Xd, Xw)
+  - "Mark all read" button only shown when unread notifications exist
+  - Empty state: Sparkles icon + "You're all caught up! ✨" when all notifications are read
+  - Kept outside-click-to-close behavior via ref
+- Updated Zustand store (`src/lib/store.ts`):
+  - Added `userFeedback: { rating: number; comment: string; submittedAt: string } | null`
+  - Added `submitFeedback(rating, comment)` action
+  - Added `userFeedback` to partialize for persistence
+- Created `FeedbackWidget` component in `dialogs.tsx` (~155 lines):
+  - Small fixed-position card (bottom-left, z-40) appearing after 60 seconds
+  - Auto-dismisses after 10 seconds if user doesn't interact
+  - "How's your experience?" heading with dismiss (X) button
+  - 5-star clickable rating with amber fill when selected, muted when unselected
+  - Optional text feedback via Textarea (2 rows)
+  - Submit button stores feedback in Zustand via `submitFeedback`
+  - Shows "Thank you!" message with Sparkles icon after submission, auto-closes after 3s
+  - Framer Motion slide-up + fade-in entrance/exit animation
+  - `.glass-card-strong` styling, amber submit button
+  - Respects previously submitted feedback (won't show again)
+- Added `FeedbackWidget` to `page.tsx` next to QuickActionsToolbar
+- Added `Textarea` import to dialogs.tsx
+- Ran `bun run lint` — passed with zero errors
+- Dev server running with no compilation errors, all routes 200
+
+Stage Summary:
+- Analytics API: POST `/api/analytics/track` with 7 event types, 30 req/min rate limit, Prisma storage
+- NotificationBell: Framer Motion animations, type-based icons, relative timestamps, empty state, glass-card styling
+- FeedbackWidget: 60s delayed appearance, auto-dismiss, 5-star rating, Zustand persistence, thank-you animation
+- ESLint: 0 errors, 0 warnings
+- All colors in amber/orange range
+
+---
+## Session: Round 17 — Component Styling, New Features & Analytics
+
+### Task ID: 14 — Styling + Features + Analytics
+
+**Status**: ✅ Completed
+
+#### QA Testing Results
+- **ESLint**: 0 errors throughout all sub-tasks
+- **Dev Server**: Compiles and serves correctly (200 OK)
+- **API Endpoints**: All 19 endpoints verified (18 previous + analytics/track)
+
+#### Task 14-A: Component-Level Styling (8 Areas)
+Applied existing CSS utility classes to 6 component files:
+1. **Header**: Logo pulse-glow, nav hover-glow-amber, theme toggle scale, mobile menu rotate
+2. **Footer**: Glass-card + footer-gradient-enhanced, social icons hover-scale-breathe, section-divider-dots
+3. **Explore Tab**: Hero glass-card-strong, Check Visa hover-glow-amber, chips hover-lift-smooth, section dividers
+4. **Compare Tab**: Glass-card containers, stat-card-compact scores, card-section-title headers
+5. **Reports Tab**: stat-card-highlight on score cards, progress-amber on bars, hover-lift-smooth on items
+6. **AI Chat Tab**: glass-card-strong header, chat-bubble-user/bot, typing indicator, chat-input-container
+7. **Admin Dialog**: glass-card, card-section-title, stat-card-compact, hover-glow-amber on toggles
+8. **Dialogs**: tooltip-premium, card-section-title, empty-state-cta
+
+#### Task 14-B: New Features
+1. **EmbassyLocatorPanel** — Embassy contact info, Google Maps directions, website links, documents checklist reminder
+2. **VisaSuccessIndicator** — Approval rate estimate, animated progress bar, color-coded labels, improvement tips
+3. **Currency Converter Enhancement** — Conversion history (max 5 in Zustand), swap button animation, mini table, stat-card-compact
+
+#### Task 14-C: Analytics + Notifications + Feedback
+1. **Analytics Tracking API** (`/api/analytics/track`) — POST with 7 event types, 30 req/min rate limit, Prisma storage
+2. **Enhanced Notification Bell** — Framer Motion dropdown, type-based icons, relative time, mark-all-read, empty state
+3. **Feedback Widget** — 60s delay appearance, 5-star rating, textarea, Zustand persistence, auto-dismiss
+
+---
+
+## Current Project Status
+
+### Application Health: ✅ STABLE
+- **19 API endpoints** all functional
+- **ESLint**: 0 errors
+- **Homepage**: 140KB rendered HTML
+- **Database**: 70 countries, NewsletterSubscriber, AnalyticsEvent tables
+
+### API Routes (19 total)
+Previous 18 + `/api/analytics/track` ← **NEW in Round 17**
+
+### CSS: ~3926 lines globals.css
+### Components: ~16,000+ lines total across 13 key files
+### Database Models: 11 (Country, VisaType, CostProfile, VisaRequirement, ScoringWeight, AuditLog, Session, AdminUser, SiteSettings, NewsletterSubscriber, AnalyticsEvent)
+
+### Unresolved Issues
+1. Browser QA sandbox limitation (gateway proxy)
+2. z-ai-web-dev-sdk sandbox-only
+3. No user accounts (localStorage only)
+4. Social media/affiliate links are placeholders
+5. SEO: SPA needs static country pages
+
+### Next Phase Recommendations
+1. SEO static pages for top destinations
+2. Real affiliate link integration
+3. User account system with email auth
+4. PWA support (service worker + manifest)
+5. Email newsletter backend (SendGrid/Mailgun)
+6. Trip planner timeline
+7. Urdu language toggle
+8. Performance optimization
+
+### Admin Access
+- URL: Click ⚙️ gear icon in header
+- Username: admin
+- Password: PakVisa@2024!
+- Features: AI toggle, maintenance mode, analytics

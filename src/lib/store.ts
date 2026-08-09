@@ -47,6 +47,11 @@ interface AppState {
   addChatMessage: (role: 'user' | 'assistant', content: string) => void;
   savedBudgets: Record<string, { duration: number; tier: string; foodPerDay: number; transportPerDay: number; activities: number }>;
   saveBudget: (countryCode: string, budget: { duration: number; tier: string; foodPerDay: number; transportPerDay: number; activities: number }) => void;
+  conversionHistory: Array<{ from: string; to: string; amount: number; result: number; timestamp: string }>;
+  addConversion: (entry: { from: string; to: string; amount: number; result: number }) => void;
+  clearConversionHistory: () => void;
+  userFeedback: { rating: number; comment: string; submittedAt: string } | null;
+  submitFeedback: (rating: number, comment: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -106,6 +111,15 @@ export const useAppStore = create<AppState>()(
       saveBudget: (countryCode, budget) => set((state) => ({
         savedBudgets: { ...state.savedBudgets, [countryCode]: budget },
       })),
+      conversionHistory: [],
+      addConversion: (entry) => set((state) => ({
+        conversionHistory: [{ ...entry, timestamp: new Date().toISOString() }, ...state.conversionHistory].slice(0, 5),
+      })),
+      clearConversionHistory: () => set({ conversionHistory: [] }),
+      userFeedback: null,
+      submitFeedback: (rating, comment) => set({
+        userFeedback: { rating, comment, submittedAt: new Date().toISOString() },
+      }),
     }),
     {
       name: 'pakvisa-store',
@@ -121,6 +135,8 @@ export const useAppStore = create<AppState>()(
         travelChecklist: state.travelChecklist,
         chatHistory: state.chatHistory,
         savedBudgets: state.savedBudgets,
+        conversionHistory: state.conversionHistory,
+        userFeedback: state.userFeedback,
       }),
     }
   )

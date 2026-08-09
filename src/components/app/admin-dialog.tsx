@@ -180,7 +180,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[85vh] p-0 overflow-hidden flex flex-col glass-card">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center">
@@ -312,13 +312,13 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
 
               {activeSection === 'settings' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="card-section-title text-lg font-semibold flex items-center gap-2">
                     <Settings className="w-5 h-5 text-amber-500" />
                     Feature Toggles
                   </h3>
 
                   {/* AI Features Toggle */}
-                  <Card className="border-amber-200 dark:border-amber-800">
+                  <Card className="border-amber-200 dark:border-amber-800 hover-glow-amber">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -405,21 +405,21 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50">
+                        <div className="stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50">
                           <div className="flex items-center gap-2 mb-1">
                             <Zap className="w-3.5 h-3.5 text-amber-500" />
                             <span className="text-xs font-medium text-amber-700 dark:text-amber-400">AI Engine</span>
                           </div>
-                          <span className={`text-sm font-semibold ${aiEnabled ? 'text-green-600' : 'text-red-500'}`}>
+                          <span className={`stat-card-number text-sm font-semibold ${aiEnabled ? 'text-green-600' : 'text-red-500'}`}>
                             {aiEnabled ? 'Online' : 'Offline'}
                           </span>
                         </div>
-                        <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200/50">
+                        <div className="stat-card-compact p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200/50">
                           <div className="flex items-center gap-2 mb-1">
                             <Server className="w-3.5 h-3.5 text-orange-500" />
                             <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Maintenance</span>
                           </div>
-                          <span className={`text-sm font-semibold ${maintenanceMode ? 'text-red-500' : 'text-green-600'}`}>
+                          <span className={`stat-card-number text-sm font-semibold ${maintenanceMode ? 'text-red-500' : 'text-green-600'}`}>
                             {maintenanceMode ? 'Active' : 'Normal'}
                           </span>
                         </div>
@@ -432,7 +432,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
               {activeSection === 'analytics' && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <h3 className="card-section-title text-lg font-semibold flex items-center gap-2">
                       <BarChart3 className="w-5 h-5 text-amber-500" />
                       Site Analytics
                     </h3>
@@ -457,28 +457,28 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                       {/* Country Statistics */}
                       <Card>
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base flex items-center gap-2">
+                          <CardTitle className="text-base card-section-title flex items-center gap-2">
                             <Globe className="w-4 h-4 text-amber-500" />
                             Country Database
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 text-center">
-                              <div className="text-xl font-bold text-amber-700 dark:text-amber-400">{analytics.countries.total}</div>
-                              <div className="text-[10px] text-muted-foreground mt-1">Total Countries</div>
+                            <div className="stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 text-center">
+                              <div className="stat-card-number text-xl font-bold text-amber-700 dark:text-amber-400">{analytics.countries.total}</div>
+                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">Total Countries</div>
                             </div>
-                            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/50 text-center">
-                              <div className="text-xl font-bold text-green-700 dark:text-green-400">{analytics.countries.visaFree}</div>
-                              <div className="text-[10px] text-muted-foreground mt-1">Visa Free</div>
+                            <div className="stat-card-compact p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/50 text-center">
+                              <div className="stat-card-number text-xl font-bold text-green-700 dark:text-green-400">{analytics.countries.visaFree}</div>
+                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">Visa Free</div>
                             </div>
-                            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200/50 text-center">
-                              <div className="text-xl font-bold text-blue-700 dark:text-blue-400">{analytics.countries.visaOnArrival}</div>
-                              <div className="text-[10px] text-muted-foreground mt-1">Visa on Arrival</div>
+                            <div className="stat-card-compact p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200/50 text-center">
+                              <div className="stat-card-number text-xl font-bold text-orange-700 dark:text-orange-400">{analytics.countries.visaOnArrival}</div>
+                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">Visa on Arrival</div>
                             </div>
-                            <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200/50 text-center">
-                              <div className="text-xl font-bold text-purple-700 dark:text-purple-400">{analytics.countries.etaAvailable}</div>
-                              <div className="text-[10px] text-muted-foreground mt-1">ETA Available</div>
+                            <div className="stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 text-center">
+                              <div className="stat-card-number text-xl font-bold text-amber-700 dark:text-amber-400">{analytics.countries.etaAvailable}</div>
+                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">ETA Available</div>
                             </div>
                           </div>
                         </CardContent>

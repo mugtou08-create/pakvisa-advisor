@@ -102,11 +102,11 @@ export function CompareTab() {
 
   return (
     <div className="space-y-6 pb-24 sm:pb-8">
-      <Card>
+      <Card className="glass-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Compare Countries</CardTitle>
+              <CardTitle className="card-section-title">Compare Countries</CardTitle>
               <CardDescription>Select 2-5 countries to compare visa eligibility side by side</CardDescription>
             </div>
             {comparisonCountries.length > 0 && (
@@ -223,7 +223,7 @@ export function CompareTab() {
                 key={c.code}
                 size="sm"
                 variant={comparisonCountries.includes(c.code) ? 'default' : 'outline'}
-                className={comparisonCountries.includes(c.code) ? 'bg-amber-600' : ''}
+                className={`hover-lift-smooth ${comparisonCountries.includes(c.code) ? 'bg-amber-600' : ''}`}
                 onClick={() => toggleCountry(c.code)}
               >
                 <span className="inline-flex items-center gap-1"><FlagImage code={c.code} flagUrl={c.flagUrl} size={18} emoji={c.flagEmoji} /> {c.name}</span>
@@ -266,11 +266,14 @@ export function CompareTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {results.map((r, i) => (
-            <Card key={i} className={i === 0 ? 'ring-2 ring-amber-500' : ''}>
+            <Card key={i} className={`glass-card hover-lift-smooth ${i === 0 ? 'ring-2 ring-amber-500' : ''}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{r.country}</CardTitle>
-                  <span className="text-2xl font-bold text-amber-600">{r.finalScore}</span>
+                  <CardTitle className="text-base card-section-title">{r.country}</CardTitle>
+                  <div className="stat-card-compact flex flex-col items-center">
+                    <span className="text-2xl font-bold text-amber-600 stat-card-number">{Math.round(r.finalScore)}</span>
+                    <span className="stat-card-label text-[10px] text-muted-foreground">Score</span>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">

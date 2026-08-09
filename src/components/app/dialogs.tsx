@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -47,7 +48,7 @@ export function KeyboardShortcutsDialog({ open, onClose }: { open: boolean; onCl
         <div className="space-y-4">
           {grouped.map(group => (
             <div key={group.name}>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{group.name}</h4>
+              <h4 className="card-section-title text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{group.name}</h4>
               <div className="space-y-1.5">
                 {group.shortcuts.map(s => (
                   <div key={s.action} className="flex items-center justify-between">
@@ -122,7 +123,7 @@ export function HelpCenterDialog({ open, onClose }: { open: boolean; onClose: ()
                 <div className="space-y-4">
                   {/* Welcome */}
                   <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/50">
-                    <h4 className="font-semibold text-sm mb-1 flex items-center gap-1.5">
+                    <h4 className="card-section-title font-semibold text-sm mb-1 flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4 text-amber-500" /> Welcome to PakVisa Advisor!
                     </h4>
                     <p className="text-sm text-muted-foreground leading-relaxed">
@@ -564,7 +565,7 @@ export function FloatingChatWidget() {
                             <Download className="w-3.5 h-3.5" />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">Save as .txt</TooltipContent>
+                        <TooltipContent side="top" className="text-xs tooltip-premium">Save as .txt</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                     <TooltipProvider>
@@ -578,7 +579,7 @@ export function FloatingChatWidget() {
                             <Printer className="w-3.5 h-3.5" />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">Save as PDF</TooltipContent>
+                        <TooltipContent side="top" className="text-xs tooltip-premium">Save as PDF</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                     <div className="w-px h-4 bg-white/30 mx-0.5" />
@@ -1172,7 +1173,7 @@ export function QuickActionsToolbar() {
                       <span className="font-medium text-foreground text-xs">{action.label}</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="left">
+                  <TooltipContent side="left" className="tooltip-premium">
                     <p className="text-xs">{action.label}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -1213,5 +1214,160 @@ export function QuickActionsToolbar() {
         </AnimatePresence>
       </motion.button>
     </div>
+  );
+}
+
+// ============ FEEDBACK RATING WIDGET ============
+export function FeedbackWidget() {
+  const { userFeedback, submitFeedback } = useAppStore();
+  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const autoDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interacted = useRef(false);
+
+  // Show widget after 60 seconds, auto-dismiss after 10 more if no interaction
+  useEffect(() => {
+    if (userFeedback || dismissed) return;
+
+    const showTimer = setTimeout(() => {
+      setVisible(true);
+
+      autoDismissTimer.current = setTimeout(() => {
+        if (!interacted.current) {
+          setDismissed(true);
+          setVisible(false);
+        }
+      }, 10000);
+    }, 60000);
+
+    return () => {
+      clearTimeout(showTimer);
+      if (autoDismissTimer.current) clearTimeout(autoDismissTimer.current);
+    };
+  }, [userFeedback, dismissed]);
+
+  // Clear auto-dismiss on any user interaction
+  function handleInteract() {
+    if (!interacted.current) {
+      interacted.current = true;
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current);
+        autoDismissTimer.current = null;
+      }
+    }
+  }
+
+  function handleSubmit() {
+    if (rating === 0) return;
+    handleInteract();
+    submitFeedback(rating, comment);
+    setSubmitted(true);
+    toast.success('Thank you for your feedback!');
+    setTimeout(() => {
+      setVisible(false);
+      setDismissed(true);
+    }, 3000);
+  }
+
+  function handleDismiss() {
+    handleInteract();
+    setDismissed(true);
+    setVisible(false);
+  }
+
+  if (!visible && !submitted) return null;
+
+  const displayRating = hoveredRating || rating;
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 40 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="fixed bottom-20 left-4 z-40 w-72 rounded-xl border glass-card-strong shadow-lg overflow-hidden"
+        >
+          <div className="p-4">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">How's your experience?</h3>
+              <button
+                onClick={handleDismiss}
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted/50 transition-colors"
+                aria-label="Dismiss feedback"
+              >
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+
+            {submitted ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center py-4"
+              >
+                <Sparkles className="w-8 h-8 text-amber-500 mb-2" />
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Thank you!</p>
+                <p className="text-xs text-muted-foreground mt-1">Your feedback helps us improve.</p>
+              </motion.div>
+            ) : (
+              <>
+                {/* Star Rating */}
+                <div
+                  className="flex gap-1 mb-3"
+                  onMouseEnter={handleInteract}
+                  onClick={handleInteract}
+                >
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoveredRating(star)}
+                      onMouseLeave={() => setHoveredRating(0)}
+                      className="p-0.5 transition-transform hover:scale-110"
+                      aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                    >
+                      <Star
+                        className={`w-6 h-6 transition-colors ${
+                          star <= displayRating
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'fill-none text-muted-foreground/30'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Optional Text Feedback */}
+                <Textarea
+                  rows={2}
+                  placeholder="Tell us more (optional)..."
+                  value={comment}
+                  onChange={(e) => { setComment(e.target.value); handleInteract(); }}
+                  onFocus={handleInteract}
+                  className="text-xs resize-none mb-3"
+                />
+
+                {/* Submit Button */}
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={rating === 0}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs"
+                >
+                  Submit Feedback
+                </Button>
+              </>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
