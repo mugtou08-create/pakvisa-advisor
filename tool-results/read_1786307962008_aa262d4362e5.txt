@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef, useMemo, Fragment } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  FileText, BarChart3, Search, ChevronRight, Star, Clock,
+     7→  DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin, Globe,
+     8→  Home, Users, Lightbulb, TrendingUp, TrendingDown,
+     9→  ArrowRight, ArrowUpDown, Printer, ExternalLink, Zap, Target, Sparkles,
+    10→  Eye, ClipboardList, Send, ChevronDown, ChevronUp, Compass, Gavel, CheckCircle2, X, XCircle,
+    11→  AlertTriangle, Info, Lock, FileWarning, PackageOpen, PlaneTakeoff, UtensilsCrossed, Bookmark, SearchX, Timer, Wallet, Languages, BadgePercent,
+    12→  Share2, Thermometer, CreditCard, CircleDollarSign, Save, History, RotateCcw, CalendarClock, Phone, Mail,
+    13→  ShoppingBag, Banknote, Hotel, Sun, SearchCheck, Briefcase, PlaneLanding, Loader, CircleCheck,
+    14→} from 'lucide-react';
+    15→import { Button } from '@/components/ui/button';
+    16→import { Input } from '@/components/ui/input';
+    17→import { Label } from '@/components/ui/label';
+    18→import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+    19→import { Badge } from '@/components/ui/badge';
+    20→import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+    21→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    22→import { Checkbox } from '@/components/ui/checkbox';
+    23→import { Progress } from '@/components/ui/progress';
+    24→import { Separator } from '@/components/ui/separator';
+    25→import { ScrollArea } from '@/components/ui/scroll-area';
+    26→import { Skeleton } from '@/components/ui/skeleton';
+    27→import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+    28→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+    29→import { Switch } from '@/components/ui/switch';
+    30→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+    31→import { Slider } from '@/components/ui/slider';
+    32→import { toast } from 'sonner';
+    33→import { useAppStore } from '@/lib/store';
+    34→import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem, VisaDocChecklistItem } from '@/lib/types';
+    35→import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion, TIMELINE_STAGES } from './constants';
+    36→import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist, getScoreGradient } from './shared-components-1';
+    37→import { PremiumBadge } from './dialogs';
+    38→
+    39→export function CountryDetailDialog({ country, open, onClose }: { country: CountryData | null; open: boolean; onClose: () => void }) {
+    40→  const { addScoreResult, setSelectedCountry, setActiveTab } = useAppStore();
+    41→  const [printMode, setPrintMode] = useState(false);
+    42→  // Checklist items for DocumentReadinessScore
+    43→  const [readinessItems, setReadinessItems] = useState<VisaDocChecklistItem[]>([]);
+    44→  const [readinessLoaded, setReadinessLoaded] = useState(false);
+    45→
+    46→  useEffect(() => {
+    47→    if (!country) return;
+    48→    const storageKey = `pakvisa-checklist-${country.code}`;
+    49→    const load = () => {
+    50→      try {
+    51→        const saved = localStorage.getItem(storageKey);
+    52→        if (saved) {
+    53→          setReadinessItems(JSON.parse(saved));
+    54→        } else {
+    55→          const defaults = generateDefaultChecklist(country);
+    56→          setReadinessItems(defaults);
+    57→          localStorage.setItem(storageKey, JSON.stringify(defaults));
+    58→        }
+    59→      } catch {
+    60→        setReadinessItems(generateDefaultChecklist(country));
+    61→      }
+    62→      setReadinessLoaded(true);
+    63→    };
+    64→    requestAnimationFrame(load);
+    65→  }, [country]);
+    66→
+    67→  // Sync readiness items when storage changes
+    68→  useEffect(() => {
+    69→    if (!country) return;
+    70→    const onStorage = (e: StorageEvent) => {
+    71→      if (e.key === `pakvisa-checklist-${country.code}` && e.newValue) {
+    72→        try { setReadinessItems(JSON.parse(e.newValue)); } catch { /* ignore */ }
+    73→      }
+    74→    };
+    75→    window.addEventListener('storage', onStorage);
+    76→    return () => window.removeEventListener('storage', onStorage);
+    77→  }, [country]);
+    78→
+    79→  if (!country) return null;
+    80→  let monthlyTemps: number[] = [];
+    81→  try {
+    82→    monthlyTemps = typeof country.monthlyTemps === 'string' ? JSON.parse(country.monthlyTemps) : (country.monthlyTemps || []);
+    83→  } catch { monthlyTemps = []; }
+    84→  const months = MONTH_NAMES;
+    85→
+    86→  const handleScored = (score: ScoreBreakdown) => {
+    87→    addScoreResult(score);
+    88→  };
+    89→
+    90→  const handlePrintReport = () => {
+    91→    setPrintMode(true);
+    92→    setTimeout(() => {
+    93→      window.print();
+    94→      setPrintMode(false);
+    95→    }, 300);
+    96→  };
+    97→
+    98→  const difficultyLevel = country.visaFree ? 1 : country.visaOnArrival ? 1 : country.etaAvailable ? 2 : 4;
+    99→  const difficultyClass = difficultyLevel <= 2 ? 'active-easy' : difficultyLevel <= 3 ? 'active-medium' : 'active-hard';
+   100→  const headerGradient = country.visaFree ? 'bg-gradient-to-r from-amber-600 to-amber-500' : country.visaOnArrival ? 'bg-gradient-to-r from-amber-500 to-yellow-500' : country.etaAvailable ? 'bg-gradient-to-r from-amber-600 to-sky-500' : 'bg-gradient-to-r from-orange-500 to-red-500';
+   101→
+   102→  return (
+   103→    <Dialog open={open} onOpenChange={onClose}>
+   104→      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 dialog-slide-up dialog-backdrop-blur" id="country-detail-print-area">
+   105→        {/* Colored gradient header strip - thicker */}
+   106→        <div className={`${headerGradient} h-3 rounded-t-lg`} />
+   107→        <div className="px-6 pt-4">
+   108→        <DialogHeader>
+   109→          <div className="flex items-center gap-3">
+   110→            <FlagImage code={country.code} flagUrl={country.flagUrl} size={48} className="rounded" />
+   111→            <div className="flex-1">
+   112→              <DialogTitle className="text-xl">{country.name}</DialogTitle>
+   113→              <DialogDescription>{country.code} · {country.continent} · {country.timezone}</DialogDescription>
+   114→            </div>
+   115→            <div className="flex gap-1.5">
+   116→              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handlePrintReport}>
+   117→                <Printer className="w-3.5 h-3.5 mr-1" /> Print Report <PremiumBadge />
+   118→              </Button>
+   119→              <Button variant="outline" size="sm" className="text-xs" onClick={() => { navigator.clipboard.writeText(`${window.location.origin} — ${country.name} Visa Guide for Pakistani Passport`); toast.success('Link copied to clipboard!'); }}>
+   120→                <Share2 className="w-3.5 h-3.5 mr-1" /> Share
+   121→              </Button>
+   122→            </div>
+   123→          </div>
+   124→          {/* Difficulty Indicator */}
+   125→          <div className="flex items-center gap-3 mt-3">
+   126→            <span className="text-xs text-muted-foreground">Visa Difficulty:</span>
+   127→            <div className="difficulty-bar flex-1 max-w-[200px]">
+   128→              {[1, 2, 3, 4, 5].map((i) => (
+   129→                <div key={i} className={`difficulty-segment ${i <= difficultyLevel ? difficultyClass : ''}`} />
+   130→              ))}
+   131→            </div>
+   132→            <span className={`text-xs font-medium ${difficultyLevel <= 2 ? 'text-amber-600' : difficultyLevel <= 3 ? 'text-amber-600' : 'text-red-600'}`}>
+   133→              {difficultyLevel <= 2 ? 'Easy' : difficultyLevel <= 3 ? 'Medium' : 'Hard'}
+   134→            </span>
+   135→          </div>
+   136→        </DialogHeader>
+   137→        </div>
+   138→
+   139→        <div className="space-y-6 px-6 pb-6 scroll-smooth">
+   140→          {/* Overview */}
+   141→          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   142→            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
+   143→              <Shield className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+   144→              <div className="text-xs text-muted-foreground">Safety</div>
+   145→              <div className="font-semibold">{country.safetyRating}/10</div>
+   146→            </div>
+   147→            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
+   148→              <Thermometer className="w-5 h-5 mx-auto mb-1 text-orange-500" />
+   149→              <div className="text-xs text-muted-foreground">Avg Temp</div>
+   150→              <div className="font-semibold">{country.avgTempC}°C</div>
+   151→            </div>
+   152→            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
+   153→              <Calendar className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+   154→              <div className="text-xs text-muted-foreground">Processing</div>
+   155→              <div className="font-semibold">{country.processingDaysMin}-{country.processingDaysMax} days</div>
+   156→            </div>
+   157→            <div className="text-center p-3 rounded-lg bg-muted/50 border border-border/30">
+   158→              <CreditCard className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+   159→              <div className="text-xs text-muted-foreground">Visa Fee</div>
+   160→              <div className="font-semibold">${country.costProfile?.visaFeeUSD || 0}</div>
+   161→            </div>
+   162→          </div>
+   163→
+   164→          {/* Visa Processing Tracker */}
+   165→          <VisaProcessingTracker country={country} />
+   166→
+   167→          {/* Safety Summary with accent dot */}
+   168→          <div className="p-3 rounded-lg border bg-muted/30">
+   169→            <div className="flex items-center gap-2 mb-1">
+   170→              <span className="section-dot" />
+   171→              <span className="text-sm font-medium">Safety Summary</span>
+   172→            </div>
+   173→            <p className="text-sm text-muted-foreground">{country.safetySummary}</p>
+   174→          </div>
+   175→
+   176→          {/* Temperature Chart with accent dot */}
+   177→          <div className="overflow-hidden">
+   178→            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   179→              <span className="section-dot" style={{ background: '#f97316', boxShadow: '0 0 6px rgba(249,115,22,0.4)' }} />
+   180→              Monthly Temperatures (°C)
+   181→            </h3>
+   182→            <div className="flex items-end gap-1" style={{ height: '120px' }}>
+   183→              {months.map((m) => {
+   184→                const temp = monthlyTemps[m] || 0;
+   185→                const maxTemp = Math.max(...Object.values(monthlyTemps));
+   186→                const height = maxTemp > 0 ? (temp / maxTemp) * 100 : 50;
+   187→                const isBest = country.bestTravelMonths.toLowerCase().includes(m.toLowerCase());
+   188→                return (
+   189→                  <div key={m} className="flex-1 flex flex-col items-center justify-end min-w-0">
+   190→                    <span className="text-[8px] font-medium tabular-nums leading-none mb-1">{temp}°</span>
+   191→                    <div className="w-full flex items-end justify-center" style={{ height: '72px' }}>
+   192→                      <div
+   193→                        className={`w-full rounded-t-sm transition-all ${isBest ? 'bg-amber-500' : 'bg-muted-foreground/30'}`}
+   194→                        style={{ height: `${Math.max(4, height)}%` }}
+   195→                      />
+   196→                    </div>
+   197→                    <span className="text-[8px] text-muted-foreground leading-none mt-1">{m}</span>
+   198→                  </div>
+   199→                );
+   200→              })}
+   201→            </div>
+   202→          </div>
+   203→
+   204→          {/* Travel Tips */}
+   205→          <TravelTipsPanel country={country} />
+   206→
+   207→          {/* Essential Travel Services - Monetization */}
+   208→          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/10">
+   209→            <CardHeader className="pb-3">
+   210→              <CardTitle className="text-base flex items-center gap-2">
+   211→                <ShoppingBag className="w-4 h-4 text-orange-600" />
+   212→                Essential Travel Services
+   213→              </CardTitle>
+   214→              <CardDescription>Everything you need for your {country.name} trip</CardDescription>
+   215→            </CardHeader>
+   216→            <CardContent className="grid grid-cols-2 gap-3">
+   217→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   218→                <Shield className="w-5 h-5 text-orange-500" />
+   219→                <div>
+   220→                  <div className="text-sm font-medium">Travel Insurance</div>
+   221→                  <div className="text-[10px] text-muted-foreground">From $3/day</div>
+   222→                </div>
+   223→              </a>
+   224→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   225→                <Plane className="w-5 h-5 text-orange-500" />
+   226→                <div>
+   227→                  <div className="text-sm font-medium">Book Flights</div>
+   228→                  <div className="text-[10px] text-muted-foreground">Compare prices</div>
+   229→                </div>
+   230→              </a>
+   231→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   232→                <Hotel className="w-5 h-5 text-orange-500" />
+   233→                <div>
+   234→                  <div className="text-sm font-medium">Find Hotels</div>
+   235→                  <div className="text-[10px] text-muted-foreground">Best rates</div>
+   236→                </div>
+   237→              </a>
+   238→              <a href="#" className="flex items-center gap-2 p-3 rounded-lg bg-white dark:bg-card border hover:border-orange-300 hover:shadow-sm transition-all">
+   239→                <Banknote className="w-5 h-5 text-orange-500" />
+   240→                <div>
+   241→                  <div className="text-sm font-medium">Send Money</div>
+   242→                  <div className="text-[10px] text-muted-foreground">Forex rates</div>
+   243→                </div>
+   244→              </a>
+   245→            </CardContent>
+   246→          </Card>
+   247→
+   248→          {/* Visa Types with accent dot */}
+   249→          <div className="overflow-hidden">
+   250→            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   251→              <span className="section-dot" style={{ background: '#f97316', boxShadow: '0 0 6px rgba(249,115,22,0.4)' }} />
+   252→              Available Visa Types
+   253→            </h3>
+   254→            <div className="space-y-2">
+   255→              {country.visaTypes.map((vt) => (
+   256→                <div key={vt.id} className="p-2 rounded-lg border text-sm">
+   257→                  <div className="flex items-center justify-between gap-2">
+   258→                    <span className="font-medium truncate">{vt.type}</span>
+   259→                    <Badge variant="outline" className="text-xs shrink-0">{vt.maxDuration}</Badge>
+   260→                  </div>
+   261→                  <p className="text-xs text-muted-foreground mt-1 break-words">{vt.description}</p>
+   262→                  <div className="flex gap-2 mt-1 flex-wrap">
+   263→                    {vt.extensions && <Badge variant="secondary" className="text-[10px]">Extendable</Badge>}
+   264→                    {vt.multipleEntry && <Badge variant="secondary" className="text-[10px]">Multiple Entry</Badge>}
+   265→                  </div>
+   266→                </div>
+   267→              ))}
+   268→            </div>
+   269→          </div>
+   270→
+   271→          {/* Requirements with accent dot */}
+   272→          <div className="overflow-hidden">
+   273→            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   274→              <span className="section-dot" style={{ background: '#f59e0b', boxShadow: '0 0 6px rgba(245,158,11,0.4)' }} />
+   275→              Requirements
+   276→            </h3>
+   277→            <div className="space-y-2">
+   278→              {country.requirements.map((req, i) => (
+   279→                <div key={req.id || i} className="flex items-start gap-2 text-sm">
+   280→                  <Badge variant={req.mandatory ? 'default' : 'secondary'} className="text-[10px] mt-0.5 shrink-0">
+   281→                    {req.category}
+   282→                  </Badge>
+   283→                  <div className="min-w-0 flex-1">
+   284→                    <span className="text-sm break-words">{req.requirement}</span>
+   285→                    {req.description && (
+   286→                      <p className="text-xs text-muted-foreground break-words mt-0.5">{req.description}</p>
+   287→                    )}
+   288→                  </div>
+   289→                </div>
+   290→              ))}
+   291→            </div>
+   292→          </div>
+   293→
+   294→          {/* Cost Breakdown - Enhanced with bar chart */}
+   295→          {country.costProfile && (
+   296→            <div>
+   297→              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   298→                <Wallet className="w-4 h-4 text-amber-500" />
+   299→                Cost Breakdown (Monthly, USD)
+   300→              </h3>
+   301→              <div className="space-y-2.5">
+   302→                {[
+   303→                  { label: 'Visa Fee', value: country.costProfile.visaFeeUSD, icon: CreditCard, color: '#f59e0b' },
+   304→                  { label: 'Service Fee', value: country.costProfile.serviceFeeUSD, icon: Building, color: '#f59e0b' },
+   305→                  { label: 'Rent', value: country.costProfile.monthlyRentUSD, icon: Home, color: '#f97316' },
+   306→                  { label: 'Food', value: country.costProfile.monthlyFoodUSD, icon: Heart, color: '#f97316' },
+   307→                  { label: 'Transport', value: country.costProfile.monthlyTransportUSD, icon: Plane, color: '#8b5cf6' },
+   308→                  { label: 'Insurance', value: country.costProfile.healthInsuranceUSD, icon: Shield, color: '#ec4899' },
+   309→                ].map((item) => {
+   310→                  const maxVal = Math.max(country.costProfile.monthlyRentUSD, country.costProfile.totalMonthlyUSD);
+   311→                  const pct = maxVal > 0 ? (item.value / maxVal) * 100 : 0;
+   312→                  return (
+   313→                    <div key={item.label} className="space-y-1">
+   314→                      <div className="flex items-center justify-between text-xs">
+   315→                        <div className="flex items-center gap-1.5">
+   316→                          <item.icon className="w-3.5 h-3.5 text-muted-foreground" />
+   317→                          <span className="text-muted-foreground">{item.label}</span>
+   318→                        </div>
+   319→                        <span className="font-medium">${item.value}</span>
+   320→                      </div>
+   321→                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+   322→                        <div
+   323→                          className="h-full rounded-full transition-all duration-700"
+   324→                          style={{ width: `${Math.max(3, pct)}%`, backgroundColor: item.color }}
+   325→                        />
+   326→                      </div>
+   327→                    </div>
+   328→                  );
+   329→                })}
+   330→                <Separator className="my-2" />
+   331→                <div className="flex items-center justify-between text-sm font-semibold">
+   332→                  <div className="flex items-center gap-1.5">
+   333→                    <DollarSign className="w-4 h-4 text-amber-500" />
+   334→                    Total Monthly
+   335→                  </div>
+   336→                  <span className="text-amber-600 dark:text-amber-400 text-base">${country.costProfile.totalMonthlyUSD}</span>
+   337→                </div>
+   338→              </div>
+   339→            </div>
+   340→          )}
+   341→
+   342→          {/* Quick Score This Country */}
+   343→          <Separator />
+   344→          <div className="overflow-hidden">
+   345→            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+   346→              <Zap className="w-4 h-4 text-amber-500" /> Quick Score Assessment
+   347→            </h3>
+   348→            <QuickScoreInline countryCode={country.code} onScored={handleScored} />
+   349→          </div>
+   350→
+   351→          {/* Visa Timeline Estimator */}
+   352→          <Separator />
+   353→          <div className="overflow-hidden">
+   354→            <VisaTimelineEstimator country={country} />
+   355→          </div>
+   356→
+   357→          {/* Visa Processing Tracker */}
+   358→          <Separator />
+   359→          <div className="overflow-hidden">
+   360→            <VisaProcessingTracker country={country} />
+   361→          </div>
+   362→
+   363→          {/* Application Tips Panel */}
+   364→          <div className="overflow-hidden">
+   365→            <ApplicationTipsPanel country={country} />
+   366→          </div>
+   367→
+   368→          {/* Visa Document Checklist */}
+   369→          <Separator />
+   370→          <div className="overflow-hidden">
+   371→            <VisaDocumentChecklist country={country} />
+   372→          </div>
+   373→
+   374→          {/* Document Readiness Score */}
+   375→          <div className="overflow-hidden">
+   376→            {readinessLoaded && <DocumentReadinessScore checklist={readinessItems} countryName={country.name} />}
+   377→          </div>
+   378→
+   379→          {/* Currency Converter - Links to Tools tab instead of duplicating */}
+   380→          <div className="overflow-hidden">
+   381→            <div className="p-3 rounded-lg border bg-muted/30 text-center">
+   382→              <p className="text-xs text-muted-foreground mb-2">Need to convert {country.currencyCode} to PKR?</p>
+   383→              <Button variant="outline" size="sm" className="text-xs" onClick={() => { setSelectedCountry(null); setActiveTab('tools'); }}>
+   384→                <CircleDollarSign className="w-3.5 h-3.5 mr-1" /> Open Currency Converter
+   385→              </Button>
+   386→            </div>
+   387→          </div>
+   388→
+   389→          {/* Travel Checklist - Task 10 */}
+   390→          <Separator />
+   391→          <div className="overflow-hidden">
+   392→            <TravelChecklist country={country} />
+   393→          </div>
+   394→
+   395→          {/* Budget Calculator - Links to Tools tab instead of duplicating */}
+   396→          <div className="overflow-hidden">
+   397→            <div className="p-3 rounded-lg border bg-muted/30 text-center">
+   398→              <p className="text-xs text-muted-foreground mb-2">Estimate your total trip cost to {country.name}</p>
+   399→              <Button variant="outline" size="sm" className="text-xs" onClick={() => { setSelectedCountry(null); setActiveTab('tools'); }}>
+   400→                <Wallet className="w-3.5 h-3.5 mr-1" /> Open Budget Calculator
+   401→              </Button>
+   402→            </div>
+   403→          </div>
+   404→
+   405→          {/* Similar Countries */}
+   406→          <Separator />
+   407→          <div className="overflow-hidden">
+   408→            <SimilarCountriesPanel country={country} />
+   409→          </div>
+   410→
+   411→          {/* Embassy Information */}
+   412→          <div className="overflow-hidden">
+   413→            <EmbassyInfoSection countryCode={country.code} countryName={country.name} />
+   414→          </div>
+   415→
+   416→          {/* Source & Confidence with accent dot */}
+   417→          <div className="p-3 rounded-lg border bg-muted/30 text-xs">
+   418→            <div className="flex items-center gap-2 mb-1">
+   419→              <span className="section-dot" style={{ background: '#fb923c', boxShadow: '0 0 6px rgba(251,146,60,0.4)' }} />
+   420→              <span className="font-medium">Data Source</span>
+   421→            </div>
+   422→            <a href={country.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-amber-500 underline break-all">
+   423→              {country.sourceUrl}
+   424→            </a>
+   425→            <div className="mt-1 flex items-center gap-2 flex-wrap">
+   426→              <span>Confidence: {Math.round((country.parserConfidence || 0.8) * 100)}%</span>
+   427→              <span>·</span>
+   428→              <span>Parser: v{country.parserVersion}</span>
+   429→              <span>·</span>
+   430→              <span>Fetched: {new Date(country.fetchTimestamp).toLocaleDateString()}</span>
+   431→            </div>
+   432→          </div>
+   433→        </div>
+   434→      </DialogContent>
+   435→    </Dialog>
+   436→  );
+   437→}
+   438→
+   439→// ============ SCORE QUICK VIEW DIALOG ============
+   440→export function ScoreQuickViewDialog({ score, open, onClose }: { score: ScoreBreakdown | null; open: boolean; onClose: () => void }) {
+   441→  if (!score) return null;
+   442→  return (
+   443→    <Dialog open={open} onOpenChange={onClose}>
+   444→      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+   445→        <DialogHeader>
+   446→          <DialogTitle className="flex items-center gap-2">
+   447→            <BarChart3 className="w-5 h-5 text-amber-500" />
+   448→            {score.country} - Full Breakdown
+   449→          </DialogTitle>
+   450→          <DialogDescription>{score.visaType} · Confidence: {Math.round(score.confidence * 100)}%</DialogDescription>
+   451→        </DialogHeader>
+   452→        <div className="space-y-4">
+   453→          <div className="grid grid-cols-4 gap-3">
+   454→            {[
+   455→              { label: 'Eligibility', value: score.eligibility },
+   456→              { label: 'Likelihood', value: score.visaLikelihood },
+   457→              { label: 'Cost Fit', value: score.costSuitability },
+   458→              { label: 'Final', value: score.finalScore },
+   459→            ].map((item) => (
+   460→              <div key={item.label} className="text-center p-2 rounded-lg bg-muted/50">
+   461→                <div className={`text-xl font-bold ${item.value >= 70 ? 'text-amber-600' : item.value >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+   462→                  {Math.round(item.value)}
+   463→                </div>
+   464→                <div className="text-[10px] text-muted-foreground">{item.label}</div>
+   465→              </div>
+   466→            ))}
+   467→          </div>
+   468→          <div className="space-y-2">
+   469→            <h4 className="text-sm font-semibold">Components</h4>
+   470→            {score.components.map((c, i) => (
+   471→              <div key={i} className="flex items-center gap-3">
+   472→                <span className="w-32 text-xs text-muted-foreground truncate">{c.name}</span>
+   473→                <ColorProgress value={c.score} className="flex-1" />
+   474→                <span className="w-10 text-xs text-right font-medium">{Math.round(c.score)}%</span>
+   475→                <span className="w-10 text-[10px] text-muted-foreground">×{(c.weight * 100).toFixed(0)}%</span>
+   476→              </div>
+   477→            ))}
+   478→          </div>
+   479→          {score.hardFilters.length > 0 && (
+   480→            <div>
+   481→              <h4 className="text-sm font-semibold mb-2">Hard Filters</h4>
+   482→              {score.hardFilters.map((f, i) => (
+   483→                <div key={i} className={`flex items-center gap-2 p-2 rounded text-xs mb-1 ${f.passed ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+   484→                  {f.passed ? <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" /> : <XCircle className="w-3.5 h-3.5 text-red-600" />}
+   485→                  <span>{f.filter}: {f.message}</span>
+   486→                </div>
+   487→              ))}
+   488→            </div>
+   489→          )}
+   490→          {score.tips.length > 0 && (
+   491→            <div>
+   492→              <h4 className="text-sm font-semibold mb-2">Tips</h4>
+   493→              {score.tips.map((tip, i) => (
+   494→                <div key={i} className="flex items-start gap-2 text-xs mb-1">
+   495→                  <Star className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+   496→                  <span>{tip}</span>
+   497→                </div>
+   498→              ))}
+   499→            </div>
+   500→          )}
+   501→        </div>
+   502→      </DialogContent>
+   503→    </Dialog>
+   504→  );
+   505→}
+   506→
+   507→// ============ APPLICATION TIPS PANEL ============
+   508→export function ApplicationTipsPanel({ country }: { country: CountryData }) {
+   509→  const { userProfile } = useAppStore();
+   510→  const profile = userProfile;
+   511→
+   512→  const tips = useMemo(() => {
+   513→    if (!profile) {
+   514→      return [
+   515→        { tip: 'Complete the questionnaire to get personalized tips', severity: 'info' as const },
+   516→      ];
+   517→    }
+   518→
+   519→    const result: { tip: string; severity: 'critical' | 'warning' | 'success' | 'info' }[] = [];
+   520→
+   521→    // Financial tips
+   522→    if (profile.monthlyIncomeUSD < 500 && !profile.hasSponsor) {
+   523→      result.push({ tip: 'Your income is low — consider showing additional bank statements or adding a financial sponsor to boost approval chances.', severity: 'warning' });
+   524→    }
+   525→    if (profile.savingsUSD < 2000) {
+   526→      result.push({ tip: 'Low savings detected. Most embassies require 3-6 months of bank statements showing sufficient balance.', severity: 'warning' });
+   527→    }
+   528→
+   529→    // Insurance tip
+   530→    if (!profile.hasHealthInsurance) {
+   531→      result.push({ tip: `Adding travel health insurance will boost your health score by ~80 points and is mandatory for ${country.name}.`, severity: 'critical' });
+   532→    }
+   533→
+   534→    // Travel documents
+   535→    if (!profile.hasReturnTicket) {
+   536→      result.push({ tip: 'Booking a return flight ticket (even a refundable one) significantly improves your purpose-of-travel score.', severity: 'warning' });
+   537→    }
+   538→    if (!profile.hasHotelBooking) {
+   539→      result.push({ tip: 'Hotel booking or a letter of invitation from a host in ' + country.name + ' will strengthen your application.', severity: 'warning' });
+   540→    }
+   541→
+   542→    // Education/Language
+   543→    if (profile.education === 'other' || !profile.education) {
+   544→      result.push({ tip: 'Providing your highest education level helps the qualification score. If you have a degree, make sure to include it.', severity: 'info' });
+   545→    }
+   546→    if (profile.languages.length <= 1) {
+   547→      result.push({ tip: 'Speaking additional languages (especially the destination country language) can improve your language score.', severity: 'info' });
+   548→    }
+   549→
+   550→    // Prior travel
+   551→    if (!profile.hasPriorTravel) {
+   552→      result.push({ tip: 'Having prior travel history to other countries demonstrates you are a genuine traveler and return to your home country.', severity: 'info' });
+   553→    }
+   554→
+   555→    // Passport
+   556→    if (!profile.passportExpiry || new Date(profile.passportExpiry) < new Date(Date.now() + 180 * 24 * 60 * 60 * 1000)) {
+   557→      result.push({ tip: 'Your passport must be valid for at least 6 months beyond your intended stay. Renew it before applying.', severity: 'critical' });
+   558→    }
+   559→
+   560→    // Country-specific tips
+   561→    if (country.visaFree) {
+   562→      result.push({ tip: `Great news! ${country.name} offers visa-free entry for Pakistani passport holders. Just ensure you have a valid passport and return ticket.`, severity: 'success' });
+   563→    } else if (country.visaOnArrival) {
+   564→      result.push({ tip: `${country.name} offers visa on arrival. Carry printed proof of accommodation, return ticket, and sufficient funds.`, severity: 'success' });
+   565→    } else if (country.etaAvailable) {
+   566→      result.push({ tip: `${country.name} requires an e-Visa. Apply online at least 2 weeks before travel through the official portal.`, severity: 'info' });
+   567→    } else {
+   568→      result.push({ tip: `${country.name} requires an embassy visa. Book your appointment early as slots fill quickly. Processing takes ${country.processingDaysMin}-${country.processingDaysMax} days.`, severity: 'info' });
+   569→    }
+   570→
+   571→    // Cost
+   572→    if (country.costProfile) {
+   573→      const monthlyNeed = country.costProfile.totalMonthlyUSD;
+   574→      const stayMonths = profile.intendedStayDays / 30;
+   575→      if (profile.budgetUSD < monthlyNeed * stayMonths * 0.5) {
+   576→        result.push({ tip: `Your budget ($${profile.budgetUSD}) may not cover ${stayMonths.toFixed(1)} months in ${country.name} (estimated $${monthlyNeed * stayMonths}/mo total). Consider a shorter stay or more savings.`, severity: 'warning' });
+   577→      }
+   578→    }
+   579→
+   580→    return result.slice(0, 6);
+   581→  }, [country, profile]);
+   582→
+   583→  const severityStyles = {
+   584→    critical: 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400',
+   585→    warning: 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400',
+   586→    success: 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400',
+   587→    info: 'bg-amber-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400',
+   588→  };
+   589→
+   590→  const severityIcons = {
+   591→    critical: <XCircle className="w-3.5 h-3.5" />,
+   592→    warning: <AlertTriangle className="w-3.5 h-3.5" />,
+   593→    success: <CheckCircle2 className="w-3.5 h-3.5" />,
+   594→    info: <Info className="w-3.5 h-3.5" />,
+   595→  };
+   596→
+   597→  return (
+   598→    <div className="space-y-2">
+   599→      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+   600→        <Lightbulb className="w-4 h-4 text-amber-500" />
+   601→        Application Tips for {country.name}
+   602→      </h3>
+   603→      <div className="space-y-2">
+   604→        {tips.map((item, i) => (
+   605→          <div key={i} className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs overflow-hidden ${severityStyles[item.severity]}`}>
+   606→            <span className="shrink-0 mt-0.5">{severityIcons[item.severity]}</span>
+   607→            <span className="min-w-0 break-words">{item.tip}</span>
+   608→          </div>
+   609→        ))}
+   610→      </div>
+   611→    </div>
+   612→  );
+   613→}
+   614→
+   615→// ============ PROFILE STRENGTH METER ============
+   616→export function ProfileStrengthMeter({ profile }: { profile: UserProfileData }) {
+   617→  const strength = useMemo(() => {
+   618→    let filled = 0;
+   619→    let total = 0;
+   620→
+   621→    const fields: { label: string; check: boolean }[] = [
+   622→      { label: 'Full Name', check: !!profile.fullName },
+   623→      { label: 'Age', check: profile.age > 0 },
+   624→      { label: 'Gender', check: !!profile.gender },
+   625→      { label: 'Passport Number', check: !!profile.passportNumber },
+   626→      { label: 'Passport Expiry', check: !!profile.passportExpiry },
+   627→      { label: 'Occupation', check: !!profile.occupation },
+   628→      { label: 'Monthly Income', check: profile.monthlyIncomeUSD > 0 },
+   629→      { label: 'Education', check: !!profile.education && profile.education !== 'other' },
+   630→      { label: 'Languages', check: profile.languages.length >= 1 },
+   631→      { label: 'Savings', check: profile.savingsUSD > 0 },
+   632→      { label: 'Travel Budget', check: profile.budgetUSD > 0 },
+   633→      { label: 'Travel Purpose', check: !!profile.travelPurpose },
+   634→      { label: 'Return Ticket', check: profile.hasReturnTicket },
+   635→      { label: 'Hotel Booking', check: profile.hasHotelBooking },
+   636→      { label: 'Health Insurance', check: profile.hasHealthInsurance },
+   637→      { label: 'Marital Status', check: !!profile.maritalStatus },
+   638→      { label: 'Criminal Record', check: profile.hasCriminalRecord !== undefined },
+   639→    ];
+   640→
+   641→    total = fields.length;
+   642→    filled = fields.filter(f => f.check).length;
+   643→
+   644→    const missing = fields.filter(f => !f.check).map(f => f.label);
+   645→
+   646→    return {
+   647→      percentage: Math.round((filled / total) * 100),
+   648→      filled,
+   649→      total,
+   650→      missing,
+   651→    };
+   652→  }, [profile]);
+   653→
+   654→  const color = strength.percentage >= 80 ? '#f59e0b' : strength.percentage >= 50 ? '#f59e0b' : '#ef4444';
+   655→  const label = strength.percentage >= 80 ? 'Strong' : strength.percentage >= 50 ? 'Moderate' : 'Needs Work';
+   656→
+   657→  return (
+   658→    <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+   659→      <div className="flex items-center justify-between">
+   660→        <h4 className="text-sm font-semibold flex items-center gap-2">
+   661→          <BadgePercent className="w-4 h-4 text-amber-500" />
+   662→          Profile Strength
+   663→        </h4>
+   664→        <Badge variant="outline" className="text-xs" style={{ borderColor: color, color }}>
+   665→          {label} · {strength.percentage}%
+   666→        </Badge>
+   667→      </div>
+   668→      <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+   669→        <div
+   670→          className="h-full rounded-full profile-gradient-bar"
+   671→          style={{ width: `${strength.percentage}%` }}
+   672→        />
+   673→      </div>
+   674→      <div className="flex items-center justify-between">
+   675→        <span className="text-xs text-muted-foreground">{strength.filled} of {strength.total} fields</span>
+   676→        <span className="text-sm font-bold tabular-nums" style={{ color }}>{strength.percentage}%</span>
+   677→      </div>
+   678→      {strength.missing.length > 0 && strength.missing.length < 10 && (
+   679→        <div className="space-y-1">
+   680→          <p className="text-xs text-muted-foreground">Add these to improve your profile:</p>
+   681→          <div className="flex flex-wrap gap-1.5">
+   682→            {strength.missing.slice(0, 5).map((item, i) => (
+   683→              <Badge key={i} variant="secondary" className="text-[10px]">
+   684→                {item}
+   685→              </Badge>
+   686→            ))}
+   687→            {strength.missing.length > 5 && (
+   688→              <Badge variant="secondary" className="text-[10px]">
+   689→                +{strength.missing.length - 5} more
+   690→              </Badge>
+   691→            )}
+   692→          </div>
+   693→        </div>
+   694→      )}
+   695→      {strength.missing.length === 0 && (
+   696→        <p className="text-xs text-amber-600 flex items-center gap-1">
+   697→          <CheckCircle2 className="w-3 h-3" /> Profile is complete! Ready for scoring.
+   698→        </p>
+   699→      )}
+   700→    </div>
+   701→  );
+   702→}
+   703→
+   704→// ============ SKELETON COUNTRY CARDS ============
+   705→export function SkeletonCountryCards() {
+   706→  return (
+   707→    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   708→      {[1, 2, 3, 4, 5, 6].map((i) => (
+   709→        <div key={i} className="rounded-xl border overflow-hidden">
+   710→          <div className="p-4 space-y-3">
+   711→            <div className="flex items-start justify-between">
+   712→              <div className="flex items-center gap-2.5">
+   713→                <div className="w-8 h-8 rounded-full skeleton-shimmer" />
+   714→                <div className="space-y-2">
+   715→                  <div className="w-24 h-3.5 rounded skeleton-shimmer" />
+   716→                  <div className="w-16 h-2.5 rounded skeleton-shimmer" />
+   717→                </div>
+   718→              </div>
+   719→              <div className="w-16 h-5 rounded-full skeleton-shimmer" />
+   720→            </div>
+   721→            <div className="grid grid-cols-2 gap-2">
+   722→              {[1, 2, 3, 4].map((j) => (
+   723→                <div key={j} className="h-4 rounded skeleton-shimmer" />
+   724→              ))}
+   725→            </div>
+   726→            <div className="flex items-center justify-between pt-2 border-t">
+   727→              <div className="w-16 h-3 rounded skeleton-shimmer" />
+   728→              <div className="w-12 h-3 rounded skeleton-shimmer" />
+   729→            </div>
+   730→          </div>
+   731→          <div className="h-[4px] skeleton-shimmer" />
+   732→        </div>
+   733→      ))}
+   734→    </div>
+   735→  );
+   736→}
+   737→
+   738→// ============ CONFETTI ANIMATION ============
+   739→export function ConfettiAnimation({ trigger }: { trigger: boolean }) {
+   740→  const [active, setActive] = useState(false);
+   741→
+   742→  useEffect(() => {
+   743→    if (trigger && !active) {
+   744→      setActive(true);
+   745→      setTimeout(() => setActive(false), 4000);
+   746→    }
+   747→  }, [trigger, active]);
+   748→
+   749→  if (!active) return null;
+   750→
+   751→  const colors = ['#f59e0b', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316'];
+   752→  const pieces = Array.from({ length: 50 }, (_, i) => ({
+   753→    id: i,
+   754→    left: Math.random() * 100,
+   755→    delay: Math.random() * 2,
+   756→    duration: 2 + Math.random() * 2,
+   757→    color: colors[i % colors.length],
+   758→    size: 6 + Math.random() * 8,
+   759→  }));
+   760→
+   761→  return (
+   762→    <div className="fixed inset-0 z-[200] pointer-events-none" aria-hidden="true">
+   763→      {pieces.map((p) => (
+   764→        <div
+   765→          key={p.id}
+   766→          className="confetti-piece"
+   767→          style={{
+   768→            left: `${p.left}%`,
+   769→            animationDelay: `${p.delay}s`,
+   770→            animationDuration: `${p.duration}s`,
+   771→            width: `${p.size}px`,
+   772→            height: `${p.size}px`,
+   773→            backgroundColor: p.color,
+   774→            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+   775→          }}
+   776→        />
+   777→      ))}
+   778→    </div>
+   779→  );
+   780→}
+   781→
+   782→// ============ TYPING TEXT ANIMATION ============
+   783→export function TypingText({ phrases, className = '' }: { phrases: string[]; className?: string }) {
+   784→  const [current, setCurrent] = useState(0);
+   785→  const [text, setText] = useState('');
+   786→  const [isDeleting, setIsDeleting] = useState(false);
+   787→
+   788→  useEffect(() => {
+   789→    const phrase = phrases[current];
+   790→    const timeout = setTimeout(() => {
+   791→      if (!isDeleting) {
+   792→        setText(phrase.substring(0, text.length + 1));
+   793→        if (text.length === phrase.length) {
+   794→          setTimeout(() => setIsDeleting(true), 2200);
+   795→        }
+   796→      } else {
+   797→        setText(phrase.substring(0, text.length - 1));
+   798→        if (text.length === 0) {
+   799→          setIsDeleting(false);
+   800→          setCurrent((current + 1) % phrases.length);
+   801→        }
+   802→      }
+   803→    }, isDeleting ? 25 : 55);
+   804→    return () => clearTimeout(timeout);
+   805→  }, [text, isDeleting, current, phrases]);
+   806→
+   807→  return (
+   808→    <span className={className}>
+   809→      {text}
+   810→      <span className="inline-block w-0 h-[1.1em] ml-0.5 align-middle typing-text-cursor" />
+   811→    </span>
+   812→  );
+   813→}
+   814→
+   815→// ============ HELPERS ============
+   816→export function formatCountryCode(code: string): string {
+   817→  return code.replace(/([a-z])([A-Z])/g, '$1 $2');
+   818→}
+   819→
+   820→// ============ FLOATING PARTICLES (CSS ONLY) ============
+   821→export function FloatingParticles() {
+   822→  const [particles, setParticles] = useState<Array<{
+   823→    id: number;
+   824→    left: number;
+   825→    size: number;
+   826→    delay: number;
+   827→    duration: number;
+   828→    opacity: number;
+   829→  }>>([]);
+   830→
+   831→  useEffect(() => {
+   832→    requestAnimationFrame(() => {
+   833→      setParticles(Array.from({ length: 20 }, (_, i) => ({
+   834→        id: i,
+   835→        left: Math.random() * 100,
+   836→        size: 2 + Math.random() * 5,
+   837→        delay: Math.random() * 12,
+   838→        duration: 10 + Math.random() * 14,
+   839→        opacity: 0.15 + Math.random() * 0.25,
+   840→      })));
+   841→    });
+   842→  }, []);
+   843→
+   844→  return (
+   845→    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+   846→      {particles.map(p => (
+   847→        <div
+   848→          key={p.id}
+   849→          className="absolute rounded-full bg-white/20 particle-float"
+   850→          style={{
+   851→            left: `${p.left}%`,
+   852→            bottom: '-10px',
+   853→            width: `${p.size}px`,
+   854→            height: `${p.size}px`,
+   855→            animationDelay: `${p.delay}s`,
+   856→            animationDuration: `${p.duration}s`,
+   857→            opacity: p.opacity,
+   858→          }}
+   859→        />
+   860→      ))}
+   861→    </div>
+   862→  );
+   863→}
+   864→
+   865→// ============ MINI RADAR CHART (3-axis for country cards) ============
+   866→export function MiniRadarChart({ safety, cost, ease }: { safety: number; cost: number; ease: number }) {
+   867→  const cx = 28, cy = 28, r = 22;
+   868→  const axes = 3;
+   869→  const angleStep = (2 * Math.PI) / axes;
+   870→  const startAngle = -Math.PI / 2;
+   871→  const s = safety / 10;
+   872→  const c = Math.max(0.05, 1 - cost / 3000);
+   873→  const e = ease;
+   874→  const values = [s, c, e];
+   875→  const points = values.map((val, i) => {
+   876→    const angle = startAngle + i * angleStep;
+   877→    return `${cx + val * r * Math.cos(angle)},${cy + val * r * Math.sin(angle)}`;
+   878→  }).join(' ');
+   879→  const gridLines = [0.33, 0.66, 1].map(level => {
+   880→    const pts = Array.from({ length: axes }, (_, i) => {
+   881→      const angle = startAngle + i * angleStep;
+   882→      return `${cx + level * r * Math.cos(angle)},${cy + level * r * Math.sin(angle)}`;
+   883→    }).join(' ');
+   884→    return <polygon key={level} points={pts} fill="none" stroke="currentColor" strokeWidth="0.3" className="text-white/20" />;
+   885→  });
+   886→
+   887→  return (
+   888→    <svg width="56" height="56" viewBox="0 0 56 56" className="inline-block opacity-80">
+   889→      {gridLines}
+   890→      {Array.from({ length: axes }, (_, i) => {
+   891→        const angle = startAngle + i * angleStep;
+   892→        return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke="currentColor" strokeWidth="0.3" className="text-white/20" />;
+   893→      })}
+   894→      <polygon points={points} fill="rgba(249,115,22,0.15)" stroke="#fbbf24" strokeWidth="1" />
+   895→      {values.map((val, i) => {
+   896→        const angle = startAngle + i * angleStep;
+   897→        return <circle key={i} cx={cx + val * r * Math.cos(angle)} cy={cy + val * r * Math.sin(angle)} r="1.5" fill="#fbbf24" />;
+   898→      })}
+   899→    </svg>
+   900→  );
+   901→}
+   902→
+   903→// ============ RADIAL GAUGE (SEMICIRCLE) ============
+   904→export function RadialGauge({ score, size = 140 }: { score: number; size?: number }) {
+   905→  const strokeWidth = 12;
+   906→  const r = (size - strokeWidth) / 2;
+   907→  const cx = size / 2;
+   908→  const cy = size - 15;
+   909→  const startX = cx - r;
+   910→  const endX = cx + r;
+   911→  const arcLength = Math.PI * r;
+   912→  const filledLength = (score / 100) * arcLength;
+   913→  const color = score >= 70 ? '#f59e0b' : score >= 40 ? '#f59e0b' : '#ef4444';
+   914→
+   915→  return (
+   916→    <div className="flex flex-col items-center">
+   917→      <svg width={size} height={size / 2 + 25} viewBox={`0 0 ${size} ${size / 2 + 25}`}>
+   918→        <path d={`M ${startX} ${cy} A ${r} ${r} 0 0 1 ${endX} ${cy}`} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted/20" strokeLinecap="round" />
+   919→        <path
+   920→          d={`M ${startX} ${cy} A ${r} ${r} 0 0 1 ${endX} ${cy}`}
+   921→          fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"
+   922→          strokeDasharray={`${arcLength}`}
+   923→          strokeDashoffset={arcLength - filledLength}
+   924→          className="transition-all duration-1000 ease-out"
+   925→        />
+   926→        <text x={cx} y={cy - 12} textAnchor="middle" dominantBaseline="middle" style={{ fill: color, fontSize: '28px', fontWeight: 'bold' }}>{Math.round(score)}</text>
+   927→        <text x={cx} y={cy + 8} textAnchor="middle" style={{ fill: 'var(--muted-foreground)', fontSize: '10px' }}>Final Score</text>
+   928→      </svg>
+   929→    </div>
+   930→  );
+   931→}
+   932→
+   933→// ============ ANIMATED SCORE NUMBER ============
+   934→export function AnimatedScoreNumber({ value, delay = 0 }: { value: number; delay?: number }) {
+   935→  const [displayed, setDisplayed] = useState(0);
+   936→  const hasAnimated = useRef(false);
+   937→
+   938→  useEffect(() => {
+   939→    if (hasAnimated.current) return;
+   940→    hasAnimated.current = true;
+   941→    const start = performance.now() + delay;
+   942→    const duration = 1200;
+   943→    const animate = (now: number) => {
+   944→      const elapsed = now - start;
+   945→      if (elapsed < 0) { requestAnimationFrame(animate); return; }
+   946→      const progress = Math.min(elapsed / duration, 1);
+   947→      const eased = 1 - Math.pow(1 - progress, 3);
+   948→      setDisplayed(Math.round(eased * value));
+   949→      if (progress < 1) requestAnimationFrame(animate);
+   950→    };
+   951→    requestAnimationFrame(animate);
+   952→  }, [value, delay]);
+   953→
+   954→  return <span>{displayed}</span>;
+   955→}
+   956→
+   957→// ============ VISA DOCUMENT CHECKLIST ============
+   958→export function VisaDocumentChecklist({ country }: { country: CountryData }) {
+   959→  const [checked, setChecked] = useState<Set<string>>(new Set());
+   960→
+   961→  const categories = useMemo(() => {
+   962→    // Normalize category names from DB to match our standard categories
+   963→    const categoryMap: Record<string, string> = {
+   964→      passport: 'Identity', photograph: 'Identity', identity: 'Identity',
+   965→      financial: 'Financial', bank: 'Financial', income: 'Financial',
+   966→      travel: 'Travel', flight: 'Travel', hotel: 'Travel', accommodation: 'Travel',
+   967→      health: 'Health', medical: 'Health', vaccination: 'Health', insurance: 'Health',
+   968→      employment: 'Supporting', supporting: 'Supporting', education: 'Supporting',
+   969→    };
+   970→    const cats: Record<string, { name: string; items: { name: string; mandatory: boolean; time: string }[] }> = {
+   971→      Identity: { name: 'Identity Documents', items: [] },
+   972→      Financial: { name: 'Financial Documents', items: [] },
+   973→      Travel: { name: 'Travel Documents', items: [] },
+   974→      Health: { name: 'Health Documents', items: [] },
+   975→      Supporting: { name: 'Supporting Documents', items: [] },
+   976→    };
+   977→    // Add DB requirements with normalized category names (deduplicate by name)
+   978→    const seenReqNames = new Set<string>();
+   979→    country.requirements.forEach(req => {
+   980→      if (seenReqNames.has(req.requirement.trim().toLowerCase())) return;
+   981→      seenReqNames.add(req.requirement.trim().toLowerCase());
+   982→      const cat = categoryMap[(req.category || '').toLowerCase()] || 'Supporting';
+   983→      if (!cats[cat]) cats[cat] = { name: cat, items: [] };
+   984→      cats[cat].items.push({ name: req.requirement, mandatory: req.mandatory, time: req.mandatory ? '1-3 days' : '3-7 days' });
+   985→    });
+   986→    // Extract keywords from existing DB requirements for dedup
+   987→    const existingKeywords = new Set<string>();
+   988→    country.requirements.forEach(r => {
+   989→      const words = r.requirement.toLowerCase().split(/[\s(),]+/).filter(w => w.length > 3);
+   990→      words.forEach(w => existingKeywords.add(w));
+   991→    });
+   992→    const standard = [
+   993→      { cat: 'Identity', name: 'Valid Passport (6+ months validity)', mandatory: true, time: '1-2 weeks', keywords: ['passport', 'valid'] },
+   994→      { cat: 'Identity', name: 'Passport-sized Photographs (2x2 inch)', mandatory: true, time: '1 day', keywords: ['photograph', 'passport', 'photo'] },
+   995→      { cat: 'Financial', name: 'Bank Statements (last 6 months)', mandatory: true, time: '1-2 days', keywords: ['bank', 'statement', 'financial'] },
+   996→      { cat: 'Financial', name: 'Income Tax Returns (last 2 years)', mandatory: false, time: '3-5 days', keywords: ['tax', 'income', 'return'] },
+   997→      { cat: 'Financial', name: 'Sponsorship Letter (if applicable)', mandatory: false, time: '2-3 days', keywords: ['sponsor', 'sponsorship'] },
+   998→      { cat: 'Travel', name: 'Flight Itinerary / Return Ticket', mandatory: true, time: '1 day', keywords: ['flight', 'return', 'ticket', 'itinerary'] },
+   999→      { cat: 'Travel', name: 'Hotel Reservation / Accommodation Proof', mandatory: true, time: '1 day', keywords: ['hotel', 'reservation', 'accommodation'] },
+  1000→      { cat: 'Travel', name: 'Travel Itinerary (day-by-day plan)', mandatory: false, time: '2-4 hours', keywords: ['itinerary', 'travel', 'plan'] },
+  1001→      { cat: 'Health', name: 'Travel Health Insurance Certificate', mandatory: true, time: '1-3 days', keywords: ['insurance', 'health'] },
+  1002→      { cat: 'Health', name: 'Vaccination Certificate (if required)', mandatory: false, time: '1-4 weeks', keywords: ['vaccination', 'vaccine'] },
+  1003→      { cat: 'Supporting', name: 'Employment Verification Letter', mandatory: false, time: '1-3 days', keywords: ['employment', 'verification', 'letter'] },
+  1004→      { cat: 'Supporting', name: 'Leave Approval from Employer', mandatory: false, time: '1 day', keywords: ['leave', 'approval'] },
+  1005→      { cat: 'Supporting', name: 'Cover Letter explaining purpose of visit', mandatory: false, time: '2-4 hours', keywords: ['cover', 'letter', 'purpose'] },
+  1006→    ];
+  1007→    // Add standard items only if no similar requirement already exists from DB (keyword-based dedup)
+  1008→    standard.forEach(item => {
+  1009→      const hasOverlap = item.keywords.some(kw => existingKeywords.has(kw));
+  1010→      if (!hasOverlap) {
+  1011→        cats[item.cat].items.push({ name: item.name, mandatory: item.mandatory, time: item.time });
+  1012→      }
+  1013→    });
+  1014→    return Object.entries(cats).filter(([, v]) => v.items.length > 0);
+  1015→  }, [country]);
+  1016→
+  1017→  const allItems = categories.flatMap(([, v]) => v.items);
+  1018→  const progress = allItems.length > 0 ? (checked.size / allItems.length) * 100 : 0;
+  1019→  const toggle = (key: string) => {
+  1020→    setChecked(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+  1021→  };
+  1022→
+  1023→  return (
+  1024→    <div className="space-y-3">
+  1025→      <div className="flex items-center justify-between">
+  1026→        <h3 className="text-sm font-semibold flex items-center gap-2"><ClipboardList className="w-4 h-4 text-amber-500" /> Document Checklist</h3>
+  1027→        <Badge variant="outline" className="text-xs">{Math.round(progress)}%</Badge>
+  1028→      </div>
+  1029→      <ColorProgress value={progress} />
+  1030→      <ScrollArea className="max-h-64">
+  1031→        <div className="space-y-3 pr-2">
+  1032→          {categories.map(([catKey, cat]) => (
+  1033→            <div key={catKey}>
+  1034→              <h5 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{cat.name}</h5>
+  1035→              <div className="space-y-1">
+  1036→                {cat.items.map((item, idx) => {
+  1037→                  const key = `${catKey}-${idx}`;
+  1038→                  const isChecked = checked.has(key);
+  1039→                  return (
+  1040→                    <label key={key} className={`flex items-center gap-2 p-1.5 rounded-md cursor-pointer transition-colors text-xs min-w-0 ${isChecked ? 'bg-muted/50' : 'hover:bg-muted/30'}`}>
+  1041→                      <Checkbox checked={isChecked} onCheckedChange={() => toggle(key)} className="w-3.5 h-3.5 shrink-0" />
+  1042→                      <span className={`flex-1 min-w-0 truncate ${isChecked ? 'line-through text-muted-foreground' : ''}`}>{item.name}</span>
+  1043→                      <Badge variant={item.mandatory ? 'default' : 'secondary'} className="text-[8px] px-1 py-0 shrink-0">{item.mandatory ? 'Required' : 'Optional'}</Badge>
+  1044→                      <span className="text-[9px] text-muted-foreground whitespace-nowrap hidden sm:inline shrink-0">{item.time}</span>
+  1045→                    </label>
+  1046→                  );
+  1047→                })}
+  1048→              </div>
+  1049→            </div>
+  1050→          ))}
+  1051→        </div>
+  1052→      </ScrollArea>
+  1053→    </div>
+  1054→  );
+  1055→}
+  1056→
+  1057→// ============ TRAVEL COST CALCULATOR (ENHANCED) ============
+  1058→export function TravelCostCalculator({ country }: { country: CountryData }) {
+  1059→  const { saveBudget } = useAppStore();
+  1060→  const [days, setDays] = useState(14);
+  1061→  const [tier, setTier] = useState<'budget' | 'moderate' | 'luxury'>('moderate');
+  1062→  const [foodPerDay, setFoodPerDay] = useState(25);
+  1063→  const [transportPerDay, setTransportPerDay] = useState(15);
+  1064→  const [activities, setActivities] = useState(100);
+  1065→  const cp = country.costProfile;
+  1066→  if (!cp) return null;
+  1067→
+  1068→  const tierMultipliers = { budget: 0.6, moderate: 1, luxury: 1.8 };
+  1069→  const tierMultiplier = tierMultipliers[tier];
+  1070→  const daysRatio = days / 30;
+  1071→  const accommodationCost = (cp.monthlyRentUSD || 300) * daysRatio * tierMultiplier;
+  1072→  const foodCost = foodPerDay * days;
+  1073→  const transportCost = transportPerDay * days;
+  1074→  const visaFee = cp.visaFeeUSD;
+  1075→  const insuranceEstimate = Math.max(2, Math.ceil(days / 30)) * (cp.healthInsuranceUSD || 30);
+  1076→  const exchangeRate = EXCHANGE_RATES[country.currencyCode] || 278.5;
+  1077→
+  1078→  const breakdown = [
+  1079→    { name: 'Visa Fee', value: visaFee, color: '#f59e0b' },
+  1080→    { name: 'Accommodation', value: accommodationCost, color: '#f59e0b' },
+  1081→    { name: 'Food', value: foodCost, color: '#f97316' },
+  1082→    { name: 'Transport', value: transportCost, color: '#f97316' },
+  1083→    { name: 'Activities', value: activities, color: '#8b5cf6' },
+  1084→    { name: 'Insurance', value: insuranceEstimate, color: '#ec4899' },
+  1085→  ];
+  1086→  const grandTotal = breakdown.reduce((s, b) => s + b.value, 0);
+  1087→  const totalPKR = Math.round(grandTotal * exchangeRate);
+  1088→
+  1089→  // Donut chart params
+  1090→  const donutR = 50;
+  1091→  const donutC = 2 * Math.PI * donutR;
+  1092→  let cumulativeOffset = 0;
+  1093→
+  1094→  return (
+  1095→    <div className="space-y-4">
+  1096→      <h3 className="text-sm font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-amber-500" /> Travel Cost Calculator</h3>
+  1097→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1098→        <div className="space-y-2">
+  1099→          <div className="flex items-center justify-between"><Label className="text-xs">Trip Duration</Label><span className="text-xs font-mono font-medium">{days} days</span></div>
+  1100→          <Slider value={[days]} onValueChange={v => setDays(v[0])} min={1} max={90} step={1} />
+  1101→        </div>
+  1102→        <div className="space-y-2">
+  1103→          <Label className="text-xs">Accommodation Tier</Label>
+  1104→          <div className="flex gap-1">
+  1105→            {(['budget', 'moderate', 'luxury'] as const).map(t => (
+  1106→              <Button key={t} size="sm" variant={tier === t ? 'default' : 'outline'} className={`flex-1 text-xs capitalize ${tier === t ? 'bg-amber-600 hover:bg-amber-700' : ''}`} onClick={() => setTier(t)}>{t}</Button>
+  1107→            ))}
+  1108→          </div>
+  1109→        </div>
+  1110→        <div className="space-y-2">
+  1111→          <div className="flex items-center justify-between"><Label className="text-xs">Food Budget</Label><span className="text-xs font-mono font-medium">${foodPerDay}/day</span></div>
+  1112→          <Slider value={[foodPerDay]} onValueChange={v => setFoodPerDay(v[0])} min={10} max={100} step={5} />
+  1113→        </div>
+  1114→        <div className="space-y-2">
+  1115→          <div className="flex items-center justify-between"><Label className="text-xs">Transport</Label><span className="text-xs font-mono font-medium">${transportPerDay}/day</span></div>
+  1116→          <Slider value={[transportPerDay]} onValueChange={v => setTransportPerDay(v[0])} min={5} max={50} step={5} />
+  1117→        </div>
+  1118→        <div className="space-y-2 sm:col-span-2">
+  1119→          <div className="flex items-center justify-between"><Label className="text-xs">Activities</Label><span className="text-xs font-mono font-medium">${activities}/trip</span></div>
+  1120→          <Slider value={[activities]} onValueChange={v => setActivities(v[0])} min={0} max={200} step={10} />
+  1121→        </div>
+  1122→      </div>
+  1123→      <div className="flex flex-col sm:flex-row gap-4 items-center">
+  1124→        {/* Donut Chart */}
+  1125→        <svg width="120" height="120" viewBox="0 0 120 120" className="shrink-0">
+  1126→          {breakdown.map((item, i) => {
+  1127→            const pct = grandTotal > 0 ? item.value / grandTotal : 0;
+  1128→            const dashLen = donutC * pct;
+  1129→            const offset = donutC - cumulativeOffset;
+  1130→            cumulativeOffset += dashLen;
+  1131→            return (
+  1132→              <circle
+  1133→                key={i}
+  1134→                cx="60" cy="60" r={donutR}
+  1135→                fill="none"
+  1136→                stroke={item.color}
+  1137→                strokeWidth="14"
+  1138→                strokeDasharray={`${dashLen} ${donutC - dashLen}`}
+  1139→                strokeDashoffset={offset}
+  1140→                strokeLinecap="butt"
+  1141→                transform="rotate(-90 60 60)"
+  1142→                className="donut-segment-animated"
+  1143→                opacity="0.85"
+  1144→              />
+  1145→            );
+  1146→          })}
+  1147→          <text x="60" y="56" textAnchor="middle" className="text-sm font-bold" fill="var(--foreground)" fontSize="14" fontWeight="bold">${Math.round(grandTotal)}</text>
+  1148→          <text x="60" y="70" textAnchor="middle" fill="var(--muted-foreground)" fontSize="8">Total</text>
+  1149→        </svg>
+  1150→        {/* Breakdown list */}
+  1151→        <div className="flex-1 space-y-2 w-full">
+  1152→          {breakdown.map((item) => (
+  1153→            <div key={item.name} className="flex items-center justify-between text-xs">
+  1154→              <div className="flex items-center gap-2">
+  1155→                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+  1156→                <span className="text-muted-foreground">{item.name}</span>
+  1157→              </div>
+  1158→              <span className="font-medium">${Math.round(item.value).toLocaleString()}</span>
+  1159→            </div>
+  1160→          ))}
+  1161→        </div>
+  1162→      </div>
+  1163→      <div className="flex items-center justify-between font-bold text-base pt-2 border-t">
+  1164→        <span className="text-amber-600 dark:text-amber-400">Grand Total</span>
+  1165→        <span className="text-amber-600 dark:text-amber-400">${Math.round(grandTotal).toLocaleString()}</span>
+  1166→      </div>
+  1167→      <div className="flex items-center justify-between text-xs text-muted-foreground">
+  1168→        <span>≈ PKR {totalPKR.toLocaleString()}</span>
+  1169→        <span className="text-[10px]">Rate: 1 {country.currencyCode} = {exchangeRate} PKR</span>
+  1170→      </div>
+  1171→      <Button
+  1172→        size="sm"
+  1173→        variant="outline"
+  1174→        className="w-full text-xs"
+  1175→        onClick={() => {
+  1176→          saveBudget(country.code, { duration: days, tier, foodPerDay, transportPerDay, activities });
+  1177→          toast.success(`Budget saved for ${country.name}!`);
+  1178→        }}
+  1179→      >
+  1180→        <Save className="w-3 h-3 mr-1" />
+  1181→        Save Budget
+  1182→      </Button>
+  1183→    </div>
+  1184→  );
+  1185→}
+  1186→
+  1187→// ============ COMPARISON RADAR CHART ============
+  1188→export function ComparisonRadarChart({ results }: { results: ScoreBreakdown[] }) {
+  1189→  if (results.length < 2) return null;
+  1190→  const labels = results[0].components.map(c => c.name);
+  1191→  const numAxes = labels.length;
+  1192→  const cx = 150, cy = 150, maxR = 100;
+  1193→  const angleStep = (2 * Math.PI) / numAxes;
+  1194→  const startAngle = -Math.PI / 2;
+  1195→  const colors = ['#f59e0b', '#f59e0b', '#f97316', '#ec4899', '#8b5cf6'];
+  1196→
+  1197→  return (
+  1198→    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+  1199→      <h4 className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-amber-500" /> Radar Comparison</h4>
+  1200→      <div className="flex justify-center">
+  1201→        <svg width="300" height="300" viewBox="0 0 300 300">
+  1202→          {[0.25, 0.5, 0.75, 1].map(level => {
+  1203→            const pts = Array.from({ length: numAxes }, (_, i) => {
+  1204→              const angle = startAngle + i * angleStep;
+  1205→              return `${cx + level * maxR * Math.cos(angle)},${cy + level * maxR * Math.sin(angle)}`;
+  1206→            }).join(' ');
+  1207→            return <polygon key={level} points={pts} fill="none" stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground/15" />;
+  1208→          })}
+  1209→          {Array.from({ length: numAxes }, (_, i) => {
+  1210→            const angle = startAngle + i * angleStep;
+  1211→            return <line key={i} x1={cx} y1={cy} x2={cx + maxR * Math.cos(angle)} y2={cy + maxR * Math.sin(angle)} stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground/15" />;
+  1212→          })}
+  1213→          {results.map((r, rIdx) => {
+  1214→            const pts = r.components.map((c, i) => {
+  1215→              const angle = startAngle + i * angleStep;
+  1216→              const val = c.score / 100;
+  1217→              return `${cx + val * maxR * Math.cos(angle)},${cy + val * maxR * Math.sin(angle)}`;
+  1218→            }).join(' ');
+  1219→            return <polygon key={rIdx} points={pts} fill={colors[rIdx % colors.length]} fillOpacity="0.12" stroke={colors[rIdx % colors.length]} strokeWidth="2" />;
+  1220→          })}
+  1221→          {labels.map((label, i) => {
+  1222→            const angle = startAngle + i * angleStep;
+  1223→            const lx = cx + (maxR + 18) * Math.cos(angle);
+  1224→            const ly = cy + (maxR + 18) * Math.sin(angle);
+  1225→            return <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" style={{ fill: 'var(--muted-foreground)', fontSize: '8px' }}>{label.length > 14 ? label.substring(0, 14) + '…' : label}</text>;
+  1226→          })}
+  1227→        </svg>
+  1228→      </div>
+  1229→      <div className="flex flex-wrap justify-center gap-4">
+  1230→        {results.map((r, i) => (
+  1231→          <div key={i} className="flex items-center gap-1.5 text-xs"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} /><span>{r.country}</span></div>
+  1232→        ))}
+  1233→      </div>
+  1234→    </div>
+  1235→  );
+  1236→}
+  1237→
+  1238→// ============ SCORING HISTORY PANEL ============
+  1239→interface ScoringSession { id: string; date: string; profile: { age: number; occupation: string; purpose: string }; topCountries: string[]; scores: ScoreBreakdown[]; }
+  1240→export function ScoringHistoryPanel({ onReload }: { onReload: (scores: ScoreBreakdown[]) => void }) {
+  1241→  const [history, setHistory] = useState<ScoringSession[]>(() => {
+  1242→    try { const stored = localStorage.getItem(SCORING_HISTORY_KEY); return stored ? JSON.parse(stored) : []; } catch { return []; }
+  1243→  });
+  1244→  const reloadSession = (session: ScoringSession) => {
+  1245→    onReload(session.scores);
+  1246→    toast.success(`Loaded ${session.scores.length} results from ${new Date(session.date).toLocaleDateString()}`);
+  1247→  };
+  1248→  const clearHistory = () => { setHistory([]); try { localStorage.removeItem(SCORING_HISTORY_KEY); } catch { /* empty */ } toast.success('History cleared'); };
+  1249→
+  1250→  if (history.length === 0) {
+  1251→    return (
+  1252→      <Card className="p-6 text-center">
+  1253→        <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+  1254→        <h4 className="text-sm font-semibold">No Scoring History</h4>
+  1255→        <p className="text-xs text-muted-foreground mt-1">Complete a questionnaire to start tracking your assessments.</p>
+  1256→      </Card>
+  1257→    );
+  1258→  }
+  1259→
+  1260→  return (
+  1261→    <Card>
+  1262→      <CardHeader className="pb-3">
+  1263→        <div className="flex items-center justify-between">
+  1264→          <CardTitle className="text-sm flex items-center gap-2"><History className="w-4 h-4 text-amber-500" /> Recent Assessments</CardTitle>
+  1265→          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={clearHistory}><RotateCcw className="w-3 h-3 mr-1" /> Clear</Button>
+  1266→        </div>
+  1267→      </CardHeader>
+  1268→      <CardContent>
+  1269→        <ScrollArea className="max-h-64">
+  1270→          <div className="space-y-2">
+  1271→            {history.slice(0, 5).map((session) => (
+  1272→              <button key={session.id} className="w-full text-left p-3 rounded-lg border hover:bg-muted/50 transition-colors" onClick={() => reloadSession(session)}>
+  1273→                <div className="flex items-center justify-between mb-1">
+  1274→                  <span className="text-xs font-medium">{new Date(session.date).toLocaleString()}</span>
+  1275→                  <Badge variant="outline" className="text-[9px]">{session.scores.length} countries</Badge>
+  1276→                </div>
+  1277→                <div className="text-[10px] text-muted-foreground">Age {session.profile.age} · {session.profile.occupation} · {session.profile.purpose}</div>
+  1278→                <div className="flex gap-1 mt-1.5 flex-wrap">{session.topCountries.map((c, i) => (<Badge key={i} variant="secondary" className="text-[9px]">{i + 1}. {c}</Badge>))}</div>
+  1279→              </button>
+  1280→            ))}
+  1281→          </div>
+  1282→        </ScrollArea>
+  1283→      </CardContent>
+  1284→    </Card>
+  1285→  );
+  1286→}
+  1287→
+  1288→// ============ SMART QUICK SEARCH ============
+  1289→export function SmartQuickSearch() {
+  1290→  const { setSelectedCountry, setActiveTab } = useAppStore();
+  1291→  const [query, setQuery] = useState('');
+  1292→  const [open, setOpen] = useState(false);
+  1293→  const [highlighted, setHighlighted] = useState(0);
+  1294→  const [countries, setCountries] = useState<{ code: string; name: string; flagEmoji: string; flagUrl: string; visaType: string }[]>([]);
+  1295→  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+  1296→    try { const stored = localStorage.getItem(RECENT_SEARCHES_KEY); return stored ? JSON.parse(stored) : []; } catch { return []; }
+  1297→  });
+  1298→  const inputRef = useRef<HTMLInputElement>(null);
+  1299→  const containerRef = useRef<HTMLDivElement>(null);
+  1300→
+  1301→  useEffect(() => {
+  1302→    fetch('/api/countries?limit=100').then(r => r.json()).then(data => {
+  1303→      setCountries((data.data || []).map((c: CountryData) => ({ code: c.code, name: c.name, flagEmoji: c.flagEmoji, flagUrl: c.flagUrl || '', visaType: c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'On Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy' })));
+  1304→    }).catch(() => {});
+  1305→    const handleClick = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false); };
+  1306→    document.addEventListener('mousedown', handleClick);
+  1307→    return () => document.removeEventListener('mousedown', handleClick);
+  1308→  }, []);
+  1309→
+  1310→  const filtered = query.length > 0 ? countries.filter(c => c.name.toLowerCase().includes(query.toLowerCase()) || c.code.toLowerCase().includes(query.toLowerCase())).slice(0, 6) : [];
+  1311→
+  1312→  const handleSelect = async (code: string) => {
+  1313→    const updated = [code, ...recentSearches.filter(c => c !== code)].slice(0, 5);
+  1314→    setRecentSearches(updated);
+  1315→    try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated)); } catch { /* empty */ }
+  1316→    try {
+  1317→      const res = await fetch(`/api/countries/${code}`);
+  1318→      const data = await res.json();
+  1319→      if (data.data) { setSelectedCountry(data.data); setActiveTab('explore'); }
+  1320→    } catch { /* empty */ }
+  1321→    setQuery(''); setOpen(false);
+  1322→  };
+  1323→
+  1324→  const handleKeyDown = (e: React.KeyboardEvent) => {
+  1325→    const totalItems = filtered.length + (query.length === 0 ? recentSearches.length : 0);
+  1326→    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, totalItems - 1)); }
+  1327→    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+  1328→    else if (e.key === 'Enter' && highlighted >= 0) {
+  1329→      e.preventDefault();
+  1330→      if (query.length === 0 && recentSearches[highlighted]) handleSelect(recentSearches[highlighted]);
+  1331→      else if (filtered[highlighted]) handleSelect(filtered[highlighted].code);
+  1332→    } else if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); }
+  1333→  };
+  1334→
+  1335→  return (
+  1336→    <div ref={containerRef} className="relative hidden md:block">
+  1337→      <div className="search-input-expand relative rounded-lg border border-border bg-background">
+  1338→        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+  1339→        <input ref={inputRef} type="text" placeholder="Quick search... (Ctrl+K)" value={query} onChange={e => { setQuery(e.target.value); setOpen(true); setHighlighted(0); }} onFocus={() => setOpen(true)} onKeyDown={handleKeyDown} className="w-48 focus:w-72 pl-8 pr-7 py-1.5 text-sm bg-transparent outline-none placeholder:text-muted-foreground" />
+  1340→        {query && <button onClick={() => { setQuery(''); inputRef.current?.focus(); }} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="w-3 h-3 text-muted-foreground hover:text-foreground" /></button>}
+  1341→      </div>
+  1342→      {open && (filtered.length > 0 || (query.length === 0 && recentSearches.length > 0)) && (
+  1343→        <div className="absolute top-full mt-1 left-0 w-72 bg-popover border rounded-lg shadow-lg z-50 overflow-hidden">
+  1344→          {query.length === 0 && recentSearches.length > 0 && (
+  1345→            <>
+  1346→              <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Recent Searches</div>
+  1347→              {recentSearches.map((code, i) => {
+  1348→                const c = countries.find(x => x.code === code);
+  1349→                if (!c) return null;
+  1350→                return (<button key={code} className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50 transition-colors ${highlighted === i ? 'bg-muted/50' : ''}`} onClick={() => handleSelect(code)} onMouseEnter={() => setHighlighted(i)}><FlagImage code={c.code} flagUrl={c.flagUrl} size={20} emoji={c.flagEmoji} /><span className="flex-1 truncate">{c.name}</span><Badge variant="outline" className="text-[9px]">{c.visaType}</Badge></button>);
+  1351→              })}
+  1352→            </>
+  1353→          )}
+  1354→          {filtered.length > 0 && (
+  1355→            <>
+  1356→              {query.length > 0 && <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Countries</div>}
+  1357→              {filtered.map((c, i) => (
+  1358→                <button key={c.code} className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50 transition-colors ${highlighted === (query.length === 0 ? recentSearches.length + i : i) ? 'bg-muted/50' : ''}`} onClick={() => handleSelect(c.code)} onMouseEnter={() => setHighlighted(query.length === 0 ? recentSearches.length + i : i)}>
+  1359→                  <FlagImage code={c.code} flagUrl={c.flagUrl} size={20} emoji={c.flagEmoji} /><span className="flex-1 truncate">{c.name}</span><Badge variant="outline" className="text-[9px]">{c.visaType}</Badge>
+  1360→                  <div className="flex gap-1 ml-auto pl-2"><span className="p-0.5 rounded hover:bg-muted cursor-pointer" onClick={e => { e.stopPropagation(); handleSelect(c.code); }} title="View Details"><Eye className="w-3 h-3 text-muted-foreground" /></span></div>
+  1361→                </button>
+  1362→              ))}
+  1363→            </>
+  1364→          )}
+  1365→          <div className="border-t px-3 py-1.5"><p className="text-[10px] text-muted-foreground">↑↓ Navigate · Enter Select · Esc Close</p></div>
+  1366→        </div>
+  1367→      )}
+  1368→    </div>
+  1369→  );
+  1370→}
+  1371→
+  1372→// ============ CHECK FLASH INDICATOR ============
+  1373→export function CheckFlash({ show }: { show: boolean }) {
+  1374→  if (!show) return null;
+  1375→  return <span className="check-flash absolute right-2 top-1/2 -translate-y-1/2 text-amber-500"><CheckCircle2 className="w-4 h-4" /></span>;
+  1376→}
+  1377→
+  1378→// ============ ANIMATED SCORE RING ============
+  1379→export function AnimatedScoreRing({ score, size = 80, label }: { score: number; size?: number; label?: string }) {
+  1380→  const radius = (size - 8) / 2;
+  1381→  const circumference = 2 * Math.PI * radius;
+  1382→  const offset = circumference - (score / 100) * circumference;
+  1383→  const color = score >= 70 ? '#f59e0b' : score >= 40 ? '#f59e0b' : '#ef4444';
+  1384→  const [animatedOffset, setAnimatedOffset] = useState(circumference);
+  1385→  const isHighScore = score > 80;
+  1386→
+  1387→  useEffect(() => {
+  1388→    const timer = setTimeout(() => setAnimatedOffset(offset), 100);
+  1389→    return () => clearTimeout(timer);
+  1390→  }, [offset, circumference]);
+  1391→
+  1392→  return (
+  1393→    <div className="flex flex-col items-center gap-1 relative">
+  1394→      <div className={isHighScore ? 'score-pulse rounded-full' : ''}>
+  1395→        <svg width={size} height={size} className="transform -rotate-90">
+  1396→          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/20" />
+  1397→          <circle
+  1398→            cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color}
+  1399→            strokeWidth="4" strokeLinecap="round"
+  1400→            strokeDasharray={circumference}
+  1401→            strokeDashoffset={animatedOffset}
+  1402→            className="transition-all duration-1000 ease-out"
+  1403→          />
+  1404→        </svg>
+  1405→        <div className="absolute inset-0 flex flex-col items-center justify-center">
+  1406→          <span className="text-lg font-bold" style={{ color }}>{Math.round(score)}</span>
+  1407→        </div>
+  1408→      </div>
+  1409→      {label && <span className="text-xs text-muted-foreground">{label}</span>}
+  1410→    </div>
+  1411→  );
+  1412→}
+  1413→
+  1414→// ============ MICRO SPARKLINE ============
+  1415→export function MicroSparkline({ data, color, width = 60, height = 20 }: { data: number[]; color?: string; width?: number; height?: number }) {
+  1416→  if (!data || data.length === 0) return null;
+  1417→  const maxVal = Math.max(...data);
+  1418→  const minVal = Math.min(...data);
+  1419→  const range = maxVal - minVal || 1;
+  1420→  const points = data.map((v, i) => {
+  1421→    const x = (i / (data.length - 1)) * width;
+  1422→    const y = height - ((v - minVal) / range) * (height - 4) - 2;
+  1423→    return `${x},${y}`;
+  1424→  }).join(' ');
+  1425→  const lineColor = color || (data[data.length - 1] >= data[0] ? '#f59e0b' : '#ef4444');
+  1426→  return (
+  1427→    <svg width={width} height={height} className="inline-block" aria-hidden="true">
+  1428→      <polyline points={points} fill="none" stroke={lineColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  1429→    </svg>
+  1430→  );
+  1431→}
+  1432→
+  1433→// ============ VISA TIMELINE ESTIMATOR ============
+  1434→export function VisaTimelineEstimator({ country }: { country: CountryData }) {
+  1435→  const today = new Date();
+  1436→  const procMin = country.processingDaysMin || 5;
+  1437→  const procMax = country.processingDaysMax || 30;
+  1438→  const prepDays = Math.max(7, Math.round(procMin * 0.6));
+  1439→  const avgProcDays = Math.round((procMin + procMax) / 2);
+  1440→
+  1441→  const stages = [
+  1442→    { id: 'prep', label: 'Preparation', icon: Lightbulb, start: 0, end: prepDays, color: '#f59e0b', desc: 'Gather documents, photos, forms' },
+  1443→    { id: 'submit', label: 'Submission', icon: Send, start: prepDays, end: prepDays + 2, color: '#f97316', desc: 'Submit at embassy/online' },
+  1444→    { id: 'proc', label: 'Processing', icon: Clock, start: prepDays + 2, end: prepDays + 2 + avgProcDays, color: '#8b5cf6', desc: `${procMin}-${procMax} business days` },
+  1445→    { id: 'decision', label: 'Decision', icon: CheckCircle2, start: prepDays + 2 + avgProcDays, end: prepDays + 2 + avgProcDays + 3, color: '#f59e0b', desc: 'Receive visa decision' },
+  1446→  ];
+  1447→
+  1448→  const totalDays = stages[stages.length - 1].end;
+  1449→  const earliestArrival = new Date(today); earliestArrival.setDate(today.getDate() + stages[1].end);
+  1450→  const latestDecision = new Date(today); latestDecision.setDate(today.getDate() + totalDays);
+  1451→
+  1452→  const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  1453→
+  1454→  return (
+  1455→    <div className="space-y-3">
+  1456→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1457→        <CalendarClock className="w-4 h-4 text-violet-500" />
+  1458→        Visa Timeline Estimator
+  1459→        <Badge variant="secondary" className="text-[10px]">~{totalDays} days total</Badge>
+  1460→      </h3>
+  1461→      {/* Timeline Bar */}
+  1462→      <div className="relative">
+  1463→        <div className="flex gap-1 h-8 rounded-lg overflow-hidden">
+  1464→          {stages.map((s) => (
+  1465→            <div key={s.id} className="relative flex-1 group" style={{ backgroundColor: s.color }}>
+  1466→              <div className="absolute inset-0 flex items-center justify-center">
+  1467→                <s.icon className="w-3.5 h-3.5 text-white drop-shadow" />
+  1468→              </div>
+  1469→              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-popover border shadow-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+  1470→                <span className="font-medium">{s.label}</span>
+  1471→                <br /><span className="text-muted-foreground">{s.desc}</span>
+  1472→              </div>
+  1473→            </div>
+  1474→          ))}
+  1475→        </div>
+  1476→        <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+  1477→          {stages.map((s) => (
+  1478→            <span key={s.id}>Day {s.start}</span>
+  1479→          ))}
+  1480→          <span>Day {totalDays}</span>
+  1481→        </div>
+  1482→      </div>
+  1483→      {/* Key dates */}
+  1484→      <div className="grid grid-cols-2 gap-3">
+  1485→        <div className="p-2.5 rounded-lg border bg-muted/30 text-center">
+  1486→          <div className="text-[10px] text-muted-foreground">Earliest Submission</div>
+  1487→          <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatDate(earliestArrival)}</div>
+  1488→        </div>
+  1489→        <div className="p-2.5 rounded-lg border bg-muted/30 text-center">
+  1490→          <div className="text-[10px] text-muted-foreground">Expected Decision By</div>
+  1491→          <div className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatDate(latestDecision)}</div>
+  1492→        </div>
+  1493→      </div>
+  1494→    </div>
+  1495→  );
+  1496→}
+  1497→
+  1498→// ============ SIMILAR COUNTRIES PANEL ============
+  1499→export function SimilarCountriesPanel({ country }: { country: CountryData }) {
+  1500→  const { countries, setSelectedCountry } = useAppStore();
+  1501→
+  1502→  const similar = useMemo(() => {
+  1503→    const allCountries = countries || [];
+  1504→    return allCountries
+  1505→      .filter(c => c.code !== country.code)
+  1506→      .filter(c => {
+  1507→        // Same visa difficulty category
+  1508→        const isFree = c.visaFree || c.visaOnArrival || c.etaAvailable;
+  1509→        const isTargetFree = country.visaFree || country.visaOnArrival || country.etaAvailable;
+  1510→        if (isFree !== isTargetFree) return false;
+  1511→        // Same continent or similar safety rating
+  1512→        if (c.continent === country.continent) return true;
+  1513→        if (Math.abs(c.safetyRating - country.safetyRating) <= 1) return true;
+  1514→        if (Math.abs((c.costProfile?.totalMonthlyUSD || 1000) - (country.costProfile?.totalMonthlyUSD || 1000)) <= 300) return true;
+  1515→        return false;
+  1516→      })
+  1517→      .slice(0, 4);
+  1518→  }, [countries, country]);
+  1519→
+  1520→  if (similar.length === 0) return null;
+  1521→
+  1522→  return (
+  1523→    <div className="space-y-2.5">
+  1524→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1525→        <Globe className="w-4 h-4 text-sky-500" />
+  1526→        Similar Countries
+  1527→        <Badge variant="secondary" className="text-[10px]">{similar.length} matches</Badge>
+  1528→      </h3>
+  1529→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  1530→        {similar.map((c) => {
+  1531→          const visaStatus = c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'On Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy';
+  1532→          const statusColor = c.visaFree ? 'text-amber-600' : c.visaOnArrival ? 'text-amber-600' : c.etaAvailable ? 'text-amber-600' : 'text-red-600';
+  1533→          return (
+  1534→            <button
+  1535→              key={c.code}
+  1536→              onClick={() => setSelectedCountry(c)}
+  1537→              className="flex items-center gap-2 p-2 rounded-lg border text-left hover:bg-muted/50 hover:shadow-sm transition-all cursor-pointer"
+  1538→            >
+  1539→              <FlagImage code={c.code} flagUrl={c.flagUrl} size={24} emoji={c.flagEmoji} />
+  1540→              <div className="min-w-0 flex-1">
+  1541→                <p className="text-xs font-medium truncate">{c.name}</p>
+  1542→                <p className={`text-[10px] ${statusColor}`}>{visaStatus}</p>
+  1543→              </div>
+  1544→            </button>
+  1545→          );
+  1546→        })}
+  1547→      </div>
+  1548→    </div>
+  1549→  );
+  1550→}
+  1551→
+  1552→// ============ EMBASSY INFO SECTION ============
+  1553→export function EmbassyInfoSection({ countryCode, countryName }: { countryCode: string; countryName: string }) {
+  1554→  const embassy = EMBASSY_DATA[countryCode] || GENERIC_EMBASSY;
+  1555→  const hasNote = 'note' in embassy && embassy.note;
+  1556→  return (
+  1557→    <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+  1558→      <h3 className="text-sm font-semibold flex items-center gap-2">
+  1559→        <Building className="w-4 h-4 text-amber-500" />
+  1560→        Embassy & Consulate Information
+  1561→      </h3>
+  1562→      {hasNote && (
+  1563→        <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+  1564→          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+  1565→          <span className="text-xs text-amber-700 dark:text-amber-400 break-words">{embassy.note}</span>
+  1566→        </div>
+  1567→      )}
+  1568→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+  1569→        <div className="flex items-start gap-2 min-w-0">
+  1570→          <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1571→          <span className="break-words min-w-0">{embassy.address}</span>
+  1572→        </div>
+  1573→        <div className="flex items-start gap-2 min-w-0">
+  1574→          <Phone className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1575→          <span className="break-words min-w-0">{embassy.phone}</span>
+  1576→        </div>
+  1577→        <div className="flex items-start gap-2 min-w-0">
+  1578→          <Mail className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1579→          <span className="text-xs break-all min-w-0">{embassy.email}</span>
+  1580→        </div>
+  1581→        <div className="flex items-start gap-2 min-w-0">
+  1582→          <Clock className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+  1583→          <span className="break-words min-w-0">{embassy.hours}</span>
+  1584→        </div>
+  1585→      </div>
+  1586→      <div className="flex flex-wrap gap-2 pt-2 border-t">
+  1587→        <Button variant="outline" size="sm" className="text-xs" asChild>
+  1588→          <a href={embassy.website} target="_blank" rel="noopener noreferrer">
+  1589→            <ExternalLink className="w-3 h-3 mr-1" /> Official Website
+  1590→          </a>
+  1591→        </Button>
+  1592→        <Button variant="outline" size="sm" className="text-xs bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800" asChild>
+  1593→          <a href={embassy.appointmentUrl} target="_blank" rel="noopener noreferrer">
+  1594→            <Calendar className="w-3 h-3 mr-1" /> Book Appointment
+  1595→          </a>
+  1596→        </Button>
+  1597→      </div>
+  1598→    </div>
+  1599→  );
+  1600→}
+  1601→
+  1602→// ============ DESTINATION DISCOVERY PANEL ============
+  1603→export function DestinationDiscoveryPanel({ countries, onSelectCountry }: { countries: CountryData[]; onSelectCountry: (c: CountryData) => void }) {
+  1604→  const { userProfile } = useAppStore();
+  1605→
+  1606→  const recommendations = useMemo(() => {
+  1607→    const popular = countries
+  1608→      .filter(c => c.visaFree || c.visaOnArrival)
+  1609→      .sort((a, b) => b.safetyRating - a.safetyRating)
+  1610→      .slice(0, 5);
+  1611→    return popular;
+  1612→  }, [countries]);
+  1613→
+  1614→  if (recommendations.length === 0) return null;
+  1615→
+  1616→  return (
+  1617→    <div className="mt-8">
+  1618→      <div className="flex items-center gap-2 mb-4">
+  1619→        <Sparkles className="w-5 h-5 text-amber-500" />
+  1620→        <h2 className="text-lg font-semibold">
+  1621→          {userProfile ? 'Recommended for You' : 'Popular Destinations'}
+  1622→        </h2>
+  1623→        <Badge variant="secondary" className="text-[10px]">Visa-Free & On-Arrival</Badge>
+  1624→      </div>
+  1625→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+  1626→        {recommendations.map((country, idx) => {
+  1627→          const visaStatus = country.visaFree ? 'Visa Free' : 'On Arrival';
+  1628→          const statusColor = country.visaFree ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+  1629→          return (
+  1630→            <motion.div
+  1631→              key={country.code}
+  1632→              initial={{ opacity: 0, y: 20 }}
+  1633→              animate={{ opacity: 1, y: 0 }}
+  1634→              transition={{ delay: idx * 0.1 }}
+  1635→              whileHover={{ scale: 1.03 }}
+  1636→            >
+  1637→              <Card className="cursor-pointer hover:shadow-lg transition-all duration-300 group" onClick={() => onSelectCountry(country)}>
+  1638→                <CardContent className="p-4 space-y-2">
+  1639→                  <div className="flex items-center gap-2">
+  1640→                    <FlagImage code={country.code} flagUrl={country.flagUrl} size={28} />
+  1641→                    <div className="min-w-0 flex-1">
+  1642→                      <p className="text-sm font-semibold truncate">{country.name}</p>
+  1643→                      <Badge className={`${statusColor} text-[9px]`} variant="secondary">{visaStatus}</Badge>
+  1644→                    </div>
+  1645→                  </div>
+  1646→                  <div className="grid grid-cols-3 gap-1 text-[10px] text-muted-foreground">
+  1647→                    <div className="text-center">
+  1648→                      <Shield className="w-3 h-3 mx-auto mb-0.5 text-amber-500" />
+  1649→                      <span>{country.safetyRating}/10</span>
+  1650→                    </div>
+  1651→                    <div className="text-center">
+  1652→                      <DollarSign className="w-3 h-3 mx-auto mb-0.5 text-amber-500" />
+  1653→                      <span>${country.costProfile?.totalMonthlyUSD || 0}</span>
+  1654→                    </div>
+  1655→                    <div className="text-center">
+  1656→                      <Thermometer className="w-3 h-3 mx-auto mb-0.5 text-orange-500" />
+  1657→                      <span>{country.avgTempC}°C</span>
+  1658→                    </div>
+  1659→                  </div>
+  1660→                  <Button variant="outline" size="sm" className="w-full text-xs btn-glow">
+  1661→                    <Zap className="w-3 h-3 mr-1" /> Quick Score
+  1662→                  </Button>
+  1663→                </CardContent>
+  1664→              </Card>
+  1665→            </motion.div>
+  1666→          );
+  1667→        })}
+  1668→      </div>
+  1669→    </div>
+  1670→  );
+  1671→}
+  1672→
+  1673→// ============ APPLICATION TIMELINE TRACKER ============
+  1674→export function ApplicationTimelineTracker() {
+  1675→  const [checkedStages, setCheckedStages] = useState<Set<string>>(new Set());
+  1676→  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  1677→
+  1678→  const toggleStage = (stageId: string) => {
+  1679→    setCheckedStages(prev => {
+  1680→      const next = new Set(prev);
+  1681→      if (next.has(stageId)) next.delete(stageId);
+  1682→      else next.add(stageId);
+  1683→      return next;
+  1684→    });
+  1685→  };
+  1686→
+  1687→  const toggleItem = (key: string) => {
+  1688→    setCheckedItems(prev => {
+  1689→      const next = new Set(prev);
+  1690→      if (next.has(key)) next.delete(key);
+  1691→      else next.add(key);
+  1692→      return next;
+  1693→    });
+  1694→  };
+  1695→
+  1696→  const totalItems = TIMELINE_STAGES.reduce((sum, s) => sum + s.items.length, 0);
+  1697→  const completedItems = checkedItems.size;
+  1698→  const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+  1699→
+  1700→  return (
+  1701→    <div className="space-y-4">
+  1702→      <div className="space-y-2">
+  1703→        <div className="flex items-center justify-between text-sm">
+  1704→          <span className="font-medium">Application Progress</span>
+  1705→          <span className="text-muted-foreground">{completedItems}/{totalItems} completed</span>
+  1706→        </div>
+  1707→        <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
+  1708→          <motion.div
+  1709→            className="h-full rounded-full"
+  1710→            style={{ background: getScoreGradient(progress) }}
+  1711→            initial={{ width: 0 }}
+  1712→            animate={{ width: `${progress}%` }}
+  1713→            transition={{ duration: 0.5 }}
+  1714→          />
+  1715→        </div>
+  1716→        {progress === 100 && (
+  1717→          <p className="text-xs text-amber-600 flex items-center gap-1">
+  1718→            <CheckCircle2 className="w-3 h-3" /> All stages complete! Ready for submission.
+  1719→          </p>
+  1720→        )}
+  1721→      </div>
+  1722→
+  1723→      <div className="relative space-y-0">
+  1724→        {TIMELINE_STAGES.map((stage, stageIdx) => {
+  1725→          const stageComplete = checkedStages.has(stage.id);
+  1726→          const stageItemsComplete = stage.items.filter((_, i) => checkedItems.has(`${stage.id}-${i}`)).length;
+  1727→          const isLast = stageIdx === TIMELINE_STAGES.length - 1;
+  1728→          return (
+  1729→            <Fragment key={stage.id}>
+  1730→              <div className="flex gap-3">
+  1731→                <div className="flex flex-col items-center">
+  1732→                  <button
+  1733→                    onClick={() => toggleStage(stage.id)}
+  1734→                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
+  1735→                      stageComplete
+  1736→                        ? 'bg-amber-600 border-amber-600 text-white timeline-dot-active'
+  1737→                        : 'bg-background border-muted-foreground/30 text-muted-foreground hover:border-amber-400'
+  1738→                    }`}
+  1739→                  >
+  1740→                    {stageComplete ? <CheckCircle2 className="w-5 h-5" /> : React.createElement(stage.icon, { className: 'w-4 h-4' })}
+  1741→                  </button>
+  1742→                  {!isLast && (
+  1743→                    <div className={`w-0.5 flex-1 min-h-[20px] transition-colors ${stageComplete ? 'bg-amber-500' : 'bg-muted-foreground/20'}`} />
+  1744→                  )}
+  1745→                </div>
+  1746→                <div className="flex-1 pb-6">
+  1747→                  <div className="flex items-center justify-between">
+  1748→                    <h4 className={`text-sm font-semibold ${stageComplete ? 'text-amber-600' : ''}`}>{stage.title}</h4>
+  1749→                    <span className="text-[10px] text-muted-foreground">{stageItemsComplete}/{stage.items.length}</span>
+  1750→                  </div>
+  1751→                  <div className="mt-1 space-y-1">
+  1752→                    {stage.items.map((item, itemIdx) => {
+  1753→                      const key = `${stage.id}-${itemIdx}`;
+  1754→                      const checked = checkedItems.has(key);
+  1755→                      return (
+  1756→                        <label key={key} className="flex items-center gap-2 cursor-pointer group">
+  1757→                          <Checkbox checked={checked} onCheckedChange={() => toggleItem(key)} className="w-3.5 h-3.5" />
+  1758→                          <span className={`text-xs transition-colors ${checked ? 'line-through text-muted-foreground' : 'group-hover:text-amber-600'}`}>{item}</span>
+  1759→                        </label>
+  1760→                      );
+  1761→                    })}
+  1762→                  </div>
+  1763→                </div>
+  1764→              </div>
+  1765→            </Fragment>
+  1766→          );
+  1767→        })}
+  1768→      </div>
+  1769→    </div>
+  1770→  );
+  1771→}
+  1772→
+  1773→// ============ VISA FEE COMPARISON CHART ============
+  1774→export function VisaFeeComparisonChart({ results }: { results: ScoreBreakdown[] }) {
+  1775→  if (results.length === 0) return null;
+  1776→  const metrics = [
+  1777→    { label: 'Eligibility', key: 'eligibility' as const, color: '#f59e0b' },
+  1778→    { label: 'Visa Likelihood', key: 'visaLikelihood' as const, color: '#f97316' },
+  1779→    { label: 'Cost Suitability', key: 'costSuitability' as const, color: '#f59e0b' },
+  1780→  ];
+  1781→  const maxScore = 100;
+  1782→  return (
+  1783→    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+  1784→      <h4 className="text-sm font-semibold flex items-center gap-2">
+  1785→        <BarChart3 className="w-4 h-4 text-amber-500" />
+  1786→        Side-by-Side Comparison
+  1787→      </h4>
+  1788→      {metrics.map(metric => (
+  1789→        <div key={metric.key}>
+  1790→          <p className="text-xs font-medium text-muted-foreground mb-2">{metric.label}</p>
+  1791→          <div className="space-y-1.5">
+  1792→            {results.map((r) => (
+  1793→              <div key={r.country} className="flex items-center gap-2">
+  1794→                <span className="w-20 text-xs truncate text-muted-foreground shrink-0">{r.country}</span>
+  1795→                <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+  1796→                  <motion.div
+  1797→                    className="h-full rounded bar-animated"
+  1798→                    style={{ backgroundColor: metric.color, width: `${(r[metric.key] / maxScore) * 100}%` }}
+  1799→                    initial={{ width: 0 }}
+  1800→                    animate={{ width: `${(r[metric.key] / maxScore) * 100}%` }}
+  1801→                    transition={{ duration: 0.6, delay: 0.1 }}
+  1802→                  />
+  1803→                </div>
+  1804→                <span className="w-10 text-xs text-right font-mono">{Math.round(r[metric.key])}%</span>
+  1805→              </div>
+  1806→            ))}
+  1807→          </div>
+  1808→        </div>
+  1809→      ))}
+  1810→    </div>
+  1811→  );
+  1812→}
+  1813→
+  1814→// ============ VISA DOCUMENT CHECKLIST ============
+  1815→
+  1816→function generateDefaultChecklist(country: CountryData): VisaDocChecklistItem[] {
+  1817→  const isEasy = country.visaFree || country.visaOnArrival;
+  1818→  const isMedium = country.etaAvailable;
+  1819→
+  1820→  const basicDocs: VisaDocChecklistItem[] = [
+  1821→    { id: 'passport', name: 'Valid Passport (6+ months validity)', category: 'required', checked: false },
+  1822→    { id: 'return-ticket', name: 'Return/Onward Flight Ticket', category: 'required', checked: false },
+  1823→    { id: 'hotel', name: 'Hotel Booking Confirmation', category: 'required', checked: false },
+  1824→    { id: 'insurance', name: 'Travel Insurance', category: 'required', checked: false },
+  1825→    { id: 'bank-statement', name: 'Bank Statement (last 3 months)', category: 'recommended', checked: false },
+  1826→    { id: 'photos', name: 'Passport-sized Photographs (2)', category: 'recommended', checked: false },
+  1827→  ];
+  1828→
+  1829→  if (isEasy) return basicDocs;
+  1830→
+  1831→  const mediumDocs: VisaDocChecklistItem[] = [
+  1832→    ...basicDocs,
+  1833→    { id: 'application-form', name: 'Visa Application Form (completed)', category: 'required', checked: false },
+  1834→    { id: 'bank-6months', name: 'Bank Statement (last 6 months)', category: 'required', checked: false },
+  1835→    { id: 'employment', name: 'Employment Verification Letter', category: 'required', checked: false },
+  1836→  ];
+  1837→
+  1838→  if (isMedium) return mediumDocs;
+  1839→
+  1840→  const fullDocs: VisaDocChecklistItem[] = [
+  1841→    ...mediumDocs,
+  1842→    { id: 'tax-returns', name: 'Tax Returns (last 2 years)', category: 'required', checked: false },
+  1843→    { id: 'itinerary', name: 'Detailed Travel Itinerary', category: 'required', checked: false },
+  1844→    { id: 'sponsor', name: 'Sponsor Letter (if applicable)', category: 'recommended', checked: false },
+  1845→    { id: 'education', name: 'Educational Certificates', category: 'recommended', checked: false },
+  1846→    { id: 'cover-letter', name: 'Cover Letter / Purpose of Visit', category: 'required', checked: false },
+  1847→    { id: 'income-proof', name: 'Proof of Income / Payslips', category: 'required', checked: false },
+  1848→  ];
+  1849→
+  1850→  return fullDocs;
+  1851→}
+  1852→
+  1853→export function VisaChecklistPanel({ country }: { country: CountryData }) {
+  1854→  const [items, setItems] = useState<VisaDocChecklistItem[]>([]);
+  1855→  const [loaded, setLoaded] = useState(false);
+  1856→
+  1857→  useEffect(() => {
+  1858→    const storageKey = `pakvisa-checklist-${country.code}`;
+  1859→    const loadChecklist = () => {
+  1860→      try {
+  1861→        const saved = localStorage.getItem(storageKey);
+  1862→        if (saved) {
+  1863→          setItems(JSON.parse(saved));
+  1864→        } else {
+  1865→          const defaults = generateDefaultChecklist(country);
+  1866→          setItems(defaults);
+  1867→          localStorage.setItem(storageKey, JSON.stringify(defaults));
+  1868→        }
+  1869→      } catch {
+  1870→        const defaults = generateDefaultChecklist(country);
+  1871→        setItems(defaults);
+  1872→      }
+  1873→      setLoaded(true);
+  1874→    };
+  1875→    requestAnimationFrame(loadChecklist);
+  1876→  }, [country.code]);
+  1877→
+  1878→  useEffect(() => {
+  1879→    if (loaded) {
+  1880→      const storageKey = `pakvisa-checklist-${country.code}`;
+  1881→      localStorage.setItem(storageKey, JSON.stringify(items));
+  1882→    }
+  1883→  }, [items, loaded, country.code]);
+  1884→
+  1885→  const toggleItem = (id: string) => {
+  1886→    setItems(prev => prev.map(item =>
+  1887→      item.id === id ? { ...item, checked: !item.checked } : item
+  1888→    ));
+  1889→  };
+  1890→
+  1891→  const checkedCount = items.filter(i => i.checked).length;
+  1892→  const totalCount = items.length;
+  1893→  const progressPct = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+  1894→
+  1895→  const requiredItems = items.filter(i => i.category === 'required');
+  1896→  const recommendedItems = items.filter(i => i.category === 'recommended');
+  1897→
+  1898→  if (!loaded) {
+  1899→    return (
+  1900→      <div className="glass-section p-4 rounded-lg animate-pulse">
+  1901→        <div className="h-5 w-48 bg-muted rounded mb-3" />
+  1902→        <div className="space-y-2">
+  1903→          {[1, 2, 3].map(i => (
+  1904→            <div key={i} className="h-4 w-full bg-muted rounded" />
+  1905→          ))}
+  1906→        </div>
+  1907→      </div>
+  1908→    );
+  1909→  }
+  1910→
+  1911→  return (
+  1912→    <div className="glass-section p-4 rounded-lg space-y-3">
+  1913→      <div className="flex items-center justify-between">
+  1914→        <h3 className="text-sm font-semibold flex items-center gap-2">
+  1915→          <ClipboardList className="w-4 h-4 text-amber-500" />
+  1916→          Visa Document Checklist
+  1917→        </h3>
+  1918→        <div className="flex items-center gap-2">
+  1919→          <span className="text-xs font-medium text-muted-foreground">
+  1920→            {checkedCount}/{totalCount} documents ready
+  1921→          </span>
+  1922→          <Badge
+  1923→            variant="outline"
+  1924→            className={`text-[10px] px-1.5 py-0 ${
+  1925→              progressPct === 100
+  1926→                ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/20'
+  1927→                : 'border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/20'
+  1928→            }`}
+  1929→          >
+  1930→            {progressPct === 100 ? '✓ Complete' : `${progressPct}%`}
+  1931→          </Badge>
+  1932→        </div>
+  1933→      </div>
+  1934→
+  1935→      {/* Progress bar */}
+  1936→      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+  1937→        <motion.div
+  1938→          className="h-full rounded-full"
+  1939→          style={{
+  1940→            background: progressPct === 100
+  1941→              ? 'linear-gradient(90deg, #22c55e, #4ade80)'
+  1942→              : 'linear-gradient(90deg, #f59e0b, #f97316)',
+  1943→          }}
+  1944→          initial={{ width: 0 }}
+  1945→          animate={{ width: `${progressPct}%` }}
+  1946→          transition={{ duration: 0.5, ease: 'easeOut' }}
+  1947→        />
+  1948→      </div>
+  1949→
+  1950→      {/* Required Documents */}
+  1951→      {requiredItems.length > 0 && (
+  1952→        <div className="space-y-1">
+  1953→          <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400">
+  1954→            Required Documents
+  1955→          </p>
+  1956→          {requiredItems.map((item) => (
+  1957→            <label
+  1958→              key={item.id}
+  1959→              className="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer group transition-colors"
+  1960→            >
+  1961→              <Checkbox
+  1962→                checked={item.checked}
+  1963→                onCheckedChange={() => toggleItem(item.id)}
+  1964→                className="w-4 h-4 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+  1965→              />
+  1966→              <span className={`text-sm flex-1 transition-colors ${
+  1967→                item.checked ? 'line-through text-muted-foreground' : 'group-hover:text-amber-600'
+  1968→              }`}>
+  1969→                {item.name}
+  1970→              </span>
+  1971→              {item.checked && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+  1972→            </label>
+  1973→          ))}
+  1974→        </div>
+  1975→      )}
+  1976→
+  1977→      {/* Recommended Documents */}
+  1978→      {recommendedItems.length > 0 && (
+  1979→        <div className="space-y-1">
+  1980→          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+  1981→            Recommended
+  1982→          </p>
+  1983→          {recommendedItems.map((item) => (
+  1984→            <label
+  1985→              key={item.id}
+  1986→              className="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer group transition-colors"
+  1987→            >
+  1988→              <Checkbox
+  1989→                checked={item.checked}
+  1990→                onCheckedChange={() => toggleItem(item.id)}
+  1991→                className="w-4 h-4 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+  1992→              />
+  1993→              <span className={`text-sm flex-1 transition-colors ${
+  1994→                item.checked ? 'line-through text-muted-foreground' : 'group-hover:text-orange-500'
+  1995→              }`}>
+  1996→                {item.name}
+  1997→              </span>
+  1998→              {item.checked && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+  1999→            </label>
+  2000→          ))}
+
+[showing lines 1-2000 of 2620; use offset=2001 with limit to continue reading]

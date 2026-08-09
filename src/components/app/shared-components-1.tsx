@@ -10,7 +10,7 @@ import {
   AlertTriangle, XCircle, Info, CheckCircle2, X, Download, ExternalLink, Zap, Target, Sparkles,
   PackageOpen, PlaneTakeoff, Luggage, Calculator, SearchX, Bookmark, AlertCircle,
   CalendarClock, FileCheck2, Flame, Languages, Sun, Moon, RotateCcw, CalendarDays, Gavel, Trophy, Thermometer,
-  MessageCircle,
+  MessageCircle, Wallet, Timer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1800,6 +1800,115 @@ export function BudgetPieChart({ data }: { data: Array<{ name: string; value: nu
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   VisaFeeEstimator
+   Compact cost breakdown for a selected country
+   ────────────────────────────────────────────── */
+export function VisaFeeEstimator({ country, avgFee }: { country: CountryData; avgFee?: number }) {
+  const cp = country.costProfile;
+
+  if (!cp) {
+    return (
+      <div className="p-3 rounded-lg border bg-muted/30">
+        <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+          <Wallet className="w-4 h-4 text-amber-500" />
+          Visa Fee Estimator
+        </h3>
+        <p className="text-xs text-muted-foreground">No cost data available for this country.</p>
+      </div>
+    );
+  }
+
+  const totalEstimate = cp.visaFeeUSD + cp.serviceFeeUSD;
+  const comparisonFee = avgFee || 120; // fallback average
+
+  // Determine affordability
+  const affordability = totalEstimate <= 50 ? 'Affordable' : totalEstimate <= 150 ? 'Moderate' : 'Expensive';
+  const affordabilityColor = affordability === 'Affordable'
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+    : affordability === 'Moderate'
+      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+
+  // Comparison bar percentage
+  const maxComparison = Math.max(totalEstimate, comparisonFee) || 1;
+  const thisPct = (totalEstimate / maxComparison) * 100;
+  const avgPct = (comparisonFee / maxComparison) * 100;
+
+  return (
+    <div className="p-3 rounded-lg border bg-muted/30 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Wallet className="w-4 h-4 text-amber-500" />
+          Visa Fee Estimator
+        </h3>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${affordabilityColor}`}>
+          {affordability}
+        </span>
+      </div>
+
+      {/* Fee breakdown */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Visa Fee</span>
+          <span className="font-semibold tabular-nums">${cp.visaFeeUSD}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Service Fee</span>
+          <span className="font-semibold tabular-nums">${cp.serviceFeeUSD}</span>
+        </div>
+        <div className="h-px bg-border" />
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium">Total Estimate</span>
+          <span className="font-bold text-amber-600 dark:text-amber-400 tabular-nums">${totalEstimate}</span>
+        </div>
+      </div>
+
+      {/* Processing time */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Timer className="w-3.5 h-3.5 text-orange-500" />
+        <span>Processing: <strong className="text-foreground">{country.processingDaysMin}–{country.processingDaysMax} business days</strong></span>
+      </div>
+
+      {/* Comparison bar */}
+      {avgFee !== undefined && avgFee > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-[10px] text-muted-foreground font-medium">Cost Comparison</div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-14 text-[10px] text-muted-foreground shrink-0 truncate">{country.name.slice(0, 8)}</span>
+              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                  style={{ width: `${Math.max(3, thisPct)}%` }}
+                />
+              </div>
+              <span className="w-10 text-[10px] tabular-nums text-right font-medium">${totalEstimate}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-14 text-[10px] text-muted-foreground shrink-0">Average</span>
+              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-orange-400/60 transition-all duration-500"
+                  style={{ width: `${Math.max(3, avgPct)}%` }}
+                />
+              </div>
+              <span className="w-10 text-[10px] tabular-nums text-right font-medium">${avgFee}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Currency hint */}
+      {country.currencyCode && (
+        <div className="text-[10px] text-muted-foreground bg-amber-50 dark:bg-amber-950/20 rounded px-2 py-1">
+          💱 Local currency: <strong>{country.currencyCode}</strong> — Check exchange rate for exact amount in PKR
+        </div>
+      )}
     </div>
   );
 }

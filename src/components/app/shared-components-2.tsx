@@ -33,8 +33,9 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem, VisaDocChecklistItem } from '@/lib/types';
 import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion, TIMELINE_STAGES } from './constants';
-import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist, getScoreGradient } from './shared-components-1';
+import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist, getScoreGradient, VisaFeeEstimator } from './shared-components-1';
 import { PremiumBadge } from './dialogs';
+import { TravelWeatherWidget } from './shared-components-3';
 
 export function CountryDetailDialog({ country, open, onClose }: { country: CountryData | null; open: boolean; onClose: () => void }) {
   const { addScoreResult, setSelectedCountry, setActiveTab } = useAppStore();
@@ -201,6 +202,9 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
             </div>
           </div>
 
+          {/* Travel Weather Widget */}
+          <TravelWeatherWidget country={country} />
+
           {/* Travel Tips */}
           <TravelTipsPanel country={country} />
 
@@ -338,6 +342,9 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
               </div>
             </div>
           )}
+
+          {/* Visa Fee Estimator */}
+          <VisaFeeEstimator country={country} avgFee={120} />
 
           {/* Quick Score This Country */}
           <Separator />

@@ -7,6 +7,7 @@ import {
   DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin,
   Users, TrendingUp, Timer, Wallet, Flame, Target, History, Gavel, Compass, Sparkles,
   AlertTriangle, Info, XCircle, CheckCircle2, X, ChevronDown, ArrowUpDown, User, Lock, Bell, AlarmClock, PlaneTakeoff, CalendarClock,
+  Thermometer, ThumbsUp, ThermometerSun, Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { CountryData, ScoreBreakdown } from '@/lib/types';
-import { EXCHANGE_RATES, TIMELINE_STAGES, VISA_CATEGORY_COLORS, QUICK_FILTERS } from './constants';
+import { EXCHANGE_RATES, TIMELINE_STAGES, VISA_CATEGORY_COLORS, QUICK_FILTERS, MONTH_NAMES } from './constants';
 import { FlagImage, AnimatedCounter, ColorProgress, CountryCard } from './shared-components-1';
 import { CountryDetailDialog } from './shared-components-2';
 
@@ -768,5 +769,278 @@ export function VisaAlertBanner() {
         ))}
       </div>
     </motion.div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   TravelWeatherWidget
+   Compact weather display for a destination country
+   ────────────────────────────────────────────── */
+export function TravelWeatherWidget({ country }: { country: CountryData }) {
+  const [useFahrenheit, setUseFahrenheit] = useState(false);
+  const currentMonthIndex = new Date().getMonth();
+
+  let temps: Record<string, number> = {};
+  try {
+    temps = typeof country.monthlyTemps === 'string'
+      ? JSON.parse(country.monthlyTemps)
+      : (country.monthlyTemps || {});
+  } catch { temps = {}; }
+
+  const bestMonthsLower = country.bestTravelMonths?.toLowerCase() || '';
+
+  const convertTemp = (c: number) => useFahrenheit ? Math.round(c * 9 / 5 + 32) : c;
+  const unit = useFahrenheit ? '°F' : '°C';
+
+  // Find global min/max across all months for color scaling
+  const allTemps = MONTH_NAMES.map(m => temps[m] || 0).filter(t => t > 0);
+  const globalMin = allTemps.length > 0 ? Math.min(...allTemps) : 0;
+  const globalMax = allTemps.length > 0 ? Math.max(...allTemps) : 40;
+  const tempRange = globalMax - globalMin || 1;
+
+  // Color: green for cold, amber for warm, orange-red for hot
+  const getTempColor = (c: number) => {
+    const ratio = Math.min(1, Math.max(0, (c - globalMin) / tempRange));
+    if (ratio < 0.33) {
+      // Green range
+      const t = ratio / 0.33;
+      return `hsl(${120 - t * 30}, 70%, ${40 + t * 10}%)`;
+    } else if (ratio < 0.66) {
+      // Amber range
+      const t = (ratio - 0.33) / 0.33;
+      return `hsl(${45 - t * 15}, 85%, ${50 + t * 5}%)`;
+    } else {
+      // Orange-red range
+      const t = (ratio - 0.66) / 0.34;
+      return `hsl(${30 - t * 20}, 90%, ${50 + t * 5}%)`;
+    }
+  };
+
+  const avgTemp = parseFloat(country.avgTempC) || 0;
+
+  return (
+    <div className="p-3 rounded-lg border bg-muted/30 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Thermometer className="w-4 h-4 text-orange-500" />
+          Travel Weather
+        </h3>
+        <button
+          onClick={() => setUseFahrenheit(!useFahrenheit)}
+          className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/40 transition-colors"
+        >
+          {unit}
+        </button>
+      </div>
+
+      {/* Average temp display */}
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+          {convertTemp(avgTemp)}{unit}
+        </span>
+        <span className="text-xs text-muted-foreground">avg temperature</span>
+      </div>
+
+      {/* Temperature bars */}
+      <div className="space-y-1">
+        {MONTH_NAMES.map((month, i) => {
+          const temp = temps[month] || 0;
+          const isCurrentMonth = i === currentMonthIndex;
+          const isBest = bestMonthsLower.includes(month.toLowerCase());
+          const barWidth = tempRange > 0 ? ((temp - globalMin) / tempRange) * 100 : 50;
+
+          return (
+            <div key={month} className="flex items-center gap-2 group">
+              <span
+                className={`w-7 text-[10px] font-medium text-right tabular-nums transition-colors ${
+                  isCurrentMonth ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-muted-foreground'
+                } ${isBest ? 'text-amber-600 dark:text-amber-400' : ''}`}
+              >
+                {month}
+              </span>
+              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden relative">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.max(4, barWidth)}%`,
+                    backgroundColor: getTempColor(temp),
+                  }}
+                />
+              </div>
+              <span
+                className={`w-8 text-[10px] tabular-nums text-right font-medium ${
+                  isCurrentMonth ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-muted-foreground'
+                }`}
+              >
+                {convertTemp(temp)}{unit}
+              </span>
+              {/* Current month indicator */}
+              {isCurrentMonth && (
+                <ThermometerSun className="w-3 h-3 text-amber-500 shrink-0" />
+              )}
+              {isBest && !isCurrentMonth && (
+                <Star className="w-3 h-3 text-amber-400 shrink-0" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <Star className="w-3 h-3 text-amber-400" /> Best months
+          </span>
+          <span className="flex items-center gap-1">
+            <ThermometerSun className="w-3 h-3 text-amber-500" /> Current month
+          </span>
+        </div>
+      </div>
+
+      {/* Best travel months highlight */}
+      {country.bestTravelMonths && (
+        <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-md px-2 py-1.5 flex items-center gap-1.5">
+          <ThumbsUp className="w-3.5 h-3.5 shrink-0" />
+          <span>Best time to visit: <strong>{country.bestTravelMonths}</strong></span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   QuickCompareCards
+   Horizontal scrollable comparison cards
+   ────────────────────────────────────────────── */
+export function QuickCompareCards({ countries, onRemove }: { countries: CountryData[]; onRemove?: (code: string) => void }) {
+  if (!countries || countries.length === 0) return null;
+
+  // Find best values for highlighting
+  const fees = countries.map(c => c.costProfile?.visaFeeUSD ?? Infinity);
+  const minFee = Math.min(...fees.filter(f => f !== Infinity));
+
+  const processTimes = countries.map(c => c.processingDaysMin);
+  const fastestTime = Math.min(...processTimes);
+
+  const safeties = countries.map(c => c.safetyRating);
+  const maxSafety = Math.max(...safeties);
+
+  return (
+    <div className="w-full">
+      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
+        {countries.map((country) => {
+          const fee = country.costProfile?.visaFeeUSD ?? 0;
+          const processDays = country.processingDaysMin;
+          const safety = country.safetyRating;
+          const visaType = country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'On Arrival' : country.etaAvailable ? 'e-Visa' : 'Embassy';
+
+          const isBestFee = fee > 0 && fee === minFee;
+          const isFastest = processDays === fastestTime;
+          const isSafest = safety === maxSafety;
+
+          const visaBadgeColor = country.visaFree
+            ? 'bg-amber-500 text-white'
+            : country.visaOnArrival
+              ? 'bg-orange-500 text-white'
+              : country.etaAvailable
+                ? 'bg-yellow-500 text-white'
+                : 'bg-red-500 text-white';
+
+          return (
+            <motion.div
+              key={country.code}
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="snap-start shrink-0 w-56 relative group"
+            >
+              <Card className={`p-3 h-full transition-all duration-200 ${
+                isBestFee || isFastest || isSafest
+                  ? 'border-amber-300 dark:border-amber-600 shadow-amber-100 dark:shadow-amber-900/20 shadow-sm'
+                  : 'hover:border-amber-200 dark:hover:border-amber-800'
+              }`}>
+                {/* Remove button */}
+                {onRemove && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(country.code);
+                    }}
+                    className="absolute top-2 right-2 w-5 h-5 rounded-full bg-muted flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/30"
+                    aria-label={`Remove ${country.name} from comparison`}
+                  >
+                    <X className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                )}
+
+                {/* Country header */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">{country.flagEmoji}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{country.name}</div>
+                    <Badge className={`text-[9px] px-1.5 py-0 ${visaBadgeColor}`}>
+                      {visaType}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Metrics */}
+                <div className="space-y-2">
+                  {/* Fee */}
+                  <div className={`flex items-center justify-between text-xs px-2 py-1 rounded-md transition-colors ${
+                    isBestFee ? 'bg-amber-50 dark:bg-amber-900/30' : ''
+                  }`}>
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <DollarSign className="w-3 h-3" />
+                      Fee
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`font-semibold tabular-nums ${isBestFee ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                        ${fee || 'N/A'}
+                      </span>
+                      {isBestFee && <Zap className="w-3 h-3 text-amber-500" />}
+                    </div>
+                  </div>
+
+                  {/* Processing time */}
+                  <div className={`flex items-center justify-between text-xs px-2 py-1 rounded-md transition-colors ${
+                    isFastest ? 'bg-amber-50 dark:bg-amber-900/30' : ''
+                  }`}>
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Timer className="w-3 h-3" />
+                      Processing
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`font-semibold tabular-nums ${isFastest ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                        {processDays}-{country.processingDaysMax}d
+                      </span>
+                      {isFastest && <Zap className="w-3 h-3 text-amber-500" />}
+                    </div>
+                  </div>
+
+                  {/* Safety */}
+                  <div className={`flex items-center justify-between text-xs px-2 py-1 rounded-md transition-colors ${
+                    isSafest ? 'bg-amber-50 dark:bg-amber-900/30' : ''
+                  }`}>
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Shield className="w-3 h-3" />
+                      Safety
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`font-semibold tabular-nums ${isSafest ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                        {safety}/10
+                      </span>
+                      {isSafest && <Zap className="w-3 h-3 text-amber-500" />}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

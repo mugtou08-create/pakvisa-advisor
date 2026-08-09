@@ -33,21 +33,38 @@ import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChatMessage, ChecklistItem } from '@/lib/types';
 import { FlagImage, ComparisonTable } from '../shared-components-1';
 import { ComparisonRadarChart, VisaFeeComparisonChart } from '../shared-components-2';
+import { QuickCompareCards } from '../shared-components-3';
 import { emptyProfile } from './questionnaire-tab';
 
 export function CompareTab() {
   const { comparisonCountries, setComparisonCountries, scoreResults } = useAppStore();
   const [allCountries, setAllCountries] = useState<{ code: string; name: string; flagEmoji: string; flagUrl: string }[]>([]);
+  const [selectedCountriesData, setSelectedCountriesData] = useState<CountryData[]>([]);
   const [results, setResults] = useState<ScoreBreakdown[]>([]);
   const [comparing, setComparing] = useState(false);
   const [compareSearch, setCompareSearch] = useState('');
   const [compareVisibleCount, setCompareVisibleCount] = useState(16);
+
+  const POPULAR_COMPARISONS: { label: string; codes: string[] }[] = [
+    { label: 'UAE vs Turkey', codes: ['AE', 'TR'] },
+    { label: 'Malaysia vs Saudi Arabia', codes: ['MY', 'SA'] },
+    { label: 'UK vs Schengen', codes: ['GB', 'DE'] },
+  ];
 
   useEffect(() => {
     fetch('/api/countries?limit=100').then(r => r.json()).then(data => {
       setAllCountries((data.data || []).map((c: CountryData) => ({ code: c.code, name: c.name, flagEmoji: c.flagEmoji, flagUrl: c.flagUrl || '' })));
     });
   }, []);
+
+  // Fetch full country data when selection changes
+  useEffect(() => {
+    if (comparisonCountries.length === 0) return;
+    fetch('/api/countries?limit=100').then(r => r.json()).then(data => {
+      const all = (data.data || []) as CountryData[];
+      setSelectedCountriesData(all.filter(c => comparisonCountries.includes(c.code)));
+    });
+  }, [comparisonCountries]);
 
   const filteredCountries = useMemo(() => {
     if (!compareSearch.trim()) return allCountries;
@@ -128,24 +145,56 @@ export function CompareTab() {
             </div>
           )}
 
-          {/* No countries selected - helpful illustration */}
+          {/* No countries selected - enhanced empty state */}
           {comparisonCountries.length === 0 && (
-            <div className="text-center py-6">
-              <div className="empty-state-illustration mx-auto mb-3">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
-                  {/* Globe */}
-                  <circle cx="40" cy="35" r="18" stroke="var(--muted-foreground)" strokeWidth="2" fill="var(--muted)" />
-                  <ellipse cx="40" cy="35" rx="10" ry="18" stroke="var(--muted-foreground)" strokeWidth="1.5" />
-                  <line x1="22" y1="35" x2="58" y2="35" stroke="var(--muted-foreground)" strokeWidth="1.5" />
-                  <line x1="40" y1="17" x2="40" y2="53" stroke="var(--muted-foreground)" strokeWidth="1" opacity="0.5" />
-                  {/* Arrow pointers */}
-                  <circle cx="20" cy="55" r="5" stroke="#f59e0b" strokeWidth="1.5" fill="none" />
-                  <line x1="25" y1="53" x2="34" y2="42" stroke="#f59e0b" strokeWidth="1.5" />
-                  <circle cx="60" cy="55" r="5" stroke="#f59e0b" strokeWidth="1.5" fill="none" />
-                  <line x1="55" y1="53" x2="46" y2="42" stroke="#f59e0b" strokeWidth="1.5" />
+            <div className="text-center py-8">
+              <div className="mx-auto mb-4">
+                <svg width="120" height="100" viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
+                  {/* Left country card */}
+                  <rect x="4" y="25" width="32" height="40" rx="6" stroke="#f59e0b" strokeWidth="2" fill="#fffbeb" />
+                  <circle cx="20" cy="38" r="5" fill="#fcd34d" />
+                  <rect x="12" y="48" width="16" height="3" rx="1.5" fill="#f59e0b" opacity="0.6" />
+                  <rect x="12" y="54" width="12" height="2" rx="1" fill="#f59e0b" opacity="0.3" />
+                  {/* Right country card */}
+                  <rect x="84" y="25" width="32" height="40" rx="6" stroke="#f59e0b" strokeWidth="2" fill="#fffbeb" />
+                  <circle cx="100" cy="38" r="5" fill="#fcd34d" />
+                  <rect x="92" y="48" width="16" height="3" rx="1.5" fill="#f59e0b" opacity="0.6" />
+                  <rect x="92" y="54" width="12" height="2" rx="1" fill="#f59e0b" opacity="0.3" />
+                  {/* VS circle */}
+                  <circle cx="60" cy="45" r="14" fill="#f59e0b" />
+                  <text x="60" y="49" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">VS</text>
+                  {/* Arrows */}
+                  <path d="M38 45 L44 45" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M76 45 L82 45" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+                  {/* Bottom sparkle */}
+                  <circle cx="60" cy="75" r="3" fill="#fbbf24" />
+                  <line x1="60" y1="68" x2="60" y2="72" stroke="#fbbf24" strokeWidth="1.5" />
+                  <line x1="54" y1="72" x2="57" y2="74" stroke="#fbbf24" strokeWidth="1.5" />
+                  <line x1="66" y1="72" x2="63" y2="74" stroke="#fbbf24" strokeWidth="1.5" />
                 </svg>
               </div>
-              <p className="text-xs text-muted-foreground">Select countries below to start comparing</p>
+              <h3 className="text-sm font-semibold text-foreground mb-1">Compare Visa Requirements Side by Side</h3>
+              <p className="text-xs text-muted-foreground mb-5 max-w-xs mx-auto">
+                Select 2-5 countries below to see eligibility scores, fees, processing times, and more — all in one place.
+              </p>
+              {/* Popular Comparisons */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Popular Comparisons</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {POPULAR_COMPARISONS.map((pair) => (
+                    <Button
+                      key={pair.label}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:border-amber-300"
+                      onClick={() => setComparisonCountries(pair.codes)}
+                    >
+                      <ArrowRight className="w-3 h-3 mr-1" />
+                      {pair.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -193,6 +242,14 @@ export function CompareTab() {
               <ChevronUp className="w-4 h-4 ml-1" />
             </Button>
           )}
+          {/* Quick Compare Cards Preview */}
+          {comparisonCountries.length >= 2 && selectedCountriesData.length >= 2 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Quick Preview</p>
+              <QuickCompareCards countries={selectedCountriesData} onRemove={(code) => toggleCountry(code)} />
+            </div>
+          )}
+
           <Button onClick={compare} disabled={comparing || comparisonCountries.length < 2} className="bg-amber-600 hover:bg-amber-700">
             {comparing ? 'Comparing...' : 'Compare Now'}
           </Button>

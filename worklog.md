@@ -607,8 +607,163 @@ Enhanced CSS across 12 areas in `globals.css`:
 
 ---
 
-## Admin Access
+## Admin Access (Round 15)
 - URL: Click ⚙️ gear icon in header
 - Username: admin
 - Password: PakVisa@2024!
 - Features: AI toggle, maintenance mode, analytics
+
+---
+## Session: Round 16 — Advanced Styling, New Features & Newsletter API
+
+### Task ID: 13 — Advanced Styling + Features + API
+
+**Status**: ✅ Completed
+
+#### QA Testing Results
+- **ESLint**: 0 errors, 0 warnings
+- **Dev Server**: Compiles and serves correctly (200 OK)
+- **API Endpoints**: All 18 endpoints verified (including new newsletter API)
+
+#### Task 13-A: Advanced UI/UX Styling Polish (12 Areas)
+Added ~637 new CSS lines to `globals.css`:
+1. Hover Micro-Animations: `.hover-lift-smooth`, `.hover-glow-amber`, `.hover-scale-breathe`
+2. Focus Visible States: `.focus-ring-amber` + global `:focus-visible`
+3. Empty States: `.empty-state-text` (gradient shimmer), `.empty-state-cta`
+4. Tab Transitions: `.tab-content-enter/exit`
+5. Card Hierarchy: `.card-section-title` (3px amber border), `.card-section-body`, `.card-highlight-row`
+6. Badge Stack: `.badge-stack` (overlap), visa badges with 3px left-border
+7. Chat Bubbles: Enhanced styles, `.chat-typing-indicator` (3 bouncing dots), `.chat-input-container`
+8. Progress Indicators: `.progress-amber`, `.progress-step`, `.progress-pulse`
+9. Stat Card Variants: `.stat-card-compact/highlight`, `.stat-change-positive/negative`
+10. Skeleton Loading: `.skeleton-card/text/circle`
+11. Toast Notifications: `.toast-success/error/info` with subtle tints
+12. Tooltip: `.tooltip-premium/compact`
+
+#### Task 13-B: New Features
+1. **TravelWeatherWidget** — Monthly temp bars (green→amber→orange-red), °C/°F toggle, best months highlight
+2. **VisaFeeEstimator** — Fee breakdown, cost comparison bar, affordable/moderate/expensive badge
+3. **QuickCompareCards** — Scrollable row with best-value highlighting, remove button
+
+#### Task 13-C: Newsletter API + Compare Enhancement
+1. **Newsletter API** (`/api/newsletter`) — POST subscribe + GET count, rate-limited, Prisma model
+2. **QuickCompareCards in Compare Tab** — Visual preview before comparison
+3. **Popular Comparisons** — "UAE vs Turkey", "Malaysia vs Saudi Arabia", "UK vs Schengen" quick-select
+
+---
+
+## Current Project Status
+
+### Application Health: ✅ STABLE
+- **18 API endpoints** all functional
+- **ESLint**: 0 errors
+- **Dev server**: 200 OK, 139KB+ HTML
+- **Database**: 70 countries, NewsletterSubscriber table
+- **CSS**: ~3900+ lines globals.css
+- **Components**: ~3000+ lines shared components
+
+### API Routes (18 total)
+Previous 17 + `/api/newsletter` ← **NEW in Round 16**
+
+### Unresolved Issues
+1. Browser QA sandbox limitation (gateway proxy)
+2. z-ai-web-dev-sdk sandbox-only (production: use Gemini API)
+3. No user accounts (localStorage only)
+4. Social media/affiliate links are placeholders
+5. SEO: SPA needs static country pages
+
+### Next Phase Recommendations
+1. SEO static pages for top destinations
+2. Real affiliate link integration
+3. User account system with email auth
+4. PWA support
+5. Email newsletter backend (SendGrid/Mailgun)
+6. Trip planner timeline
+7. Urdu language toggle
+8. Performance optimization
+
+### Admin Access
+- URL: Click ⚙️ gear icon in header
+- Username: admin
+- Password: PakVisa@2024!
+- Features: AI toggle, maintenance mode, analytics
+
+---
+Task ID: 13-A
+
+Work Log:
+- Read existing globals.css (3290 lines) to understand all existing classes and avoid conflicts
+- Identified existing classes that overlap (empty-state-illustration, chat-bubble-user/bot, skeleton-shimmer-enhanced, etc.)
+- Added 12 sections of new CSS at end of file (lines 3290-3927, ~637 new lines)
+- 1. Hover micro-animations: `.hover-lift-smooth`, `.hover-glow-amber`, `.hover-scale-breathe`, enhanced `.premium-card` transition
+- 2. Focus visible states: `.focus-ring-amber` class + global `:focus-visible` rules for buttons, links, inputs, selects
+- 3. Improved empty states: `.empty-state-text` (gradient shimmer), `.empty-state-cta` (gradient + glow + shimmer sweep)
+- 4. Tab content transitions: `.tab-content-enter` (slide-up + fade-in), `.tab-content-exit` (fade-out + slide-up)
+- 5. Card content hierarchy: `.card-section-title` (13px semibold, 3px amber left border, subtle bg), `.card-section-body` (pl-5), `.card-highlight-row` (amber bg tint)
+- 6. Badge stack improvements: `.badge-stack` (flex with -ml-1 overlap), `.badge-combo` (badge + text), visa category badges with 3px left-border accent
+- 7. Chat bubbles enhancement: improved `.chat-bubble-user` (amber gradient, rounded-2xl rounded-br-sm), `.chat-bubble-bot` (subtle gray), `.chat-typing-indicator` (3 bouncing amber dots), `.chat-input-container` (frosted glass bottom bar)
+- 8. Progress indicators: `.progress-amber` (gradient fill + shimmer), `.progress-step`/`.progress-step-circle`/`.progress-step-connector` (numbered circles + lines), `.progress-pulse` (pulsing glow on active step)
+- 9. Stat card variants: `.stat-card-compact` (p-3, icon+number+label stacked), `.stat-card-highlight` (amber gradient border), `.stat-change-positive` (green up arrow), `.stat-change-negative` (red down arrow)
+- 10. Skeleton loading: improved `.skeleton-shimmer-enhanced` (smoother animation), `.skeleton-card` (card shape), `.skeleton-text` (h-4 line), `.skeleton-circle` (avatar)
+- 11. Toast notification styling: `.toast-success` (green left border + subtle tint), `.toast-error` (red), `.toast-info` (amber)
+- 12. Tooltip enhancement: `.tooltip-premium` (larger, amber tint, shadow, appear animation), `.tooltip-compact` (smaller, minimal)
+- All classes include dark mode variants where applicable
+- Ran `bun run lint` — passed with zero errors
+
+Stage Summary:
+- All 12 styling areas implemented in globals.css
+- ~637 lines of new CSS added (file grew from 3290 to 3927 lines)
+- ESLint passed cleanly — no errors
+- All colors kept in amber/orange/mango range (no blue/indigo)
+- Full dark mode support for all new classes
+- Existing functionality preserved — no breaking changes
+
+---
+Task ID: 13-B
+Agent: full-stack-developer
+Task: New features - weather widget, fee estimator, quick compare cards
+
+Work Log:
+- Created TravelWeatherWidget in shared-components-3.tsx — compact weather display with monthly temp bars, °C/°F toggle, current month indicator, best travel months highlight, green→amber→orange-red color scale
+- Created VisaFeeEstimator in shared-components-1.tsx — cost breakdown card with visa/service fee, total estimate, processing time, cost comparison bar vs average, Affordable/Moderate/Expensive label, currency hint
+- Created QuickCompareCards in shared-components-3.tsx — horizontal scrollable comparison cards with flag, name, visa type badge, fee, processing time, safety rating; highlights best values with amber glow; click-to-remove functionality; snap points on mobile
+- Added imports: Thermometer, ThumbsUp, ThermometerSun, Zap in shared-components-3; Wallet, Timer in shared-components-1; TravelWeatherWidget from shared-components-3 in shared-components-2; VisaFeeEstimator from shared-components-1 in shared-components-2; MONTH_NAMES in shared-components-3
+- Integrated TravelWeatherWidget into CountryDetailDialog (shared-components-2.tsx) after Monthly Temperatures section
+- Integrated VisaFeeEstimator into CountryDetailDialog (shared-components-2.tsx) after Cost Breakdown section
+- QuickCompareCards exported for use in compare-tab.tsx (no modification to compare-tab.tsx as instructed)
+- Ran `bun run lint` — passed with zero errors
+- Dev server running with no errors
+
+Stage Summary:
+- 3 new components created: TravelWeatherWidget (~135 lines), VisaFeeEstimator (~105 lines), QuickCompareCards (~130 lines)
+- Both TravelWeatherWidget and VisaFeeEstimator integrated into CountryDetailDialog
+- All colors in amber/orange/mango range, no blue/indigo
+- ESLint passed cleanly — no errors
+
+---
+Task ID: 13-C
+Agent: full-stack-developer
+Task: Newsletter API, enhanced compare tab, popular comparisons
+
+Work Log:
+- Read existing worklog, compare-tab.tsx, shared-components-3.tsx (QuickCompareCards), Prisma schema, rate-limit lib, types
+- Added `NewsletterSubscriber` model to `prisma/schema.prisma` (id, email @unique, subscribedAt, isActive)
+- Ran `bun run db:push` — schema synced, Prisma Client regenerated
+- Created `src/app/api/newsletter/route.ts`:
+  - POST: email validation (regex), rate limit 5 req/min/IP via existing rate-limit.ts, upsert logic (returns "Already subscribed" if exists, reactivates inactive), handles P2002 unique constraint race
+  - GET: returns active subscriber count for admin use
+- Enhanced compare-tab.tsx:
+  - Imported `QuickCompareCards` from shared-components-3
+  - Added `selectedCountriesData` state + useEffect to fetch full CountryData for selected codes
+  - Added `POPULAR_COMPARISONS` array (UAE vs Turkey, Malaysia vs Saudi Arabia, UK vs Schengen)
+  - Replaced simple empty state SVG with richer VS-card illustration, descriptive CTA text, and Popular Comparisons quick-select buttons
+  - Inserted `QuickCompareCards` between country selection grid and "Compare Now" button (shows when 2+ countries selected)
+- Fixed lint error: removed synchronous `setState` inside effect body (early return pattern)
+- Ran `bun run lint` — passed with zero errors
+- Dev server running cleanly, all routes 200
+
+Stage Summary:
+- Newsletter API: POST/GET at `/api/newsletter` with rate limiting and dedup
+- Compare tab: enhanced empty state with SVG illustration + 3 popular comparison quick-select buttons
+- QuickCompareCards integrated as visual preview before running full comparison
+- ESLint passed cleanly — zero errors
