@@ -675,7 +675,7 @@ export const ContinentQuickStats = React.memo(function ContinentQuickStats({ cou
   if (stats.length === 0) return null;
 
   return (
-    <section>
+    <section className="overflow-hidden">
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 className="w-5 h-5 text-amber-500" />
         <h2 className="text-lg font-bold">Continent Overview</h2>
@@ -890,7 +890,7 @@ export function TripPlannerTimeline({ countries }: { countries: CountryData[] })
       )}
 
       {/* Timeline - Desktop Horizontal / Mobile Vertical */}
-      <div className="hidden md:block">
+      <div className="hidden md:block overflow-x-hidden">
         {tripPlan.length > 1 && (
           <div className="relative flex items-start gap-0 mb-6 overflow-x-auto pb-4">
             {/* Horizontal line */}

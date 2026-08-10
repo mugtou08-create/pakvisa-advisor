@@ -74,6 +74,29 @@
 - VLM analysis confirms carousel properly contained, no cards extending outside container
 - Agent-browser snapshot: all sections render correctly
 
+### Task ID: 20-4 — Fix Carousel Cards Cut Off from Left/Right Edges
+**Status**: ✅ Completed
+**Priority**: Critical (UX-breaking)
+
+**Problem**: The Visa Alert Banner carousel and other horizontal carousels had cards being cut off/clipped at the screen edges. Left and right cards were not fully visible.
+
+**Root Causes**:
+1. **Alert Banner auto-scroll** used fixed `scrollTo({ left: currentIndex * 320 })` pixel calculation — could scroll cards partially out of view, especially on narrow viewports
+2. **Missing `overflow-x-hidden`** on `<header>`, `<footer>`, and the alert banner wrapper div
+3. **Missing `snap-x snap-mandatory`** on alert carousel — cards could stop at arbitrary scroll positions
+4. **Missing `overflow-hidden`** on Continent Overview section, TripPlanner Timeline, and Quick Explore section
+
+**Fixes Applied**:
+- **shared-components-3.tsx (VisaAlertBanner)**: Replaced fixed-pixel scroll with calculated scroll using `card.offsetLeft`, clamped to `max(0, ...)` and `min(maxScroll, ...)` to always keep cards fully visible. Added `snap-x snap-mandatory` and `snap-start` on cards
+- **shared-components-4.tsx (ContinentQuickStats)**: Added `overflow-hidden` to section wrapper
+- **shared-components-4.tsx (TripPlannerTimeline)**: Added `overflow-x-hidden` to desktop timeline wrapper
+- **page.tsx**: Added `overflow-x-hidden` to `<header>`, alert banner wrapper, and `<footer>`
+
+**Verification**:
+- ESLint: 0 errors
+- Agent-browser snapshot: all 5 alert banner cards render correctly (UAE, Azerbaijan, Saudi Arabia, Bahrain, Jordan)
+- No runtime errors
+
 ---
 
 ## Project Overview

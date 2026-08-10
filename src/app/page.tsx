@@ -194,7 +194,7 @@ export default function HomePage() {
         }} />
 
         {/* Header */}
-        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden card-elevated-2 glass-frost sticky-header">
+        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden card-elevated-2 glass-frost sticky-header overflow-x-hidden">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -343,7 +343,7 @@ export default function HomePage() {
         </header>
 
         {/* Visa Alert Banner */}
-        <div className="border-b bg-background/50">
+        <div className="border-b bg-background/50 overflow-x-hidden">
           <VisaAlertBanner />
         </div>
 
@@ -383,7 +383,7 @@ export default function HomePage() {
         </main>
 
         {/* Footer - Enhanced with Gradient Background & Animated Separator */}
-        <footer className="footer-gradient-bg footer-gradient-enhanced glass-card print:hidden mt-auto sm:block card-warm-shadow" style={{ borderTop: '2px solid rgba(249, 115, 22, 0.3)' }}>
+        <footer className="footer-gradient-bg footer-gradient-enhanced glass-card print:hidden mt-auto sm:block card-warm-shadow overflow-x-hidden" style={{ borderTop: '2px solid rgba(249, 115, 22, 0.3)' }}>
           <div className="footer-separator-dots mx-4 mt-6 mb-2" />
           <div className="container mx-auto px-4 py-10">
             {/* Bento Grid Footer - 5 columns */}

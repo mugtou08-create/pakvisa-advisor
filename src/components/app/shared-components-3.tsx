@@ -741,12 +741,19 @@ export function VisaAlertBanner() {
     return () => clearInterval(interval);
   }, [hovered]);
 
-  // Scroll to current index
+  // Scroll to current index — keep card fully visible within container
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-    const cardWidth = 320; // approximate card width + gap
-    container.scrollTo({ left: currentIndex * cardWidth, behavior: 'smooth' });
+    const cards = container.children;
+    if (!cards[currentIndex]) return;
+    const card = cards[currentIndex] as HTMLElement;
+    const containerWidth = container.clientWidth;
+    const cardLeft = card.offsetLeft;
+    const cardWidth = card.offsetWidth;
+    const scrollLeft = Math.max(0, cardLeft - 16); // 16px padding from left edge
+    const maxScroll = Math.max(0, container.scrollWidth - containerWidth);
+    container.scrollTo({ left: Math.min(scrollLeft, maxScroll), behavior: 'smooth' });
   }, [currentIndex]);
 
   const handleAlertClick = (code: string) => {
@@ -777,7 +784,7 @@ export function VisaAlertBanner() {
     >
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto py-2 px-4 filter-scroll"
+        className="flex gap-3 overflow-x-auto py-2 px-4 filter-scroll scroll-smooth snap-x snap-mandatory"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
@@ -785,7 +792,7 @@ export function VisaAlertBanner() {
           <button
             key={alert.id}
             onClick={() => handleAlertClick(alert.code)}
-            className={`shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] min-w-[280px] max-w-[340px] ${alert.color}`}
+            className={`shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] min-w-[280px] max-w-[340px] snap-start ${alert.color}`}
           >
             <span className="text-xl">{alert.flagEmoji}</span>
             <div className="flex-1 text-left min-w-0">
