@@ -6,7 +6,7 @@ import {
   Globe, FileText, BarChart3, MessageSquare, FileCheck,
   Search, ChevronRight, Star, Clock,
   DollarSign, Shield, Calendar, Heart,
-  Send, Bot, User, Plane, Building, GraduationCap, Briefcase, Landmark, Map,
+  Send, Bot, User, Plane, Building, GraduationCap, Briefcase, Landmark, Map as MapIcon,
   Sun, Moon, Menu, X, ExternalLink, Download,
   MapPin, Home, Users, Lock, Lightbulb, Compass,
   Keyboard, HelpCircle, Sparkles, ChevronDown, ChevronUp, Target, BookOpen,
@@ -225,7 +225,7 @@ export function HelpCenterDialog({ open, onClose }: { open: boolean; onClose: ()
                 {/* World Map */}
                 <div className="p-3 rounded-lg border bg-muted/20">
                   <h4 className="font-semibold text-sm mb-1.5 flex items-center gap-1.5">
-                    <Map className="w-4 h-4 text-amber-500" /> Interactive World Map
+                    <MapIcon className="w-4 h-4 text-amber-500" /> Interactive World Map
                   </h4>
                   <p className="text-xs text-muted-foreground leading-relaxed mb-2">
                     A visual map showing visa requirements for every country. Countries are color-coded by visa type: green (visa-free), yellow (VOA), orange (e-Visa), red (regular visa required).
@@ -771,7 +771,7 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { icon: Search, title: 'Instant Visa Check', desc: 'Search any country and instantly see visa requirements, fees, processing time, and safety ratings.' },
-                { icon: Map, title: 'Interactive World Map', desc: 'Visually explore visa requirements across 70+ countries by clicking on the map.' },
+                { icon: MapIcon, title: 'Interactive World Map', desc: 'Visually explore visa requirements across 70+ countries by clicking on the map.' },
                 { icon: ClipboardList, title: 'Personalized Questionnaire', desc: 'Get a tailored eligibility score for each country based on your personal profile.' },
                 { icon: BarChart3, title: 'Country Comparison', desc: 'Compare up to 4 destinations side-by-side for costs, safety, and visa ease.' },
                 { icon: MessageSquare, title: 'AI Visa Consultant', desc: 'Ask any visa question and get detailed, context-aware answers powered by AI.' },

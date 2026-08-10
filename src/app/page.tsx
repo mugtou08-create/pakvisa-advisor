@@ -183,7 +183,7 @@ export default function HomePage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen flex flex-col bg-background scroll-smooth custom-scrollbar-thin">
+      <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
         {/* Skip to content link for accessibility */}
         <a href="#main-content" className="skip-to-content">Skip to main content</a>
         {/* Subtle background pattern */}

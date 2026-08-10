@@ -7,7 +7,7 @@ import {
   DollarSign, Shield, Calendar, Heart,
   Send, Bot, User, Plus, Minus, ArrowUpDown,
   CheckCircle2, AlertTriangle, XCircle, Info,
-  Globe, Plane, Building, GraduationCap, Briefcase, Landmark, Map,
+  Globe, Plane, Building, GraduationCap, Briefcase, Landmark, Map as MapIcon,
   CreditCard, Home, Users, Lock, Lightbulb,
   RotateCcw, ToggleLeft, ToggleRight, Zap,
   TrendingUp, TrendingDown, ArrowRight, Printer, Share2,

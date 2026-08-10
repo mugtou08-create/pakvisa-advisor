@@ -128,16 +128,21 @@
   }
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    overscroll-behavior: none;
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
   }
 }
 
 /* ===== SMOOTH THEME TRANSITION ===== */
-*,
-*::before,
-*::after {
+/* Note: Only apply transitions to specific interactive elements to avoid layout thrashing */
+a, button, [role="button"], input, select, textarea,
+.badge, .card, [data-radix-popper-content-wrapper],
+.transition-colors {
   transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;

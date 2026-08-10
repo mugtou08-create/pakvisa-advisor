@@ -7,7 +7,7 @@ import {
   DollarSign, Shield, Calendar, Heart,
   Send, Bot, User, Plus, Minus, ArrowUpDown,
   CheckCircle2, AlertTriangle, XCircle, Info,
-  Globe, Plane, Building, GraduationCap, Briefcase, Landmark, Map,
+  Globe, Plane, Building, GraduationCap, Briefcase, Landmark, Map as MapIcon,
   CreditCard, Home, Users, Lock, Lightbulb,
   RotateCcw, ToggleLeft, ToggleRight, Zap,
   TrendingUp, TrendingDown, ArrowRight, Printer, Share2,
@@ -65,7 +65,7 @@ function BudgetDonutChart({ budgetResult, budgetTripDays, budgetViewMode, budget
     { name: 'Insurance', value: Math.round(budgetResult.insurance / divisor), color: CHART_COLORS[5] },
     { name: 'Misc', value: Math.round(budgetResult.misc / divisor), color: CHART_COLORS[6] },
   ].filter(d => d.value > 0);
-  const chartIcons = [FileText, PlaneTakeoff, Home, UtensilsCrossed, Map, Shield, MoreHorizontal];
+  const chartIcons = [FileText, PlaneTakeoff, Home, UtensilsCrossed, MapIcon, Shield, MoreHorizontal];
   const chartNames = ['Visa Fee', 'Flights', 'Accommodation', 'Food', 'Transport', 'Insurance', 'Misc'];
   const totalVal = chartItems.reduce((s, d) => s + d.value, 0);
 

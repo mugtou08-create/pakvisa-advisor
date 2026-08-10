@@ -25,6 +25,29 @@
 
 **Note**: Dev server process must be started with `setsid -f` in this sandbox to survive shell session termination.
 
+### Task ID: 20-2 — Fix Screen Movement/Jitter (Up/Down/Left/Right)
+**Status**: ✅ Completed
+**Priority**: Critical (UX-breaking)
+
+**Problem**: The webapp's screen moved up and down, left and right — causing jittering/shaking during interaction and scrolling.
+
+**Root Causes Identified**:
+1. **No `overflow-x: hidden`** on `html`/`body` — content could cause horizontal scrollbar
+2. **No `overscroll-behavior`** — browser rubber-banding caused unexpected viewport shifts
+3. **Global `transition` on ALL elements** (`*, *::before, *::after`) — caused layout thrashing on every render
+4. **`Map` icon from lucide-react shadowing JS built-in** in 4 additional files (explore-tab, tools-tab, questionnaire-tab, dialogs)
+
+**Fixes Applied**:
+- **globals.css line 129-138**: Added `overflow-x: hidden` and `overscroll-behavior: none` to `html`; `overflow-x: hidden` and `overscroll-behavior-y: contain` to `body`
+- **globals.css line 141-149**: Replaced global `*, *::before, *::after` transition with targeted selector list (`a, button, input, select, .card`, etc.) to eliminate layout thrashing
+- **page.tsx line 186**: Added `overflow-x-hidden` to root container, removed `scroll-smooth` (moved to CSS layer)
+- **4 files renamed `Map` → `MapIcon`**: explore-tab.tsx (4 usages), tools-tab.tsx (2 usages), questionnaire-tab.tsx (import only), dialogs.tsx (2 usages)
+
+**Verification**:
+- ESLint: 0 errors
+- VLM screenshot analysis confirms: no horizontal scrollbar, no overflow, no jitter artifacts
+- Agent-browser snapshot: no runtime errors
+
 ---
 
 ## Project Overview

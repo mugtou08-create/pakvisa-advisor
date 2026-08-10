@@ -6,7 +6,7 @@ import {
   Globe, FileText, BarChart3, Search, ChevronRight, Star, Clock,
   DollarSign, Shield, Calendar, Heart, Plane, Building, MapPin,
   CreditCard, Home, Users, Lightbulb, TrendingUp, TrendingDown,
-  ArrowRight, Eye, Sparkles, Target, Compass, Flame, Map, Download, Sun, Landmark,
+  ArrowRight, Eye, Sparkles, Target, Compass, Flame, Map as MapIcon, Download, Sun, Landmark,
   SearchX, LayoutGrid, List, RefreshCw, Bookmark, ChevronDown, ChevronUp, X, Filter, SlidersHorizontal, ArrowUpDown,
   History, Clock4,
 } from 'lucide-react';
@@ -468,7 +468,7 @@ export function ExploreTab() {
       {!loading && countries.length > 0 && (
         <section className="glass-section p-5 md:p-6 rounded-xl card-accent-top">
           <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
-            <Map className="w-5 h-5 text-amber-500" />
+            <MapIcon className="w-5 h-5 text-amber-500" />
             Visa Eligibility Map
           </h2>
           <VisaEligibilityMap countries={countries} onSelectCountry={setSelectedCountry} />
@@ -539,7 +539,7 @@ export function ExploreTab() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <Map className="w-5 h-5 text-amber-500" /> Visa Requirement World Map
+                <MapIcon className="w-5 h-5 text-amber-500" /> Visa Requirement World Map
               </h2>
               <p className="text-xs text-muted-foreground">Click any country to see visa details</p>
             </div>
@@ -668,7 +668,7 @@ export function ExploreTab() {
                   'Middle East': <Building className="w-3 h-3" />,
                   'Africa': <Sun className="w-3 h-3" />,
                   'Europe': <Landmark className="w-3 h-3" />,
-                  'Americas': <Map className="w-3 h-3" />,
+                  'Americas': <MapIcon className="w-3 h-3" />,
                   'Oceania': <Globe className="w-3 h-3" />,
                 };
                 const isActive = region === r;
