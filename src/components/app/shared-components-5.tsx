@@ -106,7 +106,7 @@ export function CountryComparisonSwiper({ countries, onSelectCountry }: {
 
   return (
     <div
-      className="relative"
+      className="relative overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

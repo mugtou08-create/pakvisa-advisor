@@ -48,6 +48,32 @@
 - VLM screenshot analysis confirms: no horizontal scrollbar, no overflow, no jitter artifacts
 - Agent-browser snapshot: no runtime errors
 
+### Task ID: 20-3 — Fix Featured Destinations Carousel Moving the Screen + Content Cutoff
+**Status**: ✅ Completed
+**Priority**: Critical (UX-breaking)
+
+**Problem**: The "Featured Destinations" carousel moved the entire screen when scrolling left/right, and some info was being cut off from view.
+
+**Root Causes**:
+1. `DestinationSpotlight` used `scrollIntoView({ inline: 'center' })` which scrolled the whole page instead of just the carousel container
+2. `scroll-smooth` class on carousel containers propagated scroll events to parent elements
+3. Negative margin classes (`-mx-4 px-4`, `-mx-1 px-1`) on carousel items caused overflow beyond container bounds
+4. Carousels lacked `overflow-hidden` wrappers, allowing content to bleed into the page
+
+**Fixes Applied**:
+- **shared-components-2.tsx**: Replaced `scrollIntoView({ inline: 'center' })` with `container.scrollTo({ left: calculated, behavior: 'smooth' })` — scrolls only the carousel, not the page
+- **shared-components-2.tsx**: Removed `scroll-smooth` from Featured Destinations carousel; added `overflow-hidden` to section wrapper
+- **shared-components-3.tsx**: Removed `-mx-4 px-4` negative margins from stat cards carousel; removed `scroll-smooth` from alert banner
+- **shared-components-4.tsx**: Removed `-mx-1 px-1` negative margins from continent stats carousel
+- **shared-components-5.tsx**: Added `overflow-hidden` to `CountryComparisonSwiper` root container
+- **explore-tab.tsx**: Added `overflow-hidden` to Quick Explore section wrapper
+- **page.tsx**: Added `overflow-x-hidden` to `<main>` content area
+
+**Verification**:
+- ESLint: 0 errors
+- VLM analysis confirms carousel properly contained, no cards extending outside container
+- Agent-browser snapshot: all sections render correctly
+
 ---
 
 ## Project Overview

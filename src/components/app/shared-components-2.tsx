@@ -2368,13 +2368,18 @@ export function DestinationSpotlight({ onSelectCountry }: { onSelectCountry: (c:
     return () => clearInterval(interval);
   }, [hovered]);
 
-  // Scroll to current card
+  // Scroll to current card — scroll only the container, not the page
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
     const card = container.children[currentIndex] as HTMLElement;
     if (card) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      // Use container-relative scroll to avoid moving the whole page
+      const cardLeft = card.offsetLeft;
+      const cardWidth = card.offsetWidth;
+      const containerWidth = container.offsetWidth;
+      const scrollLeft = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
     }
   }, [currentIndex]);
 
@@ -2395,7 +2400,7 @@ export function DestinationSpotlight({ onSelectCountry }: { onSelectCountry: (c:
   };
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-3 overflow-hidden">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2">
@@ -2425,7 +2430,7 @@ export function DestinationSpotlight({ onSelectCountry }: { onSelectCountry: (c:
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scroll-smooth filter-scroll pb-2 snap-x snap-mandatory"
+        className="flex gap-4 overflow-x-auto filter-scroll pb-2 snap-x snap-mandatory"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >

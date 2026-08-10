@@ -683,7 +683,7 @@ export const ContinentQuickStats = React.memo(function ContinentQuickStats({ cou
           {stats.length} regions
         </Badge>
       </div>
-      <div className="flex gap-3 overflow-x-auto custom-scrollbar-thin pb-2 -mx-1 px-1">
+      <div className="flex gap-3 overflow-x-auto custom-scrollbar-thin pb-2">
         {stats.map((s, idx) => {
           const colors = CONTINENT_COLORS[s.name] || CONTINENT_COLORS['Asia'];
           return (

@@ -356,7 +356,7 @@ export default function HomePage() {
         <NotificationHistoryPanel isOpen={showNotifHistory} onClose={() => setShowNotifHistory(false)} />
 
         {/* Main Content */}
-        <main id="main-content" className="flex-1 container mx-auto px-4 py-8 card-warm-shadow rounded-2xl my-2 mx-2 sm:mx-auto sm:my-0 shadow-amber-lg">
+        <main id="main-content" className="flex-1 container mx-auto px-4 py-8 card-warm-shadow rounded-2xl my-2 mx-2 sm:mx-auto sm:my-0 shadow-amber-lg overflow-x-hidden">
           <div className="page-load-animation">
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>

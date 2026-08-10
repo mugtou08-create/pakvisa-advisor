@@ -430,7 +430,7 @@ export function ExploreTab() {
 
       {/* Quick Explore - Country Comparison Swiper */}
       {!loading && countries.length > 0 && (
-        <section className="glass-section p-5 md:p-6 rounded-xl">
+        <section className="glass-section p-5 md:p-6 rounded-xl overflow-hidden">
           <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
             <Sparkles className="w-5 h-5 text-amber-500" />
             Quick Explore

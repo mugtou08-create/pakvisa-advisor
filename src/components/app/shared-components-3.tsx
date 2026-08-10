@@ -545,7 +545,7 @@ export function VisaStatsDashboard({ countries, stats }: { countries: CountryDat
           Visa Statistics Overview
         </h3>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 filter-scroll">
+      <div className="flex gap-3 overflow-x-auto pb-2 filter-scroll">
         {statCards.map((card) => (
           <div key={card.label} className={`mini-stat-hover shrink-0 w-44 p-4 rounded-xl border bg-background ${card.bg}`}>
             <div className="flex items-center justify-between mb-2">
@@ -777,7 +777,7 @@ export function VisaAlertBanner() {
     >
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto py-2 px-4 scroll-smooth filter-scroll"
+        className="flex gap-3 overflow-x-auto py-2 px-4 filter-scroll"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
