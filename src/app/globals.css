@@ -128,14 +128,8 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html {
-    overflow-x: hidden;
-    overscroll-behavior: none;
-  }
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
-    overscroll-behavior-y: contain;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
