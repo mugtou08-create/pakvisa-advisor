@@ -15,7 +15,7 @@ import { useTheme } from 'next-themes';
 import { useAppStore } from '@/lib/store';
 import type { CountryData } from '@/lib/types';
 import { AiChatPanel } from '@/components/visa/ai-chat-panel';
-import { PricingModal, HelpModal } from '@/components/visa/modals';
+import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
 
 // ============================================================
 // Testimonials
@@ -248,6 +248,7 @@ export default function HomePage() {
   const [showAiChat, setShowAiChat] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [activeModal, setActiveModal] = useState<'about' | 'privacy' | 'terms' | 'contact' | null>(null);
   const { theme, setTheme } = useTheme();
   const { favorites, toggleFavorite } = useAppStore();
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
@@ -573,10 +574,10 @@ export default function HomePage() {
               <span>Free Visa Tool for Pakistani Passport</span>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <button className="hover:text-foreground transition-colors">About</button>
-              <button className="hover:text-foreground transition-colors">Privacy</button>
-              <button className="hover:text-foreground transition-colors">Terms</button>
-              <button className="hover:text-foreground transition-colors">Contact</button>
+              <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
+              <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
+              <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
+              <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
             </div>
           </div>
         </div>
@@ -586,6 +587,10 @@ export default function HomePage() {
       {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {showAiChat && <AiChatPanel onClose={() => setShowAiChat(false)} />}
+      {activeModal === 'about' && <AboutModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
     </div>
   );
 }
