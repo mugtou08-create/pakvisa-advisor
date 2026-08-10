@@ -15,6 +15,8 @@ import { useTheme } from 'next-themes';
 import { useAppStore } from '@/lib/store';
 import type { CountryData } from '@/lib/types';
 import { AiChatPanel } from '@/components/visa/ai-chat-panel';
+import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
+import { ComparePanel } from '@/components/visa/compare-panel';
 import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
 
 // ============================================================
@@ -246,6 +248,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
   const [showAiChat, setShowAiChat] = useState(false);
+  const [activeTool, setActiveTool] = useState<'quiz' | 'compare' | null>(null);
   const [showPricing, setShowPricing] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [activeModal, setActiveModal] = useState<'about' | 'privacy' | 'terms' | 'contact' | null>(null);
@@ -283,6 +286,16 @@ export default function HomePage() {
       )
       .slice(0, 12);
   }, [search, countries]);
+
+  // Open a country's result from tools
+  const openCountryFromTool = useCallback((name: string) => {
+    setSearch(name);
+    setExpandedCountry(countries.find(c => c.name === name)?.code || null);
+    setActiveTool(null);
+    window.setTimeout(() => {
+      document.getElementById('main-content')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, [countries]);
 
   // Popular countries for quick access (ordered by popularity for Pakistani travelers)
   const popularCountries = useMemo(() => {
@@ -351,8 +364,10 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ===== MAIN CONTENT ===== */}
-      <main className="flex-1" id="main-content">
+      {/* ===== MAIN CONTENT (hidden when tool panel is open) ===== */}
+      {!activeTool && (
+        <>
+          <main className="flex-1" id="main-content">
 
         {/* Hero Section */}
         <section className="pt-12 sm:pt-16 pb-6 px-4 text-center">
@@ -505,7 +520,7 @@ export default function HomePage() {
                     title="Visa Quiz"
                     description="Answer 5 quick questions and get personalized country recommendations."
                     colorClass="hover:border-amber-300 dark:hover:border-amber-700"
-                    onClick={() => setShowAiChat(true)}
+                    onClick={() => setActiveTool('quiz')}
                     badge="Free"
                   />
                   <QuickToolCard
@@ -513,7 +528,7 @@ export default function HomePage() {
                     title="Compare Countries"
                     description="Side-by-side visa comparison for multiple countries at once."
                     colorClass="hover:border-sky-300 dark:hover:border-sky-700"
-                    onClick={() => setShowAiChat(true)}
+                    onClick={() => setActiveTool('compare')}
                     badge="Free"
                   />
                 </div>
@@ -582,6 +597,24 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+      </>
+      )}
+
+      {/* ===== TOOL PANELS (replace main content) ===== */}
+      {activeTool === 'quiz' && (
+        <VisaQuizPanel
+          countries={countries}
+          onClose={() => setActiveTool(null)}
+          onSelectCountry={openCountryFromTool}
+        />
+      )}
+      {activeTool === 'compare' && (
+        <ComparePanel
+          countries={countries}
+          onClose={() => setActiveTool(null)}
+          onSelectCountry={openCountryFromTool}
+        />
+      )}
 
       {/* ===== MODALS ===== */}
       {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}

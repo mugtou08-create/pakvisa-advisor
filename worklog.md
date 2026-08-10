@@ -2072,3 +2072,34 @@ Stage Summary:
 - Root cause: `overflow-x: hidden` on `<html>` disrupted viewport scroll context in iframe/preview panel
 - Fix: `overflow-x: clip` on `<body>` (clips without creating scroll container)
 - File changed: `/home/z/my-project/src/app/globals.css`
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix all 3 tool cards pointing to AI Chat — build Visa Quiz and Compare Countries
+
+Work Log:
+- Created `src/components/visa/visa-quiz-panel.tsx` — full-page 5-step quiz panel
+  - 5 questions: travel purpose, budget, duration, ease preference, region
+  - Smart scoring algorithm (100-point scale): visa ease (40), budget match (25), duration (15), ease priority (10), region (10)
+  - Results show top 6 ranked countries with visa type badge, fee, processing time, score
+  - "View" button on each result returns to main page with that country searched & expanded
+  - Retake quiz and close buttons
+- Created `src/components/visa/compare-panel.tsx` — full-page side-by-side comparison table
+  - Up to 4 countries simultaneously with chip selector + search picker dropdown
+  - 9 comparison rows: Visa Type, Fee, Processing Time, Region, Safety, Currency, Monthly Living, Best Months, Requirements
+  - Countries sorted by visa ease (visa-free first)
+  - Remove individual countries from table
+- Updated `src/app/page.tsx`:
+  - Added `activeTool` state ('quiz' | 'compare' | null)
+  - Added `openCountryFromTool` callback to return from tool panels with a country pre-selected
+  - Wrapped main content in `{!activeTool && (<>...</>)}` conditional
+  - Tool panels render in place of main content when active
+  - Each QuickToolCard now has unique onClick handler
+- Verified all 3 tools work independently via agent-browser
+
+Stage Summary:
+- Before: All 3 tool cards opened AI Chat (onClick={() => setShowAiChat(true)})
+- After: AI Chat (slide-in panel), Visa Quiz (full-page quiz), Compare Countries (full-page table)
+- Files created: visa-quiz-panel.tsx, compare-panel.tsx
+- File modified: page.tsx
