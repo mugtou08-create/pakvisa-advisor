@@ -84,7 +84,13 @@ function CountryResultCard({ country, expanded, onToggle, isFavorited, onToggleF
   return (
     <div className={`rounded-xl border bg-card overflow-hidden transition-all duration-200 ${expanded ? 'shadow-md' : 'hover:shadow-sm'}`}>
       {/* Collapsed Row */}
-      <button onClick={onToggle} className="w-full flex items-center gap-4 p-4 text-left">
+      <div
+        onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+        role="button"
+        tabIndex={0}
+        className="w-full flex items-center gap-4 p-4 text-left cursor-pointer select-none"
+      >
         <span className="text-3xl shrink-0">{country.flagEmoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -117,7 +123,7 @@ function CountryResultCard({ country, expanded, onToggle, isFavorited, onToggleF
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </div>
-      </button>
+      </div>
 
       {/* Expanded Details */}
       {expanded && (
@@ -183,19 +189,28 @@ function CountryResultCard({ country, expanded, onToggle, isFavorited, onToggleF
             </div>
           )}
 
-          {/* Visa Types */}
-          {country.visaTypes && country.visaTypes.length > 0 && (
-            <div>
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Available Visa Types</h5>
-              <div className="flex flex-wrap gap-1.5">
-                {country.visaTypes.map(vt => (
-                  <Badge key={vt.id} variant="secondary" className="text-xs font-normal">
-                    {vt.type} {vt.maxDuration ? `(${vt.maxDuration})` : ''}
-                  </Badge>
-                ))}
+          {/* Visa Types (deduplicated) */}
+          {country.visaTypes && country.visaTypes.length > 0 && (() => {
+            const seen = new Set<string>();
+            const unique = country.visaTypes.filter(vt => {
+              const key = `${vt.type}::${vt.maxDuration || ''}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            return unique.length > 0 && (
+              <div>
+                <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Available Visa Types</h5>
+                <div className="flex flex-wrap gap-1.5">
+                  {unique.map(vt => (
+                    <Badge key={vt.id} variant="secondary" className="text-xs font-normal">
+                      {vt.type} {vt.maxDuration ? `(${vt.maxDuration})` : ''}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-1">
@@ -380,7 +395,7 @@ export default function HomePage() {
                 {popularCountries.map(c => (
                   <button
                     key={c.code}
-                    onClick={() => { setSearch(c.name); setExpandedCountry(c.name); }}
+                    onClick={() => { setSearch(c.name); setExpandedCountry(c.code); }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border
                       hover:border-primary/30 hover:bg-primary/5 transition-all text-sm"
                   >
@@ -417,10 +432,6 @@ export default function HomePage() {
                 <div className="flex items-center gap-1.5">
                   <Zap className="w-4 h-4 text-sky-500" />
                   <strong className="text-foreground font-semibold">{stats.evisa}</strong> e-Visa
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  100% Free
                 </div>
               </div>
             </div>

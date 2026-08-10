@@ -2030,3 +2030,25 @@ Applied to 7 component files.
 - Footer note highlighting free tier vs Pro upgrade
 
 Both components accept `onClose: () => void` prop. Uses `lucide-react` (X, Crown, Check) and shadcn Button.
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix hydration error (nested buttons), duplicate info, and related bugs
+
+Work Log:
+- Fixed nested `<button>` inside `<button>` hydration error in CountryResultCard (src/app/page.tsx line 87)
+  - Changed outer `<button onClick={onToggle}>` to `<div role="button" tabIndex={0} onKeyDown={...}>` with proper keyboard accessibility
+  - Inner favorite `<button>` remains as a valid button element
+- Fixed popular countries expansion bug: `setExpandedCountry(c.name)` → `setExpandedCountry(c.code)` to match card comparison logic
+- Removed redundant "100% Free" stat from stats bar (already in hero subtitle)
+- Deduplicated visa types in CountryResultCard: Türkiye was showing 12 entries (3× duplicates), now shows 4 unique types using Set-based filter
+- Ran ESLint — clean pass
+- Verified with agent-browser: page loads, search works, cards expand, no hydration errors
+
+Stage Summary:
+- Hydration error resolved: outer card wrapper changed from `<button>` to `<div role="button">`
+- Popular countries now correctly expand cards when clicked
+- Visa types deduplicated using `type::maxDuration` composite key
+- No lint errors, no runtime errors in dev log
+- All changes in `/home/z/my-project/src/app/page.tsx`
