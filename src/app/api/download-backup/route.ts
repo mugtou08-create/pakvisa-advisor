@@ -1,38 +1,28 @@
 import { NextResponse } from 'next/server';
-import { execSync } from 'child_process';
-import { existsSync, unlinkSync, statSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-const EXCLUDES = [
-  'node_modules', '.next', '*.png', 'tool-results', 'agent-ctx',
-  'download', '*.gz', '*.tar', '.DS_Store', 'dev.log', 'page.html',
-  'watchdog.sh', '--timeout', 'examples', 'skills', 'tests',
-  'bun.lock', 'backup-pakvisa-*',
-];
-
 export async function GET() {
-  const projectRoot = process.cwd();
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
-  const filename = `pakvisa-advisor-backup-${timestamp}.tar.gz`;
-  const filepath = join('/tmp', filename);
-
+  // Find the most recent backup in /home/z/
+  const backupDir = '/home/z';
   try {
-    const excludeArgs = EXCLUDES.map((e) => `--exclude=${e}`).join(' ');
+    const files = readdirSync(backupDir)
+      .filter(f => f.startsWith('pakvisa-advisor-backup-') && f.endsWith('.tar.gz'))
+      .sort()
+      .reverse();
 
-    execSync(
-      `cd "${projectRoot}" && tar czf "${filepath}" ${excludeArgs} .`,
-      { timeout: 30000, stdio: 'pipe' }
-    );
-
-    if (!existsSync(filepath)) {
-      return NextResponse.json({ error: 'Backup generation failed' }, { status: 500 });
+    if (files.length === 0) {
+      return NextResponse.json({ error: 'No backup found' }, { status: 404 });
     }
 
-    const stats = statSync(filepath);
-    const buffer = readFileSync(filepath);
+    const filename = files[0];
+    const filepath = join(backupDir, filename);
 
-    // Clean up temp file
-    try { unlinkSync(filepath); } catch {}
+    if (!existsSync(filepath)) {
+      return NextResponse.json({ error: 'Backup file missing' }, { status: 404 });
+    }
+
+    const buffer = readFileSync(filepath);
 
     return new NextResponse(buffer, {
       status: 200,
@@ -45,7 +35,7 @@ export async function GET() {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to generate backup', details: String(error) },
+      { error: 'Failed to download backup', details: String(error) },
       { status: 500 }
     );
   }

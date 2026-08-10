@@ -593,6 +593,13 @@ export default function HomePage() {
               <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
               <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
               <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
+              <a
+                href="/api/download-backup"
+                download
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-card hover:bg-muted transition-colors text-xs font-medium"
+              >
+                <Download className="w-3 h-3" /> Backup
+              </a>
             </div>
           </div>
         </div>
