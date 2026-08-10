@@ -1,6 +1,73 @@
 ---
 # PakVisa Advisor - Development Worklog
 
+## Session: Round 21 — Complete UI Redesign (Tool-First + Freemium)
+
+### Task ID: 21-1 — Complete UI Overhaul
+**Status**: ✅ Completed
+**Priority**: Critical (Strategic Redesign)
+
+**Problem**: The existing UI was too complex for first-time users — 6 navigation tabs, 7+ header buttons, 3D carousels, floating particles, glass morphism, grain overlays. The interface felt like a gaming site, not a professional visa tool. "3 buttons after Help Center" were not visible.
+
+**Solution**: Complete rewrite of the entire frontend UI with a "Tool-First + Freemium" approach.
+
+**Files Modified:**
+1. `src/app/globals.css` — Stripped from 7,788 lines to ~180 lines. Removed all fancy effects (grain overlay, neon glows, glass morphism, 3D transforms, floating particles, gradient text, animated borders). Changed primary color from amber/orange to emerald green (matches Pakistan flag). Clean shadcn/ui theme with emerald primary in both light and dark modes.
+
+2. `src/app/page.tsx` — Complete rewrite (~400 lines, down from 636). New search-first layout:
+   - Clean header: Logo + Dark mode + Premium + Help (only 4 elements)
+   - Hero section with prominent search bar + value proposition
+   - Popular countries quick links (8 prioritized countries with flags + visa type badges)
+   - Stats bar (70+ countries, visa-free count, VoA count, e-Visa count)
+   - Expandable country result cards (visa type, fee, processing time, requirements, cost breakdown, travel months, visa types)
+   - Premium feature gating (lock icons on PDF Report, Full Checklist)
+   - Quick tools section (AI Consultant, Visa Quiz, Compare Countries)
+   - Testimonials section (3 reviews)
+   - Premium CTA section
+   - Minimal footer
+
+3. `src/components/visa/ai-chat-panel.tsx` — New file. Full-screen AI chat overlay with:
+   - Clean header with Sparkles icon + "Free • 3 queries/day" badge
+   - Empty state with 3 suggestion chips
+   - Chat messages (user right-aligned, assistant left-aligned)
+   - Loading state with bouncing dots
+   - API integration with `/api/chat` endpoint
+
+4. `src/components/visa/modals.tsx` — New file. Two modals:
+   - `PricingModal`: PakVisa Pro at $4.99/mo or $29/yr, 8 premium features, free trial CTA
+   - `HelpModal`: 4-step usage guide with numbered circles
+
+5. `src/app/layout.tsx` — Updated theme-color meta from orange (#f97316) to emerald (#059669)
+
+**Key Design Decisions:**
+- Search-first UX: The primary action is typing a country name
+- Color: Emerald green primary (trust, matches Pakistan 🇵🇰)
+- Typography: Geist font, clear hierarchy
+- Cards: Flat white, subtle borders, no 3D transforms
+- Interactions: Smooth 150ms transitions, no particles or glows
+- Premium gating: Lock icons on gated features, contextual not intrusive
+
+**Data Discovery:**
+- Country codes in DB are full names (e.g., "Türkiye", "United Arab Emirates"), not ISO codes
+- Turkey is stored as "Türkiye" (Turkish spelling)
+- Popular countries ordered by popularity for Pakistani travelers
+
+**Verification:**
+- ESLint: 0 errors
+- All modals work (AI Chat, Pricing, Help)
+- Search returns correct results with expansion
+- Popular countries display with flags and visa type badges
+- Dev server stable
+
+**Freemium Model Designed:**
+- FREE: Search, requirements, costs, 3 AI queries/day, basic compare
+- PREMIUM ($4.99/mo or $29/yr): Full checklists, step-by-step guides, cost calculator, policy alerts, unlimited AI, PDF export, deadline tracker, compare 5 countries
+
+**Old Files (Still in codebase but unused):**
+- `src/components/app/tabs/*.tsx` (6 tab components)
+- `src/components/app/shared-components-*.tsx` (5 shared component files)
+- These can be safely deleted in a future cleanup
+
 ## Session: Round 20 — Critical Runtime Fix & Verification
 
 ### Task ID: 20-1 — Fix "Z Logo Only" Runtime TypeError
@@ -1918,3 +1985,48 @@ Applied to 7 component files.
 - URL: Click ⚙️ gear icon in header
 - Username: admin | Password: PakVisa@2024!
 - Features: AI toggle, maintenance mode, analytics
+
+### Task ID: 5-a — Create AI Chat Panel Component
+**Status**: ✅ Completed
+
+**Summary**: Created `/home/z/my-project/src/components/visa/ai-chat-panel.tsx` — a full-screen AI chat overlay for the PakVisa Advisor application.
+
+**Implementation**:
+- Full-screen overlay (`fixed inset-0 z-[100]`) with flex column layout
+- Header: Sparkles icon + "AI Visa Consultant" title + Badge ("Free • 3 queries/day") + close button (X icon)
+- Messages area: `flex-1 overflow-y-auto` with `max-w-2xl mx-auto` content wrapper
+  - User messages: right-aligned, `bg-primary text-primary-foreground rounded-2xl` with `rounded-br-md` tail
+  - Assistant messages: left-aligned, `bg-muted rounded-2xl` with `rounded-bl-md` tail
+- Empty state: Sparkles icon in circle, heading, description, 3 clickable suggestion chips
+- Input area: rounded-full text input + ArrowRight send button
+- Loading state: three bouncing dots with staggered animation delays
+- Fetch POST to `/api/chat` with `{ message, history }` body, handles `{ success, data }` response
+- Error handling for fetch failures and non-success responses
+- Keyboard support (Enter to send)
+- Auto-focus input on mount, auto-scroll on new messages
+
+**Lint**: 0 errors
+
+
+### Task ID: 5-b — Create PricingModal & HelpModal Components
+**Status**: ✅ Completed
+**Priority**: Medium
+
+**File Created**: `src/components/visa/modals.tsx`
+
+**PricingModal**:
+- Fixed overlay (`z-[100]`) with `bg-black/50` backdrop that closes on click
+- Centered card with Crown icon (amber-500), heading, subheading
+- Bordered price section: `$4.99/month` with yearly option
+- 8 feature items with emerald-500 Check icons
+- Full-width CTA button "Start Free Trial (7 days)" with Crown icon
+- "Cancel anytime" note and "Continue with Free Plan" link
+
+**HelpModal**:
+- Same overlay/card structure
+- "How to Use PakVisa Advisor" heading
+- 4 numbered steps with primary-colored number circles
+- Steps: Search, View Details, Use AI Assistant, Compare Countries
+- Footer note highlighting free tier vs Pro upgrade
+
+Both components accept `onClose: () => void` prop. Uses `lucide-react` (X, Crown, Check) and shadcn Button.

@@ -76,7 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#f97316" />
+        <meta name="theme-color" content="#059669" />
         <link rel="canonical" href="https://pakvisaadvisor.com" />
         <script
           type="application/ld+json"
