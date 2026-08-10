@@ -2052,3 +2052,23 @@ Stage Summary:
 - Visa types deduplicated using `type::maxDuration` composite key
 - No lint errors, no runtime errors in dev log
 - All changes in `/home/z/my-project/src/app/page.tsx`
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix mouse scroll wheel not working
+
+Work Log:
+- Investigated scroll issue: `overflow-x: hidden` on `<html>` creates a scroll container, breaking the viewport's native scroll mechanism
+- `window.scrollBy(0, 200)` returned `scrolled: false` confirming scroll was broken
+- First attempted removing `overflow-x: hidden` entirely — didn't fix because no scroll context existed
+- Final fix: moved `overflow-x: hidden` from `<html>` to `overflow-x: clip` on `<body>`
+  - `clip` clips overflow WITHOUT creating a scroll container, preserving viewport scroll
+  - Removed `overscroll-behavior: none` and `overscroll-behavior-y: contain` (leftover from old carousel UI)
+  - Added `scroll-behavior: smooth` on `<html>` for nicer scrolling
+- Verified: `window.scrollTo(0, 500)` → scrollY=200, `scrollBy(0, 300)` → scrollY=500, max scroll=1022px
+
+Stage Summary:
+- Root cause: `overflow-x: hidden` on `<html>` disrupted viewport scroll context in iframe/preview panel
+- Fix: `overflow-x: clip` on `<body>` (clips without creating scroll container)
+- File changed: `/home/z/my-project/src/app/globals.css`
