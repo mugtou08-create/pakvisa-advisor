@@ -392,6 +392,56 @@ function WeatherInfo({ avgTemp, monthlyTemps }: { avgTemp: string; monthlyTemps:
 }
 
 // ============================================================
+// Trip Cost Calculator
+// ============================================================
+function TripCalculator({ costProfile }: { costProfile: NonNullable<CountryData['costProfile']> }) {
+  const [days, setDays] = useState('14');
+  const n = parseFloat(days) || 0;
+  const months = n / 30;
+  const totalUSD = costProfile.visaFeeUSD + (months * costProfile.totalMonthlyUSD);
+  const totalPKR = Math.round(totalUSD * 278.5);
+
+  return (
+    <div className="mt-3 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calculator className="w-4 h-4 text-violet-600" />
+          <span className="text-xs font-semibold text-violet-900 dark:text-violet-200">Trip Cost Calculator</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          className="w-24 h-8 px-2 rounded-md border bg-white dark:bg-background text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
+          min="1"
+          max="365"
+        />
+        <span className="text-xs text-muted-foreground">days</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p className="text-[10px] text-violet-700 dark:text-violet-400">Visa Fee</p>
+          <p className="text-xs font-bold text-violet-900 dark:text-violet-200">${costProfile.visaFeeUSD}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-violet-700 dark:text-violet-400">Living ({months.toFixed(1)}mo)</p>
+          <p className="text-xs font-bold text-violet-900 dark:text-violet-200">${Math.round(months * costProfile.totalMonthlyUSD).toLocaleString()}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-violet-700 dark:text-violet-400">Total in PKR</p>
+          <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Rs. {totalPKR.toLocaleString()}</p>
+        </div>
+      </div>
+      <p className="text-[10px] text-violet-700/60 dark:text-violet-400/60">
+        Total: ${Math.round(totalUSD).toLocaleString()} USD · Approximate estimate for budgeting
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Country Detail Panel
 // ============================================================
 export function CountryDetailPanel({ country }: { country: CountryData }) {
@@ -482,6 +532,7 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
               <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyFoodUSD * 278.5).toLocaleString()}</p>
             </div>
           </div>
+          <TripCalculator costProfile={country.costProfile} />
         </div>
       )}
 

@@ -2318,3 +2318,66 @@ Stage Summary:
 - Expanded country card now shows: description, live clock, currency converter, quick-glance badges, requirements, cost breakdown (with PKR), travel months, visa types, safety overview, climate/weather chart, travel essentials grid, emergency/health section, embassy contact
 - Zero compilation errors, zero console errors
 - Browser-verified with UAE (Visa on Arrival) and USA (Embassy Required) — all sections rendering correctly
+
+---
+## Session: Round 22 — Hydration Fix, Bug Fixes & Feature Enhancements
+
+### Task ID: 22-1 — Fix Hydration Mismatch (Theme Toggle)
+**Status**: ✅ Completed
+**Priority**: Critical
+
+**Problem**: React hydration error — server rendered `lucide-moon` icon but client expected `lucide-sun` because `useTheme()` returns `undefined` during SSR.
+
+**Solution**: Added `mounted` state guard in `src/app/page.tsx`:
+- `const [mounted, setMounted] = useState(false)` + `useEffect(() => setMounted(true), [])`
+- Both theme toggle buttons (tool panel + main view) now show `<Skeleton>` placeholder during SSR and correct icon after mount.
+
+### Task ID: 22-2 — Stats Bar Enhancement
+**Status**: ✅ Completed
+
+**Changes**:
+- Changed stats state from `{ totalCountries: 0, ... }` to `null` — prevents showing "—" for zero values (0 || '—' was falsy)
+- Added skeleton loading state for stats cards (5 skeletons during initial load)
+- Added 5th stat: "Embassy" count with Building icon
+- Fixed missing `Building` import from lucide-react (caused runtime crash)
+
+### Task ID: 22-3 — Popular Destinations Loading State
+**Status**: ✅ Completed
+
+**Changes**: Added 8 skeleton placeholders during loading for Popular Destinations grid, so cards don't appear empty before data loads.
+
+### Task ID: 22-4 — Visa Policy Alerts Enhancement
+**Status**: ✅ Completed
+
+**Changes**:
+- Added 2 new alerts: Azerbaijan Visa-Free Access, Thailand Visa on Arrival Updated
+- Added `source` field to all alerts with official domain references (evisa.gov.tr, imi.gov.my, etc.)
+- Rendering now shows source attribution below each alert
+
+### Task ID: 22-5 — Result Count Badge
+**Status**: ✅ Completed
+
+**Changes**: Added `<Badge>` showing "X results" next to "All Destinations" heading, updates dynamically with filtering/searching.
+
+### Task ID: 22-6 — Trip Cost Calculator Widget
+**Status**: ✅ Completed
+
+**New Feature**: Added interactive trip cost calculator to `CountryDetailPanel`:
+- Input for number of days (1-365)
+- Calculates: Visa Fee + Living Costs (based on months)
+- Shows total in both USD and PKR
+- Violet-themed card matching the country detail aesthetic
+- Located directly below the Cost Breakdown grid
+
+### Verification Results (Agent Browser + VLM):
+- ✅ Stats bar shows 70+, 5, 13, 14, 38 (no dashes)
+- ✅ Popular destination cards render with flags and visa type badges
+- ✅ 6 visa policy alerts with source URLs
+- ✅ No hydration errors, no runtime crashes
+- ✅ Footer visible with About/Privacy/Terms/Contact + Disclaimer
+- ✅ Country detail shows: Live Clock, Currency Converter, Cost Breakdown, Trip Calculator, Key Requirements, Quick Info Tags
+- ✅ ESLint passes clean
+
+### Known Remaining Items:
+- Travel Essentials, Emergency/Health, Safety, Weather, Embassy sections render below the fold in expanded country card
+- "N" floating button is Next.js dev indicator (dev-only, won't appear in production)

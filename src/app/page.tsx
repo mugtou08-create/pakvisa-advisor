@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronUp, Heart, X, ArrowRight, Check, Lock,
   Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
-  CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone,
+  CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,10 +44,12 @@ const POPULAR_COUNTRIES = [
 // Visa Policy Alerts
 // ============================================================
 const VISA_ALERTS = [
-  { id: 1, icon: CheckCircle2, color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can now apply for a Turkish e-Visa online in minutes.' },
-  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Malaysia has extended visa-free entry for Pakistani passport holders through 2025.' },
-  { id: 3, icon: Info, color: 'text-sky-600', title: 'Saudi e-Visa for Tourism', desc: 'Saudi Arabia now offers e-Visa for Pakistani tourists including Umrah travelers.' },
-  { id: 4, icon: AlertTriangle, color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.' },
+  { id: 1, icon: CheckCircle2, color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can now apply for a Turkish e-Visa online in minutes.', source: 'evisa.gov.tr' },
+  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Malaysia has extended visa-free entry for Pakistani passport holders through 2025.', source: 'imi.gov.my' },
+  { id: 3, icon: Info, color: 'text-sky-600', title: 'Saudi e-Visa for Tourism', desc: 'Saudi Arabia now offers e-Visa for Pakistani tourists including Umrah travelers.', source: 'visa.visitsaudi.com' },
+  { id: 4, icon: AlertTriangle, color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.', source: 'uaevisaonline.com' },
+  { id: 5, icon: CheckCircle2, color: 'text-emerald-600', title: 'Azerbaijan Visa-Free Access', desc: 'Pakistani passport holders enjoy visa-free entry to Azerbaijan for up to 90 days.', source: 'mfa.gov.az' },
+  { id: 6, icon: Info, color: 'text-sky-600', title: 'Thailand Visa on Arrival Updated', desc: 'Thailand offers VoA for Pakistani tourists. Ensure you have 10,000 THB in cash proof.', source: 'thaievisa.go.th' },
 ];
 
 // ============================================================
@@ -259,7 +261,7 @@ export default function HomePage() {
 
   // Data
   const [countries, setCountries] = useState<CountryData[]>([]);
-  const [stats, setStats] = useState({ totalCountries: 0, visaFreeCount: 0, visaOnArrivalCount: 0, eVisaCount: 0 });
+  const [stats, setStats] = useState<{ totalCountries: number; visaFreeCount: number; visaOnArrivalCount: number; eVisaCount: number; embassyRequiredCount?: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -536,20 +538,31 @@ export default function HomePage() {
         <section className="px-4 pb-8">
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: 'Countries', value: stats.totalCountries || '70+', icon: Globe, color: 'text-emerald-600' },
-                { label: 'Visa Free', value: stats.visaFreeCount || '—', icon: CheckCircle2, color: 'text-emerald-600' },
-                { label: 'Visa on Arrival', value: stats.visaOnArrivalCount || '—', icon: Plane, color: 'text-amber-600' },
-                { label: 'e-Visa', value: stats.eVisaCount || '—', icon: FileText, color: 'text-sky-600' },
+              {stats ? [
+                { label: 'Countries', value: stats.totalCountries, suffix: '+', icon: Globe, color: 'text-emerald-600' },
+                { label: 'Visa Free', value: stats.visaFreeCount, suffix: '', icon: CheckCircle2, color: 'text-emerald-600' },
+                { label: 'Visa on Arrival', value: stats.visaOnArrivalCount, suffix: '', icon: Plane, color: 'text-amber-600' },
+                { label: 'e-Visa', value: stats.eVisaCount, suffix: '', icon: FileText, color: 'text-sky-600' },
+                { label: 'Embassy', value: stats.embassyRequiredCount || 0, suffix: '', icon: Building, color: 'text-gray-500' },
               ].map((stat) => (
                 <div key={stat.label} className="flex items-center gap-3 rounded-xl border bg-card p-4">
                   <stat.icon className={`w-5 h-5 ${stat.color} shrink-0`} />
                   <div>
-                    <p className="text-lg font-bold">{typeof stat.value === 'number' ? stat.value + '+' : stat.value}</p>
+                    <p className="text-lg font-bold">{stat.value}{stat.suffix}</p>
                     <p className="text-xs text-muted-foreground">{stat.label}</p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-xl border bg-card p-4">
+                    <Skeleton className="w-5 h-5 rounded" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-10" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </section>
@@ -559,7 +572,17 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto">
             <h2 className="text-xl font-bold mb-4">Popular Destinations</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {popularData.map((c) => {
+              {loading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border bg-card p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Skeleton className="w-10 h-7 rounded" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  </div>
+                ))
+              ) : popularData.map((c) => {
                 const vt = getVisaType(c);
                 return (
                   <button
@@ -596,9 +619,10 @@ export default function HomePage() {
               {VISA_ALERTS.map((alert) => (
                 <div key={alert.id} className="flex items-start gap-3 rounded-xl border bg-card p-4">
                   <alert.icon className={`w-5 h-5 ${alert.color} shrink-0 mt-0.5`} />
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">{alert.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{alert.desc}</p>
+                    {alert.source && <p className="text-[10px] text-muted-foreground/70 mt-1">Source: {alert.source}</p>}
                   </div>
                 </div>
               ))}
@@ -609,7 +633,12 @@ export default function HomePage() {
         {/* ==================== SECTION 6: FILTER BAR + COUNTRY LIST ==================== */}
         <section className="px-4 pb-10" ref={countryListRef}>
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-bold mb-4">All Destinations</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-xl font-bold">All Destinations</h2>
+              {!loading && filteredCountries.length > 0 && (
+                <Badge variant="secondary" className="text-xs font-normal">{filteredCountries.length} result{filteredCountries.length !== 1 ? 's' : ''}</Badge>
+              )}
+            </div>
 
             {/* Error state */}
             {error && (
