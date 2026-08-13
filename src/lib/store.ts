@@ -82,6 +82,9 @@ interface AppState {
   // Dashboard Widgets Order
   dashboardWidgets: string[];
   reorderWidget: (fromIndex: number, toIndex: number) => void;
+  // Pro Membership
+  isProUser: boolean;
+  setIsProUser: (pro: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -195,6 +198,9 @@ export const useAppStore = create<AppState>()(
         updated.splice(toIndex, 0, moved);
         return { dashboardWidgets: updated };
       }),
+      // Pro Membership
+      isProUser: false,
+      setIsProUser: (pro) => set({ isProUser: pro }),
     }),
     {
       name: 'pakvisa-store',
@@ -217,6 +223,7 @@ export const useAppStore = create<AppState>()(
         recentSearches: state.recentSearches,
         viewPreference: state.viewPreference,
         dashboardWidgets: state.dashboardWidgets,
+        isProUser: state.isProUser,
       }),
     }
   )

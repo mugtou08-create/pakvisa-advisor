@@ -2381,3 +2381,90 @@ Stage Summary:
 ### Known Remaining Items:
 - Travel Essentials, Emergency/Health, Safety, Weather, Embassy sections render below the fold in expanded country card
 - "N" floating button is Next.js dev indicator (dev-only, won't appear in production)
+
+---
+## Session: Round 23 — AI Consultant Pro Features (Phase 1 + Phase 2)
+
+### Task ID: 23-1 — Phase 1A: Database Cleanup (Triplicated Records)
+**Status**: ✅ Completed
+**Problem**: VisaType, VisaRequirement, and CostProfile tables had 3x duplicated records per country (seed.ts uses `create` not `upsert` for these tables, so re-running seed appends duplicates).
+
+**Solution**: Database re-seeded cleanly.
+| Table | Before | After |
+|---|---|---|
+| VisaType | 443 | 178 |
+| VisaRequirement | 690 | 367 |
+| CostProfile | 174 | 70 |
+
+### Task ID: 23-2 — Phase 1B: Data Freshness Notice
+**Status**: ✅ Completed
+**File**: `src/app/api/chat/route.ts`
+- API now queries the latest `updatedAt` from the Country table and returns it as `globalFreshness` in response metadata
+- Free users see: "Visa policies change frequently. Verify with the official embassy before travel."
+- Pro users see: "Visa data last updated: [date]. Always confirm with the official embassy." + "Pro · Database Connected"
+
+### Task ID: 23-3 — Phase 2A: Country Detection from Messages
+**Status**: ✅ Completed
+**New File**: `src/lib/country-detect.ts` (~150 lines)
+- `detectCountries(message)` — scans user message for 70+ country names and aliases
+- Supports aliases: UK, USA, UAE, Saudi Arabia, Turkey/Türkiye, etc.
+- Multi-word matching (e.g., "Saudi Arabia" not "Saudi" in "Saudi Arabia visa")
+- Position-based relevance (country mentioned first = most relevant)
+- Returns up to 3 detected country codes
+- Tested: Germany✅, UAE✅, France✅, Malaysia+Thailand✅, no-country✅, Turkey+Saudi✅, UK✅, Azerbaijan✅
+
+### Task ID: 23-4 — Phase 2B: Database Context Injection
+**Status**: ✅ Completed
+**File**: `src/app/api/chat/route.ts` (rewritten, ~240 lines)
+- Auto-detects country from user message using `detectCountries()`
+- If Pro user + country detected → queries DB for full country data (visa types, requirements, cost profiles)
+- Injects verified data as structured context in LLM prompt with clear `===== VERIFIED COUNTRY DATA =====` markers
+- System prompt instructs LLM to prioritize verified data over general knowledge
+- Includes PKR conversions in cost data
+- Returns `dataVerified`, `detectedCountry`, `sourceUrl`, `lastUpdated` in response metadata
+
+### Task ID: 23-5 — Phase 2C: Pro Gating
+**Status**: ✅ Completed
+**Files**: `src/lib/store.ts`, `src/components/visa/ai-chat-panel.tsx` (rewritten)
+
+**Store changes:**
+- Added `isProUser: boolean` (default false) + `setIsProUser(pro: boolean)` to Zustand store
+- Persisted in localStorage via `partialize`
+
+**API changes:**
+- Free tier: 5 queries per 24 hours (IP-based, in-memory tracking)
+- Pro tier: 60 queries per minute
+- Returns `code: 'LIMIT_REACHED'` when free limit exhausted
+
+**UI changes — Free users:**
+- Header shows "Free · 5/5 queries left" badge (decrements with each query)
+- Suggestion chips: generic (Turkey, visa-free, UAE)
+- After 3 messages: amber upgrade banner appears
+- After limit reached: input disabled with lock icon + "Upgrade to Pro" button
+- AI responses tagged with "⚠️ General Info" badge
+- System prompt tells AI to add general disclaimer
+
+**UI changes — Pro users:**
+- Header shows "Pro · Data Verified" green badge with shield icon
+- Green pill: "Database-verified answers active — mentions of countries auto-inject real data"
+- Pro-specific suggestion chips (Germany Schengen, Malaysia vs Thailand, Kenya vaccines)
+- AI responses tagged with "✓ Data Verified" green badge + detected country name + last updated date + source URL
+- Loading state shows "Verifying data..." animation
+- Footer shows "Pro · Database Connected" + freshness date
+- System prompt tells AI to add verified data disclaimer with last updated date
+
+### Files Created:
+- `src/lib/country-detect.ts` — Country detection utility
+
+### Files Modified:
+- `src/app/api/chat/route.ts` — Complete rewrite with country detection, context injection, Pro gating, freshness metadata
+- `src/components/visa/ai-chat-panel.tsx` — Complete rewrite with Pro badges, upgrade banners, data-verified indicators
+- `src/lib/store.ts` — Added isProUser state + persistence
+
+### Verification Results:
+- ✅ ESLint passes clean
+- ✅ Server compiles without errors
+- ✅ Free mode: Badge shows "Free · 5/5 queries left", freshness notice visible
+- ✅ Pro mode: Badge shows "Pro · Data Verified", green pill visible, Pro suggestions visible
+- ✅ Country detection: 8/8 test cases passed (single, multi, alias, empty)
+- ✅ Database: Clean (178 VT, 70 CP, 367 Req — no duplicates)
