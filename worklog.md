@@ -2232,3 +2232,35 @@ Stage Summary:
 Files Changed:
 - prisma schema data (database update via Prisma client)
 - src/app/page.tsx (added getPrimaryAccess helper, refactored filter logic)
+---
+Task ID: expand-help-modal
+Agent: Main Agent
+Task: Expand Help button modal with glossary of terms and 5 use case scenarios
+
+Work Log:
+- Read existing HelpModal (basic 4-step guide, very minimal)
+- Read available shadcn/ui components: Tabs, Accordion, Badge confirmed available
+- Designed 4-tab Help Center: Get Started, Glossary, Use Cases, Tips
+- Implemented tabbed modal using shadcn Tabs + Accordion components
+- **Get Started tab**: 5 numbered steps covering search, filters, expand cards, quick tools, favorites
+- **Glossary tab**: 18 expandable accordion terms with icons: Visa Free, Visa on Arrival (VoA), e-Visa, Embassy Required, Primary Access Type, Visa Fee, Processing Time, Safety Rating, Best Travel Months, Monthly Living Cost, Region Filter, Favorites, Compare Tool, AI Visa Consultant, Visa Quiz, Schengen Area, Passport Power Ranking, Pagination
+- **Use Cases tab**: 5 scenarios with step-by-step walkthroughs + pro tips:
+  1. Quick Visa-Free Vacation (Beginner - family planner)
+  2. Umrah or Hajj Pilgrimage (Beginner - religious traveler)
+  3. European Schengen Visa Application (Advanced - tourist/business)
+  4. Budget-Friendly Travel Planning (Beginner - student/budget)
+  5. Study or Work Abroad Research (Intermediate - student/professional)
+- **Tips tab**: Keyboard shortcuts, 6 pro tips, "Understanding a Country Card" guide
+- Modal uses max-w-2xl, max-h-[90vh] with scrollable content area
+- Verified all tabs, glossary definitions, and use cases render correctly via agent-browser
+- Zero browser errors, lint passes clean
+
+Stage Summary:
+- HelpModal expanded from 4 simple steps to a comprehensive 4-tab Help Center
+- 18 glossary terms with clear definitions for all webapp-specific terminology
+- 5 use case scenarios covering: vacation, Umrah, Schengen, budget travel, study abroad
+- Each use case has difficulty badge, numbered steps with bold UI elements, and pro tip
+- Extra Tips tab with keyboard shortcuts, pro tips, and card anatomy guide
+
+Files Changed:
+- src/components/visa/modals.tsx (rewrote HelpModal with tabs + accordion)
