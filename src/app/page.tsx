@@ -558,7 +558,7 @@ export default function HomePage() {
             </section>
 
             {/* Premium CTA */}
-            <section className="px-4 pb-12">
+            <section className="px-4 pb-8">
               <div className="max-w-2xl mx-auto text-center">
                 <div className="rounded-2xl bg-primary/5 border border-primary/10 p-8 sm:p-10">
                   <Crown className="w-8 h-8 text-amber-500 mx-auto mb-3" />
@@ -571,6 +571,46 @@ export default function HomePage() {
                     <Crown className="w-4 h-4" />
                     View Premium Plans
                   </Button>
+                </div>
+              </div>
+            </section>
+
+            {/* Business Report Download */}
+            <section className="px-4 pb-12">
+              <div className="max-w-2xl mx-auto">
+                <div className="rounded-2xl border bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800/50 p-6 sm:p-8 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-200/20 dark:bg-emerald-700/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-teal-200/20 dark:bg-teal-700/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+                  <div className="relative">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
+                        <FileText className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-bold text-emerald-900 dark:text-emerald-100 mb-1">
+                          Business Analysis & Growth Strategy Report
+                        </h3>
+                        <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-4 leading-relaxed">
+                          Comprehensive 11-section report covering competitor analysis, traffic growth strategies,
+                          monetization plans, conservative income estimates, feature roadmap, and action plan.
+                          Written in easy English.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <a
+                            href="/PakVisa-Business-Analysis-Report.pdf"
+                            download
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white font-medium text-sm transition-colors shadow-sm"
+                          >
+                            <Download className="w-4 h-4" />
+                            Download PDF Report
+                          </a>
+                          <span className="text-xs text-emerald-600/70 dark:text-emerald-400/60">
+                            PDF &bull; 11 Sections &bull; Free
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
