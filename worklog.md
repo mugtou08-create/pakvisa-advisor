@@ -2468,3 +2468,24 @@ Stage Summary:
 - ✅ Pro mode: Badge shows "Pro · Data Verified", green pill visible, Pro suggestions visible
 - ✅ Country detection: 8/8 test cases passed (single, multi, alias, empty)
 - ✅ Database: Clean (178 VT, 70 CP, 367 Req — no duplicates)
+
+---
+Task ID: Round 23 — Bug Fix: Close Button Not Working in Tool Panels
+Agent: Main Agent
+Task: Fix the close (X) cross button not working in the AI Consultant window, and fix similar issues in other tool panels.
+
+Work Log:
+- Identified root cause: `renderToolPanel()` in `page.tsx` was rendering all three tool panels (`AiChatPanel`, `VisaQuizPanel`, `ComparePanel`) without passing required props
+- `AiChatPanel` was missing `onClose` prop → `onClose` was `undefined` → clicking X button called `undefined()` silently failed
+- `VisaQuizPanel` was missing `countries`, `onClose`, `onSelectCountry` props
+- `ComparePanel` was missing `countries`, `onClose`, `onSelectCountry` props
+- Created `closeTool` callback using `useCallback` that calls `setActiveTool(null)`
+- Created `selectCountryFromTool` callback that closes the panel and expands the selected country on the main page
+- Updated `renderToolPanel()` to pass all required props to all three panels
+
+Stage Summary:
+- Fixed: AI Consultant close button (X cross) now works
+- Fixed: Visa Quiz close button now works
+- Fixed: Compare Countries close button now works
+- All verified via agent-browser end-to-end testing
+- ESLint passes clean, dev server running without errors

@@ -387,10 +387,20 @@ export default function HomePage() {
   // ============================================================
   // Render: Tool Panel View (replaces main content, footer stays)
   // ============================================================
+  const closeTool = useCallback(() => setActiveTool(null), []);
+  const selectCountryFromTool = useCallback((name: string) => {
+    setActiveTool(null);
+    // Find the country code by name and expand it
+    const match = countries.find((c) => c.name === name);
+    if (match) setExpandedCountry(match.code);
+    // Scroll to top of results
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [countries]);
+
   const renderToolPanel = () => {
-    if (activeTool === 'ai') return <AiChatPanel />;
-    if (activeTool === 'quiz') return <VisaQuizPanel />;
-    if (activeTool === 'compare') return <ComparePanel />;
+    if (activeTool === 'ai') return <AiChatPanel onClose={closeTool} />;
+    if (activeTool === 'quiz') return <VisaQuizPanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
+    if (activeTool === 'compare') return <ComparePanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
     return null;
   };
 
