@@ -1,0 +1,535 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Clock, Globe, DollarSign, Languages, Plug, Phone, Droplets, UtensilsCrossed,
+  Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
+  Calculator, ChevronDown, ChevronUp, AlertTriangle, Banknote, ArrowRightLeft,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import type { CountryData } from '@/lib/types';
+import {
+  EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES,
+} from '@/components/app/constants';
+import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
+
+// ============================================================
+// Live Clock Component
+// ============================================================
+function LiveClock({ timezone, cityName }: { timezone: string; cityName: string }) {
+  const [time, setTime] = useState('');
+  const [date, setDate] = useState('');
+
+  useEffect(() => {
+    function updateTime() {
+      try {
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: timezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
+        const dateFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: timezone,
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        });
+        setTime(formatter.format(now));
+        setDate(dateFormatter.format(now));
+      } catch {
+        setTime('—');
+        setDate('—');
+      }
+    }
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [timezone]);
+
+  // Calculate time difference from PKT (Asia/Karachi)
+  const timeDiff = useMemo(() => {
+    try {
+      const now = new Date();
+      const target = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false }).format(now);
+      const pkt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', hour12: false }).format(now);
+      const diff = parseInt(target) - parseInt(pkt);
+      if (diff === 0) return 'Same as PKT';
+      if (diff > 0) return `+${diff}h from PKT`;
+      return `${diff}h from PKT`;
+    } catch {
+      return '';
+    }
+  }, [timezone]);
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 p-3">
+      <Clock className="w-5 h-5 text-sky-600 shrink-0" />
+      <div>
+        <p className="text-sm font-semibold text-sky-900 dark:text-sky-200">{time}</p>
+        <p className="text-xs text-sky-700 dark:text-sky-400">{date} {timeDiff && `· ${timeDiff}`}</p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Currency Converter Widget
+// ============================================================
+function CurrencyConverter({ currencyCode, currencyName }: { currencyCode: string; currencyName: string }) {
+  const [amount, setAmount] = useState<string>('100');
+  const [direction, setDirection] = useState<'topkr' | 'frompkr'>('topkr');
+
+  const rate = EXCHANGE_RATES[currencyCode];
+  const [topkr, frompkr] = useMemo(() => {
+    if (!rate) return ['—', '—'];
+    return [
+      (parseFloat(amount || '0') * rate).toLocaleString('en-PK', { maximumFractionDigits: 2 }),
+      (parseFloat(amount || '0') / rate).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+    ];
+  }, [amount, rate]);
+
+  return (
+    <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Banknote className="w-4 h-4 text-emerald-600" />
+          <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">Currency Converter</span>
+        </div>
+        <Badge variant="outline" className="text-[10px] border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400">
+          {currencyCode} · {currencyName}
+        </Badge>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full h-8 px-2 rounded-md border bg-white dark:bg-background text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          min="0"
+        />
+        <button
+          onClick={() => setDirection((d) => d === 'topkr' ? 'frompkr' : 'topkr')}
+          className="p-1.5 rounded-md border bg-white dark:bg-background hover:bg-muted transition-colors"
+          title="Swap direction"
+        >
+          <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-600" />
+        </button>
+      </div>
+      {rate ? (
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">
+            {direction === 'topkr' ? `${amount || '0'} ${currencyCode} =` : `PKR ${amount || '0'} =`}
+          </span>
+          <span className="font-semibold text-emerald-800 dark:text-emerald-300">
+            {direction === 'topkr' ? `PKR ${topkr}` : `${frompkr} ${currencyCode}`}
+          </span>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Exchange rate not available</p>
+      )}
+      <p className="text-[10px] text-emerald-700/70 dark:text-emerald-400/70">
+        Rate: 1 {currencyCode} ≈ PKR {rate?.toFixed(2) || '—'} · Approximate, verify before transaction
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
+// Travel Essentials Grid
+// ============================================================
+function TravelEssentials({ info, countryName }: { info: TravelInfo; countryName: string }) {
+  const essentials = [
+    {
+      icon: <Languages className="w-3.5 h-3.5" />,
+      label: 'Languages',
+      value: info.languages.join(', '),
+      color: 'text-violet-600',
+    },
+    {
+      icon: <Phone className="w-3.5 h-3.5" />,
+      label: 'Dial Code',
+      value: info.dialCode,
+      color: 'text-blue-600',
+    },
+    {
+      icon: <Plug className="w-3.5 h-3.5" />,
+      label: 'Plug / Voltage',
+      value: `${info.plugType}, ${info.voltage}`,
+      color: 'text-orange-600',
+    },
+    {
+      icon: <Droplets className="w-3.5 h-3.5" />,
+      label: 'Tap Water',
+      value: info.waterSafe ? '✅ Safe to drink' : '⚠️ Not safe — use bottled',
+      color: info.waterSafe ? 'text-emerald-600' : 'text-amber-600',
+    },
+    {
+      icon: <UtensilsCrossed className="w-3.5 h-3.5" />,
+      label: 'Halal Food',
+      value: info.halalFood,
+      color: info.halalFood === 'Widely Available' ? 'text-emerald-600' : info.halalFood === 'Available' ? 'text-amber-600' : 'text-red-500',
+    },
+    {
+      icon: <Calculator className="w-3.5 h-3.5" />,
+      label: 'Tipping',
+      value: info.tipping,
+      color: 'text-gray-600',
+    },
+    {
+      icon: <Car className="w-3.5 h-3.5" />,
+      label: 'Transport',
+      value: info.transport,
+      color: 'text-cyan-600',
+    },
+    {
+      icon: <Heart className="w-3.5 h-3.5" />,
+      label: 'Pakistani Community',
+      value: info.pakistaniCommunity,
+      color: info.pakistaniCommunity === 'Large' ? 'text-emerald-600' : info.pakistaniCommunity === 'Moderate' ? 'text-amber-600' : 'text-gray-500',
+    },
+    {
+      icon: <Wifi className="w-3.5 h-3.5" />,
+      label: 'Internet',
+      value: info.internet,
+      color: 'text-indigo-600',
+    },
+  ];
+
+  return (
+    <div>
+      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Travel Essentials</h5>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {essentials.map((item) => (
+          <div key={item.label} className="rounded-lg bg-muted/50 p-2.5 flex items-start gap-2">
+            <span className={`${item.color} shrink-0 mt-0.5`}>{item.icon}</span>
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{item.label}</p>
+              <p className="text-xs font-medium leading-snug">{item.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Emergency & Health Section
+// ============================================================
+function EmergencyHealth({ info }: { info: TravelInfo }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center justify-between w-full text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 hover:text-foreground transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+          Emergency & Health
+        </span>
+        {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </button>
+      {expanded && (
+        <div className="space-y-2">
+          {/* Emergency Numbers */}
+          <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3">
+            <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-2">Emergency Numbers</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Police', icon: ShieldCheck, number: info.emergencyPolice },
+                { label: 'Ambulance', icon: Syringe, number: info.emergencyAmbulance },
+                { label: 'Fire', icon: AlertTriangle, number: info.emergencyFire },
+              ].map((e) => (
+                <div key={e.label} className="text-center">
+                  <e.icon className="w-3.5 h-3.5 mx-auto mb-1 text-red-500" />
+                  <p className="text-[10px] text-red-700 dark:text-red-400">{e.label}</p>
+                  <p className="text-sm font-bold text-red-900 dark:text-red-200">{e.number}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Vaccines */}
+          {info.vaccines.length > 0 && (
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-2">Recommended Vaccinations</p>
+              <div className="flex flex-wrap gap-1.5">
+                {info.vaccines.map((v) => (
+                  <Badge key={v} variant="outline" className="text-[10px] border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
+                    <Syringe className="w-2.5 h-2.5 mr-1" /> {v}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Embassy Contact Section
+// ============================================================
+function EmbassyContact({ countryCode }: { countryCode: string }) {
+  const embassy = EMBASSY_DATA[countryCode] || GENERIC_EMBASSY;
+
+  return (
+    <div className="rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Building2 className="w-4 h-4 text-purple-600" />
+        <p className="text-xs font-semibold text-purple-800 dark:text-purple-300">Embassy in Islamabad</p>
+      </div>
+      <div className="space-y-1.5 text-xs text-purple-900 dark:text-purple-200">
+        <p className="flex items-start gap-1.5">
+          <span className="text-purple-500 shrink-0">📍</span>
+          <span>{embassy.address}</span>
+        </p>
+        <p className="flex items-start gap-1.5">
+          <span className="text-purple-500 shrink-0">📞</span>
+          <span>{embassy.phone}</span>
+        </p>
+        <p className="flex items-start gap-1.5">
+          <span className="text-purple-500 shrink-0">🕐</span>
+          <span>{embassy.hours}</span>
+        </p>
+        {embassy.note && (
+          <p className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+            <span className="text-amber-500 shrink-0">⚠️</span>
+            <span>{embassy.note}</span>
+          </p>
+        )}
+      </div>
+      <a
+        href={embassy.appointmentUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[11px] font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+      >
+        Book Appointment <ExternalLink className="w-2.5 h-2.5" />
+      </a>
+    </div>
+  );
+}
+
+// ============================================================
+// Safety Info Section
+// ============================================================
+function SafetyInfo({ rating, summary }: { rating: number; summary: string }) {
+  const displayRating = Math.min(Math.max(rating, 0), 5);
+  return (
+    <div>
+      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Safety Overview</h5>
+      <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Safety Rating</span>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <span
+                key={i}
+                className={`w-4 h-4 rounded-full ${i < displayRating ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+              />
+            ))}
+            <span className="text-xs font-semibold ml-1">{displayRating}/5</span>
+          </div>
+        </div>
+        {summary && <p className="text-xs text-muted-foreground leading-relaxed">{summary}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Weather Info Section
+// ============================================================
+function WeatherInfo({ avgTemp, monthlyTemps }: { avgTemp: string; monthlyTemps: Record<string, number> }) {
+  const temps = Object.entries(monthlyTemps);
+  if (temps.length === 0 && !avgTemp) return null;
+
+  const maxTemp = temps.length > 0 ? Math.max(...temps.map(([, v]) => v)) : parseInt(avgTemp) || 0;
+  const minTemp = temps.length > 0 ? Math.min(...temps.map(([, v]) => v)) : parseInt(avgTemp) || 0;
+
+  return (
+    <div>
+      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Climate & Weather</h5>
+      <div className="rounded-lg bg-muted/50 p-3 space-y-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="flex items-center gap-1.5">
+            <Thermometer className="w-4 h-4 text-red-500" />
+            <span className="font-medium">Avg Temperature</span>
+          </span>
+          <span className="font-semibold">{avgTemp}°C</span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>🔥 High: {maxTemp}°C</span>
+          <span>❄️ Low: {minTemp}°C</span>
+        </div>
+        {temps.length > 0 && (
+          <div className="flex items-end gap-0.5 h-8">
+            {temps.map(([month, temp], idx) => {
+              const height = maxTemp > minTemp ? ((temp - minTemp) / (maxTemp - minTemp)) * 100 : 50;
+              return (
+                <div key={month} className="flex-1 flex flex-col items-center gap-0.5">
+                  <div
+                    className="w-full rounded-t-sm min-h-[2px] transition-all"
+                    style={{
+                      height: `${Math.max(height, 5)}%`,
+                      backgroundColor: temp > 30 ? '#ef4444' : temp > 20 ? '#f59e0b' : temp > 10 ? '#3b82f6' : '#6366f1',
+                    }}
+                  />
+                  <span className="text-[8px] text-muted-foreground">{MONTH_NAMES[idx]?.[0] || ''}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Main Country Detail Panel
+// ============================================================
+export function CountryDetailPanel({ country }: { country: CountryData }) {
+  const travel = getTravelInfo(country.code);
+  const reqs = country.requirements?.slice(0, 5) || [];
+  const travelMonths = country.bestTravelMonths
+    ? country.bestTravelMonths.split(',').map((m: string) => m.trim())
+    : [];
+  const visaTypes = country.visaTypes?.slice(0, 4) || [];
+
+  // Determine if embassy info should be shown (for embassy-required countries)
+  const isEmbassyRequired = !country.visaFree && !country.visaOnArrival && !country.etaAvailable;
+
+  return (
+    <div className="border-t px-4 pb-4 pt-3 space-y-4">
+      {/* Country Description */}
+      {travel.description && (
+        <p className="text-xs text-muted-foreground leading-relaxed italic">{travel.description}</p>
+      )}
+
+      {/* Row 1: Live Clock + Currency Converter (side by side on larger screens) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {country.timezone && (
+          <LiveClock timezone={country.timezone} cityName={country.name} />
+        )}
+        {country.currencyCode && (
+          <CurrencyConverter currencyCode={country.currencyCode} currencyName={country.currency} />
+        )}
+      </div>
+
+      {/* Row 2: Quick Glance Row */}
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline" className="text-[10px] gap-1">
+          <Globe className="w-2.5 h-2.5" /> {travel.languages.slice(0, 2).join(', ')}
+        </Badge>
+        <Badge variant="outline" className="text-[10px] gap-1">
+          <Plug className="w-2.5 h-2.5" /> {travel.plugType}, {travel.voltage}
+        </Badge>
+        <Badge variant="outline" className="text-[10px] gap-1">
+          <Phone className="w-2.5 h-2.5" /> {travel.dialCode}
+        </Badge>
+        <Badge variant="outline" className={`text-[10px] gap-1 ${travel.halalFood === 'Widely Available' ? 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400' : ''}`}>
+          <UtensilsCrossed className="w-2.5 h-2.5" /> Halal: {travel.halalFood}
+        </Badge>
+        <Badge variant="outline" className="text-[10px] gap-1">
+          <Heart className="w-2.5 h-2.5" /> Community: {travel.pakistaniCommunity}
+        </Badge>
+      </div>
+
+      {/* Key Requirements */}
+      {reqs.length > 0 && (
+        <div>
+          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Key Requirements</h5>
+          <ul className="space-y-1.5">
+            {reqs.map((r) => (
+              <li key={r.id} className="flex items-start gap-2 text-sm">
+                <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${r.mandatory ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                <span className="text-muted-foreground">{r.requirement}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Cost Breakdown */}
+      {country.costProfile && (
+        <div>
+          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cost Breakdown (per month)</h5>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="rounded-lg bg-muted/50 p-2 text-center">
+              <p className="text-xs text-muted-foreground">Visa Fee</p>
+              <p className="font-semibold text-sm">${country.costProfile.visaFeeUSD}</p>
+              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.visaFeeUSD * 278.5).toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2 text-center">
+              <p className="text-xs text-muted-foreground">Living Cost</p>
+              <p className="font-semibold text-sm">${country.costProfile.monthlyLivingUSD}</p>
+              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyLivingUSD * 278.5).toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2 text-center">
+              <p className="text-xs text-muted-foreground">Rent</p>
+              <p className="font-semibold text-sm">${country.costProfile.monthlyRentUSD}</p>
+              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyRentUSD * 278.5).toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2 text-center">
+              <p className="text-xs text-muted-foreground">Food</p>
+              <p className="font-semibold text-sm">${country.costProfile.monthlyFoodUSD}</p>
+              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyFoodUSD * 278.5).toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Travel Months */}
+      {travelMonths.length > 0 && (
+        <div>
+          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Best Travel Months</h5>
+          <div className="flex flex-wrap gap-1.5">
+            {MONTH_NAMES.map((m, i) => {
+              const isActive = travelMonths.some((tm: string) => tm.toLowerCase().startsWith(m.toLowerCase()));
+              return (
+                <span key={m} className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{m}</span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Visa Types */}
+      {visaTypes.length > 0 && (
+        <div>
+          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Available Visa Types</h5>
+          <div className="flex flex-wrap gap-1.5">
+            {visaTypes.map((vt2) => (
+              <Badge key={vt2.id} variant="outline" className="text-xs font-normal">
+                {vt2.type}{vt2.maxDuration ? ` (${vt2.maxDuration})` : ''}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Safety Info */}
+      {(country.safetyRating > 0 || country.safetySummary) && (
+        <SafetyInfo rating={country.safetyRating} summary={country.safetySummary} />
+      )}
+
+      {/* Weather/Climate */}
+      <WeatherInfo avgTemp={country.avgTempC} monthlyTemps={country.monthlyTemps} />
+
+      {/* Travel Essentials Grid */}
+      <TravelEssentials info={travel} countryName={country.name} />
+
+      {/* Emergency & Health (collapsible) */}
+      <EmergencyHealth info={travel} />
+
+      {/* Embassy Contact (only for embassy-required countries) */}
+      {isEmbassyRequired && <EmbassyContact countryCode={country.code} />}
+    </div>
+  );
+}

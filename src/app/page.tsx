@@ -19,6 +19,7 @@ import type { CountryData } from '@/lib/types';
 import { AiChatPanel } from '@/components/visa/ai-chat-panel';
 import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
 import { ComparePanel } from '@/components/visa/compare-panel';
+import { CountryDetailPanel } from '@/components/visa/country-detail';
 import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 
@@ -163,9 +164,6 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
   onToggleFav: () => void;
 }) {
   const vt = getVisaType(country);
-  const reqs = country.requirements?.slice(0, 4) || [];
-  const travelMonths = country.bestTravelMonths ? country.bestTravelMonths.split(',').map((m: string) => m.trim()) : [];
-  const visaTypes = country.visaTypes?.slice(0, 3) || [];
 
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md">
@@ -200,7 +198,10 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
               <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />${country.costProfile.visaFeeUSD}</span>
             ) : null}
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{country.processingDaysMin}-{country.processingDaysMax}d</span>
-            <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{country.safetyRating}/5</span>
+            <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{Math.min(country.safetyRating, 5)}/5</span>
+            {country.currencyCode && (
+              <span className="flex items-center gap-1 hidden sm:flex"><Globe className="w-3 h-3" />{country.currencyCode}</span>
+            )}
           </div>
         </div>
 
@@ -217,79 +218,8 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         </div>
       </div>
 
-      {/* Expanded Details */}
-      {expanded && (
-        <div className="border-t px-4 pb-4 pt-3 space-y-4">
-          {/* Requirements */}
-          {reqs.length > 0 && (
-            <div>
-              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Key Requirements</h5>
-              <ul className="space-y-1.5">
-                {reqs.map((r) => (
-                  <li key={r.id} className="flex items-start gap-2 text-sm">
-                    <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${r.mandatory ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-                    <span className="text-muted-foreground">{r.requirement}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Cost Breakdown */}
-          {country.costProfile && (
-            <div>
-              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cost Breakdown (per month)</h5>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="rounded-lg bg-muted/50 p-2 text-center">
-                  <p className="text-xs text-muted-foreground">Visa Fee</p>
-                  <p className="font-semibold text-sm">${country.costProfile.visaFeeUSD}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-2 text-center">
-                  <p className="text-xs text-muted-foreground">Living Cost</p>
-                  <p className="font-semibold text-sm">${country.costProfile.monthlyLivingUSD}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-2 text-center">
-                  <p className="text-xs text-muted-foreground">Rent</p>
-                  <p className="font-semibold text-sm">${country.costProfile.monthlyRentUSD}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-2 text-center">
-                  <p className="text-xs text-muted-foreground">Food</p>
-                  <p className="font-semibold text-sm">${country.costProfile.monthlyFoodUSD}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Travel Months */}
-          {travelMonths.length > 0 && (
-            <div>
-              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Best Travel Months</h5>
-              <div className="flex flex-wrap gap-1.5">
-                {MONTH_NAMES.map((m, i) => {
-                  const isActive = travelMonths.some((tm: string) => tm.toLowerCase().startsWith(m.toLowerCase()));
-                  return (
-                    <span key={m} className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{m}</span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Visa Types */}
-          {visaTypes.length > 0 && (
-            <div>
-              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Available Visa Types</h5>
-              <div className="flex flex-wrap gap-1.5">
-                {visaTypes.map((vt2) => (
-                  <Badge key={vt2.id} variant="outline" className="text-xs font-normal">
-                    {vt2.type}{vt2.maxDuration ? ` (${vt2.maxDuration})` : ''}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Expanded Details - Full Info Panel */}
+      {expanded && <CountryDetailPanel country={country} />}
     </Card>
   );
 }

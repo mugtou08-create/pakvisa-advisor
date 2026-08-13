@@ -2291,3 +2291,30 @@ Stage Summary:
 Files Changed:
 - src/app/page.tsx (fixed CountryResultCard, updated testimonial, added disclaimer to both footers)
 - src/components/visa/modals.tsx (added 3 use cases to HelpModal)
+---
+Task ID: 1
+Agent: Main Agent
+Task: Add comprehensive travel info to country detail cards (live clock, currency converter, travel essentials, embassy contact, safety, weather)
+
+Work Log:
+- Created `/home/z/my-project/src/components/app/travel-info.ts` with `COUNTRY_TRAVEL_INFO` constant covering all 70 countries
+- Each country entry includes: languages, dial code, plug type/voltage, water safety, tipping, halal food availability, transport options, emergency numbers (police/ambulance/fire), required vaccinations, Pakistani community size, internet availability, and a one-line description
+- Created `/home/z/my-project/src/components/visa/country-detail.tsx` with modular sub-components:
+  - `LiveClock` — real-time local time with timezone difference from PKT
+  - `CurrencyConverter` — bidirectional PKR converter with swap button
+  - `TravelEssentials` — 9-item grid (languages, dial code, plug/voltage, water, halal, tipping, transport, community, internet)
+  - `EmergencyHealth` — collapsible section with emergency numbers and vaccine badges
+  - `EmbassyContact` — embassy address, phone, hours, appointment link (for embassy-required countries)
+  - `SafetyInfo` — visual rating dots + text summary (capped at 5/5)
+  - `WeatherInfo` — avg temp, high/low, monthly temperature bar chart
+  - `CountryDetailPanel` — main panel composing all sub-components
+- Updated `page.tsx` to use `CountryDetailPanel` instead of inline expanded content
+- Added currency code (e.g., AED, USD, SAR) to collapsed card view
+- Fixed safety rating display to cap at 5/5 (was showing 9/5 for UAE)
+- Cost breakdown now shows PKR equivalents alongside USD amounts
+
+Stage Summary:
+- All 70 countries have comprehensive travel info data
+- Expanded country card now shows: description, live clock, currency converter, quick-glance badges, requirements, cost breakdown (with PKR), travel months, visa types, safety overview, climate/weather chart, travel essentials grid, emergency/health section, embassy contact
+- Zero compilation errors, zero console errors
+- Browser-verified with UAE (Visa on Arrival) and USA (Embassy Required) — all sections rendering correctly
