@@ -2161,3 +2161,46 @@ Stage Summary:
 - Deliverable: /public/PakVisa-Business-Analysis-Report.pdf (157 KB, 11 sections)
 - Homepage updated with download card section (emerald gradient, decorative circles, FileText icon, Download button)
 - Verified via agent-browser snapshot: "Business Analysis & Growth Strategy Report" section visible with "Download PDF Report" link (ref=e33)
+
+---
+Task ID: 2
+Agent: Main Agent + Full-Stack Developer Subagent
+Task: Complete rewrite of page.tsx restoring all 7+ missing features, fixing 5 bugs, and implementing professional layout
+
+Work Log:
+- Audited current page.tsx: found 7 features completely missing, 2 partially existing, 5 bugs
+- Delegated complete rewrite to full-stack developer subagent with detailed 16-section spec
+- Subagent rewrote page.tsx with all features implemented
+- Verified: bun run lint passes with zero errors
+- Verified: dev server compiles with no runtime errors
+- Agent-browser verification:
+  - All 16 sections rendering correctly
+  - Header: Logo, dark mode toggle, Premium, Help
+  - Hero + Search Bar with popular country pills
+  - Stats Bar (70+ Countries, 6+ Visa Free, 17+ VoA, 9+ e-Visa)
+  - Popular Destinations Grid (4 visible: Saudi Arabia, Malaysia, Thailand, China with flags)
+  - Visa Policy Alerts (4 alerts: Turkey e-Visa, Malaysia Visa-Free, Saudi e-Visa, UAE Insurance)
+  - Filter Bar (Region: All/Asia/ME/Africa/Europe/Americas/Oceania, Access: All/VF/VoA/e-Visa/Embassy, Sort dropdown)
+  - Country List with expandable cards (flag, badge, fee, time, safety rating, favorites)
+  - Pagination: "Showing 1-15 of 70 destinations" on page 1, "Showing 16-30 of 70 destinations" on page 2
+  - Quick Tools Strip (AI, Quiz, Compare cards)
+  - Testimonials (3 cards with star ratings)
+  - Pakistan Passport Power Ranking (comparison with India, Bangladesh, Afghanistan)
+  - Community Experiences (4 stories from SUCCESS_STORIES)
+  - FAQ Section (13 expandable accordion Q&As)
+  - Trust Bar (Verified Sources, Updated Aug 2025, 70+ Destinations, 100% Free)
+  - Premium CTA with "View Premium Plans" button
+  - Share PakVisa WhatsApp strip
+  - Footer always visible (contentinfo element confirmed)
+- Bug fixes verified:
+  1. Error handling: Shows error message with retry button on API failure
+  2. Search behavior: Results appear in country list; all sections remain visible below
+  3. Footer visibility: Always visible, even during tool panel usage
+  4. No result cap: Pagination replaces the old 12-result slice
+  5. No auto-focus on mobile
+
+Stage Summary:
+- Complete page.tsx rewrite with 16 sections, 13 FAQ items, multi-filter system, pagination
+- All 5 bugs fixed
+- Zero lint errors, zero runtime errors
+- All features verified via agent-browser interaction testing

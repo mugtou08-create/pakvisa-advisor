@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useSyncExternalStore, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Globe, Search, Sun, Moon, HelpCircle, Sparkles, MessageSquare,
   BarChart3, ClipboardList, Shield, Clock, DollarSign, Plane,
   ChevronDown, ChevronUp, Heart, X, ArrowRight, Check, Lock,
   Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
+  CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +20,7 @@ import { AiChatPanel } from '@/components/visa/ai-chat-panel';
 import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
 import { ComparePanel } from '@/components/visa/compare-panel';
 import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
+import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 
 // ============================================================
 // Testimonials
@@ -27,6 +30,79 @@ const TESTIMONIALS = [
   { text: "Compared 4 countries side by side. Chose Malaysia — visa on arrival, no hassle!", author: "Sara M., Karachi", rating: 5 },
   { text: "The AI told me exactly which documents I was missing. Got approved first try.", author: "Bilal R., Islamabad", rating: 5 },
 ];
+
+// ============================================================
+// Popular Countries
+// ============================================================
+const POPULAR_COUNTRIES = [
+  'UAE', 'Saudi Arabia', 'Turkey', 'Malaysia',
+  'Thailand', 'UK', 'USA', 'China',
+];
+
+// ============================================================
+// Visa Policy Alerts
+// ============================================================
+const VISA_ALERTS = [
+  { id: 1, icon: CheckCircle2, color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can now apply for a Turkish e-Visa online in minutes.' },
+  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Malaysia has extended visa-free entry for Pakistani passport holders through 2025.' },
+  { id: 3, icon: Info, color: 'text-sky-600', title: 'Saudi e-Visa for Tourism', desc: 'Saudi Arabia now offers e-Visa for Pakistani tourists including Umrah travelers.' },
+  { id: 4, icon: AlertTriangle, color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.' },
+];
+
+// ============================================================
+// FAQ Data
+// ============================================================
+const FAQ_DATA = [
+  { q: 'Do Pakistani citizens need a visa for UAE?', a: 'Pakistani citizens can get a Visa on Arrival in the UAE for up to 30 days. You need a valid passport with 6 months validity, a return ticket, hotel booking confirmation, and travel insurance. The visa is stamped at the airport immigration counter.' },
+  { q: 'What is the easiest country to visit with a Pakistani passport?', a: 'Several countries are easy to visit. Malaysia offers visa-free entry. UAE, Qatar, and Saudi Arabia offer Visa on Arrival. Turkey offers a simple e-Visa that can be obtained online in minutes. These are generally the most straightforward options for Pakistani travelers.' },
+  { q: 'How many countries can Pakistani citizens visit visa-free?', a: 'Pakistani citizens can visit approximately 30+ countries visa-free or with visa on arrival. This includes several African nations, some Asian countries, and Caribbean destinations. Check our full list above for the most up-to-date information.' },
+  { q: 'Is the e-Visa process safe and reliable?', a: 'Yes, e-Visas are official government-issued visas. Countries like Turkey, Saudi Arabia, and others process e-Visas through their official government portals. Always apply through the official government website and never through unauthorized third-party agencies.' },
+  { q: 'What documents do I need for a visa application?', a: 'Common requirements include: a valid passport (6+ months validity), passport-sized photographs, bank statements (3-6 months), employment letter or business documents, travel itinerary, hotel bookings, and travel insurance. Specific requirements vary by country.' },
+  { q: 'How long does visa processing take?', a: 'Processing times vary significantly. e-Visas like Turkey can be approved within 24 hours. Visa on Arrival is instant at the airport. Embassy visas for countries like UK, USA, or Schengen states can take 2-6 weeks. Check individual country pages for specific timelines.' },
+  { q: 'Can I travel to Europe with a Pakistani passport?', a: 'Pakistani citizens need a Schengen visa to visit most European countries. This requires applying at the embassy or consulate of your main destination. The process typically takes 2-4 weeks and requires comprehensive documentation including financial proof, travel insurance, and accommodation bookings.' },
+  { q: 'What is the cost of a visa for popular destinations?', a: 'Costs vary widely. Turkey e-Visa costs around $50. Saudi Arabia e-Visa is approximately $80-120. UAE Visa on Arrival is free but requires insurance. Schengen visa fees are around €80. UK visa costs approximately $130-200. Check each country page for exact fees.' },
+  { q: 'How accurate is the information on PakVisa Advisor?', a: 'We source our data from official embassy websites and government portals. Our data is regularly verified and updated. However, visa policies can change with little notice, so we always recommend verifying with the official embassy or consulate before making travel plans.' },
+  { q: 'Is PakVisa Advisor free to use?', a: 'Yes! Basic visa search, requirements viewing, and limited AI queries are completely free. We offer a premium plan (PakVisa Pro) for additional features like document checklists, step-by-step guides, and unlimited AI access at $4.99/month.' },
+  { q: 'What is the best time to apply for a visa?', a: 'Apply at least 4-6 weeks before your planned travel date for embassy visas. For e-Visas, 1-2 weeks is usually sufficient. Avoid peak travel seasons (summer, December holidays) as processing times may be longer. Some countries have specific application windows.' },
+  { q: 'Can I get a visa if I have been previously rejected?', a: 'A previous rejection does not automatically disqualify you, but you must address the reasons for the previous rejection in your new application. Provide additional documentation, stronger financial proof, and a clear explanation of any changes in your circumstances. Consult our AI advisor for personalized guidance.' },
+  { q: 'Does PakVisa Advisor help with the actual visa application?', a: 'PakVisa Advisor provides information, guidance, and tools to help you prepare. We show you requirements, costs, processing times, and provide AI-powered advice. However, you must submit your application directly to the relevant embassy, consulate, or official e-Visa portal.' },
+];
+
+// ============================================================
+// Passport Power Rankings
+// ============================================================
+const PASSPORT_RANKINGS = [
+  { country: 'Pakistan', flag: '🇵🇰', rank: 106, score: 36, visaFree: 33 },
+  { country: 'India', flag: '🇮🇳', rank: 82, score: 58, visaFree: 58 },
+  { country: 'Bangladesh', flag: '🇧🇩', rank: 101, score: 40, visaFree: 40 },
+  { country: 'Afghanistan', flag: '🇦🇫', rank: 111, score: 26, visaFree: 26 },
+];
+
+// ============================================================
+// Filter State Type
+// ============================================================
+type FilterState = {
+  access: string | null;
+  region: string | null;
+  sortDir: string;
+};
+
+// ============================================================
+// Pagination Helper
+// ============================================================
+function generatePageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: (number | 'ellipsis')[] = [1];
+  if (current > 3) pages.push('ellipsis');
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (current < total - 2) pages.push('ellipsis');
+  if (total > 1) pages.push(total);
+  return pages;
+}
 
 // ============================================================
 // Visa Type Helper
@@ -62,611 +138,938 @@ function QuickToolCard({ icon, title, description, colorClass, onClick, badge }:
       </div>
       <h4 className="font-semibold mb-1">{title}</h4>
       <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-      <div className="mt-3 text-xs font-medium text-primary flex items-center gap-1 group-hover:gap-1.5 transition-all">
-        Try now <ArrowRight className="w-3 h-3" />
-      </div>
     </button>
   );
 }
 
 // ============================================================
-// Country Result Card (Expandable)
+// Country Result Card
 // ============================================================
-function CountryResultCard({ country, expanded, onToggle, isFavorited, onToggleFavorite, onAskAI }: {
+function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: {
   country: CountryData;
   expanded: boolean;
   onToggle: () => void;
-  isFavorited: boolean;
-  onToggleFavorite: () => void;
-  onAskAI: () => void;
+  isFav: boolean;
+  onToggleFav: () => void;
 }) {
-  const visa = getVisaType(country);
-  const cost = country.costProfile;
+  const vt = getVisaType(country);
+  const reqs = country.requirements?.slice(0, 4) || [];
+  const travelMonths = country.bestTravelMonths ? country.bestTravelMonths.split(',').map((m: string) => m.trim()) : [];
+  const visaTypes = country.visaTypes?.slice(0, 3) || [];
 
   return (
-    <div className={`rounded-xl border bg-card overflow-hidden transition-all duration-200 ${expanded ? 'shadow-md' : 'hover:shadow-sm'}`}>
-      {/* Collapsed Row */}
-      <div
+    <Card className="overflow-hidden transition-shadow hover:shadow-md">
+      <button
         onClick={onToggle}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
-        role="button"
-        tabIndex={0}
-        className="w-full flex items-center gap-4 p-4 text-left cursor-pointer select-none"
+        className="w-full text-left p-4 flex items-center gap-4"
+        aria-expanded={expanded}
       >
-        <span className="text-3xl shrink-0">{country.flagEmoji}</span>
+        {/* Flag */}
+        <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+          {country.flagUrl ? (
+            <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-lg">{country.flagEmoji}</span>
+          )}
+        </div>
+
+        {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h4 className="font-semibold">{country.name}</h4>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${visa.color}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${visa.dot}`} />
-              {visa.label}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm truncate">{country.name}</span>
+            <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${vt.color}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${vt.dot}`} />
+              {vt.label}
             </span>
-            {country.safetyRating >= 7 && (
-              <span className="inline-flex items-center gap-0.5 text-[11px] text-emerald-600 dark:text-emerald-400">
-                <Shield className="w-3 h-3" /> Safe
-              </span>
-            )}
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            {cost && cost.visaFeeUSD > 0 && (
-              <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> ${cost.visaFeeUSD}</span>
-            )}
-            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {country.processingDaysMin === country.processingDaysMax ? `${country.processingDaysMin} days` : `${country.processingDaysMin}–${country.processingDaysMax} days`}</span>
-            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {country.continent}</span>
+          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+            {country.costProfile?.visaFeeUSD ? (
+              <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />${country.costProfile.visaFeeUSD}</span>
+            ) : null}
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{country.processingDaysMin}-{country.processingDaysMax}d</span>
+            <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{country.safetyRating}/5</span>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+
+        {/* Favorite & Expand */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+            onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
+            className="p-1.5 rounded-full hover:bg-muted transition-colors"
+            aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <Heart className={`w-4 h-4 transition-colors ${isFavorited ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
+            <Heart className={`w-4 h-4 ${isFav ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </div>
-      </div>
+      </button>
 
       {/* Expanded Details */}
       {expanded && (
-        <div className="border-t px-4 pb-4 pt-4 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="border-t px-4 pb-4 pt-3 space-y-4">
           {/* Requirements */}
-          {country.requirements && country.requirements.length > 0 && (
+          {reqs.length > 0 && (
             <div>
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5" /> Requirements
-              </h5>
+              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Key Requirements</h5>
               <ul className="space-y-1.5">
-                {country.requirements.slice(0, 5).map((req) => (
-                  <li key={req.id} className="flex items-start gap-2 text-sm">
-                    <Check className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                    <span>
-                      {req.requirement}
-                      {req.mandatory && <span className="text-muted-foreground ml-1 text-xs">(required)</span>}
-                    </span>
+                {reqs.map((r) => (
+                  <li key={r.id} className="flex items-start gap-2 text-sm">
+                    <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${r.mandatory ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                    <span className="text-muted-foreground">{r.requirement}</span>
                   </li>
                 ))}
-                {country.requirements.length > 5 && (
-                  <li className="text-xs text-muted-foreground pl-5.5">+{country.requirements.length - 5} more items
-                    <span className="inline-flex items-center gap-0.5 ml-1 text-amber-600"><Lock className="w-3 h-3" /> Pro</span>
-                  </li>
-                )}
               </ul>
             </div>
           )}
 
           {/* Cost Breakdown */}
-          {cost && (
+          {country.costProfile && (
             <div>
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5" /> Cost Breakdown
-              </h5>
+              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cost Breakdown (per month)</h5>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { label: 'Visa Fee', value: `$${cost.visaFeeUSD}` },
-                  { label: 'Service Fee', value: `$${cost.serviceFeeUSD}` },
-                  { label: 'Monthly Living', value: `$${Math.round(cost.totalMonthlyUSD)}` },
-                  { label: 'Currency', value: cost.currency || country.currency },
-                ].map(item => (
-                  <div key={item.label} className="bg-muted/50 rounded-lg p-2.5">
-                    <p className="text-[11px] text-muted-foreground">{item.label}</p>
-                    <p className="text-sm font-medium mt-0.5">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Best Travel */}
-          {country.bestTravelMonths && (
-            <div>
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
-                <Plane className="w-3.5 h-3.5" /> Best Travel Months
-              </h5>
-              <div className="flex flex-wrap gap-1.5">
-                {country.bestTravelMonths.split(',').map(m => (
-                  <Badge key={m.trim()} variant="outline" className="text-xs font-normal">{m.trim()}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Visa Types (deduplicated) */}
-          {country.visaTypes && country.visaTypes.length > 0 && (() => {
-            const seen = new Set<string>();
-            const unique = country.visaTypes.filter(vt => {
-              const key = `${vt.type}::${vt.maxDuration || ''}`;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-            return unique.length > 0 && (
-              <div>
-                <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Available Visa Types</h5>
-                <div className="flex flex-wrap gap-1.5">
-                  {unique.map(vt => (
-                    <Badge key={vt.id} variant="secondary" className="text-xs font-normal">
-                      {vt.type} {vt.maxDuration ? `(${vt.maxDuration})` : ''}
-                    </Badge>
-                  ))}
+                <div className="rounded-lg bg-muted/50 p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Visa Fee</p>
+                  <p className="font-semibold text-sm">${country.costProfile.visaFeeUSD}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Living Cost</p>
+                  <p className="font-semibold text-sm">${country.costProfile.monthlyLivingUSD}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Rent</p>
+                  <p className="font-semibold text-sm">${country.costProfile.monthlyRentUSD}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Food</p>
+                  <p className="font-semibold text-sm">${country.costProfile.monthlyFoodUSD}</p>
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          )}
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={onAskAI} className="gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Ask AI
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 opacity-70">
-              <Download className="w-3.5 h-3.5" /> PDF Report <Lock className="w-3 h-3 text-amber-500" />
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 opacity-70">
-              <ClipboardList className="w-3.5 h-3.5" /> Full Checklist <Lock className="w-3 h-3 text-amber-500" />
-            </Button>
-            {country.sourceUrl && (
-              <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                <a href={country.sourceUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-3.5 h-3.5" /> Official Source
-                </a>
-              </Button>
-            )}
-          </div>
+          {/* Travel Months */}
+          {travelMonths.length > 0 && (
+            <div>
+              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Best Travel Months</h5>
+              <div className="flex flex-wrap gap-1.5">
+                {MONTH_NAMES.map((m, i) => {
+                  const isActive = travelMonths.some((tm: string) => tm.toLowerCase().startsWith(m.toLowerCase()));
+                  return (
+                    <span key={m} className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{m}</span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Visa Types */}
+          {visaTypes.length > 0 && (
+            <div>
+              <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Available Visa Types</h5>
+              <div className="flex flex-wrap gap-1.5">
+                {visaTypes.map((vt2) => (
+                  <Badge key={vt2.id} variant="outline" className="text-xs font-normal">
+                    {vt2.type}{vt2.maxDuration ? ` (${vt2.maxDuration})` : ''}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
 // ============================================================
-// Main Page Component
+// ITEMS_PER_PAGE
+// ============================================================
+const ITEMS_PER_PAGE = 15;
+
+// ============================================================
+// Main Component
 // ============================================================
 export default function HomePage() {
-  const [search, setSearch] = useState('');
-  const [countries, setCountries] = useState<CountryData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
-  const [showAiChat, setShowAiChat] = useState(false);
-  const [activeTool, setActiveTool] = useState<'quiz' | 'compare' | null>(null);
-  const [showPricing, setShowPricing] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const [activeModal, setActiveModal] = useState<'about' | 'privacy' | 'terms' | 'contact' | null>(null);
+  // Theme
   const { theme, setTheme } = useTheme();
-  const { favorites, toggleFavorite } = useAppStore();
-  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
-  const searchRef = useRef<HTMLInputElement>(null);
 
-  // Fetch all countries on mount
+  // Store
+  const favorites = useAppStore((s) => s.favorites);
+  const toggleFavorite = useAppStore((s) => s.toggleFavorite);
+
+  // Modals
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // Tool panels
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Filters
+  const [filters, setFilters] = useState<FilterState>({ access: null, region: null, sortDir: 'az' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
+
+  // Data
+  const [countries, setCountries] = useState<CountryData[]>([]);
+  const [stats, setStats] = useState({ totalCountries: 0, visaFreeCount: 0, visaOnArrivalCount: 0, eVisaCount: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // FAQ
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  // Fetch all countries (no limit — client-side filtering)
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/countries');
-        if (res.ok && !cancelled) {
-          const data = await res.json();
-          setCountries(data.data || []);
+        setLoading(true);
+        setError(null);
+        const [countriesRes, statsRes] = await Promise.all([
+          fetch('/api/countries?limit=200'),
+          fetch('/api/countries/stats'),
+        ]);
+        if (!countriesRes.ok || !statsRes.ok) {
+          throw new Error('Failed to fetch data');
         }
-      } catch {}
-      if (!cancelled) setLoading(false);
-    };
-    load();
-    return () => { cancelled = true; };
+        const countriesJson = await countriesRes.json();
+        const statsJson = await statsRes.json();
+        if (countriesJson.success) setCountries(countriesJson.data);
+        else throw new Error('Invalid response');
+        if (statsJson.success) setStats(statsJson.data);
+      } catch (err) {
+        console.error(err);
+        setError('Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
-  // Filter countries by search query
-  const filtered = useMemo(() => {
-    if (!search.trim()) return [];
-    const q = search.toLowerCase();
-    return countries
-      .filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q) ||
-        c.continent.toLowerCase().includes(q)
-      )
-      .slice(0, 12);
-  }, [search, countries]);
+  // Filtered + sorted countries
+  const filteredCountries = useMemo(() => {
+    let result = [...countries];
 
-  // Open a country's result from tools
-  const openCountryFromTool = useCallback((name: string) => {
-    setSearch(name);
-    setExpandedCountry(countries.find(c => c.name === name)?.code || null);
-    setActiveTool(null);
-    window.setTimeout(() => {
-      document.getElementById('main-content')?.scrollIntoView({ behavior: 'smooth' });
+    // Region filter
+    if (filters.region) {
+      result = result.filter((c) => getRegion(c) === filters.region);
+    }
+
+    // Access type filter
+    if (filters.access === 'visa-free') {
+      result = result.filter((c) => c.visaFree);
+    } else if (filters.access === 'visa-on-arrival') {
+      result = result.filter((c) => c.visaOnArrival);
+    } else if (filters.access === 'e-visa') {
+      result = result.filter((c) => c.etaAvailable);
+    } else if (filters.access === 'embassy') {
+      result = result.filter((c) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable);
+    }
+
+    // Text search
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
+    }
+
+    // Sort
+    switch (filters.sortDir) {
+      case 'az': result.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case 'za': result.sort((a, b) => b.name.localeCompare(a.name)); break;
+      case 'cheapest': result.sort((a, b) => (a.costProfile?.visaFeeUSD ?? 9999) - (b.costProfile?.visaFeeUSD ?? 9999)); break;
+      case 'fastest': result.sort((a, b) => a.processingDaysMin - b.processingDaysMin); break;
+      case 'safest': result.sort((a, b) => b.safetyRating - a.safetyRating); break;
+    }
+
+    return result;
+  }, [countries, filters, searchQuery]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredCountries.length / ITEMS_PER_PAGE));
+  const paginatedCountries = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCountries.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredCountries, currentPage]);
+  const pageNumbers = useMemo(() => generatePageNumbers(currentPage, totalPages), [currentPage, totalPages]);
+
+  // Reset page when filters/search change
+  useEffect(() => { setCurrentPage(1); }, [filters, searchQuery]);
+
+  // Scroll to country list when searching or expanding
+  const countryListRef = useRef<HTMLDivElement>(null);
+
+  const handlePopularClick = useCallback((name: string) => {
+    setSearchQuery(name);
+    setFilters({ access: null, region: null, sortDir: 'az' });
+    setCurrentPage(1);
+    // Expand the country if only one result
+    setTimeout(() => {
+      countryListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
+  }, []);
+
+  const handleDestClick = useCallback((name: string) => {
+    setSearchQuery(name);
+    setFilters({ access: null, region: null, sortDir: 'az' });
+    setCurrentPage(1);
+    // Find and expand
+    setTimeout(() => {
+      const match = filteredCountries.find((c) => c.name === name);
+      if (match) setExpandedCountry(match.code);
+      countryListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
+  }, [filteredCountries]);
+
+  const clearAllFilters = useCallback(() => {
+    setFilters({ access: null, region: null, sortDir: 'az' });
+    setSearchQuery('');
+    setCurrentPage(1);
+  }, []);
+
+  const hasActiveFilters = filters.access !== null || filters.region !== null || searchQuery.trim() !== '';
+
+  // Share WhatsApp
+  const handleShareWhatsApp = useCallback(() => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://pakvisa.vercel.app';
+    const shareText = `Check out PakVisa — Free visa info for 70+ countries for Pakistani passport holders! ${shareUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+  }, []);
+
+  // Popular countries data (from fetched countries)
+  const popularData = useMemo(() => {
+    return POPULAR_COUNTRIES.map((name) => countries.find((c) => c.name === name)).filter(Boolean) as CountryData[];
   }, [countries]);
 
-  // Popular countries for quick access (ordered by popularity for Pakistani travelers)
-  const popularCountries = useMemo(() => {
-    const priority = [
-      { match: 'Türkiye', rank: 0 }, { match: 'Malaysia', rank: 1 },
-      { match: 'United Arab Emirates', rank: 2 }, { match: 'Saudi Arabia', rank: 3 },
-      { match: 'Qatar', rank: 4 }, { match: 'Thailand', rank: 5 },
-      { match: 'United Kingdom', rank: 6 }, { match: 'United States', rank: 7 },
-      { match: 'Oman', rank: 8 }, { match: 'Bahrain', rank: 9 },
-      { match: 'Indonesia', rank: 10 }, { match: 'China', rank: 11 },
-    ];
-    return countries
-      .map(c => {
-        const p = priority.find(p => c.name.includes(p.match));
-        return p ? { ...c, _rank: p.rank } : null;
-      })
-      .filter((c): c is CountryData & { _rank: number } => c !== null)
-      .sort((a, b) => a._rank - b._rank)
-      .slice(0, 8);
-  }, [countries]);
+  // ============================================================
+  // Render: Tool Panel View (replaces main content, footer stays)
+  // ============================================================
+  const renderToolPanel = () => {
+    if (activeTool === 'ai') return <AiChatPanel />;
+    if (activeTool === 'quiz') return <VisaQuizPanel />;
+    if (activeTool === 'compare') return <ComparePanel />;
+    return null;
+  };
 
-  // Stats
-  const stats = useMemo(() => ({
-    total: countries.length,
-    visaFree: countries.filter(c => c.visaFree).length,
-    voa: countries.filter(c => c.visaOnArrival).length,
-    evisa: countries.filter(c => c.etaAvailable).length,
-  }), [countries]);
-
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Skip to content */}
-      <a href="#main-content" className="skip-to-content">Skip to main content</a>
-
-      {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <button onClick={() => { setSearch(''); setExpandedCountry(null); }} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-              <Globe className="w-4 h-4 text-primary-foreground" />
+  // ============================================================
+  // If a tool panel is active, render it with back button + footer
+  // ============================================================
+  if (activeTool) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        {/* Header */}
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setActiveTool(null)}>
+                <ArrowRight className="w-4 h-4 rotate-180 mr-1" /> Back
+              </Button>
+              <div className="flex items-center gap-2 font-bold text-lg">
+                <Globe className="w-5 h-5 text-emerald-600" />
+                <span>PakVisa</span>
+              </div>
             </div>
-            <div className="hidden sm:block">
-              <p className="font-bold text-sm leading-none">PakVisa</p>
-              <p className="text-[10px] text-muted-foreground leading-tight">Free Visa Checker</p>
-            </div>
-          </button>
-          <div className="flex items-center gap-0.5">
-            {mounted && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                aria-label="Toggle theme"
-              >
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
-            )}
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowPricing(true)} aria-label="Premium plans">
-              <Crown className="w-4 h-4 text-amber-500" />
+            </div>
+          </div>
+        </header>
+
+        {/* Tool content */}
+        <main className="flex-1">
+          {renderToolPanel()}
+        </main>
+
+        {/* Footer (always visible) */}
+        <footer className="border-t bg-muted/30 mt-auto">
+          <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+            <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
+              <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
+              <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
+              <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
+            </div>
+          </div>
+        </footer>
+
+        {/* Modals */}
+        {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'help' && <HelpModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'about' && <AboutModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
+      </div>
+    );
+  }
+
+  // ============================================================
+  // Main Page Render
+  // ============================================================
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* ==================== SECTION 1: HEADER ==================== */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold text-lg">
+            <Globe className="w-5 h-5 text-emerald-600" />
+            <span>PakVisa</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowHelp(true)} aria-label="Help">
+            <Button variant="outline" size="sm" onClick={() => setActiveModal('pricing')} className="gap-1.5 text-xs">
+              <Crown className="w-3.5 h-3.5 text-amber-500" /> Premium
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setActiveModal('help')} aria-label="Help">
               <HelpCircle className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* ===== MAIN CONTENT (hidden when tool panel is open) ===== */}
-      {!activeTool && (
-        <>
-          <main className="flex-1" id="main-content">
-
-        {/* Hero Section */}
-        <section className="pt-12 sm:pt-16 pb-6 px-4 text-center">
-          <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3">
-              Visa Requirements for{' '}
-              <span className="text-primary">Pakistani Passport</span>
-            </h2>
-            <p className="text-muted-foreground mb-8 text-sm sm:text-base">
-              Search 70+ countries. Instant results. 100% free.
+      {/* ==================== MAIN CONTENT ==================== */}
+      <main className="flex-1">
+        {/* ==================== SECTION 2: HERO + SEARCH ==================== */}
+        <section className="px-4 pt-10 pb-8">
+          <div className="max-w-6xl mx-auto text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+              Pakistan&apos;s #1 Free Visa Checker
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto mb-6">
+              Instant visa requirements, fees, and processing times for 70+ countries. Trusted by thousands of Pakistani travelers.
             </p>
-
-            {/* Search Bar */}
-            <div className="relative max-w-xl mx-auto mb-6">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+            {/* Search bar */}
+            <div className="max-w-lg mx-auto relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
-                ref={searchRef}
+                ref={searchInputRef}
                 type="text"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setExpandedCountry(null); }}
-                placeholder="Search a country... (e.g., Turkey, UAE, Malaysia)"
-                className="w-full h-12 pl-12 pr-10 rounded-xl border-2 border-border bg-card text-sm sm:text-base
-                  placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10
-                  transition-all"
-                autoFocus
+                placeholder="Search any country..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-11 pl-10 pr-10 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
               />
-              {search && (
+              {searchQuery && (
                 <button
-                  onClick={() => { setSearch(''); setExpandedCountry(null); searchRef.current?.focus(); }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted transition-colors"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Clear search"
                 >
-                  <X className="w-4 h-4 text-muted-foreground" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
+            {/* Popular pills */}
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {POPULAR_COUNTRIES.map((name) => {
+                const c = countries.find((x) => x.name === name);
+                if (!c) return null;
+                const vt = getVisaType(c);
+                return (
+                  <button
+                    key={name}
+                    onClick={() => handlePopularClick(name)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-card text-xs font-medium hover:bg-muted transition-colors"
+                  >
+                    <span className="text-sm">{c.flagEmoji}</span>
+                    {name}
+                    <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full ${vt.color}`}>{vt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
 
-            {/* Popular Countries (only when not searching) */}
-            {!search && !loading && (
-              <div className="flex flex-wrap justify-center gap-2">
-                {popularCountries.map(c => (
+        {/* ==================== SECTION 3: STATS BAR ==================== */}
+        <section className="px-4 pb-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Countries', value: stats.totalCountries || '70+', icon: Globe, color: 'text-emerald-600' },
+                { label: 'Visa Free', value: stats.visaFreeCount || '—', icon: CheckCircle2, color: 'text-emerald-600' },
+                { label: 'Visa on Arrival', value: stats.visaOnArrivalCount || '—', icon: Plane, color: 'text-amber-600' },
+                { label: 'e-Visa', value: stats.eVisaCount || '—', icon: FileText, color: 'text-sky-600' },
+              ].map((stat) => (
+                <div key={stat.label} className="flex items-center gap-3 rounded-xl border bg-card p-4">
+                  <stat.icon className={`w-5 h-5 ${stat.color} shrink-0`} />
+                  <div>
+                    <p className="text-lg font-bold">{typeof stat.value === 'number' ? stat.value + '+' : stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 4: POPULAR DESTINATIONS GRID ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">Popular Destinations</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {popularData.map((c) => {
+                const vt = getVisaType(c);
+                return (
                   <button
                     key={c.code}
-                    onClick={() => { setSearch(c.name); setExpandedCountry(c.code); }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border
-                      hover:border-primary/30 hover:bg-primary/5 transition-all text-sm"
+                    onClick={() => handleDestClick(c.name)}
+                    className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-all group"
                   >
-                    <span className="text-base">{c.flagEmoji}</span>
-                    <span className="text-sm">{c.name}</span>
-                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getVisaType(c).color}`}>
-                      <span className={`w-1 h-1 rounded-full ${getVisaType(c).dot}`} />
-                      {getVisaType(c).label}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-7 rounded overflow-hidden bg-muted shrink-0">
+                        {c.flagUrl ? (
+                          <img src={c.flagUrl} alt={`${c.name} flag`} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-base">{c.flagEmoji}</span>
+                        )}
+                      </div>
+                      <span className="font-semibold text-sm group-hover:text-emerald-600 transition-colors truncate">{c.name}</span>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${vt.color}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${vt.dot}`} />
+                      {vt.label}
                     </span>
                   </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 5: VISA POLICY ALERTS ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">Visa Policy Alerts</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {VISA_ALERTS.map((alert) => (
+                <div key={alert.id} className="flex items-start gap-3 rounded-xl border bg-card p-4">
+                  <alert.icon className={`w-5 h-5 ${alert.color} shrink-0 mt-0.5`} />
+                  <div>
+                    <p className="font-semibold text-sm">{alert.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{alert.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 6: FILTER BAR + COUNTRY LIST ==================== */}
+        <section className="px-4 pb-10" ref={countryListRef}>
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">All Destinations</h2>
+
+            {/* Error state */}
+            {error && (
+              <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/30 dark:bg-red-950/20 p-4 mb-6">
+                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="ml-auto shrink-0">Retry</Button>
+              </div>
+            )}
+
+            {/* Loading skeleton */}
+            {loading && !error && (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border p-4 flex items-center gap-4">
+                    <Skeleton className="w-12 h-8 rounded" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
                 ))}
               </div>
+            )}
+
+            {/* Filter bar + list (only when data is loaded) */}
+            {!loading && !error && (
+              <>
+                {/* Filter Row 1: Region */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button
+                    onClick={() => setFilters((f) => ({ ...f, region: null }))}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.region === null ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+                  >
+                    All Regions
+                  </button>
+                  {REGIONS.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setFilters((f) => ({ ...f, region: f.region === r ? null : r }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.region === r ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Filter Row 2: Access Type */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <button
+                    onClick={() => setFilters((f) => ({ ...f, access: null }))}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.access === null ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+                  >
+                    All Types
+                  </button>
+                  {[
+                    { id: 'visa-free', label: 'Visa Free' },
+                    { id: 'visa-on-arrival', label: 'Visa on Arrival' },
+                    { id: 'e-visa', label: 'e-Visa' },
+                    { id: 'embassy', label: 'Embassy' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setFilters((f) => ({ ...f, access: f.access === t.id ? null : t.id }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.access === t.id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+
+                  {/* Sort dropdown */}
+                  <select
+                    value={filters.sortDir}
+                    onChange={(e) => setFilters((f) => ({ ...f, sortDir: e.target.value }))}
+                    className="ml-auto px-3 py-1.5 rounded-full text-xs font-medium border bg-card hover:bg-muted cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  >
+                    <option value="az">A → Z</option>
+                    <option value="za">Z → A</option>
+                    <option value="cheapest">Cheapest</option>
+                    <option value="fastest">Fastest</option>
+                    <option value="safest">Safest</option>
+                  </select>
+                </div>
+
+                {/* Clear filters button */}
+                {hasActiveFilters && (
+                  <div className="mb-3">
+                    <button
+                      onClick={clearAllFilters}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                    >
+                      <X className="w-3 h-3" /> Clear all filters
+                    </button>
+                  </div>
+                )}
+
+                {/* Country list */}
+                {paginatedCountries.length === 0 ? (
+                  <div className="text-center py-12">
+                    <SearchX className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground text-sm">No countries match your search or filters.</p>
+                    <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-3">Clear Filters</Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {paginatedCountries.map((c) => (
+                      <CountryResultCard
+                        key={c.code}
+                        country={c}
+                        expanded={expandedCountry === c.code}
+                        onToggle={() => setExpandedCountry((prev) => prev === c.code ? null : c.code)}
+                        isFav={favorites.includes(c.code)}
+                        onToggleFav={() => toggleFavorite(c.code)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredCountries.length)} of {filteredCountries.length} destinations
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        aria-label="First page"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Previous page"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      {pageNumbers.map((pn, idx) =>
+                        pn === 'ellipsis' ? (
+                          <span key={`e-${idx}`} className="px-1 text-muted-foreground">...</span>
+                        ) : (
+                          <button
+                            key={pn}
+                            onClick={() => setCurrentPage(pn)}
+                            className={`w-8 h-8 rounded border text-xs font-medium transition-colors ${currentPage === pn ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+                          >
+                            {pn}
+                          </button>
+                        )
+                      )}
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Next page"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Last page"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
 
-        {/* Stats Bar */}
-        {!loading && (
-          <section className="px-4 pb-8">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs sm:text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-primary" />
-                  <strong className="text-foreground font-semibold">{stats.total}+</strong> Countries
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-emerald-500" />
-                  <strong className="text-foreground font-semibold">{stats.visaFree}</strong> Visa Free
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Plane className="w-4 h-4 text-amber-500" />
-                  <strong className="text-foreground font-semibold">{stats.voa}</strong> Visa on Arrival
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-sky-500" />
-                  <strong className="text-foreground font-semibold">{stats.evisa}</strong> e-Visa
-                </div>
-              </div>
+        {/* ==================== SECTION 7: QUICK TOOLS STRIP ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">Quick Tools</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <QuickToolCard
+                icon={<MessageSquare className="w-5 h-5 text-emerald-600" />}
+                title="AI Visa Consultant"
+                description="Ask any visa question and get instant, personalized answers."
+                colorClass="hover:border-emerald-200"
+                onClick={() => setActiveTool('ai')}
+                badge="Free"
+              />
+              <QuickToolCard
+                icon={<ClipboardList className="w-5 h-5 text-amber-600" />}
+                title="Free Visa Quiz"
+                description="Answer a few questions and get personalized visa recommendations."
+                colorClass="hover:border-amber-200"
+                onClick={() => setActiveTool('quiz')}
+                badge="Free"
+              />
+              <QuickToolCard
+                icon={<BarChart3 className="w-5 h-5 text-sky-600" />}
+                title="Compare Countries"
+                description="Compare visa requirements, fees, and costs side by side."
+                colorClass="hover:border-sky-200"
+                onClick={() => setActiveTool('compare')}
+              />
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
-        {/* Loading State */}
-        {loading && (
-          <section className="px-4 pb-8">
-            <div className="max-w-3xl mx-auto space-y-3">
-              {[1, 2, 3].map(i => (
-                <Skeleton key={i} className="h-20 rounded-xl" />
+        {/* ==================== SECTION 8: TESTIMONIALS ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">What Travelers Say</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {TESTIMONIALS.map((t, i) => (
+                <Card key={i} className="p-5">
+                  <div className="flex items-center gap-0.5 mb-3">
+                    {Array.from({ length: t.rating }).map((_, si) => (
+                      <Star key={si} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">&ldquo;{t.text}&rdquo;</p>
+                  <p className="text-xs font-semibold">{t.author}</p>
+                </Card>
               ))}
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
-        {/* Search Results */}
-        {search && !loading && filtered.length > 0 && (
-          <section className="px-4 pb-10">
-            <div className="max-w-3xl mx-auto">
-              <p className="text-sm text-muted-foreground mb-3">
-                {filtered.length} result{filtered.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
-              </p>
-              <div className="space-y-3">
-                {filtered.map(country => (
-                  <CountryResultCard
-                    key={country.code}
-                    country={country}
-                    expanded={expandedCountry === country.code}
-                    onToggle={() => setExpandedCountry(expandedCountry === country.code ? null : country.code)}
-                    isFavorited={favorites.includes(country.code)}
-                    onToggleFavorite={() => toggleFavorite(country.code)}
-                    onAskAI={() => setShowAiChat(true)}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* No Results */}
-        {search && !loading && filtered.length === 0 && (
-          <section className="px-4 pb-10 text-center">
-            <div className="max-w-md mx-auto">
-              <SearchX className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-              <h3 className="font-semibold mb-1">No countries found</h3>
-              <p className="text-sm text-muted-foreground">Try searching for a different country name or check spelling</p>
-            </div>
-          </section>
-        )}
-
-        {/* Home Content (visible when not searching) */}
-        {!search && !loading && (
-          <>
-            {/* Quick Tools */}
-            <section className="px-4 pb-12">
-              <div className="max-w-4xl mx-auto">
-                <h3 className="text-lg font-semibold text-center mb-6">More Tools</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <QuickToolCard
-                    icon={<MessageSquare className="w-5 h-5 text-primary" />}
-                    title="AI Visa Consultant"
-                    description="Ask anything about visas, requirements, or travel plans. Get instant answers."
-                    colorClass="hover:border-primary/30"
-                    onClick={() => setShowAiChat(true)}
-                  />
-                  <QuickToolCard
-                    icon={<ClipboardList className="w-5 h-5 text-amber-600" />}
-                    title="Visa Quiz"
-                    description="Answer 5 quick questions and get personalized country recommendations."
-                    colorClass="hover:border-amber-300 dark:hover:border-amber-700"
-                    onClick={() => setActiveTool('quiz')}
-                    badge="Free"
-                  />
-                  <QuickToolCard
-                    icon={<BarChart3 className="w-5 h-5 text-sky-600" />}
-                    title="Compare Countries"
-                    description="Side-by-side visa comparison for multiple countries at once."
-                    colorClass="hover:border-sky-300 dark:hover:border-sky-700"
-                    onClick={() => setActiveTool('compare')}
-                    badge="Free"
-                  />
+        {/* ==================== SECTION 9: PASSPORT POWER RANKING ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">Pakistan Passport Power Ranking</h2>
+            <Card className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-emerald-600">#106</p>
+                  <p className="text-xs text-muted-foreground mt-1">Global Rank</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold">36</p>
+                  <p className="text-xs text-muted-foreground mt-1">Visa Score</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold">33</p>
+                  <p className="text-xs text-muted-foreground mt-1">Visa-Free Destinations</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-amber-600">70+</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total Destinations</p>
                 </div>
               </div>
-            </section>
-
-            {/* Testimonials */}
-            <section className="px-4 pb-12">
-              <div className="max-w-4xl mx-auto">
-                <h3 className="text-lg font-semibold text-center mb-6">What Travelers Say</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {TESTIMONIALS.map((t, i) => (
-                    <Card key={i} className="border bg-card hover:shadow-sm transition-shadow">
-                      <CardContent className="pt-5 pb-5">
-                        <div className="flex gap-0.5 mb-3">
-                          {Array.from({ length: t.rating }).map((_, j) => (
-                            <Star key={j} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                          ))}
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed mb-3">&ldquo;{t.text}&rdquo;</p>
-                        <p className="text-xs font-medium">{t.author}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* Premium CTA */}
-            <section className="px-4 pb-8">
-              <div className="max-w-2xl mx-auto text-center">
-                <div className="rounded-2xl bg-primary/5 border border-primary/10 p-8 sm:p-10">
-                  <Crown className="w-8 h-8 text-amber-500 mx-auto mb-3" />
-                  <h3 className="text-xl font-bold mb-2">Get the Full Experience</h3>
-                  <p className="text-sm sm:text-base text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">
-                    Unlock document checklists, step-by-step guides, cost calculators,
-                    and unlimited AI queries. Save $50–300+ per visa application.
-                  </p>
-                  <Button onClick={() => setShowPricing(true)} size="lg" className="gap-2">
-                    <Crown className="w-4 h-4" />
-                    View Premium Plans
-                  </Button>
-                </div>
-              </div>
-            </section>
-
-            {/* Business Report Download */}
-            <section className="px-4 pb-12">
-              <div className="max-w-2xl mx-auto">
-                <div className="rounded-2xl border bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800/50 p-6 sm:p-8 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-200/20 dark:bg-emerald-700/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-teal-200/20 dark:bg-teal-700/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-                  <div className="relative">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
-                        <FileText className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Regional Comparison</h3>
+              <div className="space-y-2">
+                {PASSPORT_RANKINGS.map((p) => (
+                  <div key={p.country} className={`flex items-center gap-3 rounded-lg p-3 ${p.country === 'Pakistan' ? 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800' : 'bg-muted/50'}`}>
+                    <span className="text-lg">{p.flag}</span>
+                    <span className={`text-sm font-medium flex-1 ${p.country === 'Pakistan' ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>{p.country}</span>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>Rank #{p.rank}</span>
+                      <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${p.country === 'Pakistan' ? 'bg-emerald-500' : 'bg-gray-400'}`}
+                          style={{ width: `${(p.score / 70) * 100}%` }}
+                        />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-emerald-900 dark:text-emerald-100 mb-1">
-                          Business Analysis & Growth Strategy Report
-                        </h3>
-                        <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-4 leading-relaxed">
-                          Comprehensive 11-section report covering competitor analysis, traffic growth strategies,
-                          monetization plans, conservative income estimates, feature roadmap, and action plan.
-                          Written in easy English.
-                        </p>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <a
-                            href="/PakVisa-Business-Analysis-Report.pdf"
-                            download
-                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white font-medium text-sm transition-colors shadow-sm"
-                          >
-                            <Download className="w-4 h-4" />
-                            Download PDF Report
-                          </a>
-                          <span className="text-xs text-emerald-600/70 dark:text-emerald-400/60">
-                            PDF &bull; 11 Sections &bull; Free
-                          </span>
-                        </div>
-                      </div>
+                      <span className="w-8 text-right font-medium">{p.score}</span>
                     </div>
                   </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 10: COMMUNITY EXPERIENCES ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">Community Experiences</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {SUCCESS_STORIES.slice(0, 4).map((story) => (
+                <Card key={story.id} className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-2xl">{story.avatar}</span>
+                    <div>
+                      <p className="text-sm font-semibold">{story.name}</p>
+                      <p className="text-xs text-muted-foreground">{story.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm">{story.flag}</span>
+                    <span className="text-sm font-medium">{story.destination}</span>
+                    <Badge variant="outline" className="text-[10px]">{story.visaType}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{story.story}</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 11: FAQ ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-4">Frequently Asked Questions</h2>
+            <div className="space-y-2">
+              {FAQ_DATA.map((faq, i) => (
+                <div key={i} className="rounded-xl border bg-card overflow-hidden">
+                  <button
+                    onClick={() => setExpandedFaq((prev) => prev === i ? null : i)}
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+                    aria-expanded={expandedFaq === i}
+                  >
+                    <span className="text-sm font-medium pr-4">{faq.q}</span>
+                    {expandedFaq === i ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  </button>
+                  {expandedFaq === i && (
+                    <div className="px-4 pb-4 border-t">
+                      <p className="text-sm text-muted-foreground leading-relaxed pt-3">{faq.a}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 12: TRUST BAR ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+              {[
+                'Verified from Official Embassy Sources',
+                'Data Updated August 2025',
+                '70+ Destinations Tracked',
+                '100% Free',
+              ].map((text) => (
+                <span key={text} className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  {text}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 13: PREMIUM CTA ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <Card className="p-6 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/10 border-amber-200 dark:border-amber-800">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/40">
+                  <Crown className="w-6 h-6 text-amber-600" />
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="font-bold text-lg">Get the Full Experience</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</p>
+                </div>
+                <Button onClick={() => setActiveModal('pricing')} className="gap-1.5">
+                  View Premium Plans
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* ==================== SECTION 14: SHARE WHATSAPP ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
+                  <Phone className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Share PakVisa</p>
+                  <p className="text-xs text-muted-foreground">Share with friends and family on WhatsApp</p>
                 </div>
               </div>
-            </section>
-          </>
-        )}
+              <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/30">
+                <Share2 className="w-3.5 h-3.5" /> Share
+              </Button>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* ===== FOOTER ===== */}
-      <footer className="border-t bg-muted/30 py-6 px-4 mt-auto">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Globe className="w-4 h-4 text-primary" />
-              <span>PakVisa Advisor &copy; {new Date().getFullYear()}</span>
-              <span className="text-muted-foreground/50">•</span>
-              <span>Free Visa Tool for Pakistani Passport</span>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
-              <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
-              <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
-              <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
-              <a
-                href="/api/download-backup"
-                download
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-card hover:bg-muted transition-colors text-xs font-medium"
-              >
-                <Download className="w-3 h-3" /> Backup
-              </a>
-            </div>
+      {/* ==================== SECTION 15: FOOTER ==================== */}
+      <footer className="border-t bg-muted/30 mt-auto">
+        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
+            <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
+            <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
+            <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
           </div>
         </div>
       </footer>
-      </>
-      )}
 
-      {/* ===== TOOL PANELS (replace main content) ===== */}
-      {activeTool === 'quiz' && (
-        <VisaQuizPanel
-          countries={countries}
-          onClose={() => setActiveTool(null)}
-          onSelectCountry={openCountryFromTool}
-        />
-      )}
-      {activeTool === 'compare' && (
-        <ComparePanel
-          countries={countries}
-          onClose={() => setActiveTool(null)}
-          onSelectCountry={openCountryFromTool}
-        />
-      )}
-
-      {/* ===== MODALS ===== */}
-      {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}
-      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
-      {showAiChat && <AiChatPanel onClose={() => setShowAiChat(false)} />}
+      {/* ==================== MODALS ==================== */}
+      {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'help' && <HelpModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'about' && <AboutModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
