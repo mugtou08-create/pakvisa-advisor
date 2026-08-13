@@ -105,13 +105,23 @@ function generatePageNumbers(current: number, total: number): (number | 'ellipsi
 }
 
 // ============================================================
-// Visa Type Helper
+// Visa Type Helpers (single source of truth for access type)
+// Priority: visaFree > visaOnArrival > etaAvailable > embassy
 // ============================================================
+function getPrimaryAccess(c: CountryData): string {
+  if (c.visaFree) return 'visa-free';
+  if (c.visaOnArrival) return 'visa-on-arrival';
+  if (c.etaAvailable) return 'e-visa';
+  return 'embassy';
+}
 function getVisaType(c: CountryData) {
-  if (c.visaFree) return { label: 'Visa Free', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', dot: 'bg-emerald-500' };
-  if (c.visaOnArrival) return { label: 'Visa on Arrival', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', dot: 'bg-amber-500' };
-  if (c.etaAvailable) return { label: 'e-Visa', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', dot: 'bg-sky-500' };
-  return { label: 'Embassy Required', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', dot: 'bg-gray-400' };
+  const access = getPrimaryAccess(c);
+  switch (access) {
+    case 'visa-free':     return { label: 'Visa Free', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', dot: 'bg-emerald-500' };
+    case 'visa-on-arrival': return { label: 'Visa on Arrival', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', dot: 'bg-amber-500' };
+    case 'e-visa':       return { label: 'e-Visa', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', dot: 'bg-sky-500' };
+    default:             return { label: 'Embassy Required', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', dot: 'bg-gray-400' };
+  }
 }
 
 // ============================================================
@@ -358,15 +368,9 @@ export default function HomePage() {
       result = result.filter((c) => getRegion(c) === filters.region);
     }
 
-    // Access type filter
-    if (filters.access === 'visa-free') {
-      result = result.filter((c) => c.visaFree);
-    } else if (filters.access === 'visa-on-arrival') {
-      result = result.filter((c) => c.visaOnArrival);
-    } else if (filters.access === 'e-visa') {
-      result = result.filter((c) => c.etaAvailable);
-    } else if (filters.access === 'embassy') {
-      result = result.filter((c) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable);
+    // Access type filter — uses primary access type (same priority as display)
+    if (filters.access) {
+      result = result.filter((c) => getPrimaryAccess(c) === filters.access);
     }
 
     // Text search
