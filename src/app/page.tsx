@@ -27,7 +27,7 @@ import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/
 // ============================================================
 const TESTIMONIALS = [
   { text: "Found out I can get Turkey e-visa in 5 minutes! Saved me a trip to the embassy.", author: "Ahmed K., Lahore", rating: 5 },
-  { text: "Compared 4 countries side by side. Chose Malaysia — visa on arrival, no hassle!", author: "Sara M., Karachi", rating: 5 },
+  { text: "Compared 4 countries side by side. Chose Malaysia — visa free, no hassle!", author: "Sara M., Karachi", rating: 5 },
   { text: "The AI told me exactly which documents I was missing. Got approved first try.", author: "Bilal R., Islamabad", rating: 5 },
 ];
 
@@ -169,11 +169,14 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
 
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md">
-      <button
+      <div
         onClick={onToggle}
-        className="w-full text-left p-4 flex items-center gap-4"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+        role="button"
+        tabIndex={0}
+        className="w-full text-left p-4 flex items-center gap-4 cursor-pointer select-none"
         aria-expanded={expanded}
-      >
+ >
         {/* Flag */}
         <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
           {country.flagUrl ? (
@@ -212,7 +215,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </div>
-      </button>
+      </div>
 
       {/* Expanded Details */}
       {expanded && (
@@ -498,6 +501,11 @@ export default function HomePage() {
               <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
               <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
             </div>
+          </div>
+          <div className="max-w-6xl mx-auto px-4 pb-4">
+            <p className="text-[11px] text-muted-foreground/70 text-center leading-relaxed">
+              <span className="font-medium">Disclaimer:</span> PakVisa Advisor provides visa information for educational and planning purposes only. We are not a government agency, embassy, or visa processing service. Visa policies change frequently — always verify requirements with the official embassy or consulate before making travel plans. We are not liable for decisions made based on the information provided.
+            </p>
           </div>
         </footer>
 
@@ -1068,6 +1076,11 @@ export default function HomePage() {
             <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
             <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
           </div>
+        </div>
+        <div className="max-w-6xl mx-auto px-4 pb-4">
+          <p className="text-[11px] text-muted-foreground/70 text-center leading-relaxed">
+            <span className="font-medium">Disclaimer:</span> PakVisa Advisor provides visa information for educational and planning purposes only. We are not a government agency, embassy, or visa processing service. Visa policies change frequently — always verify requirements with the official embassy or consulate before making travel plans. We are not liable for decisions made based on the information provided.
+          </p>
         </div>
       </footer>
 

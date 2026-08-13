@@ -2264,3 +2264,30 @@ Stage Summary:
 
 Files Changed:
 - src/components/visa/modals.tsx (rewrote HelpModal with tabs + accordion)
+---
+Task ID: full-audit-cleanup-premium
+Agent: Main Agent
+Task: Full audit — add 3 use cases, disclaimer, fix bugs, clean up for premium feel
+
+Work Log:
+- Full audit of page.tsx (1083 lines) identified 7 issues
+- **Fixed nested button hydration error**: Changed CountryResultCard outer `<button>` to `<div role="button" tabIndex={0} onKeyDown>` — eliminates React hydration mismatch caused by nested `<button>` elements. Inner heart favorite button remains a real `<button>`.
+- **Fixed outdated testimonial**: Sara M. now says "Malaysia — visa free" instead of "visa on arrival"
+- **Added Disclaimer to footer**: Both tool panel and main page footers now include a legal disclaimer: "PakVisa Advisor provides visa information for educational and planning purposes only..."
+- **Added 3 more use cases** to HelpModal:
+  1. 🏥 Medical Tourism Research (Intermediate) — compare Turkey/India/Thailand for medical travel
+  2. ✈️ Last-Minute Emergency Travel (Beginner) — find Visa Free/VoA for immediate travel
+  3. 👨‍👩‍👧‍👦 Family Visit — Reuniting Abroad (Intermediate) — embassy visits with invitation docs
+- Total use cases now: 8 (5 original + 3 new)
+- Full verification via agent-browser: zero hydration errors, zero console warnings, all sections rendering correctly
+
+Stage Summary:
+- Nested button hydration error eliminated (was causing React warnings on every page load)
+- Disclaimer added to both footer instances (main page + tool panel views)
+- 3 new practical use cases for real-world testing scenarios
+- Testimonial data corrected to match current visa policies
+- Page passes lint, compiles clean, zero runtime errors
+
+Files Changed:
+- src/app/page.tsx (fixed CountryResultCard, updated testimonial, added disclaimer to both footers)
+- src/components/visa/modals.tsx (added 3 use cases to HelpModal)

@@ -214,6 +214,48 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
       ],
       tip: 'For study visas, always verify requirements directly with the embassy website — requirements change frequently and vary by program.',
     },
+    {
+      title: 'Medical Tourism Research',
+      persona: 'Health-conscious traveler',
+      emoji: '🏥',
+      difficulty: 'Intermediate',
+      steps: [
+        'Start by searching for countries known for medical tourism (e.g., Turkey, India, Thailand) in the search bar.',
+        'Click each country card and check <b>visa type</b>, <b>processing time</b>, and <b>visa fee</b> to estimate how quickly you can get there.',
+        'Review <b>monthly living costs</b> to estimate accommodation and food expenses during your recovery period.',
+        'Check the <b>best travel months</b> for each destination to plan your trip during comfortable weather.',
+        'Use the <b>Compare</b> tool to compare Turkey vs India vs Thailand side by side — look at visa ease, cost, safety, and processing speed.',
+      ],
+      tip: 'Turkey (e-Visa, ~$50) and India (e-Visa) are popular for Pakistani medical tourists due to fast visa processing and affordable healthcare.'
+    },
+    {
+      title: 'Last-Minute Emergency Travel',
+      persona: 'Traveler with urgent plans',
+      emoji: '✈️',
+      difficulty: 'Beginner',
+      steps: [
+        'Filter by <b>"Visa Free"</b> — these countries require ZERO visa processing time, so you can travel immediately.',
+        'If no visa-free country fits your needs, filter by <b>"Visa on Arrival"</b> — visas are issued at the airport in minutes.',
+        'Sort by <b>"Fastest"</b> to see all countries ranked by minimum processing time.',
+        'For e-Visa countries, sort by <b>"Cheapest"</b> — e-Visas can be approved in 1–3 days for countries like Armenia, Kenya, or Cambodia.',
+        'Verify the <b>requirements</b> by clicking the country card — even Visa on Arrival may need return ticket and hotel booking proof.',
+      ],
+      tip: 'The fastest options for Pakistani passport holders: Azerbaijan (Visa Free), Malaysia (Visa Free), UAE/Thailand (Visa on Arrival at airport).'
+    },
+    {
+      title: 'Family Visit — Reuniting Abroad',
+      persona: 'Traveler visiting family',
+      emoji: '👨‍👩‍👧‍👦',
+      difficulty: 'Intermediate',
+      steps: [
+        'Search for the country where your family lives (e.g., UK, USA, Saudi Arabia, Canada).',
+        'Click the country card and review the <b>embassy details</b> — address in Islamabad, phone, and official appointment link.',
+        'Check <b>processing time</b> carefully — countries like USA/UK can take 4–8 weeks. Plan well in advance.',
+        'Review the <b>document requirements</b> — family visits typically need an invitation letter, sponsor documents, and proof of relationship.',
+        'Use the <b>AI Visa Consultant</b> and ask: "What documents do I need for a family visit visa to [country] as a Pakistani?"',
+      ],
+      tip: 'For family visit visas, a formal invitation letter from your host and proof of their legal status in the destination country are usually mandatory.',
+    },
   ];
 
   return (
