@@ -7,6 +7,12 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { Badge } from '@/components/ui/badge';
 
 export function PricingModal({ onClose }: { onClose: () => void }) {
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -17,91 +23,95 @@ export function PricingModal({ onClose }: { onClose: () => void }) {
       />
 
       {/* Card */}
-      <div className="relative w-full max-w-lg bg-card rounded-2xl border p-6">
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          aria-label="Close"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        {/* Header */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <div className="rounded-full bg-amber-500/10 p-3 mb-3">
-            <Crown className="h-8 w-8 text-amber-500" />
+      <div className="relative w-full max-w-lg bg-card rounded-2xl border flex flex-col max-h-[85vh]">
+        {/* Header with close button */}
+        <div className="flex items-center justify-between p-5 pb-3 shrink-0 border-b">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center h-9 w-9 rounded-full bg-amber-500/10">
+              <Crown className="h-5 w-5 text-amber-500" />
+            </div>
+            <h2 className="text-lg font-bold">PakVisa Pro</h2>
           </div>
-          <h2 className="text-2xl font-bold">PakVisa Pro</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="overflow-y-auto p-5 pt-4">
+          <p className="text-sm text-muted-foreground text-center mb-6">
             Everything you need for stress-free visa applications
           </p>
-        </div>
 
-        {/* Price section */}
-        <div className="rounded-xl border p-4 text-center mb-6">
-          <span className="text-4xl font-bold">$4.99</span>
-          <span className="text-muted-foreground">/month</span>
-          <p className="text-sm text-muted-foreground mt-1">
-            or $29/year (save 50%)
+          {/* Price section */}
+          <div className="rounded-xl border p-4 text-center mb-6">
+            <span className="text-4xl font-bold">$4.99</span>
+            <span className="text-muted-foreground">/month</span>
+            <p className="text-sm text-muted-foreground mt-1">
+              or $29/year (save 50%)
+            </p>
+          </div>
+
+          {/* Feature list */}
+          <ul className="space-y-3 mb-6">
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">Document checklist for every country</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">Step-by-step application guides</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">Total cost calculator with hidden fees</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">Visa policy change alerts via email</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">Unlimited AI consultant queries</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">PDF export of visa reports</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">Application deadline tracker</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+              <span className="text-sm">
+                Save unlimited favorites &amp; compare up to 5 countries
+              </span>
+            </li>
+          </ul>
+
+          {/* CTA Button */}
+          <Button className="w-full" size="lg" onClick={onClose}>
+            <Crown className="h-4 w-4 mr-2" />
+            Start Free Trial (7 days)
+          </Button>
+
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            Cancel anytime. No questions asked.
           </p>
+
+          {/* Free plan link */}
+          <button
+            onClick={onClose}
+            className="block mx-auto mt-4 text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+          >
+            Continue with Free Plan
+          </button>
         </div>
-
-        {/* Feature list */}
-        <ul className="space-y-3 mb-6">
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">Document checklist for every country</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">Step-by-step application guides</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">Total cost calculator with hidden fees</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">Visa policy change alerts via email</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">Unlimited AI consultant queries</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">PDF export of visa reports</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">Application deadline tracker</span>
-          </li>
-          <li className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-            <span className="text-sm">
-              Save unlimited favorites & compare up to 5 countries
-            </span>
-          </li>
-        </ul>
-
-        {/* CTA Button */}
-        <Button className="w-full" size="lg">
-          <Crown className="h-4 w-4 mr-2" />
-          Start Free Trial (7 days)
-        </Button>
-
-        <p className="text-xs text-muted-foreground text-center mt-3">
-          Cancel anytime. No questions asked.
-        </p>
-
-        {/* Free plan link */}
-        <button
-          onClick={onClose}
-          className="block mx-auto mt-4 text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
-        >
-          Continue with Free Plan
-        </button>
       </div>
     </div>
   );
@@ -257,6 +267,12 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
       tip: 'For family visit visas, a formal invitation letter from your host and proof of their legal status in the destination country are usually mandatory.',
     },
   ];
+
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -474,7 +490,7 @@ function ModalShell({ title, icon, onClose, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
       <div className="relative w-full max-w-lg bg-card rounded-2xl border flex flex-col max-h-[85vh]">
         {/* Header */}

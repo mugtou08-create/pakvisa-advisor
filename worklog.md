@@ -2489,3 +2489,45 @@ Stage Summary:
 - Fixed: Compare Countries close button now works
 - All verified via agent-browser end-to-end testing
 - ESLint passes clean, dev server running without errors
+
+---
+Task ID: Round 24 — Complete Webapp Audit & Bug Fixes
+Agent: Main Agent
+Task: Comprehensive audit of the entire webapp to find and fix all errors/bugs/issues.
+
+Work Log:
+- **ESLint**: Full codebase passes clean (zero errors)
+- **Dev server logs**: No runtime errors, all API routes responding 200
+- **Browser console**: No errors or warnings
+- **Agent-browser E2E testing**: Tested all interactive features systematically
+
+**Bugs Found & Fixed:**
+
+1. **CRITICAL: PricingModal close button not clickable**
+   - Root cause: Close button was `absolute` positioned with `p-1` (4px padding), making it a tiny 28x28px target that was being overlapped by the card's content (`<span.text-sm>` element). Agent-browser confirmed: "Element '@e83' is covered by <span.text-sm> at its click point"
+   - Fix: Restructured PricingModal to match the working pattern used by HelpModal and other modals — close button in a flex header row (not absolute positioned), with `p-1.5` padding and proper `overflow-y-auto` scrollable content area
+   - Also added `onClick={onClose}` to the "Start Free Trial" CTA button (previously had no handler)
+
+2. **MODERATE: All modals missing Escape key handler**
+   - Root cause: Escape key event listeners were either missing or using `onKeyDown` on a non-focusable `<div>` (React's synthetic events don't fire on unfocused divs)
+   - Fix: Added `window.addEventListener('keydown', ...)` with proper cleanup in `useEffect` to all modal containers (PricingModal, HelpModal, and ModalShell used by About/Privacy/Terms/Contact)
+
+3. **MINOR: PricingModal header restructured**
+   - Moved from centered icon + text layout to a proper left-aligned header with close button on the right, matching the HelpModal and other modal patterns
+   - Added scrollable content area for smaller screens
+   - Added `&amp;` HTML entity for the ampersand in "Save unlimited favorites & compare up to 5 countries" to avoid React warning
+
+**Features Verified Working:**
+- ✅ Theme toggle (dark/light)
+- ✅ Search filtering (type "malaysia" → only Malaysia shows)
+- ✅ Country card expand/collapse (Afghanistan shows all detail sections)
+- ✅ PricingModal open → close via button → close via Escape → close via backdrop
+- ✅ HelpModal open → close via button → close via Escape
+- ✅ AI Consultant panel open → close via X button → close via Back button
+- ✅ Visa Quiz panel open → close via button → close via Back button
+- ✅ Compare Countries panel open → close via button → close via Back button
+- ✅ Footer links (About, Privacy, Terms, Contact buttons visible)
+- ✅ Stats bar loads correctly (70+ countries, 6 Visa Free, 17 VoA, 9 e-Visa, 38 Embassy)
+- ✅ Popular destinations grid renders with flags + badges
+- ✅ No console errors, no hydration errors
+- ✅ ESLint clean, server running stable
