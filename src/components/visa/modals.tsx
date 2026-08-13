@@ -49,10 +49,13 @@ export function PricingModal({ onClose }: { onClose: () => void }) {
 
           {/* Price section */}
           <div className="rounded-xl border p-4 text-center mb-6">
-            <span className="text-4xl font-bold">$4.99</span>
+            <span className="text-4xl font-bold">$7.99</span>
             <span className="text-muted-foreground">/month</span>
             <p className="text-sm text-muted-foreground mt-1">
-              or $29/year (save 50%)
+              or $49/year (save 49%)
+            </p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-medium">
+              ≈ PKR 2,225/month — less than a cup of chai on your trip
             </p>
           </div>
 
