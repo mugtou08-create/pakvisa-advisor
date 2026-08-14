@@ -2552,3 +2552,35 @@ Stage Summary:
 - App now reads from Turso cloud, making it compatible with Vercel's serverless infrastructure
 - Local SQLite fallback still available for development
 - The app is now ready for Vercel deployment
+
+---
+Task ID: 22-1 — SQLite to Turso Migration Complete + Vercel Prep
+**Status**: ✅ Completed
+**Priority**: Critical (Deployment prerequisite)
+
+**What was done:**
+1. **Fixed critical db.ts bug**: Code was checking `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` but .env only had `DATABASE_URL`. Turso was never being used — silently falling back to local SQLite. Fixed to check both `TURSO_DATABASE_URL` and `DATABASE_URL`, and auto-detect if authToken is embedded in URL.
+
+2. **Pushed schema to Turso**: Generated CREATE TABLE SQL from Prisma schema and executed it against Turso cloud database using @libsql/client directly (Prisma CLI can't push to libsql:// URLs via adapter).
+
+3. **Verified Turso data**: 12 tables, 70 countries, 178 visa types, 367 requirements, 70 cost profiles, 7 scoring weights, 2 site settings, 2 newsletter subscribers.
+
+4. **Tested API**: `/api/countries` returns 70 countries (377KB) from Turso. Full end-to-end verification passed.
+
+5. **Provided Vercel deployment guide**: Complete step-by-step instructions for user.
+
+**Files Modified:**
+- `src/lib/db.ts` — Fixed env var handling for Turso connection
+
+**Ready for Vercel deployment:** YES
+- Turso cloud DB ✅
+- All API routes connect to Turso ✅  
+- .env excluded from git ✅
+- No local file system dependencies ✅
+- User just needs: GitHub repo → Vercel import → add DATABASE_URL env var → Deploy
+
+**Next steps for user:**
+1. Create GitHub repo and push code
+2. Sign up for Vercel
+3. Import project, add DATABASE_URL env var, deploy
+4. (Optional) Connect custom domain pakvisaadvisor.com
