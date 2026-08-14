@@ -2531,3 +2531,24 @@ Work Log:
 - ✅ Popular destinations grid renders with flags + badges
 - ✅ No console errors, no hydration errors
 - ✅ ESLint clean, server running stable
+---
+Task ID: turso-migration
+Agent: Main Agent
+Task: Migrate PakVisa Advisor database from local SQLite to Turso cloud database for Vercel deployment
+
+Work Log:
+- Installed @libsql/client and @prisma/adapter-libsql packages
+- Created all 12 tables on Turso cloud (Country, VisaType, VisaRequirement, CostProfile, UserProfile, Session, AuditLog, ScoringWeight, AdminUser, SiteSettings, NewsletterSubscriber, AnalyticsEvent)
+- Migrated all data from local SQLite to Turso: 70 countries, 178 visa types, 367 requirements, 70 cost profiles, 7 scoring weights, 1 admin user, 2 site settings, 2 newsletter subscribers
+- Updated src/lib/db.ts to use PrismaLibSql adapter with Turso connection when TURSO_DATABASE_URL env is set
+- Updated .env with Turso connection URL and auth token as DATABASE_URL
+- Regenerated Prisma client
+- Verified all API routes return 200 with data from Turso cloud database
+- Server successfully reads all country data from Turso (latency ~1.4s for first request, ~13ms cached)
+
+Stage Summary:
+- Turso cloud database is fully operational at libsql://pakvisa-db-pakvisa.aws-eu-west-1.turso.io
+- All 70 countries with complete data migrated successfully
+- App now reads from Turso cloud, making it compatible with Vercel's serverless infrastructure
+- Local SQLite fallback still available for development
+- The app is now ready for Vercel deployment
