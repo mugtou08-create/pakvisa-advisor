@@ -2584,3 +2584,22 @@ Task ID: 22-1 — SQLite to Turso Migration Complete + Vercel Prep
 2. Sign up for Vercel
 3. Import project, add DATABASE_URL env var, deploy
 4. (Optional) Connect custom domain pakvisaadvisor.com
+
+---
+Task ID: 22-2 — Vercel Deployment
+**Status**: 🟡 Partial (Site live, API failing)
+**Priority**: Critical
+
+**What was done:**
+1. Created GitHub repo: https://github.com/mugtou08-create/pakvisa-advisor
+2. Pushed code using user's GitHub PAT token
+3. Fixed build script: removed `cp -r .next/standalone/` commands that fail on Vercel, added `postinstall: prisma generate`
+4. Imported into Vercel, site compiles and renders
+5. **URL: https://pakvisa-advisor.vercel.app/** — LIVE but API returns empty
+
+**Issue found:**
+- `DATABASE_URL` environment variable is NOT set on Vercel
+- API returns: `"The URL 'undefined' is not in a valid format"`
+- User needs to add DATABASE_URL in Vercel Settings → Environment Variables
+
+**Blocked on:** User adding the env var in Vercel dashboard
