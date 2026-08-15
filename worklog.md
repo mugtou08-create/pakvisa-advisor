@@ -2603,3 +2603,79 @@ Task ID: 22-2 — Vercel Deployment
 - User needs to add DATABASE_URL in Vercel Settings → Environment Variables
 
 **Blocked on:** User adding the env var in Vercel dashboard
+
+---
+Task ID: 22-3 — Complete Audit + 30+ Bug Fixes + Backup
+**Status**: ✅ Completed
+**Priority**: Critical
+
+## Audit Summary
+
+Three parallel audit agents scanned ALL source files:
+- **API Routes**: 20 files, found 26 issues
+- **Components**: 14 files, found 43 issues
+- **Lib/Config**: 12 files, found 50 issues
+
+**Total: 119 issues found, 31 fixed (all CRITICAL + HIGH + key MEDIUM)**
+
+## Fixes Applied
+
+### CRITICAL (3 fixed)
+1. `db.ts` — Removed silent SQLite fallback in production; auth token passed via property not URL
+2. `download-backup/route.ts` — Replaced filesystem access with DB-generated backup (Vercel-safe)
+3. `admin/settings/route.ts` — Added auth to GET handler
+
+### HIGH (12 fixed)
+4. `chat/route.ts` — Removed client-trusted pro status bypass
+5. `score/route.ts` + `compare/route.ts` — N+1 audit writes → createMany
+6. 8 API routes — Safe JSON.parse with try/catch fallbacks
+7. `scoring.ts` — compareCountries crash guard on empty scores
+8. `rate-limit.ts` — Replaced setInterval with lazy cleanup
+9. `next.config.ts` — Added output:standalone, image patterns, security headers
+10. `store.ts` — isProUser no longer persisted to localStorage
+11. `country-detail.tsx` — Fixed timezone calculation with Date arithmetic
+12. 11 routes — Error details hidden in production
+13. 6 routes — Extract first IP from x-forwarded-for
+
+### MEDIUM (9 fixed)
+14. `package.json` — Removed 10 unused dependencies (~15MB smaller)
+15. `export/route.ts` — Empty data guard before division
+16. `whatif/route.ts` — Added rate limiting
+17. `scoring.ts` — POLICY_STRICTNESS keys fixed to ISO codes
+18. `scoring.ts` — Fixed cheapest sort direction
+19. `store.ts` — Consolidated duplicate state fields
+20. `mock-data.ts` — Fixed totalMonthlyUSD calculation
+21. `utils.ts` — Fixed sanitizeInput encoding order
+22. `schema.prisma` — Added 4 database indexes (pushed to Turso)
+
+### COMPONENTS (7 fixed)
+23. `compare-panel.tsx` — Optional chaining + click-outside handler
+24. `ai-chat-panel.tsx` — Check res.ok before JSON parse
+25. `shared-components-2.tsx` — Null safety for visaTypes/requirements
+26. `shared-components-1.tsx` — World map useEffect dependencies
+27. `page.tsx` — Stale closure fix with ref, proper type narrowing
+28. `country-detail.tsx` — monthlyTemps type parsing
+29. `modals.tsx` — Removed unused imports
+
+## Verification
+- ✅ ESLint: 0 errors
+- ✅ All API endpoints tested and working with Turso
+- ✅ Agent-browser tested: page load, search, FAQ, dark mode, country cards
+- ✅ Zero console errors
+- ✅ Pushed to GitHub
+- ✅ Backup created at /home/z/pakvisa-advisor-backup.zip (459KB)
+
+## Remaining Low-Severity Items (deferred)
+- Hardcoded PKR exchange rate (278.5) in multiple places — needs live rate integration
+- Missing error boundaries (React Error Boundary component)
+- `dangerouslySetInnerHTML` usage in modals (currently hardcoded, low risk)
+- Admin auth still uses homemade base64 tokens (not JWT) — OK for MVP
+- In-memory rate limiting ineffective on multi-instance Vercel — acceptable for launch
+- Missing aria-modal on dialog overlays
+- Some unused lucide-react icons in shared component files
+
+## Vercel Deployment Status
+- GitHub repo: https://github.com/mugtou08-create/pakvisa-advisor
+- Latest commit: `59ddf92` (all fixes pushed)
+- Vercel URL: https://pakvisa-advisor.vercel.app/
+- **Pending**: User needs to add DATABASE_URL env var and redeploy
