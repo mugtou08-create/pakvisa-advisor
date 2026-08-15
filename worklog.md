@@ -1,6 +1,44 @@
 ---
 # PakVisa Advisor - Development Worklog
 
+## Session: Round 22 — Critical Bug Fixes for Vercel Deployment
+
+### Task ID: 22-1 — Fix PrismaLibSql Import Casing (CRITICAL)
+**Status**: ✅ Completed
+**Priority**: Critical (All API routes broken on Vercel)
+
+**Problem**: `src/lib/db.ts` imported `PrismaLibSql` (lowercase `ql`) from `@prisma/adapter-libsql`, but the actual export name is `PrismaLibSQL` (uppercase `SQL`). This caused ALL API routes to fail with "Export PrismaLibSql doesn't exist in target module" error. On Vercel, this meant the site rendered but no data loaded.
+
+**Fix**: Changed both the import and usage:
+- `import { PrismaLibSql }` → `import { PrismaLibSQL }`
+- `new PrismaLibSql(libsql)` → `new PrismaLibSQL(libsql)`
+
+**Verification**: 
+- `/api/countries/stats` returns 200 with correct data (70 countries, 6 visa-free, 17 VoA, 9 e-Visa)
+- `/api/countries?limit=5` returns 200 with country data
+- No build error overlay in agent-browser
+- Search functionality works (Turkey → finds Türkiye)
+
+### Task ID: 22-2 — Remove Obsolete tailwind.config.ts
+**Status**: ✅ Completed
+**Priority**: High (Build warning spam)
+
+**Problem**: Project uses Tailwind CSS v4 (`@tailwindcss/postcss` + `@import "tw-animate-css"` in CSS), but had a leftover `tailwind.config.ts` from v3 that imported `tailwindcss-animate` (v3 package). This package was NOT installed, causing repeated "Module not found" warnings in dev logs and on Vercel.
+
+**Fix**: Deleted `tailwind.config.ts` entirely. It was 100% redundant — all configuration (colors, borderRadius, dark mode) already exists in `globals.css` via `@theme inline` and `@custom-variant dark`.
+
+**Verification**:
+- Dev server starts clean — no warnings
+- `bun run lint` passes with 0 errors
+- Page renders correctly
+
+### Summary of Changes
+- `src/lib/db.ts`: `PrismaLibSql` → `PrismaLibSQL` (2 lines)
+- Deleted `tailwind.config.ts` (64 lines, fully redundant)
+
+### Next Action Required
+User must **push to GitHub** and **redeploy on Vercel** to apply these fixes to the live site at `https://pakvisa-advisor.vercel.app/`.
+
 ## Session: Round 21 — Complete UI Redesign (Tool-First + Freemium)
 
 ### Task ID: 21-1 — Complete UI Overhaul
