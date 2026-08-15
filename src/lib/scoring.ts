@@ -35,17 +35,17 @@ export const DEFAULT_MODIFIERS: VisaLikelihoodModifiers = {
 
 // Policy strictness by country (0.6 = very strict, 1.1 = very lenient)
 const POLICY_STRICTNESS: Record<string, number> = {
-  UAE: 0.85, SaudiArabia: 0.80, Turkey: 0.90, Malaysia: 0.95,
-  Thailand: 0.95, Singapore: 0.85, UK: 0.75, USA: 0.65,
-  Canada: 0.75, Australia: 0.75, Germany: 0.80, France: 0.80,
-  Italy: 0.80, Spain: 0.80, Japan: 0.75, SouthKorea: 0.80,
-  China: 0.75, Qatar: 0.85, Oman: 0.90, Bahrain: 0.90,
-  Kuwait: 0.85, Egypt: 0.90, Indonesia: 0.95, SriLanka: 0.95,
-  Nepal: 0.95, Maldives: 0.95, Azerbaijan: 0.90, Georgia: 0.95,
-  Armenia: 0.90, Iran: 0.75, Iraq: 0.80, Afghanistan: 0.70,
-  Jordan: 0.90, Lebanon: 0.85, Morocco: 0.90, Tunisia: 0.90,
-  Algeria: 0.85, Kenya: 0.90, SouthAfrica: 0.85, Brazil: 0.90,
-  Mexico: 0.90,
+  AE: 0.85, SA: 0.80, TR: 0.90, MY: 0.95,
+  TH: 0.95, SG: 0.85, GB: 0.75, US: 0.65,
+  CA: 0.75, AU: 0.75, DE: 0.80, FR: 0.80,
+  IT: 0.80, ES: 0.80, JP: 0.75, KR: 0.80,
+  CN: 0.75, QA: 0.85, OM: 0.90, BH: 0.90,
+  KW: 0.85, EG: 0.90, ID: 0.95, LK: 0.95,
+  NP: 0.95, MV: 0.95, AZ: 0.90, GE: 0.95,
+  AM: 0.90, IR: 0.75, IQ: 0.80, AF: 0.70,
+  JO: 0.90, LB: 0.85, MA: 0.90, TN: 0.90,
+  DZ: 0.85, KE: 0.90, ZA: 0.85, BR: 0.90,
+  MX: 0.90,
 };
 
 export function calculateScore(
@@ -561,6 +561,24 @@ export function simulateWhatIf(
 export function compareCountries(
   scores: ScoreBreakdown[]
 ): { bestMatch: ScoreBreakdown; cheapest: ScoreBreakdown; easiest: ScoreBreakdown; recommendation: string } {
+  // Guard: empty scores array
+  if (!scores || scores.length === 0) {
+    const emptyBreakdown: ScoreBreakdown = {
+      country: 'N/A',
+      countryCode: '',
+      visaType: 'N/A',
+      eligibility: 0, visaLikelihood: 0, costSuitability: 0, finalScore: 0, confidence: 0,
+      components: [], modifiers: { policyStrictness: 1, historicalApproval: 1, dataConfidence: 0, discretionaryElements: 1 },
+      hardFilters: [], missingItems: [], tips: [], sourceCitations: [],
+    };
+    return {
+      bestMatch: emptyBreakdown,
+      cheapest: emptyBreakdown,
+      easiest: emptyBreakdown,
+      recommendation: 'No scores provided for comparison.',
+    };
+  }
+
   const validScores = scores.filter(s => !s.hardFilters.some(f => !f.passed && f.severity === "critical"));
   
   if (validScores.length === 0) {
@@ -573,7 +591,7 @@ export function compareCountries(
   }
 
   const bestMatch = [...validScores].sort((a, b) => b.finalScore - a.finalScore)[0];
-  const cheapest = [...validScores].sort((a, b) => a.costSuitability - b.costSuitability)[0];  
+  const cheapest = [...validScores].sort((a, b) => b.costSuitability - a.costSuitability)[0];  
   const easiest = [...validScores].sort((a, b) => b.visaLikelihood - a.visaLikelihood)[0];
 
   const recommendation = `Based on your profile, ${bestMatch.country} is your best match with a score of ${bestMatch.finalScore}/100. ` +

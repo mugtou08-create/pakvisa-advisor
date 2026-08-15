@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { rateLimit } from '@/lib/rate-limit';
 import { calculateScore, simulateWhatIf } from '@/lib/scoring';
 import type { CountryData, UserProfileData, ScoreBreakdown } from '@/lib/types';
+
+function safeJsonParse(str: string): any {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return str;
+  }
+}
 
 interface WhatIfRequestBody {
   countryCode: string;
@@ -90,7 +99,7 @@ function transformCountryToData(country: {
     safetySummary: country.safetySummary,
     bestTravelMonths: country.bestTravelMonths,
     avgTempC: country.avgTempC,
-    monthlyTemps: JSON.parse(country.monthlyTemps),
+    monthlyTemps: safeJsonParse(country.monthlyTemps),
     processingDaysMin: country.processingDaysMin,
     processingDaysMax: country.processingDaysMax,
     sourceUrl: country.sourceUrl,
@@ -143,6 +152,12 @@ function transformCountryToData(country: {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 10 requests/minute
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    if (!rateLimit(ip, 10, 60000)) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
+    }
+
     const body: WhatIfRequestBody = await request.json();
     const { countryCode, profile, scenario } = body;
 
@@ -242,7 +257,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in what-if simulation:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to simulate what-if scenario', details: String(error) },
+      { success: false, error: 'Failed to simulate what-if scenario', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

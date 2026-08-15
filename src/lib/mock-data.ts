@@ -184,7 +184,7 @@ export function generateMockCountries(): CountryData[] {
         monthlyFoodUSD: c.food,
         monthlyTransportUSD: c.transport,
         healthInsuranceUSD: c.insurance,
-        totalMonthlyUSD: c.living,
+        totalMonthlyUSD: c.living + c.rent + c.food + c.transport + c.insurance,
         currency: c.cc,
         parserConfidence: 0.85,
       },

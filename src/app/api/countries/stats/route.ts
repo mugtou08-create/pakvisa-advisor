@@ -83,7 +83,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching country stats:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch stats', details: String(error) },
+      { success: false, error: 'Failed to fetch stats', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

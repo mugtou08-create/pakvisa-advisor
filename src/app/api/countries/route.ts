@@ -6,7 +6,7 @@ import { rateLimit } from '@/lib/rate-limit';
 export async function GET(request: NextRequest) {
   try {
     // Rate limit: 100 requests/minute
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 100, 60000)) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     }
@@ -90,11 +90,19 @@ export async function GET(request: NextRequest) {
     const total = await db.country.count({ where });
 
     // Format response with parsed monthlyTemps and costProfile singular
-    const formattedCountries = countries.map((country) => ({
-      ...country,
-      monthlyTemps: JSON.parse(country.monthlyTemps),
-      costProfile: country.costProfiles.length > 0 ? country.costProfiles[0] : null,
-    }));
+    const formattedCountries = countries.map((country) => {
+      let monthlyTemps: any;
+      try {
+        monthlyTemps = JSON.parse(country.monthlyTemps);
+      } catch {
+        monthlyTemps = country.monthlyTemps;
+      }
+      return {
+        ...country,
+        monthlyTemps,
+        costProfile: country.costProfiles.length > 0 ? country.costProfiles[0] : null,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -109,7 +117,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching countries:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch countries', details: String(error) },
+      { success: false, error: 'Failed to fetch countries', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

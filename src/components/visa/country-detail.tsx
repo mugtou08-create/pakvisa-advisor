@@ -53,12 +53,34 @@ function LiveClock({ timezone, cityName }: { timezone: string; cityName: string 
   const timeDiff = useMemo(() => {
     try {
       const now = new Date();
-      const target = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false }).format(now);
-      const pkt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Karachi', hour: 'numeric', hour12: false }).format(now);
-      const diff = parseInt(target) - parseInt(pkt);
-      if (diff === 0) return 'Same as PKT';
-      if (diff > 0) return `+${diff}h from PKT`;
-      return `${diff}h from PKT`;
+      // Get UTC offsets in minutes for both timezones
+      const targetParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        timeZoneName: 'shortOffset',
+      }).formatToParts(now);
+      const pktParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Karachi',
+        timeZoneName: 'shortOffset',
+      }).formatToParts(now);
+
+      const parseOffset = (parts: Intl.DateTimeFormatPart[]) => {
+        const tzPart = parts.find(p => p.type === 'timeZoneName');
+        if (!tzPart) return 0;
+        const match = tzPart.value.match(/GMT([+-]?)(\d{1,2})(?::(\d{2}))?/);
+        if (!match) return 0;
+        const sign = match[1] === '-' ? -1 : 1;
+        const hours = parseInt(match[2]);
+        const minutes = match[3] ? parseInt(match[3]) : 0;
+        return sign * (hours * 60 + minutes);
+      };
+
+      const targetOffset = parseOffset(targetParts);
+      const pktOffset = parseOffset(pktParts);
+      const diffHours = (targetOffset - pktOffset) / 60;
+
+      if (diffHours === 0) return 'Same as PKT';
+      if (diffHours > 0) return `+${diffHours}h from PKT`;
+      return `${diffHours}h from PKT`;
     } catch {
       return '';
     }
@@ -452,6 +474,17 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
     : [];
   const visaTypes = country.visaTypes?.slice(0, 4) || [];
 
+  // Parse monthlyTemps safely (may arrive as JSON string from API)
+  const parsedMonthlyTemps: Record<string, number> = useMemo(() => {
+    const raw = country.monthlyTemps;
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw as Record<string, number>;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    return {};
+  }, [country.monthlyTemps]);
+
   // Determine if embassy info should be shown (for embassy-required countries)
   const isEmbassyRequired = !country.visaFree && !country.visaOnArrival && !country.etaAvailable;
 
@@ -571,7 +604,7 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
       )}
 
       {/* Weather/Climate */}
-      <WeatherInfo avgTemp={country.avgTempC} monthlyTemps={country.monthlyTemps} />
+      <WeatherInfo avgTemp={country.avgTempC} monthlyTemps={parsedMonthlyTemps} />
 
       {/* Travel Essentials Grid */}
       <TravelEssentials info={travel} countryName={country.name} />

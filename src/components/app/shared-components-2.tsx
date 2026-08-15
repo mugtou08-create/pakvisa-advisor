@@ -185,7 +185,7 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
                 const temp = monthlyTemps[m] || 0;
                 const maxTemp = Math.max(...Object.values(monthlyTemps));
                 const height = maxTemp > 0 ? (temp / maxTemp) * 100 : 50;
-                const isBest = country.bestTravelMonths.toLowerCase().includes(m.toLowerCase());
+                const isBest = country.bestTravelMonths?.toLowerCase().includes(m.toLowerCase()) ?? false;
                 return (
                   <div key={m} className="flex-1 flex flex-col items-center justify-end min-w-0">
                     <span className="text-[8px] font-medium tabular-nums leading-none mb-1">{temp}°</span>
@@ -256,7 +256,7 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
               Available Visa Types
             </h3>
             <div className="space-y-2">
-              {country.visaTypes.map((vt) => (
+              {(country.visaTypes ?? []).map((vt) => (
                 <div key={vt.id} className="p-2 rounded-lg border text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium truncate">{vt.type}</span>
@@ -279,7 +279,7 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
               Requirements
             </h3>
             <div className="space-y-2">
-              {country.requirements.map((req, i) => (
+              {(country.requirements ?? []).map((req, i) => (
                 <div key={req.id || i} className="flex items-start gap-2 text-sm">
                   <Badge variant={req.mandatory ? 'default' : 'secondary'} className="text-[10px] mt-0.5 shrink-0">
                     {req.category}

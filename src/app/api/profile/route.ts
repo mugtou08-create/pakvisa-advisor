@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import type { UserProfileData } from '@/lib/types';
 
+function safeJsonParse(str: string): any {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return str;
+  }
+}
+
 // GET: Return all user profiles
 export async function GET() {
   try {
@@ -17,8 +25,8 @@ export async function GET() {
 
     const formattedProfiles = profiles.map((p) => ({
       ...p,
-      languages: JSON.parse(p.languages),
-      priorCountries: JSON.parse(p.priorCountries),
+      languages: safeJsonParse(p.languages),
+      priorCountries: safeJsonParse(p.priorCountries),
     }));
 
     return NextResponse.json({
@@ -29,7 +37,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching profiles:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch user profiles', details: String(error) },
+      { success: false, error: 'Failed to fetch user profiles', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }
@@ -90,8 +98,8 @@ export async function POST(request: NextRequest) {
 
     const formattedProfile = {
       ...profile,
-      languages: JSON.parse(profile.languages),
-      priorCountries: JSON.parse(profile.priorCountries),
+      languages: safeJsonParse(profile.languages),
+      priorCountries: safeJsonParse(profile.priorCountries),
     };
 
     return NextResponse.json(
@@ -101,7 +109,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating profile:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create user profile', details: String(error) },
+      { success: false, error: 'Failed to create user profile', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

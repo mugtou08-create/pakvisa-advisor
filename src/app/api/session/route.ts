@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+function safeJsonParse(str: string): any {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return str;
+  }
+}
+
 // GET: Return sessions for a user profile
 export async function GET(request: NextRequest) {
   try {
@@ -40,8 +48,8 @@ export async function GET(request: NextRequest) {
     // Parse JSON fields
     const formattedSessions = sessions.map((s) => ({
       ...s,
-      answers: JSON.parse(s.answers),
-      scores: JSON.parse(s.scores),
+      answers: safeJsonParse(s.answers),
+      scores: safeJsonParse(s.scores),
     }));
 
     return NextResponse.json({
@@ -52,7 +60,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching sessions:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch sessions', details: String(error) },
+      { success: false, error: 'Failed to fetch sessions', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }
@@ -119,8 +127,8 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           ...updatedSession,
-          answers: JSON.parse(updatedSession.answers),
-          scores: JSON.parse(updatedSession.scores),
+          answers: safeJsonParse(updatedSession.answers),
+          scores: safeJsonParse(updatedSession.scores),
         },
       });
     }
@@ -142,8 +150,8 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           ...session,
-          answers: JSON.parse(session.answers),
-          scores: JSON.parse(session.scores),
+          answers: safeJsonParse(session.answers),
+          scores: safeJsonParse(session.scores),
         },
       },
       { status: 201 }
@@ -151,7 +159,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating/updating session:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create/update session', details: String(error) },
+      { success: false, error: 'Failed to create/update session', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

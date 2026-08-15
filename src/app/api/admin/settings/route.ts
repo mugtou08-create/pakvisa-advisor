@@ -19,8 +19,26 @@ function validateToken(token: string): { valid: boolean; username?: string } {
 
 export async function GET(request: NextRequest) {
   try {
+    // Validate auth (same as PUT)
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const validation = validateToken(token);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid or expired token' },
+        { status: 401 }
+      );
+    }
+
     // Rate limit
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 5, 60000)) {
       return NextResponse.json(
         { success: false, error: 'Rate limited' },
@@ -58,7 +76,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Rate limit
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 5, 60000)) {
       return NextResponse.json(
         { success: false, error: 'Rate limited' },

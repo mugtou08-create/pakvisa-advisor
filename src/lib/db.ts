@@ -14,19 +14,30 @@ function createTursoClient() {
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
   if (tursoUrl && tursoUrl.startsWith('libsql://')) {
-    // Build connection URL with auth token
-    let finalUrl = tursoUrl;
-    if (tursoToken && !tursoUrl.includes('authToken')) {
-      finalUrl = `${tursoUrl}?authToken=${tursoToken}`;
+    try {
+      const baseUrl = tursoUrl.split('?')[0]; // strip any query params
+      const libsql = tursoToken
+        ? createClient({ url: baseUrl, authToken: tursoToken })
+        : createClient({ url: baseUrl });
+      const adapter = new PrismaLibSql(libsql);
+      return new PrismaClient({ adapter, log: ['error', 'warn'] });
+    } catch (error) {
+      throw new Error(
+        `Failed to create Turso client: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
+  }
 
-    const libsql = createClient({ url: finalUrl });
-    const adapter = new PrismaLibSql(libsql);
-    return new PrismaClient({ adapter, log: ['error', 'warn'] });
+  // In production, DATABASE_URL is required — no silent fallback
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'DATABASE_URL (libsql://) is required in production. ' +
+      'Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables.'
+    );
   }
 
   // Fallback to local SQLite for development only
-  console.warn('[DB] No Turso URL found, falling back to local SQLite');
+  console.warn('[DB] No Turso URL found, falling back to local SQLite (development only)');
   return new PrismaClient({ log: ['error', 'warn'] });
 }
 

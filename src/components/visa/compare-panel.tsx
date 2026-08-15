@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ArrowRight, BarChart3, Plus, Trash2, Shield, Clock, DollarSign, MapPin, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,10 +22,23 @@ export function ComparePanel({ countries, onClose, onSelectCountry }: Props) {
   const [selected, setSelected] = useState<CountryData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPicker, setShowPicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!showPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPicker]);
 
   const addCountry = (c: CountryData) => {
     if (selected.length >= 4) return;
@@ -97,7 +110,7 @@ export function ComparePanel({ countries, onClose, onSelectCountry }: Props) {
                 </div>
               ))}
               {selected.length < 4 && (
-                <div className="relative">
+                <div className="relative" ref={pickerRef}>
                   <button
                     onClick={() => setShowPicker(!showPicker)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-border hover:border-primary/40 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -271,8 +284,8 @@ export function ComparePanel({ countries, onClose, onSelectCountry }: Props) {
                     icon={<Check className="w-3.5 h-3.5" />}
                     countries={easyFirst}
                     render={c => {
-                      const mandatory = c.requirements.filter(r => r.mandatory).length;
-                      const total = c.requirements.length;
+                      const mandatory = c.requirements?.filter(r => r.mandatory).length || 0;
+                      const total = c.requirements?.length || 0;
                       return <span>{mandatory} required, {total} total</span>;
                     }}
                   />

@@ -32,9 +32,15 @@ export async function GET(
     }
 
     // Parse monthlyTemps from JSON string to object
+    let monthlyTemps: any;
+    try {
+      monthlyTemps = JSON.parse(country.monthlyTemps);
+    } catch {
+      monthlyTemps = country.monthlyTemps;
+    }
     const formattedCountry = {
       ...country,
-      monthlyTemps: JSON.parse(country.monthlyTemps),
+      monthlyTemps,
     };
 
     return NextResponse.json({
@@ -44,7 +50,7 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching country:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch country', details: String(error) },
+      { success: false, error: 'Failed to fetch country', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

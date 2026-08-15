@@ -4,6 +4,14 @@ import { calculateScore } from '@/lib/scoring';
 import type { CountryData, UserProfileData } from '@/lib/types';
 import { rateLimit } from '@/lib/rate-limit';
 
+function safeJsonParse(str: string): any {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return str;
+  }
+}
+
 interface ScoreRequestBody {
   countryCode: string;
   profile: UserProfileData;
@@ -13,7 +21,7 @@ interface ScoreRequestBody {
 export async function POST(request: NextRequest) {
   try {
     // Rate limit: 30 requests/minute
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 30, 60000)) {
       return NextResponse.json(
         { success: false, error: 'Too many requests. Please try again later.' },
@@ -66,7 +74,7 @@ export async function POST(request: NextRequest) {
       safetySummary: country.safetySummary,
       bestTravelMonths: country.bestTravelMonths,
       avgTempC: country.avgTempC,
-      monthlyTemps: JSON.parse(country.monthlyTemps),
+      monthlyTemps: safeJsonParse(country.monthlyTemps),
       processingDaysMin: country.processingDaysMin,
       processingDaysMax: country.processingDaysMax,
       sourceUrl: country.sourceUrl,
@@ -134,36 +142,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create audit log entries for each component
-    for (const component of scoreBreakdown.components) {
-      await db.auditLog.create({
-        data: {
-          sessionId: createdSessionId || 'no-session',
-          action: 'SCORE_COMPONENT',
-          countryId: country.id,
-          component: component.name,
-          score: component.score,
-          weight: component.weight,
-          multiplier: 1.0,
-          confidence: countryData.parserConfidence,
-          details: component.details,
-        },
-      });
-    }
-
-    // Create audit log for the final score
-    await db.auditLog.create({
-      data: {
-        sessionId: createdSessionId || 'no-session',
-        action: 'SCORE_FINAL',
-        countryId: country.id,
-        component: 'Final Score',
-        score: scoreBreakdown.finalScore,
-        multiplier: null,
-        confidence: scoreBreakdown.confidence,
-        details: `Eligibility: ${scoreBreakdown.eligibility}%, Visa Likelihood: ${scoreBreakdown.visaLikelihood}%, Cost Suitability: ${scoreBreakdown.costSuitability}%`,
-      },
+    // Create audit log entries in a single bulk operation
+    const auditEntries = scoreBreakdown.components.map((component) => ({
+      sessionId: createdSessionId || 'no-session',
+      action: 'SCORE_COMPONENT' as const,
+      countryId: country.id,
+      component: component.name,
+      score: component.score,
+      weight: component.weight,
+      multiplier: 1.0,
+      confidence: countryData.parserConfidence,
+      details: component.details,
+    }));
+    auditEntries.push({
+      sessionId: createdSessionId || 'no-session',
+      action: 'SCORE_FINAL' as const,
+      countryId: country.id,
+      component: 'Final Score',
+      score: scoreBreakdown.finalScore,
+      weight: null,
+      multiplier: null,
+      confidence: scoreBreakdown.confidence,
+      details: `Eligibility: ${scoreBreakdown.eligibility}%, Visa Likelihood: ${scoreBreakdown.visaLikelihood}%, Cost Suitability: ${scoreBreakdown.costSuitability}%`,
     });
+    await db.auditLog.createMany({ data: auditEntries });
 
     return NextResponse.json({
       success: true,
@@ -172,7 +174,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error calculating score:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to calculate score', details: String(error) },
+      { success: false, error: 'Failed to calculate score', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

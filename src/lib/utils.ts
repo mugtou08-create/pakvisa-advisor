@@ -7,8 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export function sanitizeInput(input: string): string {
   return input
-    .replace(/[<>]/g, '')
     .replace(/&/g, '&amp;')
+    .replace(/[<>]/g, '')
     .trim()
     .slice(0, 1000);
 }

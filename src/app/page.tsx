@@ -341,6 +341,7 @@ export default function HomePage() {
 
   // Scroll to country list when searching or expanding
   const countryListRef = useRef<HTMLDivElement>(null);
+  const filteredCountriesRef = useRef<CountryData[]>([]);
 
   const handlePopularClick = useCallback((name: string) => {
     setSearchQuery(name);
@@ -352,17 +353,20 @@ export default function HomePage() {
     }, 100);
   }, []);
 
+  // Keep filteredCountries ref in sync
+  filteredCountriesRef.current = filteredCountries;
+
   const handleDestClick = useCallback((name: string) => {
     setSearchQuery(name);
     setFilters({ access: null, region: null, sortDir: 'az' });
     setCurrentPage(1);
     // Find and expand
     setTimeout(() => {
-      const match = filteredCountries.find((c) => c.name === name);
+      const match = filteredCountriesRef.current.find((c) => c.name === name);
       if (match) setExpandedCountry(match.code);
       countryListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 200);
-  }, [filteredCountries]);
+  }, []);
 
   const clearAllFilters = useCallback(() => {
     setFilters({ access: null, region: null, sortDir: 'az' });
@@ -381,7 +385,7 @@ export default function HomePage() {
 
   // Popular countries data (from fetched countries)
   const popularData = useMemo(() => {
-    return POPULAR_COUNTRIES.map((name) => countries.find((c) => c.name === name)).filter(Boolean) as CountryData[];
+    return POPULAR_COUNTRIES.map((name) => countries.find((c) => c.name === name)).filter((c): c is CountryData => Boolean(c));
   }, [countries]);
 
   // ============================================================

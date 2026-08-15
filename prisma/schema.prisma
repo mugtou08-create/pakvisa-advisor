@@ -62,6 +62,8 @@ model VisaRequirement {
   id                  String   @id @default(cuid())
   countryId           String
   country             Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@index([countryId])
   visaTypeId          String?
   visaType            VisaType? @relation(fields: [visaTypeId], references: [id], onDelete: Cascade)
   category            String
@@ -140,6 +142,8 @@ model Session {
   id              String   @id @default(cuid())
   userProfileId   String
   userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  @@index([userProfileId])
   status          String   @default("in_progress")
   questionnaireProgress Float @default(0)
   currentStep     Int      @default(0)
@@ -209,4 +213,7 @@ model AnalyticsEvent {
   data      String   @default("{}")
   ip        String   @default("unknown")
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([event])
 }

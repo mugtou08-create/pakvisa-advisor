@@ -68,6 +68,18 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
         }),
       });
 
+      if (!res.ok) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: 'Sorry, something went wrong. Please try again.',
+            meta: { dataVerified: false },
+          },
+        ]);
+        return;
+      }
+
       const json = await res.json();
       if (json.success) {
         setMessages((prev) => [

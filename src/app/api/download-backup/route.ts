@@ -1,41 +1,50 @@
 import { NextResponse } from 'next/server';
-import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { db } from '@/lib/db';
 
 export async function GET() {
-  // Find the most recent backup in /home/z/
-  const backupDir = '/home/z';
   try {
-    const files = readdirSync(backupDir)
-      .filter(f => f.startsWith('pakvisa-advisor-backup-') && f.endsWith('.tar.gz'))
-      .sort()
-      .reverse();
+    // On serverless (Vercel) there is no filesystem access; generate backup from DB.
+    // Export key tables as JSON and stream as response.
 
-    if (files.length === 0) {
-      return NextResponse.json({ error: 'No backup found' }, { status: 404 });
-    }
+    const countries = await db.country.findMany({
+      include: { visaTypes: true, requirements: true, costProfiles: true },
+      orderBy: { name: 'asc' },
+    });
 
-    const filename = files[0];
-    const filepath = join(backupDir, filename);
+    const userProfiles = await db.userProfile.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
 
-    if (!existsSync(filepath)) {
-      return NextResponse.json({ error: 'Backup file missing' }, { status: 404 });
-    }
+    const siteSettings = await db.siteSettings.findMany();
 
-    const buffer = readFileSync(filepath);
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      version: '1.0',
+      tables: {
+        countries,
+        userProfiles,
+        siteSettings,
+      },
+    };
 
-    return new NextResponse(buffer, {
+    const json = JSON.stringify(backup, null, 2);
+
+    return new NextResponse(json, {
       status: 200,
       headers: {
-        'Content-Type': 'application/gzip',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': String(buffer.length),
+        'Content-Type': 'application/json',
+        'Content-Disposition': 'attachment; filename="pakvisa-advisor-backup.json"',
         'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Backup export failed:', message);
     return NextResponse.json(
-      { error: 'Failed to download backup', details: String(error) },
+      {
+        error: 'Failed to generate backup',
+        ...(process.env.NODE_ENV !== 'production' ? { details: message } : {}),
+      },
       { status: 500 }
     );
   }

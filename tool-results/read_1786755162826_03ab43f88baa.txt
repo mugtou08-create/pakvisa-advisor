@@ -1,0 +1,1528 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  RefreshCw, ShieldCheck, DollarSign, Clock, FileWarning,
+     7→  Globe, CheckCircle2, ChevronDown, ChevronRight, ClipboardCheck,
+     8→  PlaneTakeoff, FileText, MapPin, Phone, Wifi, Banknote,
+     9→  Building, AlertCircle, Briefcase, GraduationCap, Users, RotateCcw,
+    10→  ExternalLink, Shield, TrendingUp, BarChart3, Map as MapIcon,
+    11→  User, Wallet, FileCheck, ArrowRight, Sparkles, Lightbulb,
+    12→  Search, HelpCircle, BookOpen, Plane, CheckCircle, UserCircle,
+    13→  AlertTriangle, CircleCheckBig, X, ChevronUp, Calendar, Download, Plus, Trash2, Compass, SearchX,
+    14→} from 'lucide-react';
+    15→import { Button } from '@/components/ui/button';
+    16→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    17→import { Badge } from '@/components/ui/badge';
+    18→import { Progress } from '@/components/ui/progress';
+    19→import { Input } from '@/components/ui/input';
+    20→import { Checkbox } from '@/components/ui/checkbox';
+    21→import { Separator } from '@/components/ui/separator';
+    22→import { ScrollArea } from '@/components/ui/scroll-area';
+    23→import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+    24→import { toast } from 'sonner';
+    25→import { useAppStore } from '@/lib/store';
+    26→import type { CountryData, UserProfileData } from '@/lib/types';
+    27→import type { TripDestination } from '@/lib/store';
+    28→import { getFlagUrl } from './constants';
+    29→import Image from 'next/image';
+    30→
+    31→// ============================================================
+    32→// Feature 1: VisaPolicyChangeTracker
+    33→// ============================================================
+    34→
+    35→type ChangeType = 'visa-free' | 'fee-change' | 'processing' | 'requirement' | 'evisa';
+    36→
+    37→interface PolicyChangeEntry {
+    38→  id: string;
+    39→  countryCode: string;
+    40→  countryName: string;
+    41→  flagEmoji: string;
+    42→  flagUrl: string;
+    43→  changeType: ChangeType;
+    44→  title: string;
+    45→  description: string;
+    46→  detail: string;
+    47→  daysAgo: number;
+    48→}
+    49→
+    50→const CHANGE_TYPE_CONFIG: Record<ChangeType, { label: string; color: string; dotClass: string; badgeClass: string }> = {
+    51→  'visa-free': { label: 'New Visa-Free', color: 'text-green-600 dark:text-green-400', dotClass: 'bg-green-500', badgeClass: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border-green-200 dark:border-green-800' },
+    52→  'fee-change': { label: 'Fee Change', color: 'text-amber-600 dark:text-amber-400', dotClass: 'bg-amber-500', badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
+    53→  'processing': { label: 'Processing Update', color: 'text-orange-600 dark:text-orange-400', dotClass: 'bg-orange-500', badgeClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border-orange-200 dark:border-orange-800' },
+    54→  'requirement': { label: 'New Requirement', color: 'text-red-600 dark:text-red-400', dotClass: 'bg-red-500', badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800' },
+    55→  'evisa': { label: 'e-Visa Launch', color: 'text-emerald-600 dark:text-emerald-400', dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
+    56→};
+    57→
+    58→function relativeTime(daysAgo: number): string {
+    59→  if (daysAgo === 0) return 'Today';
+    60→  if (daysAgo === 1) return 'Yesterday';
+    61→  if (daysAgo < 7) return `${daysAgo} days ago`;
+    62→  if (daysAgo < 14) return '1 week ago';
+    63→  if (daysAgo < 21) return `${Math.floor(daysAgo / 7)} weeks ago`;
+    64→  if (daysAgo < 30) return '3 weeks ago';
+    65→  if (daysAgo < 45) return '1 month ago';
+    66→  return `${Math.floor(daysAgo / 30)} months ago`;
+    67→}
+    68→
+    69→function generatePolicyChanges(countries: CountryData[]): PolicyChangeEntry[] {
+    70→  if (!countries || countries.length === 0) return [];
+    71→
+    72→  const entries: PolicyChangeEntry[] = [];
+    73→  const used = new Set<string>();
+    74→  const timestamps = [0, 1, 2, 3, 5, 7, 10, 14, 21, 28, 35, 42, 49, 56];
+    75→
+    76→  // Pick visa-free countries
+    77→  const vfCountries = countries.filter(c => c.visaFree);
+    78→  const voaCountries = countries.filter(c => c.visaOnArrival && !c.visaFree);
+    79→  const etaCountries = countries.filter(c => c.etaAvailable && !c.visaFree && !c.visaOnArrival);
+    80→  const embassyCountries = countries.filter(c => !c.visaFree && !c.visaOnArrival && !c.etaAvailable);
+    81→
+    82→  const pick = (list: CountryData[]) => {
+    83→    for (const c of list) {
+    84→      if (!used.has(c.code) && entries.length < 10) return c;
+    85→    }
+    86→    return null;
+    87→  };
+    88→
+    89→  // Visa-free entries (2-3)
+    90→  for (let i = 0; i < 3; i++) {
+    91→    const c = pick(vfCountries);
+    92→    if (!c) break;
+    93→    used.add(c.code);
+    94→    entries.push({
+    95→      id: `vf-${c.code}`, countryCode: c.code, countryName: c.name,
+    96→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+    97→      changeType: 'visa-free',
+    98→      title: 'Visa-free access confirmed',
+    99→      description: `Pakistan passport holders enjoy visa-free entry to ${c.name} for up to ${c.visaTypes?.[0]?.maxDuration || '30 days'}.`,
+   100→      detail: `This visa-free arrangement allows Pakistani citizens to enter ${c.name} without any prior visa application. Ensure your passport has at least 6 months validity. Best travel months: ${c.bestTravelMonths}. Average temperature: ${c.avgTempC}°C.`,
+   101→      daysAgo: timestamps[entries.length] ?? 10,
+   102→    });
+   103→  }
+   104→
+   105→  // VOA entries (1-2)
+   106→  for (let i = 0; i < 2; i++) {
+   107→    const c = pick(voaCountries);
+   108→    if (!c) break;
+   109→    used.add(c.code);
+   110→    entries.push({
+   111→      id: `voa-${c.code}`, countryCode: c.code, countryName: c.name,
+   112→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+   113→      changeType: 'processing',
+   114→      title: 'Visa on arrival policy updated',
+   115→      description: `${c.name} has streamlined its VOA process. Processing now takes approximately ${c.processingDaysMin}-${c.processingDaysMax} business days.`,
+   116→      detail: `Pakistan passport holders can obtain a visa on arrival at ${c.name} ports of entry. The fee is approximately $${c.costProfile?.visaFeeUSD || 'varies'}. Maximum stay: ${c.visaTypes?.[0]?.maxDuration || '30 days'}. Extensions may be available.`,
+   117→      daysAgo: timestamps[entries.length] ?? 15,
+   118→    });
+   119→  }
+   120→
+   121→  // e-Visa entries (2)
+   122→  for (let i = 0; i < 2; i++) {
+   123→    const c = pick(etaCountries);
+   124→    if (!c) break;
+   125→    used.add(c.code);
+   126→    entries.push({
+   127→      id: `eta-${c.code}`, countryCode: c.code, countryName: c.name,
+   128→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+   129→      changeType: 'evisa',
+   130→      title: 'e-Visa/eTA system launched',
+   131→      description: `${c.name} has launched an electronic visa system for Pakistani passport holders. Apply online before travel.`,
+   132→      detail: `The new e-Visa portal allows Pakistanis to apply for a ${c.name} visa entirely online. Processing time: ${c.processingDaysMin}-${c.processingDaysMax} days. Fee: $${c.costProfile?.visaFeeUSD || 'TBD'}. Required documents: valid passport, photographs, and travel itinerary.`,
+   133→      daysAgo: timestamps[entries.length] ?? 20,
+   134→    });
+   135→  }
+   136→
+   137→  // Embassy/fee entries (2-3)
+   138→  for (let i = 0; i < 3; i++) {
+   139→    const c = pick([...embassyCountries, ...etaCountries, ...voaCountries]);
+   140→    if (!c) break;
+   141→    used.add(c.code);
+   142→    const isFee = i % 2 === 0;
+   143→    entries.push({
+   144→      id: `emb-${c.code}`, countryCode: c.code, countryName: c.name,
+   145→      flagEmoji: c.flagEmoji, flagUrl: c.flagUrl,
+   146→      changeType: isFee ? 'fee-change' : 'requirement',
+   147→      title: isFee ? 'Visa fee adjustment' : 'New document requirement added',
+   148→      description: isFee
+   149→        ? `${c.name} has adjusted its visa fee to $${c.costProfile?.visaFeeUSD || 'updated rate'} (previously $${Math.max(1, (c.costProfile?.visaFeeUSD || 50) - 10)}). Service fee: $${c.costProfile?.serviceFeeUSD || 'varies'}.`
+   150→        : `${c.name} now requires additional documentation: ${c.requirements?.[0]?.requirement || 'updated proof of funds'} for all visa applications.`,
+   151→      detail: isFee
+   152→        ? `The revised fee structure for ${c.name} visas: Visa fee $${c.costProfile?.visaFeeUSD || 'TBD'}, Service fee $${c.costProfile?.serviceFeeUSD || 'TBD'}. Health insurance: $${c.costProfile?.healthInsuranceUSD || 'N/A'}. Budget estimate: $${c.costProfile?.totalMonthlyUSD || 'TBD'}/month for living expenses. `
+   153→        : `Updated requirements for ${c.name}: ${c.requirements?.slice(0, 3).map(r => r.requirement).join(', ') || 'Standard documentation'}. Processing time: ${c.processingDaysMin}-${c.processingDaysMax} business days. Check official sources for the most current information.`,
+   154→      daysAgo: timestamps[entries.length] ?? 25,
+   155→    });
+   156→  }
+   157→
+   158→  return entries.slice(0, 10);
+   159→}
+   160→
+   161→export const VisaPolicyChangeTracker = React.memo(function VisaPolicyChangeTracker({ countries }: { countries: CountryData[] }) {
+   162→  const [refreshing, setRefreshing] = useState(false);
+   163→  const [expandedId, setExpandedId] = useState<string | null>(null);
+   164→  const [isMobile, setIsMobile] = useState(false);
+   165→
+   166→  useEffect(() => {
+   167→    const check = () => setIsMobile(window.innerWidth < 768);
+   168→    check();
+   169→    window.addEventListener('resize', check);
+   170→    return () => window.removeEventListener('resize', check);
+   171→  }, []);
+   172→
+   173→  const entries = useMemo(() => generatePolicyChanges(countries), [countries]);
+   174→
+   175→  const handleRefresh = useCallback(() => {
+   176→    setRefreshing(true);
+   177→    setTimeout(() => setRefreshing(false), 1500);
+   178→  }, []);
+   179→
+   180→  const toggleExpand = useCallback((id: string) => {
+   181→    setExpandedId(prev => prev === id ? null : id);
+   182→  }, []);
+   183→
+   184→  // Mobile: horizontal scroll cards
+   185→  if (isMobile) {
+   186→    return (
+   187→      <Card className="card-elevated-1 glass-card overflow-hidden">
+   188→        <CardHeader className="pb-3">
+   189→          <div className="flex items-center justify-between">
+   190→            <CardTitle className="text-base font-semibold flex items-center gap-2">
+   191→              <span className="text-lg">🛂</span>
+   192→              Recent Visa Policy Updates
+   193→            </CardTitle>
+   194→            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={refreshing}>
+   195→              <RefreshCw className={`h-4 w-4 text-amber-500 ${refreshing ? 'animate-spin' : ''}`} />
+   196→            </Button>
+   197→          </div>
+   198→        </CardHeader>
+   199→        <CardContent className="pb-4">
+   200→          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar-thin">
+   201→            {entries.map((entry, idx) => {
+   202→              const cfg = CHANGE_TYPE_CONFIG[entry.changeType];
+   203→              return (
+   204→                <motion.div
+   205→                  key={entry.id}
+   206→                  initial={{ opacity: 0, x: 20 }}
+   207→                  animate={{ opacity: 1, x: 0 }}
+   208→                  transition={{ delay: idx * 0.06, duration: 0.3 }}
+   209→                  className="flex-shrink-0 w-64"
+   210→                >
+   211→                  <button
+   212→                    onClick={() => toggleExpand(entry.id)}
+   213→                    className="w-full text-left p-3 rounded-xl border border-amber-200/50 dark:border-amber-800/30 bg-white/60 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors press-effect"
+   214→                  >
+   215→                    <div className="flex items-center gap-2 mb-2">
+   216→                      {entry.flagUrl ? (
+   217→                        <Image src={entry.flagUrl} alt={entry.countryName} width={20} height={14} className="rounded-sm object-cover" unoptimized />
+   218→                      ) : (
+   219→                        <span className="text-base">{entry.flagEmoji}</span>
+   220→                      )}
+   221→                      <span className="text-xs font-medium truncate">{entry.countryName}</span>
+   222→                    </div>
+   223→                    <Badge className={`badge-3d text-[10px] px-1.5 py-0 ${cfg.badgeClass}`}>
+   224→                      {cfg.label}
+   225→                    </Badge>
+   226→                    <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{entry.description}</p>
+   227→                    <p className="text-[10px] text-muted-foreground/70 mt-1">{relativeTime(entry.daysAgo)}</p>
+   228→                    <AnimatePresence>
+   229→                      {expandedId === entry.id && (
+   230→                        <motion.div
+   231→                          initial={{ height: 0, opacity: 0 }}
+   232→                          animate={{ height: 'auto', opacity: 1 }}
+   233→                          exit={{ height: 0, opacity: 0 }}
+   234→                          className="overflow-hidden"
+   235→                        >
+   236→                          <Separator className="my-2" />
+   237→                          <p className="text-[11px] text-muted-foreground leading-relaxed">{entry.detail}</p>
+   238→                        </motion.div>
+   239→                      )}
+   240→                    </AnimatePresence>
+   241→                  </button>
+   242→                </motion.div>
+   243→              );
+   244→            })}
+   245→          </div>
+   246→          <Button variant="outline" size="sm" className="w-full mt-3 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+   247→            View All Changes <ExternalLink className="ml-1 h-3 w-3" />
+   248→          </Button>
+   249→        </CardContent>
+   250→      </Card>
+   251→    );
+   252→  }
+   253→
+   254→  // Desktop: vertical timeline
+   255→  return (
+   256→    <Card className="card-elevated-1 glass-card overflow-hidden">
+   257→      <CardHeader className="pb-3">
+   258→        <div className="flex items-center justify-between">
+   259→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   260→            <span className="text-lg">🛂</span>
+   261→            Recent Visa Policy Updates
+   262→          </CardTitle>
+   263→          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={refreshing}>
+   264→            <RefreshCw className={`h-4 w-4 text-amber-500 ${refreshing ? 'animate-spin' : ''}`} />
+   265→          </Button>
+   266→        </div>
+   267→      </CardHeader>
+   268→      <CardContent className="pb-4">
+   269→        <div className="relative pl-6">
+   270→          {/* Timeline line */}
+   271→          <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-amber-400 via-orange-400 to-amber-300 dark:from-amber-600 dark:via-orange-600 dark:to-amber-500" />
+   272→
+   273→          {entries.map((entry, idx) => {
+   274→            const cfg = CHANGE_TYPE_CONFIG[entry.changeType];
+   275→            return (
+   276→              <motion.div
+   277→                key={entry.id}
+   278→                initial={{ opacity: 0, x: -16 }}
+   279→                animate={{ opacity: 1, x: 0 }}
+   280→                transition={{ delay: idx * 0.07, duration: 0.35, ease: 'easeOut' }}
+   281→                className="relative mb-4 last:mb-0"
+   282→              >
+   283→                {/* Timeline dot */}
+   284→                <div className={`absolute -left-6 top-2.5 w-[7px] h-[7px] rounded-full ${cfg.dotClass} ring-2 ring-background`} />
+   285→
+   286→                <button
+   287→                  onClick={() => toggleExpand(entry.id)}
+   288→                  className="w-full text-left group"
+   289→                >
+   290→                  <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-200/40 dark:border-amber-800/20 bg-white/50 dark:bg-amber-950/10 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 transition-all hover:shadow-sm press-effect">
+   291→                    <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+   292→                      {entry.flagUrl ? (
+   293→                        <Image src={entry.flagUrl} alt={entry.countryName} width={22} height={15} className="rounded-sm object-cover" unoptimized />
+   294→                      ) : (
+   295→                        <span className="text-base">{entry.flagEmoji}</span>
+   296→                      )}
+   297→                      <span className="text-sm font-medium truncate">{entry.countryName}</span>
+   298→                    </div>
+   299→                    <Badge className={`badge-3d text-[10px] px-1.5 py-0 flex-shrink-0 ${cfg.badgeClass}`}>
+   300→                      {cfg.label}
+   301→                    </Badge>
+   302→                    <span className="text-[11px] text-muted-foreground/60 flex-shrink-0 ml-auto">{relativeTime(entry.daysAgo)}</span>
+   303→                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground flex-shrink-0 transition-transform ${expandedId === entry.id ? 'rotate-180' : ''}`} />
+   304→                  </div>
+   305→                  <p className="text-xs text-muted-foreground mt-1.5 px-1">{entry.description}</p>
+   306→                  <AnimatePresence>
+   307→                    {expandedId === entry.id && (
+   308→                      <motion.div
+   309→                        initial={{ height: 0, opacity: 0 }}
+   310→                        animate={{ height: 'auto', opacity: 1 }}
+   311→                        exit={{ height: 0, opacity: 0 }}
+   312→                        transition={{ duration: 0.2 }}
+   313→                        className="overflow-hidden"
+   314→                      >
+   315→                        <div className="mt-2 mx-1 p-3 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/30 dark:border-amber-800/20">
+   316→                          <p className="text-xs text-muted-foreground leading-relaxed">{entry.detail}</p>
+   317→                        </div>
+   318→                      </motion.div>
+   319→                    )}
+   320→                  </AnimatePresence>
+   321→                </button>
+   322→              </motion.div>
+   323→            );
+   324→          })}
+   325→        </div>
+   326→
+   327→        <Button variant="outline" size="sm" className="w-full mt-4 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+   328→          View All Changes <ExternalLink className="ml-1 h-3 w-3" />
+   329→        </Button>
+   330→      </CardContent>
+   331→    </Card>
+   332→  );
+   333→});
+   334→
+   335→
+   336→// ============================================================
+   337→// Feature 2: TravelChecklistGenerator
+   338→// ============================================================
+   339→
+   340→interface ChecklistSection {
+   341→  id: string;
+   342→  title: string;
+   343→  icon: React.ReactNode;
+   344→  colorClass: string;
+   345→  items: { id: string; label: string }[];
+   346→}
+   347→
+   348→function buildChecklistSections(country: CountryData | null, userProfile: UserProfileData | null): ChecklistSection[] {
+   349→  const sections: ChecklistSection[] = [];
+   350→
+   351→  // Section 1: Pre-Departure
+   352→  const preDepartureItems: { id: string; label: string }[] = [
+   353→    { id: 'pre-passport', label: 'Check passport validity (6+ months)' },
+   354→    { id: 'pre-insurance', label: 'Purchase travel insurance' },
+   355→    { id: 'pre-flights', label: 'Book flights' },
+   356→    { id: 'pre-accommodation', label: 'Book accommodation' },
+   357→    { id: 'pre-currency', label: `Exchange currency${country ? ` (${country.currencyCode || 'local currency'})` : ''}` },
+   358→    { id: 'pre-maps', label: 'Download offline maps' },
+   359→    { id: 'pre-bank', label: 'Notify your bank about travel' },
+   360→  ];
+   361→
+   362→  if (country) {
+   363→    if (country.visaFree) {
+   364→      preDepartureItems.unshift({ id: 'pre-vf-check', label: 'Confirm visa-free entry requirements' });
+   365→    } else if (country.visaOnArrival) {
+   366→      preDepartureItems.unshift({ id: 'pre-voa-docs', label: 'Prepare VOA documents (return ticket, hotel booking)' });
+   367→      preDepartureItems.splice(1, 0, { id: 'pre-voa-fee', label: `Carry VOA fee in cash (~$${country.costProfile?.visaFeeUSD || 'check amount'})` });
+   368→    } else if (country.etaAvailable) {
+   369→      preDepartureItems.unshift({ id: 'pre-eta-apply', label: 'Apply for e-Visa/eTA online' });
+   370→      preDepartureItems.splice(1, 0, { id: 'pre-eta-print', label: 'Print e-Visa approval letter' });
+   371→    } else {
+   372→      preDepartureItems.unshift({ id: 'pre-embassy-apply', label: 'Apply for visa at embassy/consulate' });
+   373→      preDepartureItems.splice(1, 0, { id: 'pre-embassy-appt', label: 'Book embassy appointment' });
+   374→      preDepartureItems.splice(2, 0, { id: 'pre-embassy-docs', label: 'Prepare and organize all documents' });
+   375→    }
+   376→  }
+   377→
+   378→  if (userProfile) {
+   379→    if (userProfile.occupation && userProfile.occupation !== 'Unemployed' && userProfile.occupation !== 'Student') {
+   380→      preDepartureItems.push({ id: 'pre-leave', label: 'Request leave from employer' });
+   381→    }
+   382→    if (userProfile.maritalStatus === 'Married' || (userProfile.dependents && userProfile.dependents > 0)) {
+   383→      preDepartureItems.push({ id: 'pre-family', label: 'Arrange family care during travel' });
+   384→    }
+   385→    if (userProfile.occupation === 'Student') {
+   386→      preDepartureItems.push({ id: 'pre-student-docs', label: 'Get student documents / NOC from institution' });
+   387→    }
+   388→  }
+   389→
+   390→  sections.push({
+   391→    id: 'pre-departure',
+   392→    title: `Pre-Departure Checklist${country ? ` — ${country.name}` : ''}`,
+   393→    icon: <PlaneTakeoff className="h-4 w-4 text-amber-500" />,
+   394→    colorClass: 'text-amber-600 dark:text-amber-400',
+   395→    items: preDepartureItems,
+   396→  });
+   397→
+   398→  // Section 2: Required Documents
+   399→  const docItems: { id: string; label: string }[] = [
+   400→    { id: 'doc-passport', label: 'Valid passport (6+ months validity)' },
+   401→    { id: 'doc-photos', label: 'Passport-sized photographs (2x)' },
+   402→    { id: 'doc-bank', label: 'Bank statements (last 6 months)' },
+   403→    { id: 'doc-flights', label: 'Flight itinerary / booking confirmation' },
+   404→    { id: 'doc-hotel', label: 'Hotel reservation confirmation' },
+   405→    { id: 'doc-insurance', label: 'Travel insurance certificate' },
+   406→    { id: 'doc-employment', label: 'Employment letter / NOC from employer' },
+   407→    { id: 'doc-tax', label: 'Income tax returns' },
+   408→  ];
+   409→
+   410→  if (country && country.requirements && country.requirements.length > 0) {
+   411→    country.requirements.forEach((req, i) => {
+   412→      if (i < 4 && !docItems.some(d => d.label.toLowerCase().includes(req.requirement.toLowerCase().slice(0, 15)))) {
+   413→        docItems.push({ id: `doc-req-${i}`, label: req.requirement });
+   414→      }
+   415→    });
+   416→  }
+   417→
+   418→  sections.push({
+   419→    id: 'documents',
+   420→    title: 'Required Documents',
+   421→    icon: <FileText className="h-4 w-4 text-orange-500" />,
+   422→    colorClass: 'text-orange-600 dark:text-orange-400',
+   423→    items: docItems,
+   424→  });
+   425→
+   426→  // Section 3: At Destination
+   427→  sections.push({
+   428→    id: 'at-destination',
+   429→    title: 'At Destination',
+   430→    icon: <MapPin className="h-4 w-4 text-yellow-500" />,
+   431→    colorClass: 'text-yellow-600 dark:text-yellow-400',
+   432→    items: [
+   433→      { id: 'dest-embassy', label: 'Register with Pakistan embassy/consulate' },
+   434→      { id: 'dest-emergency', label: 'Save emergency numbers (police, ambulance, embassy)' },
+   435→      { id: 'dest-sim', label: 'Check local SIM card options' },
+   436→      { id: 'dest-transport', label: 'Familiarize with local transport' },
+   437→      { id: 'dest-customs', label: 'Note local customs and laws' },
+   438→    ],
+   439→  });
+   440→
+   441→  return sections;
+   442→}
+   443→
+   444→export const TravelChecklistGenerator = React.memo(function TravelChecklistGenerator({ country, userProfile }: { country: CountryData | null; userProfile?: UserProfileData | null }) {
+   445→  const storageKey = country ? `pakvisa-checklist-${country.code}` : 'pakvisa-checklist-generic';
+   446→
+   447→  const sections = useMemo(() => buildChecklistSections(country, userProfile || null), [country, userProfile]);
+   448→  const allItemIds = useMemo(() => sections.flatMap(s => s.items.map(i => i.id)), [sections]);
+   449→
+   450→  // Detect client-side mount without setState (useSyncExternalStore)
+   451→  const mounted = useSyncExternalStore(
+   452→    () => () => {}, // noop subscribe
+   453→    () => true,     // client: always mounted
+   454→    () => false     // server: not mounted
+   455→  );
+   456→
+   457→  // Combined state for all country checklists — no reset needed when country changes
+   458→  const [allChecked, setAllChecked] = useState<Record<string, Record<string, boolean>>>(() => {
+   459→    if (typeof window === 'undefined') return {};
+   460→    try {
+   461→      const saved = localStorage.getItem(storageKey);
+   462→      return saved ? { [storageKey]: JSON.parse(saved) as Record<string, boolean> } : {};
+   463→    } catch {
+   464→      return {};
+   465→    }
+   466→  });
+   467→
+   468→  // Derive current country's checked items (no setState needed)
+   469→  const checked = allChecked[storageKey] || {};
+   470→
+   471→  const toggleItem = useCallback((id: string) => {
+   472→    setAllChecked(prev => {
+   473→      const current = prev[storageKey] || {};
+   474→      return { ...prev, [storageKey]: { ...current, [id]: !current[id] } };
+   475→    });
+   476→  }, [storageKey]);
+   477→
+   478→  const clearAll = useCallback(() => {
+   479→    const cleared: Record<string, boolean> = {};
+   480→    allItemIds.forEach(id => { cleared[id] = true; });
+   481→    setAllChecked(prev => ({ ...prev, [storageKey]: cleared }));
+   482→  }, [allItemIds, storageKey]);
+   483→
+   484→  const resetAll = useCallback(() => {
+   485→    setAllChecked(prev => ({ ...prev, [storageKey]: {} }));
+   486→  }, [storageKey]);
+   487→
+   488→  // Persist to localStorage (external system sync — no setState)
+   489→  useEffect(() => {
+   490→    if (!mounted) return;
+   491→    const current = allChecked[storageKey];
+   492→    if (current) {
+   493→      try {
+   494→        localStorage.setItem(storageKey, JSON.stringify(current));
+   495→      } catch {
+   496→        // ignore
+   497→      }
+   498→    }
+   499→  }, [allChecked, storageKey, mounted]);
+   500→
+   501→  const totalItems = allItemIds.length;
+   502→  const checkedCount = allItemIds.filter(id => checked[id]).length;
+   503→  const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
+   504→  const isReady = pct >= 90;
+   505→
+   506→  if (!mounted) {
+   507→    return (
+   508→      <Card className="card-elevated-1">
+   509→        <CardContent className="p-6">
+   510→          <div className="space-y-3">
+   511→            <div className="h-5 w-48 bg-muted rounded animate-pulse" />
+   512→            <div className="h-2 w-full bg-muted rounded" />
+   513→            <div className="space-y-2 mt-4">
+   514→              {Array.from({ length: 5 }).map((_, i) => (
+   515→                <div key={i} className="h-4 w-full bg-muted rounded animate-pulse" />
+   516→              ))}
+   517→            </div>
+   518→          </div>
+   519→        </CardContent>
+   520→      </Card>
+   521→    );
+   522→  }
+   523→
+   524→  return (
+   525→    <Card className="card-elevated-1 overflow-hidden">
+   526→      <CardHeader className="pb-3">
+   527→        <div className="flex items-center justify-between">
+   528→          <CardTitle className="text-base font-semibold flex items-center gap-2">
+   529→            <span className="text-lg">📋</span>
+   530→            Travel Checklist
+   531→            {country && (
+   532→              <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground">
+   533→                {country.flagUrl ? (
+   534→                  <Image src={country.flagUrl} alt={country.name} width={18} height={12} className="rounded-sm object-cover" unoptimized />
+   535→                ) : (
+   536→                  <span>{country.flagEmoji}</span>
+   537→                )}
+   538→                {country.name}
+   539→              </span>
+   540→            )}
+   541→          </CardTitle>
+   542→          <div className="flex items-center gap-1">
+   543→            <Button variant="ghost" size="sm" className="h-7 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700" onClick={clearAll}>
+   544→              Clear All
+   545→            </Button>
+   546→            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground" onClick={resetAll}>
+   547→              <RotateCcw className="h-3 w-3 mr-1" /> Reset
+   548→            </Button>
+   549→          </div>
+   550→        </div>
+   551→      </CardHeader>
+   552→      <CardContent className="pb-4">
+   553→        {/* Progress bar */}
+   554→        <div className="mb-4">
+   555→          <div className="flex items-center justify-between mb-1.5">
+   556→            <span className="text-xs font-medium text-muted-foreground">{checkedCount}/{totalItems} completed</span>
+   557→            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{pct}%</span>
+   558→          </div>
+   559→          <Progress value={pct} className="progress-amber h-2.5" />
+   560→          {isReady && (
+   561→            <motion.p
+   562→              initial={{ opacity: 0, y: 4 }}
+   563→              animate={{ opacity: 1, y: 0 }}
+   564→              className="text-sm font-semibold text-glow-amber mt-2 flex items-center gap-1.5"
+   565→            >
+   566→              <CheckCircle2 className="h-4 w-4" />
+   567→              Ready to travel! ✈️
+   568→            </motion.p>
+   569→          )}
+   570→        </div>
+   571→
+   572→        {/* Checklist accordion */}
+   573→        <Accordion type="multiple" defaultValue={typeof window !== 'undefined' && window.innerWidth >= 768 ? ['pre-departure', 'documents', 'at-destination'] : []} className="w-full">
+   574→          {sections.map((section) => (
+   575→            <AccordionItem key={section.id} value={section.id} className="border-amber-200/40 dark:border-amber-800/20">
+   576→              <AccordionTrigger className={`text-sm font-semibold ${section.colorClass} hover:no-underline py-2.5`}>
+   577→                <span className="flex items-center gap-2">
+   578→                  {section.icon}
+   579→                  {section.title}
+   580→                  <Badge variant="secondary" className="ml-1 text-[10px] font-normal">
+   581→                    {section.items.filter(i => checked[i.id]).length}/{section.items.length}
+   582→                  </Badge>
+   583→                </span>
+   584→              </AccordionTrigger>
+   585→              <AccordionContent className="pt-1 pb-2">
+   586→                <div className="space-y-2">
+   587→                  {section.items.map((item) => (
+   588→                    <label
+   589→                      key={item.id}
+   590→                      className="flex items-start gap-3 cursor-pointer group py-1 px-2 rounded-lg hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors"
+   591→                    >
+   592→                      <Checkbox
+   593→                        checked={checked[item.id] || false}
+   594→                        onCheckedChange={() => toggleItem(item.id)}
+   595→                        className="mt-0.5 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+   596→                      />
+   597→                      <span className={`text-sm leading-snug transition-colors ${checked[item.id] ? 'line-through text-muted-foreground' : 'text-foreground group-hover:text-amber-700 dark:group-hover:text-amber-400'}`}>
+   598→                        {item.label}
+   599→                      </span>
+   600→                    </label>
+   601→                  ))}
+   602→                </div>
+   603→              </AccordionContent>
+   604→            </AccordionItem>
+   605→          ))}
+   606→        </Accordion>
+   607→      </CardContent>
+   608→    </Card>
+   609→  );
+   610→});
+   611→
+   612→// ============================================================
+   613→// Feature 3: ContinentQuickStats
+   614→// ============================================================
+   615→
+   616→interface ContinentStat {
+   617→  name: string;
+   618→  count: number;
+   619→  avgFee: number;
+   620→  topVisaType: string;
+   621→  avgSafety: number;
+   622→}
+   623→
+   624→const CONTINENT_COLORS: Record<string, { bg: string; border: string; text: string; accent: string; bar: string }> = {
+   625→  'Asia': { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800/50', text: 'text-amber-800 dark:text-amber-200', accent: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' },
+   626→  'Europe': { bg: 'bg-orange-50 dark:bg-orange-950/30', border: 'border-orange-200 dark:border-orange-800/50', text: 'text-orange-800 dark:text-orange-200', accent: 'text-orange-600 dark:text-orange-400', bar: 'bg-orange-500' },
+   627→  'Middle East': { bg: 'bg-yellow-50 dark:bg-yellow-950/30', border: 'border-yellow-200 dark:border-yellow-800/50', text: 'text-yellow-800 dark:text-yellow-200', accent: 'text-yellow-600 dark:text-yellow-400', bar: 'bg-yellow-500' },
+   628→  'Africa': { bg: 'bg-stone-50 dark:bg-stone-950/30', border: 'border-stone-300 dark:border-stone-700/50', text: 'text-stone-700 dark:text-stone-300', accent: 'text-stone-600 dark:text-stone-400', bar: 'bg-amber-700' },
+   629→  'Americas': { bg: 'bg-orange-50/70 dark:bg-orange-950/20', border: 'border-orange-200/70 dark:border-orange-800/40', text: 'text-orange-700 dark:text-orange-300', accent: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400' },
+   630→  'Oceania': { bg: 'bg-amber-50/80 dark:bg-amber-950/20', border: 'border-amber-200/80 dark:border-amber-800/40', text: 'text-amber-700 dark:text-amber-300', accent: 'text-amber-500 dark:text-amber-400', bar: 'bg-amber-400' },
+   631→};
+   632→
+   633→const CONTINENT_ORDER = ['Asia', 'Middle East', 'Europe', 'Africa', 'Americas', 'Oceania'];
+   634→
+   635→function getVisaTypeLabel(c: CountryData): string {
+   636→  if (c.visaFree) return 'Visa-Free';
+   637→  if (c.visaOnArrival) return 'VOA';
+   638→  if (c.etaAvailable) return 'eTA';
+   639→  return 'Embassy';
+   640→}
+   641→
+   642→export const ContinentQuickStats = React.memo(function ContinentQuickStats({ countries }: { countries: CountryData[] }) {
+   643→  const stats = useMemo<ContinentStat[]>(() => {
+   644→    if (!countries.length) return [];
+   645→
+   646→    const byContinent = new Map<string, CountryData[]>();
+   647→    for (const c of countries) {
+   648→      const cont = c.continent || 'Other';
+   649→      if (!byContinent.has(cont)) byContinent.set(cont, []);
+   650→      byContinent.get(cont)!.push(c);
+   651→    }
+   652→
+   653→    return CONTINENT_ORDER
+   654→      .filter((name) => {
+   655→        const list = byContinent.get(name);
+   656→        return list && list.length > 0;
+   657→      })
+   658→      .map((name) => {
+   659→        const list = byContinent.get(name)!;
+   660→        const fees = list.map((c) => c.costProfile?.visaFeeUSD ?? 0).filter((f) => f > 0);
+   661→        const avgFee = fees.length > 0 ? Math.round(fees.reduce((a, b) => a + b, 0) / fees.length) : 0;
+   662→        const avgSafety = list.reduce((a, c) => a + (c.safetyRating || 5), 0) / list.length;
+   663→
+   664→        const typeCounts: Record<string, number> = {};
+   665→        for (const c of list) {
+   666→          const label = getVisaTypeLabel(c);
+   667→          typeCounts[label] = (typeCounts[label] || 0) + 1;
+   668→        }
+   669→        const topVisaType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+   670→
+   671→        return { name, count: list.length, avgFee, topVisaType, avgSafety: Math.round(avgSafety * 10) / 10 };
+   672→      });
+   673→  }, [countries]);
+   674→
+   675→  if (stats.length === 0) return null;
+   676→
+   677→  return (
+   678→    <section className="overflow-hidden">
+   679→      <div className="flex items-center gap-2 mb-3">
+   680→        <BarChart3 className="w-5 h-5 text-amber-500" />
+   681→        <h2 className="text-lg font-bold">Continent Overview</h2>
+   682→        <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+   683→          {stats.length} regions
+   684→        </Badge>
+   685→      </div>
+   686→      <div className="flex gap-3 overflow-x-auto custom-scrollbar-thin pb-2">
+   687→        {stats.map((s, idx) => {
+   688→          const colors = CONTINENT_COLORS[s.name] || CONTINENT_COLORS['Asia'];
+   689→          return (
+   690→            <motion.div
+   691→              key={s.name}
+   692→              initial={{ opacity: 0, y: 12 }}
+   693→              animate={{ opacity: 1, y: 0 }}
+   694→              transition={{ duration: 0.3, delay: idx * 0.06 }}
+   695→              className={`shrink-0 w-40 sm:w-48 rounded-xl border ${colors.border} ${colors.bg} card-elevated-1 press-effect p-3 sm:p-4`}
+   696→            >
+   697→              <p className={`text-sm font-bold ${colors.accent} mb-2`}>{s.name}</p>
+   698→
+   699→              <div className="flex items-center gap-1.5 mb-2">
+   700→                <MapIcon className="w-3.5 h-3.5 text-muted-foreground" />
+   701→                <span className="text-xs text-muted-foreground">
+   702→                  <span className={`font-semibold ${colors.text}`}>{s.count}</span> {s.count === 1 ? 'country' : 'countries'}
+   703→                </span>
+   704→              </div>
+   705→
+   706→              <div className="hidden sm:flex items-center gap-1.5 mb-2">
+   707→                <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+   708→                <span className="text-xs text-muted-foreground">
+   709→                  Avg fee: <span className={`font-semibold ${colors.text}`}>${s.avgFee || '—'}</span>
+   710→                </span>
+   711→              </div>
+   712→
+   713→              <div className="flex items-center gap-1.5 mb-2.5">
+   714→                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+   715→                <span className="text-xs text-muted-foreground">
+   716→                  Top: <Badge variant="secondary" className="text-[9px] px-1.5 py-0 font-semibold">{s.topVisaType}</Badge>
+   717→                </span>
+   718→              </div>
+   719→
+   720→              <div className="space-y-1">
+   721→                <div className="flex items-center justify-between">
+   722→                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+   723→                    <Shield className="w-3 h-3" /> Safety
+   724→                  </span>
+   725→                  <span className={`text-[10px] font-bold ${s.avgSafety >= 7 ? 'text-amber-600 dark:text-amber-400' : s.avgSafety >= 5 ? 'text-orange-500' : 'text-red-500'}`}>
+   726→                    {s.avgSafety}/10
+   727→                  </span>
+   728→                </div>
+   729→                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+   730→                  <motion.div
+   731→                    className={`h-full rounded-full ${colors.bar}`}
+   732→                    initial={{ width: 0 }}
+   733→                    animate={{ width: `${(s.avgSafety / 10) * 100}%` }}
+   734→                    transition={{ duration: 0.5, delay: idx * 0.06 + 0.2 }}
+   735→                  />
+   736→                </div>
+   737→              </div>
+   738→            </motion.div>
+   739→          );
+   740→        })}
+   741→      </div>
+   742→    </section>
+   743→  );
+   744→});
+   745→
+   746→// ============================================================
+   747→// Feature: TripPlannerTimeline
+   748→// ============================================================
+   749→
+   750→function getPhaseForDestination(index: number, total: number): string {
+   751→  if (index === 0 && total > 1) return 'Pre-trip';
+   752→  if (index === total - 1 && total > 1) return 'Post-trip';
+   753→  if (total === 1) return 'Pre-trip';
+   754→  return 'At-destination';
+   755→}
+   756→
+   757→function getPhaseColor(phase: string): string {
+   758→  switch (phase) {
+   759→    case 'Pre-trip': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+   760→    case 'In-transit': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300';
+   761→    case 'At-destination': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
+   762→    case 'Post-trip': return 'bg-amber-200 text-amber-900 dark:bg-amber-800/50 dark:text-amber-200';
+   763→    default: return 'bg-muted text-muted-foreground';
+   764→  }
+   765→}
+   766→
+   767→export function TripPlannerTimeline({ countries }: { countries: CountryData[] }) {
+   768→  const { tripPlan, addTripDestination, removeTripDestination, reorderTripDestination, clearTripPlan } = useAppStore();
+   769→  const [searchQuery, setSearchQuery] = useState('');
+   770→  const [showAddPanel, setShowAddPanel] = useState(false);
+   771→
+   772→  const filteredCountries = useMemo(() => {
+   773→    const existing = new Set(tripPlan.map(d => d.countryCode));
+   774→    return countries
+   775→      .filter(c => !existing.has(c.code))
+   776→      .filter(c =>
+   777→        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   778→        c.code.toLowerCase().includes(searchQuery.toLowerCase())
+   779→      )
+   780→      .slice(0, 20);
+   781→  }, [countries, tripPlan, searchQuery]);
+   782→
+   783→  const handleAddDestination = (c: CountryData) => {
+   784→    const today = new Date();
+   785→    const start = today.toISOString().slice(0, 10);
+   786→    const end = new Date(today.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+   787→    const cost = c.costProfile
+   788→      ? c.costProfile.totalMonthlyUSD / 30 * 7
+   789→      : 1500;
+   790→    const dest: TripDestination = {
+   791→      countryCode: c.code,
+   792→      countryName: c.name,
+   793→      flagEmoji: c.flagEmoji,
+   794→      startDate: start,
+   795→      endDate: end,
+   796→      estimatedDays: 7,
+   797→      estimatedCost: Math.round(cost),
+   798→      visaType: getVisaTypeLabel(c),
+   799→    };
+   800→    addTripDestination(dest);
+   801→    setShowAddPanel(false);
+   802→    setSearchQuery('');
+   803→    toast.success(`${c.flagEmoji} ${c.name} added to trip plan`);
+   804→  };
+   805→
+   806→  const handleDateChange = (index: number, field: 'startDate' | 'endDate', value: string) => {
+   807→    const current = tripPlan[index];
+   808→    const updated = { ...current, [field]: value };
+   809→    if (updated.startDate && updated.endDate) {
+   810→      const days = Math.max(1, Math.ceil(
+   811→        (new Date(updated.endDate).getTime() - new Date(updated.startDate).getTime()) / 86400000
+   812→      ));
+   813→      updated.estimatedDays = days;
+   814→      const country = countries.find(c => c.code === current.countryCode);
+   815→      updated.estimatedCost = country?.costProfile
+   816→        ? Math.round(country.costProfile.totalMonthlyUSD / 30 * days)
+   817→        : Math.round(1500 / 7 * days);
+   818→    }
+   819→    // Update via remove + re-add at same index
+   820→    const newPlan = [...tripPlan];
+   821→    newPlan[index] = updated;
+   822→    useAppStore.setState({ tripPlan: newPlan });
+   823→  };
+   824→
+   825→  const totalDays = tripPlan.reduce((s, d) => s + d.estimatedDays, 0);
+   826→  const totalCost = tripPlan.reduce((s, d) => s + d.estimatedCost, 0);
+   827→  const totalVisaFees = tripPlan.reduce((s, d) => {
+   828→    const c = countries.find(co => co.code === d.countryCode);
+   829→    if (d.visaType === 'Visa-Free') return s;
+   830→    return s + (c?.costProfile?.visaFeeUSD || 80);
+   831→  }, 0);
+   832→  const visaFreeCount = tripPlan.filter(d => d.visaType === 'Visa-Free').length;
+   833→
+   834→  const handleExport = () => {
+   835→    const lines = [
+   836→      '🧭 PakVisa Trip Itinerary',
+   837→      `Generated: ${new Date().toLocaleString()}`,
+   838→      '─'.repeat(40),
+   839→      '',
+   840→    ];
+   841→    tripPlan.forEach((d, i) => {
+   842→      lines.push(`${i + 1}. ${d.flagEmoji} ${d.countryName}`);
+   843→      lines.push(`   Visa: ${d.visaType}`);
+   844→      lines.push(`   Dates: ${d.startDate} → ${d.endDate} (${d.estimatedDays} days)`);
+   845→      lines.push(`   Est. Cost: $${d.estimatedCost.toLocaleString()}`);
+   846→      lines.push('');
+   847→    });
+   848→    lines.push('─'.repeat(40));
+   849→    lines.push(`Total: ${totalDays} days | $${totalCost.toLocaleString()} | Visa fees: $${totalVisaFees}`);
+   850→    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+   851→    const url = URL.createObjectURL(blob);
+   852→    const a = document.createElement('a');
+   853→    a.href = url;
+   854→    a.download = `pakvisa-itinerary-${new Date().toISOString().slice(0, 10)}.txt`;
+   855→    a.click();
+   856→    URL.revokeObjectURL(url);
+   857→    toast.success('Itinerary exported successfully!');
+   858→  };
+   859→
+   860→  return (
+   861→    <div className="space-y-4">
+   862→      {/* Summary Panel */}
+   863→      {tripPlan.length > 0 && (
+   864→        <motion.div
+   865→          initial={{ opacity: 0, y: -10 }}
+   866→          animate={{ opacity: 1, y: 0 }}
+   867→          className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+   868→        >
+   869→          <div className="glass-card rounded-lg p-3 text-center">
+   870→            <Clock className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+   871→            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{totalDays}</p>
+   872→            <p className="text-[10px] text-muted-foreground">Total Days</p>
+   873→          </div>
+   874→          <div className="glass-card rounded-lg p-3 text-center">
+   875→            <DollarSign className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+   876→            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">${totalCost.toLocaleString()}</p>
+   877→            <p className="text-[10px] text-muted-foreground">Est. Total Cost</p>
+   878→          </div>
+   879→          <div className="glass-card rounded-lg p-3 text-center">
+   880→            <FileText className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+   881→            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">${totalVisaFees}</p>
+   882→            <p className="text-[10px] text-muted-foreground">Visa Fees</p>
+   883→          </div>
+   884→          <div className="glass-card rounded-lg p-3 text-center">
+   885→            <CheckCircle2 className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+   886→            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{visaFreeCount}/{tripPlan.length}</p>
+   887→            <p className="text-[10px] text-muted-foreground">Visa-Free</p>
+   888→          </div>
+   889→        </motion.div>
+   890→      )}
+   891→
+   892→      {/* Timeline - Desktop Horizontal / Mobile Vertical */}
+   893→      <div className="hidden md:block overflow-x-hidden">
+   894→        {tripPlan.length > 1 && (
+   895→          <div className="relative flex items-start gap-0 mb-6 overflow-x-auto pb-4">
+   896→            {/* Horizontal line */}
+   897→            <div className="absolute top-5 left-0 right-0 h-0.5 bg-amber-200 dark:bg-amber-800 z-0" />
+   898→            {tripPlan.map((dest, idx) => {
+   899→              const phase = getPhaseForDestination(idx, tripPlan.length);
+   900→              return (
+   901→                <div key={`${dest.countryCode}-${idx}`} className="relative flex flex-col items-center flex-shrink-0" style={{ minWidth: 160 }}>
+   902→                  {/* Dot */}
+   903→                  <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center text-sm font-bold z-10 ring-4 ring-background">
+   904→                    {idx + 1}
+   905→                  </div>
+   906→                  {/* Connector label */}
+   907→                  {idx < tripPlan.length - 1 && (
+   908→                    <div className="absolute top-2 left-[60px] text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
+   909→                      {dest.estimatedDays}d
+   910→                    </div>
+   911→                  )}
+   912→                  <p className="mt-2 text-xs font-semibold text-center">{dest.flagEmoji} {dest.countryName}</p>
+   913→                  <Badge variant="outline" className={`mt-1 text-[9px] ${getPhaseColor(phase)}`}>
+   914→                    {phase}
+   915→                  </Badge>
+   916→                </div>
+   917→              );
+   918→            })}
+   919→          </div>
+   920→        )}
+   921→      </div>
+   922→
+   923→      {/* Mobile vertical timeline */}
+   924→      <div className="md:hidden">
+   925→        {tripPlan.length > 0 && (
+   926→          <div className="relative pl-6 border-l-2 border-amber-300 dark:border-amber-700 space-y-4 mb-4">
+   927→            {tripPlan.map((dest, idx) => {
+   928→              const phase = getPhaseForDestination(idx, tripPlan.length);
+   929→              return (
+   930→                <div key={`${dest.countryCode}-${idx}`} className="relative">
+   931→                  <div className="absolute -left-[31px] w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold">
+   932→                    {idx + 1}
+   933→                  </div>
+   934→                  <p className="text-xs font-semibold">{dest.flagEmoji} {dest.countryName}</p>
+   935→                  <Badge variant="outline" className={`mt-0.5 text-[9px] ${getPhaseColor(phase)}`}>
+   936→                    {phase}
+   937→                  </Badge>
+   938→                </div>
+   939→              );
+   940→            })}
+   941→          </div>
+   942→        )}
+   943→      </div>
+   944→
+   945→      {/* Destination Cards */}
+   946→      <AnimatePresence mode="popLayout">
+   947→        {tripPlan.map((dest, idx) => (
+   948→          <motion.div
+   949→            key={`${dest.countryCode}-${idx}`}
+   950→            layout
+   951→            initial={{ opacity: 0, x: 30 }}
+   952→            animate={{ opacity: 1, x: 0 }}
+   953→            exit={{ opacity: 0, x: -30, scale: 0.95 }}
+   954→            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+   955→            className="card-elevated-1"
+   956→          >
+   957→            <div className="p-4 flex flex-col sm:flex-row gap-3">
+   958→              {/* Left: Flag + info */}
+   959→              <div className="flex-1 min-w-0">
+   960→                <div className="flex items-center gap-2 mb-2">
+   961→                  <span className="text-xl">{dest.flagEmoji}</span>
+   962→                  <div className="min-w-0">
+   963→                    <p className="font-semibold text-sm truncate">{dest.countryName}</p>
+   964→                    <Badge variant="outline" className={`badge-3d text-[10px] ${
+   965→                      dest.visaType === 'Visa-Free'
+   966→                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800'
+   967→                        : dest.visaType === 'Visa on Arrival'
+   968→                          ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+   969→                          : 'bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 border-orange-200 dark:border-orange-800'
+   970→                    }`}>
+   971→                      {dest.visaType}
+   972→                    </Badge>
+   973→                  </div>
+   974→                </div>
+   975→                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+   976→                  <div className="flex items-center gap-1.5">
+   977→                    <Calendar className="w-3 h-3" />
+   978→                    <span className="font-medium">{dest.estimatedDays} days</span>
+   979→                  </div>
+   980→                  <div className="flex items-center gap-1.5">
+   981→                    <DollarSign className="w-3 h-3" />
+   982→                    <span className="font-medium">${dest.estimatedCost.toLocaleString()}</span>
+   983→                  </div>
+   984→                </div>
+   985→              </div>
+   986→
+   987→              {/* Right: Date inputs + controls */}
+   988→              <div className="flex flex-col gap-2 items-end shrink-0">
+   989→                <div className="flex items-center gap-1">
+   990→                  <input
+   991→                    type="date"
+   992→                    value={dest.startDate}
+   993→                    onChange={e => handleDateChange(idx, 'startDate', e.target.value)}
+   994→                    className="text-[11px] border rounded-md px-2 py-1 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+   995→                  />
+   996→                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+   997→                  <input
+   998→                    type="date"
+   999→                    value={dest.endDate}
+  1000→                    onChange={e => handleDateChange(idx, 'endDate', e.target.value)}
+  1001→                    className="text-[11px] border rounded-md px-2 py-1 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+  1002→                  />
+  1003→                </div>
+  1004→                <div className="flex items-center gap-1">
+  1005→                  <button
+  1006→                    onClick={() => idx > 0 && reorderTripDestination(idx, idx - 1)}
+  1007→                    disabled={idx === 0}
+  1008→                    className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 disabled:opacity-30 transition-colors press-effect"
+  1009→                    aria-label="Move up"
+  1010→                  >
+  1011→                    <ChevronUp className="w-3.5 h-3.5" />
+  1012→                  </button>
+  1013→                  <button
+  1014→                    onClick={() => idx < tripPlan.length - 1 && reorderTripDestination(idx, idx + 1)}
+  1015→                    disabled={idx === tripPlan.length - 1}
+  1016→                    className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 disabled:opacity-30 transition-colors press-effect"
+  1017→                    aria-label="Move down"
+  1018→                  >
+  1019→                    <ChevronDown className="w-3.5 h-3.5" />
+  1020→                  </button>
+  1021→                  <button
+  1022→                    onClick={() => removeTripDestination(idx)}
+  1023→                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 transition-colors press-effect"
+  1024→                    aria-label="Remove destination"
+  1025→                  >
+  1026→                    <Trash2 className="w-3.5 h-3.5" />
+  1027→                  </button>
+  1028→                </div>
+  1029→              </div>
+  1030→            </div>
+  1031→          </motion.div>
+  1032→        ))}
+  1033→      </AnimatePresence>
+  1034→
+  1035→      {/* Progress bar */}
+  1036→      {tripPlan.length > 0 && (
+  1037→        <div className="space-y-1">
+  1038→          <div className="flex justify-between text-[10px] text-muted-foreground">
+  1039→            <span>Trip progress</span>
+  1040→            <span>{tripPlan.length}/5 destinations</span>
+  1041→          </div>
+  1042→          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+  1043→            <div className="h-full rounded-full progress-amber transition-all duration-500" style={{ width: `${(tripPlan.length / 5) * 100}%` }} />
+  1044→          </div>
+  1045→        </div>
+  1046→      )}
+  1047→
+  1048→      {/* Add / Export Buttons */}
+  1049→      <div className="flex flex-wrap gap-2">
+  1050→        <Button
+  1051→          onClick={() => setShowAddPanel(!showAddPanel)}
+  1052→          disabled={tripPlan.length >= 5}
+  1053→          variant="outline"
+  1054→          size="sm"
+  1055→          className="gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 press-effect"
+  1056→        >
+  1057→          <Plus className="w-4 h-4" />
+  1058→          {tripPlan.length >= 5 ? 'Max 5 Destinations' : 'Add Destination'}
+  1059→        </Button>
+  1060→        {tripPlan.length > 0 && (
+  1061→          <>
+  1062→            <Button
+  1063→              onClick={handleExport}
+  1064→              variant="outline"
+  1065→              size="sm"
+  1066→              className="gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 press-effect"
+  1067→            >
+  1068→              <Download className="w-4 h-4" />
+  1069→              Export Itinerary
+  1070→            </Button>
+  1071→            <Button
+  1072→              onClick={() => { clearTripPlan(); toast.info('Trip plan cleared'); }}
+  1073→              variant="ghost"
+  1074→              size="sm"
+  1075→              className="gap-1.5 text-muted-foreground hover:text-red-500"
+  1076→            >
+  1077→              <RotateCcw className="w-3.5 h-3.5" />
+  1078→              Clear All
+  1079→            </Button>
+  1080→          </>
+  1081→        )}
+  1082→      </div>
+  1083→
+  1084→      {/* Add Destination Panel */}
+  1085→      <AnimatePresence>
+  1086→        {showAddPanel && (
+  1087→          <motion.div
+  1088→            initial={{ opacity: 0, height: 0 }}
+  1089→            animate={{ opacity: 1, height: 'auto' }}
+  1090→            exit={{ opacity: 0, height: 0 }}
+  1091→            className="overflow-hidden"
+  1092→          >
+  1093→            <div className="glass-card rounded-lg p-3 space-y-3">
+  1094→              <div className="relative">
+  1095→                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+  1096→                <Input
+  1097→                  placeholder="Search countries..."
+  1098→                  value={searchQuery}
+  1099→                  onChange={e => setSearchQuery(e.target.value)}
+  1100→                  className="pl-8 h-8 text-xs input-amber"
+  1101→                />
+  1102→              </div>
+  1103→              <div className="max-h-48 overflow-y-auto custom-scrollbar-thin space-y-1">
+  1104→                {filteredCountries.length === 0 ? (
+  1105→                  <p className="text-xs text-muted-foreground text-center py-4">No matching countries found</p>
+  1106→                ) : (
+  1107→                  filteredCountries.map(c => (
+  1108→                    <button
+  1109→                      key={c.code}
+  1110→                      onClick={() => handleAddDestination(c)}
+  1111→                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left press-effect"
+  1112→                    >
+  1113→                      <span className="text-base">{c.flagEmoji}</span>
+  1114→                      <span className="text-xs font-medium flex-1 truncate">{c.name}</span>
+  1115→                      <Badge variant="outline" className={`text-[9px] shrink-0 ${
+  1116→                        c.visaFree
+  1117→                          ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800'
+  1118→                          : c.visaOnArrival
+  1119→                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+  1120→                            : 'bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 border-orange-200 dark:border-orange-800'
+  1121→                      }`}>
+  1122→                        {getVisaTypeLabel(c)}
+  1123→                      </Badge>
+  1124→                    </button>
+  1125→                  ))
+  1126→                )}
+  1127→              </div>
+  1128→            </div>
+  1129→          </motion.div>
+  1130→        )}
+  1131→      </AnimatePresence>
+  1132→
+  1133→      {/* Empty state */}
+  1134→      {tripPlan.length === 0 && !showAddPanel && (
+  1135→        <div className="flex flex-col items-center justify-center py-8 text-center">
+  1136→          <Compass className="w-10 h-10 text-muted-foreground/30 mb-3" />
+  1137→          <p className="text-sm font-medium text-muted-foreground">Plan your multi-destination trip</p>
+  1138→          <p className="text-xs text-muted-foreground mt-1">Add up to 5 destinations to build your itinerary</p>
+  1139→        </div>
+  1140→      )}
+  1141→    </div>
+  1142→  );
+  1143→}
+  1144→
+  1145→// ============================================================
+  1146→// Feature 3: VisaReadinessDashboard
+  1147→// ============================================================
+  1148→
+  1149→export function VisaReadinessDashboard({ countries, userProfile }: { countries: CountryData[]; userProfile: UserProfileData | null }) {
+  1150→  const { setActiveTab, setSelectedCountry } = useAppStore();
+  1151→
+  1152→  const metrics = useMemo(() => {
+  1153→    // 1. Profile Completeness
+  1154→    const profileFields: (keyof UserProfileData)[] = [
+  1155→      'fullName', 'age', 'gender', 'passportNumber', 'passportExpiry',
+  1156→      'occupation', 'monthlyIncomeUSD', 'education', 'travelPurpose', 'budgetUSD',
+  1157→      'maritalStatus', 'intendedStayDays', 'languages', 'hasReturnTicket', 'hasHotelBooking',
+  1158→    ];
+  1159→    const filledCount = userProfile
+  1160→      ? profileFields.filter(k => {
+  1161→          const v = userProfile[k];
+  1162→          if (Array.isArray(v)) return v.length > 0;
+  1163→          return v !== null && v !== undefined && v !== '' && v !== 0;
+  1164→        }).length
+  1165→      : 0;
+  1166→    const profilePct = userProfile ? Math.round((filledCount / profileFields.length) * 100) : 0;
+  1167→
+  1168→    // 2. Financial Readiness
+  1169→    const countriesWithCost = countries.filter(c => c.costProfile);
+  1170→    const avgVisaFee = countriesWithCost.length > 0
+  1171→      ? countriesWithCost.reduce((s, c) => s + (c.costProfile!.visaFeeUSD || 0), 0) / countriesWithCost.length
+  1172→      : 100;
+  1173→    const income = userProfile?.monthlyIncomeUSD || 0;
+  1174→    const financialPct = income > 0 ? Math.min(100, Math.round((income / (avgVisaFee * 3)) * 100)) : 0;
+  1175→
+  1176→    // 3. Document Status (proxy from profile + financial readiness)
+  1177→    const docPct = userProfile
+  1178→      ? Math.round((profilePct * 0.6) + (financialPct > 50 ? 40 : financialPct > 20 ? 25 : 10))
+  1179→      : 0;
+  1180→
+  1181→    // 4. Passport Health
+  1182→    let passportPct = 0;
+  1183→    if (userProfile?.passportExpiry) {
+  1184→      const diffMs = new Date(userProfile.passportExpiry).getTime() - Date.now();
+  1185→      const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30);
+  1186→      passportPct = diffMonths >= 12 ? 100 : diffMonths >= 6 ? Math.round((diffMonths / 12) * 100) : diffMonths > 0 ? Math.round((diffMonths / 6) * 30) : 0;
+  1187→    }
+  1188→
+  1189→    const overall = Math.round((profilePct + financialPct + docPct + passportPct) / 4);
+  1190→
+  1191→    return { profilePct, financialPct, docPct, passportPct, overall };
+  1192→  }, [countries, userProfile]);
+  1193→
+  1194→  const statusConfig = metrics.overall >= 70
+  1195→    ? { label: 'Ready to Apply', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: CircleCheckBig }
+  1196→    : metrics.overall >= 40
+  1197→      ? { label: 'Almost There', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: AlertTriangle }
+  1198→      : { label: 'Needs Preparation', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20', icon: AlertCircle };
+  1199→
+  1200→  const StatusIcon = statusConfig.icon;
+  1201→
+  1202→  // SVG circular gauge
+  1203→  const radius = 48;
+  1204→  const circumference = 2 * Math.PI * radius;
+  1205→  const strokeDashoffset = circumference - (metrics.overall / 100) * circumference;
+  1206→  const gaugeColor = metrics.overall >= 70 ? '#10b981' : metrics.overall >= 40 ? '#f59e0b' : '#ef4444';
+  1207→
+  1208→  const miniCards = [
+  1209→    { label: 'Profile', value: metrics.profilePct, icon: User, color: 'text-amber-500' },
+  1210→    { label: 'Financial', value: metrics.financialPct, icon: Wallet, color: 'text-orange-500' },
+  1211→    { label: 'Documents', value: metrics.docPct, icon: FileCheck, color: 'text-yellow-600' },
+  1212→    { label: 'Passport', value: metrics.passportPct, icon: Shield, color: 'text-amber-600' },
+  1213→  ];
+  1214→
+  1215→  const handleSelectCountry = () => {
+  1216→    const easy = countries.find(c => c.visaFree || c.visaOnArrival);
+  1217→    if (easy) setSelectedCountry(easy);
+  1218→  };
+  1219→
+  1220→  return (
+  1221→    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+  1222→      {/* Status Banner */}
+  1223→      <div className={`flex items-center gap-2 rounded-lg border p-3 mb-4 ${statusConfig.bg}`}>
+  1224→        <StatusIcon className={`w-4 h-4 ${statusConfig.color} shrink-0`} />
+  1225→        <span className={`text-xs font-semibold ${statusConfig.color}`}>{statusConfig.label}</span>
+  1226→        <span className="text-xs text-muted-foreground ml-auto">Overall score: {metrics.overall}%</span>
+  1227→      </div>
+  1228→
+  1229→      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-5">
+  1230→        {/* Circular Gauge */}
+  1231→        <div className="flex flex-col items-center justify-center">
+  1232→          <div className="relative w-[120px] h-[120px]">
+  1233→            <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+  1234→              <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" className="text-muted/30" strokeWidth="8" />
+  1235→              <motion.circle
+  1236→                cx="60" cy="60" r={radius} fill="none" stroke={gaugeColor} strokeWidth="8"
+  1237→                strokeLinecap="round" strokeDasharray={circumference} initial={{ strokeDashoffset: circumference }}
+  1238→                animate={{ strokeDashoffset }} transition={{ duration: 1.2, ease: 'easeOut' }}
+  1239→              />
+  1240→            </svg>
+  1241→            <div className="absolute inset-0 flex flex-col items-center justify-center">
+  1242→              <motion.span className="text-2xl font-bold" style={{ color: gaugeColor }}
+  1243→                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+  1244→                {metrics.overall}%
+  1245→              </motion.span>
+  1246→              <span className="text-[10px] text-muted-foreground">Readiness</span>
+  1247→            </div>
+  1248→          </div>
+  1249→        </div>
+  1250→
+  1251→        {/* Right column: Mini cards + Quick Actions */}
+  1252→        <div className="space-y-4">
+  1253→          {/* 2x2 Mini Metric Cards */}
+  1254→          <div className="grid grid-cols-2 gap-3">
+  1255→            {miniCards.map((card, i) => {
+  1256→              const Icon = card.icon;
+  1257→              return (
+  1258→                <motion.div
+  1259→                  key={card.label}
+  1260→                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1261→                  transition={{ delay: 0.1 + i * 0.08 }} className="stat-card-compact rounded-lg p-3"
+  1262→                >
+  1263→                  <div className="flex items-center gap-1.5 mb-1.5">
+  1264→                    <Icon className={`w-3.5 h-3.5 ${card.color}`} />
+  1265→                    <span className="text-[10px] text-muted-foreground font-medium">{card.label}</span>
+  1266→                  </div>
+  1267→                  <div className="text-lg font-bold">{card.value}%</div>
+  1268→                  <div className="h-1 w-full rounded-full bg-muted mt-1.5 overflow-hidden">
+  1269→                    <motion.div className="h-full rounded-full progress-amber" initial={{ width: 0 }}
+  1270→                      animate={{ width: `${card.value}%` }} transition={{ duration: 0.6, delay: 0.2 + i * 0.08 }} />
+  1271→                  </div>
+  1272→                </motion.div>
+  1273→              );
+  1274→            })}
+  1275→          </div>
+  1276→
+  1277→          {/* Quick Actions */}
+  1278→          <div className="flex flex-wrap gap-2">
+  1279→            <Button size="sm" variant="outline" className="text-xs gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+  1280→              onClick={() => setActiveTab('questionnaire')}>
+  1281→              <User className="w-3.5 h-3.5" /> Complete Profile
+  1282→            </Button>
+  1283→            <Button size="sm" variant="outline" className="text-xs gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+  1284→              onClick={handleSelectCountry}>
+  1285→              <FileCheck className="w-3.5 h-3.5" /> Check Documents
+  1286→            </Button>
+  1287→            <Button size="sm" className="text-xs gap-1.5 bg-amber-500 hover:bg-amber-600 text-white"
+  1288→              onClick={() => setActiveTab('questionnaire')}>
+  1289→              <ArrowRight className="w-3.5 h-3.5" /> Start Application
+  1290→            </Button>
+  1291→          </div>
+  1292→        </div>
+  1293→      </div>
+  1294→    </motion.div>
+  1295→  );
+  1296→}
+  1297→
+  1298→// ============================================================
+  1299→// Feature 4: SmartRecommendations
+  1300→// ============================================================
+  1301→
+  1302→interface RecommendationResult {
+  1303→  country: CountryData;
+  1304→  matchScore: number;
+  1305→  reasons: string[];
+  1306→}
+  1307→
+  1308→export function SmartRecommendations({ countries, userProfile }: { countries: CountryData[]; userProfile: UserProfileData | null }) {
+  1309→  const { setSelectedCountry } = useAppStore();
+  1310→
+  1311→  const recommendations = useMemo<RecommendationResult[]>(() => {
+  1312→    if (countries.length === 0) return [];
+  1313→
+  1314→    const scored = countries.map(c => {
+  1315→      let score = 50;
+  1316→      const reasons: string[] = [];
+  1317→
+  1318→      // Visa ease (up to +30)
+  1319→      if (c.visaFree) { score += 30; reasons.push('Visa-free entry for Pakistani citizens'); }
+  1320→      else if (c.visaOnArrival) { score += 22; reasons.push('Visa on arrival — no prior application needed'); }
+  1321→      else if (c.etaAvailable) { score += 15; reasons.push('e-Visa available — apply online'); }
+  1322→
+  1323→      // Safety (up to +15)
+  1324→      if (c.safetyRating >= 8) { score += 15; reasons.push(`High safety rating (${c.safetyRating}/10)`); }
+  1325→      else if (c.safetyRating >= 6) { score += 8; }
+  1326→
+  1327→      // Processing speed (up to +10)
+  1328→      const avgProcessing = (c.processingDaysMin + c.processingDaysMax) / 2;
+  1329→      if (avgProcessing <= 5) { score += 10; reasons.push(`Fast processing (${c.processingDaysMin}-${c.processingDaysMax} days)`); }
+  1330→      else if (avgProcessing <= 15) { score += 5; }
+  1331→
+  1332→      // Budget alignment (up to +20) — only if profile exists
+  1333→      if (userProfile?.budgetUSD && userProfile.budgetUSD > 0 && c.costProfile?.totalMonthlyUSD) {
+  1334→        const ratio = userProfile.budgetUSD / c.costProfile.totalMonthlyUSD;
+  1335→        if (ratio >= 1.5) { score += 20; reasons.push('Well within your budget'); }
+  1336→        else if (ratio >= 1) { score += 12; reasons.push('Fits your budget'); }
+  1337→        else if (ratio >= 0.7) { score += 5; }
+  1338→      }
+  1339→
+  1340→      return { country: c, matchScore: Math.min(99, score), reasons: reasons.slice(0, 2) };
+  1341→    });
+  1342→
+  1343→    scored.sort((a, b) => b.matchScore - a.matchScore);
+  1344→    return scored.slice(0, 6);
+  1345→  }, [countries, userProfile]);
+  1346→
+  1347→  const getVisaBadge = (c: CountryData) => {
+  1348→    if (c.visaFree) return { label: 'Visa-Free', cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20' };
+  1349→    if (c.visaOnArrival) return { label: 'VOA', cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20' };
+  1350→    if (c.etaAvailable) return { label: 'e-Visa', cls: 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/20' };
+  1351→    return { label: 'Embassy', cls: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20' };
+  1352→  };
+  1353→
+  1354→  if (recommendations.length === 0) return null;
+  1355→
+  1356→  return (
+  1357→    <div className="space-y-4">
+  1358→      <div className="flex items-center gap-2">
+  1359→        <Sparkles className="w-5 h-5 text-amber-500" />
+  1360→        <h2 className="text-lg font-bold">Smart Picks For You</h2>
+  1361→      </div>
+  1362→      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+  1363→        {recommendations.map((rec, i) => {
+  1364→          const badge = getVisaBadge(rec.country);
+  1365→          return (
+  1366→            <motion.div
+  1367→              key={rec.country.code}
+  1368→              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+  1369→              transition={{ delay: i * 0.07, duration: 0.4 }}
+  1370→              className="card-elevated-1 rounded-xl p-4 group hover:shadow-amber-500/10 hover:shadow-lg transition-all duration-300 cursor-pointer"
+  1371→              onClick={() => setSelectedCountry(rec.country)}
+  1372→            >
+  1373→              <div className="flex items-center gap-2 mb-2">
+  1374→                <span className="text-xl">{rec.country.flagEmoji}</span>
+  1375→                <div className="min-w-0 flex-1">
+  1376→                  <p className="text-sm font-semibold truncate">{rec.country.name}</p>
+  1377→                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${badge.cls}`}>{badge.label}</Badge>
+  1378→                </div>
+  1379→                <div className="text-right shrink-0">
+  1380→                  <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{rec.matchScore}%</span>
+  1381→                  <p className="text-[9px] text-muted-foreground">match</p>
+  1382→                </div>
+  1383→              </div>
+  1384→              <div className="space-y-1 mb-3">
+  1385→                {rec.reasons.map((r, ri) => (
+  1386→                  <div key={ri} className="flex items-start gap-1.5">
+  1387→                    <Lightbulb className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
+  1388→                    <span className="text-[11px] text-muted-foreground leading-tight">{r}</span>
+  1389→                  </div>
+  1390→                ))}
+  1391→              </div>
+  1392→              <Button size="sm" variant="ghost" className="w-full text-xs gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-700 dark:hover:text-amber-300">
+  1393→                View Details <ArrowRight className="w-3 h-3" />
+  1394→              </Button>
+  1395→            </motion.div>
+  1396→          );
+  1397→        })}
+  1398→      </div>
+  1399→    </div>
+  1400→  );
+  1401→}
+  1402→
+  1403→// ============================================================
+  1404→// Feature 5: EnhancedFAQ
+  1405→// ============================================================
+  1406→
+  1407→type FAQCategory = 'Visa Basics' | 'Application Process' | 'Documents & Requirements' | 'After Arrival';
+  1408→
+  1409→interface FAQItem {
+  1410→  id: string;
+  1411→  question: string;
+  1412→  answer: string;
+  1413→  category: FAQCategory;
+  1414→  icon: React.ElementType;
+  1415→}
+  1416→
+  1417→const FAQ_DATA: FAQItem[] = [
+  1418→  { id: 'e-faq-1', question: 'Which countries can Pakistani citizens visit visa-free?', answer: 'Pakistani passport holders can visit several countries visa-free, including Malaysia (30 days), Dominica, Micronesia, Vanuatu, Trinidad & Tobago, and Saint Vincent & the Grenadines. Always verify requirements with the official embassy before travel as policies can change.', category: 'Visa Basics', icon: Globe },
+  1419→  { id: 'e-faq-2', question: 'How strong is the Pakistani passport globally?', answer: 'The Pakistani passport is ranked around 100-110th on the Henley Passport Index. However, more countries are introducing e-Visa and visa on arrival facilities. Middle Eastern and Southeast Asian countries are generally the most accessible for Pakistani travelers.', category: 'Visa Basics', icon: Shield },
+  1420→  { id: 'e-faq-3', question: 'What is the difference between e-Visa and Visa on Arrival?', answer: 'An e-Visa must be applied for online before travel and takes 1-5 business days. Visa on Arrival is issued at the airport/border when you arrive, taking 5-30 minutes. Popular e-Visa: Turkey, Kenya. Popular VOA: UAE, Saudi Arabia, Maldives.', category: 'Visa Basics', icon: Plane },
+  1421→  { id: 'e-faq-4', question: 'Can I travel with a passport that expires in less than 6 months?', answer: 'Most countries require at least 6 months of passport validity beyond your planned stay. Some require only 3 months. Traveling with less validity may result in denied boarding. Always check the specific country requirement and renew your passport early.', category: 'Visa Basics', icon: AlertTriangle },
+  1422→  { id: 'e-faq-5', question: 'How do I apply for a Schengen visa from Pakistan?', answer: 'Apply at the embassy/consulate of your primary destination country. Required documents: valid passport (6+ months), bank statements (6 months), travel insurance (€30,000+), flight itinerary, hotel bookings, employment letter, and tax returns. Processing takes 15-30 business days.', category: 'Application Process', icon: Building },
+  1423→  { id: 'e-faq-6', question: 'What is the typical visa processing time for popular destinations?', answer: 'Processing times vary: UAE/Saudi VOA (instant), Malaysia e-Visa (2-3 days), Turkey e-Visa (1-2 days), UK visitor visa (15-30 days), Schengen visa (15-30 days), USA visa (varies, often weeks). Apply at least 4-6 weeks before travel.', category: 'Application Process', icon: Clock },
+  1424→  { id: 'e-faq-7', question: 'How do I book a visa appointment at an embassy?', answer: 'Most embassies in Pakistan (Islamabad, Karachi, Lahore) require online appointment booking through their official website or VFS Global. Appointments can fill up quickly during peak season (May-August). Book 4-8 weeks in advance and bring all required documents.', category: 'Application Process', icon: Calendar },
+  1425→  { id: 'e-faq-8', question: 'Can I track my visa application status?', answer: 'Yes. Most embassies provide online tracking through their website or VFS Global. You typically need your application reference number and passport number. Some countries also send SMS/email updates at each processing stage.', category: 'Application Process', icon: Search },
+  1426→  { id: 'e-faq-9', question: 'What documents are commonly required for a tourist visa?', answer: 'Common requirements include: valid passport, completed application form, passport-size photographs, bank statements (3-6 months), employment letter, hotel/flight bookings, travel insurance, and purpose letter. Specific requirements vary by country.', category: 'Documents & Requirements', icon: FileText },
+  1427→  { id: 'e-faq-10', question: 'How much bank balance do I need to show for a visa?', answer: 'Requirements vary: Schengen requires €50-100/day, UK requires enough to cover trip costs, Middle Eastern countries may require less. Show consistent balance over 3-6 months, not just a recent deposit. A stable income flow is more convincing than a large sudden deposit.', category: 'Documents & Requirements', icon: Banknote },
+  1428→  { id: 'e-faq-11', question: 'Is travel insurance mandatory for visa applications?', answer: 'Yes for most destinations. Schengen requires minimum €30,000 coverage. UK, Australia, Canada also mandate it. Even where not required, it is strongly recommended. Ensure coverage includes medical emergencies, trip cancellation, and repatriation.', category: 'Documents & Requirements', icon: ShieldCheck },
+  1429→  { id: 'e-faq-12', question: 'Do I need an NOC from my employer for a visa?', answer: 'An NOC (No Objection Certificate) is not always mandatory but significantly strengthens your application. It shows strong ties to Pakistan. Self-employed applicants should bring business registration documents and tax returns instead.', category: 'Documents & Requirements', icon: Briefcase },
+  1430→  { id: 'e-faq-13', question: 'What should I do upon arrival at my destination?', answer: 'Have printed copies of your visa, hotel booking, return ticket, and travel insurance. Fill arrival cards if required. Know the local emergency number. Keep embassy contact info handy. Declare currency if above the limit.', category: 'After Arrival', icon: PlaneTakeoff },
+  1431→  { id: 'e-faq-14', question: 'Can I extend my visa while abroad?', answer: 'Some countries allow visa extensions (e.g., Malaysia, Thailand, Turkey). Apply before your current visa expires at the local immigration office. Overstaying can lead to fines, deportation, or future visa bans. Check extension rules before traveling.', category: 'After Arrival', icon: RotateCcw },
+  1432→  { id: 'e-faq-15', question: 'What happens if my visa application is rejected?', answer: 'You will receive a rejection letter with reasons. Common reasons: insufficient funds, incomplete documents, weak ties to home country. You can reapply after addressing the issues. Some countries allow appeals within a specific timeframe. Each rejection makes future applications harder.', category: 'After Arrival', icon: AlertCircle },
+  1433→];
+  1434→
+  1435→const FAQ_CATEGORIES: { label: FAQCategory | 'All'; icon: React.ElementType }[] = [
+  1436→  { label: 'All', icon: HelpCircle },
+  1437→  { label: 'Visa Basics', icon: Globe },
+  1438→  { label: 'Application Process', icon: FileText },
+  1439→  { label: 'Documents & Requirements', icon: ClipboardCheck },
+  1440→  { label: 'After Arrival', icon: PlaneTakeoff },
+  1441→];
+  1442→
+  1443→export function EnhancedFAQ() {
+  1444→  const [search, setSearch] = useState('');
+  1445→  const [activeCategory, setActiveCategory] = useState<FAQCategory | 'All'>('All');
+  1446→
+  1447→  const filtered = useMemo(() => {
+  1448→    return FAQ_DATA.filter(item => {
+  1449→      const matchCategory = activeCategory === 'All' || item.category === activeCategory;
+  1450→      const matchSearch = !search || item.question.toLowerCase().includes(search.toLowerCase()) || item.answer.toLowerCase().includes(search.toLowerCase());
+  1451→      return matchCategory && matchSearch;
+  1452→    });
+  1453→  }, [search, activeCategory]);
+  1454→
+  1455→  return (
+  1456→    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+  1457→      <div className="flex items-center gap-2 mb-4">
+  1458→        <HelpCircle className="w-5 h-5 text-amber-500" />
+  1459→        <h2 className="text-lg font-bold">Frequently Asked Questions</h2>
+  1460→      </div>
+  1461→
+  1462→      {/* Search */}
+  1463→      <div className="relative mb-4">
+  1464→        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+  1465→        <Input
+  1466→          placeholder="Search questions..."
+  1467→          value={search} onChange={e => setSearch(e.target.value)}
+  1468→          className="pl-9 input-amber h-9 text-sm"
+  1469→        />
+  1470→        {search && (
+  1471→          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+  1472→            <X className="w-3.5 h-3.5" />
+  1473→          </button>
+  1474→        )}
+  1475→      </div>
+  1476→
+  1477→      {/* Category Tabs */}
+  1478→      <div className="flex flex-wrap gap-1.5 mb-4">
+  1479→        {FAQ_CATEGORIES.map(cat => {
+  1480→          const CatIcon = cat.icon;
+  1481→          return (
+  1482→            <button
+  1483→              key={cat.label}
+  1484→              onClick={() => setActiveCategory(cat.label)}
+  1485→              className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 ${activeCategory === cat.label
+  1486→                ? 'bg-amber-500 text-white shadow-sm'
+  1487→                : 'bg-muted text-muted-foreground hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300'
+  1488→              }`}
+  1489→            >
+  1490→              <CatIcon className="w-3 h-3" /> {cat.label}
+  1491→            </button>
+  1492→          );
+  1493→        })}
+  1494→      </div>
+  1495→
+  1496→      {/* FAQ Items */}
+  1497→      {filtered.length === 0 ? (
+  1498→        <div className="text-center py-10">
+  1499→          <SearchX className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+  1500→          <p className="text-sm text-muted-foreground">No questions match your search.</p>
+  1501→          <button onClick={() => { setSearch(''); setActiveCategory('All'); }} className="text-xs text-amber-500 hover:underline mt-1">Clear filters</button>
+  1502→        </div>
+  1503→      ) : (
+  1504→        <Accordion type="single" collapsible className="w-full">
+  1505→          {filtered.map((item, i) => {
+  1506→            const ItemIcon = item.icon;
+  1507→            return (
+  1508→              <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+  1509→                <AccordionItem value={item.id}>
+  1510→                  <AccordionTrigger className="text-sm font-medium text-left gap-2 hover:no-underline">
+  1511→                    <div className="flex items-center gap-2">
+  1512→                      <ItemIcon className="w-4 h-4 text-amber-500 shrink-0" />
+  1513→                      <span>{item.question}</span>
+  1514→                    </div>
+  1515→                  </AccordionTrigger>
+  1516→                  <AccordionContent className="text-sm text-muted-foreground leading-relaxed pl-6">
+  1517→                    {item.answer}
+  1518→                  </AccordionContent>
+  1519→                </AccordionItem>
+  1520→              </motion.div>
+  1521→            );
+  1522→          })}
+  1523→        </Accordion>
+  1524→      )}
+  1525→    </motion.div>
+  1526→  );
+  1527→}
+  1528→

@@ -85,6 +85,10 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    if (reportData.length === 0) {
+      return NextResponse.json({ error: 'No matching countries found for the provided codes' }, { status: 400 });
+    }
+
     return NextResponse.json({
       data: {
         generatedAt: new Date().toISOString(),

@@ -190,7 +190,7 @@ export function InteractiveWorldMap({ countries, onSelectCountry }: { countries:
         setSvgContent(processed);
       })
       .catch(() => setSvgContent(''));
-  }, []);
+  }, [countries]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!e.target || !(e.target instanceof SVGElement)) {

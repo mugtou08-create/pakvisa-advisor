@@ -4,6 +4,14 @@ import { calculateScore, compareCountries } from '@/lib/scoring';
 import { rateLimit } from '@/lib/rate-limit';
 import type { CountryData, UserProfileData, ScoreBreakdown } from '@/lib/types';
 
+function safeJsonParse(str: string): any {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return str;
+  }
+}
+
 interface CompareRequestBody {
   countryCodes: string[];
   profile: UserProfileData;
@@ -88,7 +96,7 @@ function transformCountryToData(country: {
     safetySummary: country.safetySummary,
     bestTravelMonths: country.bestTravelMonths,
     avgTempC: country.avgTempC,
-    monthlyTemps: JSON.parse(country.monthlyTemps),
+    monthlyTemps: safeJsonParse(country.monthlyTemps),
     processingDaysMin: country.processingDaysMin,
     processingDaysMax: country.processingDaysMax,
     sourceUrl: country.sourceUrl,
@@ -142,7 +150,7 @@ function transformCountryToData(country: {
 export async function POST(request: NextRequest) {
   try {
     // Rate limit: 30 requests/minute
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 30, 60000)) {
       return NextResponse.json(
         { success: false, error: 'Too many requests. Please try again later.' },
@@ -214,24 +222,24 @@ export async function POST(request: NextRequest) {
     // Compare countries using the compare function
     const comparison = compareCountries(scores);
 
-    // Create audit logs if sessionId provided
+    // Create audit logs in a single bulk operation if sessionId provided
     if (sessionId) {
       const session = await db.session.findUnique({
         where: { id: sessionId },
       });
       if (session) {
-        for (const country of countries) {
-          await db.auditLog.create({
-            data: {
-              sessionId: sessionId,
-              action: 'COMPARE_SCORE',
-              countryId: country.id,
-              component: 'Comparison',
-              score: scores.find((s) => s.countryCode === country.code)?.finalScore || 0,
-              details: `Compared ${country.name} with other countries`,
-            },
-          });
-        }
+        const auditEntries = countries.map((country) => ({
+          sessionId,
+          action: 'COMPARE_SCORE' as const,
+          countryId: country.id,
+          component: 'Comparison',
+          score: scores.find((s) => s.countryCode === country.code)?.finalScore || 0,
+          weight: null as number | null,
+          multiplier: null as number | null,
+          confidence: 0,
+          details: `Compared ${country.name} with other countries`,
+        }));
+        await db.auditLog.createMany({ data: auditEntries });
       }
     }
 
@@ -248,7 +256,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error comparing countries:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to compare countries', details: String(error) },
+      { success: false, error: 'Failed to compare countries', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

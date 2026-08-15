@@ -37,9 +37,9 @@ function checkFreeLimit(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     const body: ChatRequestBody = await request.json();
-    const { message, context, history, isPro } = body;
+    const { message, context, history } = body;
 
     if (!message || !message.trim()) {
       return NextResponse.json(
@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const proUser = isPro === true;
+    // Never trust client-supplied isPro — always treat as free tier
+    const proUser = false;
 
     // Rate limiting: Pro users get higher limits
     if (proUser) {
@@ -281,7 +282,7 @@ ${proContextInstruction}`;
   } catch (error) {
     console.error('Error in chat:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to process chat message' },
+      { success: false, error: 'Failed to process chat message', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }

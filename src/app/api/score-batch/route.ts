@@ -4,6 +4,14 @@ import { calculateScore } from '@/lib/scoring';
 import { rateLimit } from '@/lib/rate-limit';
 import type { CountryData, UserProfileData, ScoreBreakdown } from '@/lib/types';
 
+function safeJsonParse(str: string): any {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return str;
+  }
+}
+
 interface BatchScoreRequestBody {
   profile: UserProfileData;
   userProfileId?: string;
@@ -91,7 +99,7 @@ function transformCountryToData(country: {
     safetySummary: country.safetySummary,
     bestTravelMonths: country.bestTravelMonths,
     avgTempC: country.avgTempC,
-    monthlyTemps: JSON.parse(country.monthlyTemps),
+    monthlyTemps: safeJsonParse(country.monthlyTemps),
     processingDaysMin: country.processingDaysMin,
     processingDaysMax: country.processingDaysMax,
     sourceUrl: country.sourceUrl,
@@ -147,7 +155,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // Rate limit: 30 requests/minute
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 30, 60000)) {
       return NextResponse.json(
         { success: false, error: 'Too many requests. Please try again later.' },
@@ -298,7 +306,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error calculating batch scores:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to calculate batch scores', details: String(error) },
+      { success: false, error: 'Failed to calculate batch scores', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
       { status: 500 }
     );
   }
