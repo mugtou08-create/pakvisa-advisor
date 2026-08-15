@@ -50,5 +50,13 @@ test
 prompt
 
 server.log
+
+# Migration scripts (contain auth tokens)
+migrate-to-turso.ts
+
+# Database files
+/db/
+*.db
+
 # Skills directory
 /skills/bun.lock

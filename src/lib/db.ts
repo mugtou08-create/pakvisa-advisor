@@ -38,10 +38,12 @@ function createTursoClient() {
     }
   }
 
-  // In production, DATABASE_URL is required — no silent fallback
+  // In production, DATABASE_URL (libsql://...) is required
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
-      'DATABASE_URL (libsql://) is required in production.'
+      'DATABASE_URL or TURSO_DATABASE_URL environment variable is missing or invalid. ' +
+      'It must start with libsql://. ' +
+      'Set it in Vercel Dashboard → Settings → Environment Variables.'
     );
   }
 
