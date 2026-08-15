@@ -7,18 +7,28 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createTursoClient() {
-  // Support multiple env var formats:
-  // Format 1: TURSO_DATABASE_URL + TURSO_AUTH_TOKEN (separate)
-  // Format 2: DATABASE_URL with authToken embedded (Prisma-compatible)
   const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
   if (tursoUrl && tursoUrl.startsWith('libsql://')) {
     try {
-      const baseUrl = tursoUrl.split('?')[0]; // strip any query params
-      const libsql = tursoToken
-        ? createClient({ url: baseUrl, authToken: tursoToken })
-        : createClient({ url: baseUrl });
+      // Check if auth token is embedded in URL query string
+      const hasEmbeddedToken = tursoUrl.includes('authToken=');
+      
+      let libsql;
+      if (tursoToken) {
+        // Prefer explicit TURSO_AUTH_TOKEN, strip query from URL
+        const baseUrl = tursoUrl.split('?')[0];
+        libsql = createClient({ url: baseUrl, authToken: tursoToken });
+      } else if (hasEmbeddedToken) {
+        // Use the URL as-is (auth token embedded in query string)
+        libsql = createClient({ url: tursoUrl });
+      } else {
+        // No auth token at all
+        const baseUrl = tursoUrl.split('?')[0];
+        libsql = createClient({ url: baseUrl });
+      }
+      
       const adapter = new PrismaLibSql(libsql);
       return new PrismaClient({ adapter, log: ['error', 'warn'] });
     } catch (error) {
@@ -31,8 +41,7 @@ function createTursoClient() {
   // In production, DATABASE_URL is required — no silent fallback
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
-      'DATABASE_URL (libsql://) is required in production. ' +
-      'Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables.'
+      'DATABASE_URL (libsql://) is required in production.'
     );
   }
 
