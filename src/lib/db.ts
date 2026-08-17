@@ -10,34 +10,39 @@ const FALLBACK_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQ
 const FALLBACK_URL = 'libsql://pakvisa-db-pakvisa.aws-eu-west-1.turso.io';
 
 function createPrismaClient() {
-  const envUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
-
-  // For production: use Turso via adapter
-  if (process.env.NODE_ENV === 'production') {
-    const tursoUrl = (envUrl && envUrl.startsWith('libsql://'))
-      ? envUrl.split('?')[0]
-      : FALLBACK_URL;
-
-    let token = process.env.TURSO_AUTH_TOKEN;
-    if (!token && envUrl?.includes('authToken=')) {
-      const match = envUrl.match(/authToken=([^&]+)/);
-      if (match) token = match[1];
-    }
-    if (!token) token = FALLBACK_TOKEN;
-
-    // KEY: Set DATABASE_URL to a dummy file path so Prisma's schema validation
-    // (provider=sqlite expects file:) passes. The actual queries go through
-    // the adapter, which uses the real libsql connection.
-    process.env.DATABASE_URL = 'file:./dummy.db';
-
-    const libsql = createClient({ url: tursoUrl, authToken: token });
-    const adapter = new PrismaLibSQL(libsql);
-
-    return new PrismaClient({ adapter, log: ['error', 'warn'] });
+  // Development: local SQLite
+  if (process.env.NODE_ENV !== 'production') {
+    return new PrismaClient({ log: ['error', 'warn'] });
   }
 
-  // Development: use local SQLite
-  return new PrismaClient({ log: ['error', 'warn'] });
+  // Production: Turso via adapter
+  const envUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
+  const tursoUrl = (envUrl && envUrl.startsWith('libsql://'))
+    ? envUrl.split('?')[0]
+    : FALLBACK_URL;
+
+  let token = process.env.TURSO_AUTH_TOKEN;
+  if (!token && envUrl?.includes('authToken=')) {
+    const match = envUrl.match(/authToken=([^&]+)/);
+    if (match) token = match[1];
+  }
+  if (!token) token = FALLBACK_TOKEN;
+
+  const libsql = createClient({ url: tursoUrl, authToken: token });
+  const adapter = new PrismaLibSQL(libsql);
+
+  // Override datasource URL in constructor so Prisma's schema validation
+  // (provider=sqlite requires file: URL) passes even on Vercel where
+  // process.env.DATABASE_URL is frozen and points to libsql://
+  return new PrismaClient({
+    adapter,
+    datasources: {
+      db: {
+        url: 'file:./dummy.db',
+      },
+    },
+    log: ['error', 'warn'],
+  });
 }
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();
