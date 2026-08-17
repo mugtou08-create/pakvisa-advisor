@@ -116,9 +116,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching countries:', error);
-    const errDetails = error instanceof Error ? { message: error.message, stack: error.stack, name: error.name } : { raw: String(error) };
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch countries', details: errDetails },
+      { success: false, error: 'Failed to fetch countries' },
       { status: 500 }
     );
   }
