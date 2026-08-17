@@ -10,29 +10,35 @@ const FALLBACK_URL = 'libsql://pakvisa-db-pakvisa.aws-eu-west-1.turso.io';
 function createPrismaClient() {
   const envUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
 
-  // Determine URL
-  let url: string | null = (envUrl && envUrl.startsWith('libsql://'))
+  // Extract base URL
+  const baseUrl = (envUrl && envUrl.startsWith('libsql://'))
     ? envUrl.split('?')[0]
-    : (process.env.NODE_ENV === 'production' ? FALLBACK_URL : null);
+    : null;
 
-  if (!url) {
-    // Development: use local SQLite
-    return new PrismaClient({ log: ['error', 'warn'] });
-  }
-
-  // Determine auth token
-  let token = process.env.TURSO_AUTH_TOKEN;
-  if (!token && envUrl?.includes('authToken=')) {
+  // Extract token from env URL query string
+  let envToken: string | undefined;
+  if (envUrl?.includes('authToken=')) {
     const match = envUrl.match(/authToken=([^&]+)/);
-    if (match) token = match[1];
-  }
-  if (!token && process.env.NODE_ENV === 'production') {
-    token = FALLBACK_TOKEN;
+    if (match) envToken = match[1];
   }
 
-  // Embed token in DATABASE_URL for Prisma's native libsql support
-  const fullUrl = token ? `${url}?authToken=${token}` : url;
-  process.env.DATABASE_URL = fullUrl;
+  // Determine final URL with token
+  const finalUrl = (() => {
+    // If env URL already has token embedded, use it as-is
+    if (envToken) return envUrl;
+    // If we have a separate env token, append it
+    if (process.env.TURSO_AUTH_TOKEN && baseUrl) return `${baseUrl}?authToken=${process.env.TURSO_AUTH_TOKEN}`;
+    // Production fallback: use hardcoded token
+    if (process.env.NODE_ENV === 'production') return `${FALLBACK_URL}?authToken=${FALLBACK_TOKEN}`;
+    // No token available - use bare URL or local
+    return envUrl || 'file:./db/custom.db';
+  })();
+
+  // CRITICAL: Set DATABASE_URL before creating PrismaClient
+  // Prisma reads env("DATABASE_URL") from schema.prisma at instantiation
+  process.env.DATABASE_URL = finalUrl;
+
+  console.log(`[DB] Connecting to: ${finalUrl.substring(0, 50)}...`);
 
   return new PrismaClient({ log: ['error', 'warn'] });
 }
