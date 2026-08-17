@@ -6,29 +6,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 };
 
+// Production Turso fallback (remove once Vercel env vars are confirmed working)
+const PROD_TURSO_URL = 'libsql://pakvisa-db-pakvisa.aws-eu-west-1.turso.io';
+const PROD_TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN as string | undefined;
+
 function createTursoClient() {
   const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
-  const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-  if (tursoUrl && tursoUrl.startsWith('libsql://')) {
+  // Determine connection: env var > production fallback
+  const url = (tursoUrl && tursoUrl.startsWith('libsql://'))
+    ? tursoUrl
+    : (process.env.NODE_ENV === 'production' ? PROD_TURSO_URL : null);
+
+  if (url) {
     try {
-      // Check if auth token is embedded in URL query string
-      const hasEmbeddedToken = tursoUrl.includes('authToken=');
-      
-      let libsql;
-      if (tursoToken) {
-        // Prefer explicit TURSO_AUTH_TOKEN, strip query from URL
-        const baseUrl = tursoUrl.split('?')[0];
-        libsql = createClient({ url: baseUrl, authToken: tursoToken });
-      } else if (hasEmbeddedToken) {
-        // Use the URL as-is (auth token embedded in query string)
-        libsql = createClient({ url: tursoUrl });
-      } else {
-        // No auth token at all
-        const baseUrl = tursoUrl.split('?')[0];
-        libsql = createClient({ url: baseUrl });
-      }
-      
+      const libsql = createClient({ url, authToken: PROD_TURSO_TOKEN });
       const adapter = new PrismaLibSQL(libsql);
       return new PrismaClient({ adapter, log: ['error', 'warn'] });
     } catch (error) {
@@ -38,16 +30,7 @@ function createTursoClient() {
     }
   }
 
-  // In production, DATABASE_URL (libsql://...) is required
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'DATABASE_URL or TURSO_DATABASE_URL environment variable is missing or invalid. ' +
-      'It must start with libsql://. ' +
-      'Set it in Vercel Dashboard → Settings → Environment Variables.'
-    );
-  }
-
-  // Fallback to local SQLite for development only
+  // Development only: local SQLite fallback
   console.warn('[DB] No Turso URL found, falling back to local SQLite (development only)');
   return new PrismaClient({ log: ['error', 'warn'] });
 }
