@@ -116,8 +116,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching countries:', error);
+    const errDetails = error instanceof Error ? { message: error.message, stack: error.stack, name: error.name } : { raw: String(error) };
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch countries', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
+      { success: false, error: 'Failed to fetch countries', details: errDetails },
       { status: 500 }
     );
   }
