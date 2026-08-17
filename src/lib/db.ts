@@ -13,6 +13,10 @@ const TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOj
 function createPrismaClient() {
   // Production: connect to Turso via Prisma adapter
   if (process.env.NODE_ENV === 'production') {
+    // Safety net: ensure DATABASE_URL is a valid SQLite path for Prisma's
+    // internal schema validation. The adapter handles the real Turso connection.
+    process.env.DATABASE_URL = 'file:./dummy.db';
+
     const libsql = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN });
     const adapter = new PrismaLibSQL(libsql);
     return new PrismaClient({ adapter, log: ['error', 'warn'] });
