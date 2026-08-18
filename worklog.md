@@ -131,3 +131,49 @@ Stage Summary:
 - ~~Turso auth token was briefly exposed~~ → **FIXED: Old tokens invalidated by user**
 - AI Visa Consultant NOT working on live site — needs Google Gemini API key ($0 free tier)
 - In-memory rate limiting ineffective on serverless (needs Vercel KV/Upstash)
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Add Google Analytics, AdSense support, and affiliate link placements
+
+Work Log:
+- Created src/components/analytics.tsx with GoogleAnalytics + GoogleAdSense components
+- Both are activated via env vars (NEXT_PUBLIC_GA_MEASUREMENT_ID, NEXT_PUBLIC_ADSENSE_CLIENT_ID)
+- When env vars are not set, nothing renders (zero impact when not configured)
+- Added analytics components to layout.tsx <head>
+- Created src/lib/affiliate-config.ts for centralized affiliate URL management
+- Added 'Travel Resources' affiliate section in country detail cards (country-detail.tsx)
+  - 4 partner cards: Apply for Visa (iVisa), Travel Insurance (SafetyWing), Find Hotels (Booking.com), Search Flights (Skyscanner)
+  - Each card has icon, label, hover effect, opens in new tab with rel='sponsored'
+  - Includes small '(sponsored)' label and FTC-compliant disclosure text
+- Added 'Trusted Partners' affiliate bar in footer (page.tsx)
+  - Subtle row above copyright with links to all 4 partners
+- All affiliate URLs use placeholder referral params — user needs to sign up for real programs
+- Committed and pushed to GitHub
+- Verified via agent-browser: footer shows 'Trusted Partners' with iVisa, SafetyWing, Booking.com, Skyscanner links
+- Lint passes clean
+
+Stage Summary:
+- Google Analytics: Ready to activate — user sets NEXT_PUBLIC_GA_MEASUREMENT_ID in Vercel
+- AdSense: Ready for future use — user sets NEXT_PUBLIC_ADSENSE_CLIENT_ID in Vercel
+- Affiliate links: Live on site in 2 locations (country cards + footer)
+- User needs to: (1) sign up for affiliate programs, (2) get GA measurement ID, (3) provide Gemini API key
+
+### Working Features (updated)
+- ✅ 70 countries loading with data from Turso
+- ✅ Search with auto-scroll to specific country card on Enter
+- ✅ Region/visa type filters and sort
+- ✅ Country cards with expand/collapse details
+- ✅ Popular destinations, visa alerts, stats
+- ✅ Visa Quiz, Compare tools
+- ✅ Currency converter
+- ✅ Favorites (localStorage)
+- ✅ Dark/light theme
+- ✅ Responsive design
+- ✅ All API routes returning 200 on production
+- ✅ Rate limiting with proper IP extraction on all routes
+- ✅ Pro toggle clearly marked as "Demo" mode
+- ✅ Turso token rotation COMPLETED
+- ✅ Google Analytics + AdSense ready (just add env vars)
+- ✅ Affiliate link placements in country cards + footer
