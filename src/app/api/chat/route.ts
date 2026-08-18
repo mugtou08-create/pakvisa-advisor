@@ -208,40 +208,74 @@ Key rules:
 - Provide actionable advice for Pakistani passport holders
 ${proContextInstruction}`;
 
-    // Build messages array
-    const messages: { role: string; content: string }[] = [
-      { role: 'assistant', content: systemPrompt },
-    ];
+    // ============================================================
+    // LLM CALL — Google Gemini API
+    // ============================================================
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json(
+        { success: false, error: 'AI service is not configured. Please contact the administrator.' },
+        { status: 503 }
+      );
+    }
 
-    // Add conversation history (max last 10 turns to stay within context limits)
+    // Convert our messages array to Gemini format
+    // Gemini uses: systemInstruction + contents[] with role "user"/"model"
+    const geminiContents: { role: string; parts: { text: string }[] }[] = [];
+
+    // Add conversation history
     if (history && history.length > 0) {
-      const recentHistory = history.slice(-20); // last 10 exchanges
+      const recentHistory = history.slice(-20);
       for (const h of recentHistory) {
         if (h.role === 'user' || h.role === 'assistant') {
-          messages.push({ role: h.role, content: h.content });
+          geminiContents.push({
+            role: h.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: h.content }],
+          });
         }
       }
     }
 
     // Add current message with context
-    messages.push({
+    geminiContents.push({
       role: 'user',
-      content: contextStr
-        ? `${message}\n\n---Context Data---\n${contextStr}`
-        : message,
+      parts: [{
+        text: contextStr
+          ? `${message}\n\n---Context Data---\n${contextStr}`
+          : message,
+      }],
     });
 
-    // ============================================================
-    // LLM CALL
-    // ============================================================
-    const ZAI = (await import('z-ai-web-dev-sdk')).default;
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages,
-      thinking: { type: 'disabled' },
-    });
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemPrompt }],
+          },
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+            topP: 0.9,
+          },
+        }),
+      }
+    );
 
-    const aiResponse = completion.choices?.[0]?.message?.content;
+    if (!geminiRes.ok) {
+      const errBody = await geminiRes.text().catch(() => '');
+      console.error('Gemini API error:', geminiRes.status, errBody);
+      return NextResponse.json(
+        { success: false, error: 'AI service temporarily unavailable. Please try again in a moment.' },
+        { status: 502 }
+      );
+    }
+
+    const geminiJson = await geminiRes.json();
+    const aiResponse = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!aiResponse) {
       return NextResponse.json(
