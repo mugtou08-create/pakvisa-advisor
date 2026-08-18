@@ -152,7 +152,7 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
           </h2>
           {isProUser ? (
             <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 text-xs gap-1">
-              <ShieldCheck className="w-3 h-3" /> Pro · Data Verified
+              <ShieldCheck className="w-3 h-3" /> Pro (Demo) · Data Verified
             </Badge>
           ) : (
             <Badge variant="secondary" className="text-xs font-normal">
@@ -177,7 +177,7 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
               onClick={() => useAppStore.getState().setIsProUser(true)}
               className="text-xs font-medium px-3 py-1 rounded-full bg-amber-600 text-white hover:bg-amber-700 transition-colors"
             >
-              Enable Pro
+              Try Pro Demo
             </button>
           </div>
         </div>
@@ -361,7 +361,7 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
                 className="w-full text-center text-xs font-medium px-4 py-2 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50 transition-colors flex items-center justify-center gap-2"
               >
                 <Crown className="w-3.5 h-3.5" />
-                Upgrade to Pro for Unlimited AI Queries + Verified Data
+                Try Pro Demo — Unlimited AI Queries + Verified Data
               </button>
             </div>
           )}

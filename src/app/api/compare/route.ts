@@ -161,14 +161,7 @@ export async function POST(request: NextRequest) {
     const body: CompareRequestBody = await request.json();
     const { countryCodes, profile, sessionId } = body;
 
-    if (!countryCodes || !Array.isArray(countryCodes) || countryCodes.length < 2) {
-      return NextResponse.json(
-        { success: false, error: 'At least 2 country codes are required for comparison' },
-        { status: 400 }
-      );
-    }
-
-    if (!countryCodes.length || countryCodes.length > 10) {
+    if (!countryCodes || !Array.isArray(countryCodes) || countryCodes.length < 2 || countryCodes.length > 10) {
       return NextResponse.json(
         { success: false, error: 'You can compare between 2 and 10 countries at a time' },
         { status: 400 }

@@ -343,15 +343,36 @@ export default function HomePage() {
   const countryListRef = useRef<HTMLDivElement>(null);
   const filteredCountriesRef = useRef<CountryData[]>([]);
 
+  // Helper: scroll to a specific country card by code, or fall back to section
+  const scrollToCountry = useCallback((code: string | null) => {
+    if (code) {
+      const el = document.getElementById(`country-card-${code}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    }
+    // Fallback: scroll to the section
+    countryListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   const handlePopularClick = useCallback((name: string) => {
     setSearchQuery(name);
     setFilters({ access: null, region: null, sortDir: 'az' });
     setCurrentPage(1);
-    // Expand the country if only one result
-    setTimeout(() => {
-      countryListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  }, []);
+    // After React re-renders with new search, scroll to the country
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const match = filteredCountriesRef.current.find((c) => c.name === name);
+        if (match) {
+          setExpandedCountry(match.code);
+          scrollToCountry(match.code);
+        } else {
+          scrollToCountry(null);
+        }
+      }, 150);
+    });
+  }, [scrollToCountry]);
 
   // Keep filteredCountries ref in sync
   filteredCountriesRef.current = filteredCountries;
@@ -361,12 +382,18 @@ export default function HomePage() {
     setFilters({ access: null, region: null, sortDir: 'az' });
     setCurrentPage(1);
     // Find and expand
-    setTimeout(() => {
-      const match = filteredCountriesRef.current.find((c) => c.name === name);
-      if (match) setExpandedCountry(match.code);
-      countryListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 200);
-  }, []);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const match = filteredCountriesRef.current.find((c) => c.name === name);
+        if (match) {
+          setExpandedCountry(match.code);
+          scrollToCountry(match.code);
+        } else {
+          scrollToCountry(null);
+        }
+      }, 200);
+    });
+  }, [scrollToCountry]);
 
   const clearAllFilters = useCallback(() => {
     setFilters({ access: null, region: null, sortDir: 'az' });
@@ -380,7 +407,7 @@ export default function HomePage() {
   const handleShareWhatsApp = useCallback(() => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://pakvisa.vercel.app';
     const shareText = `Check out PakVisa — Free visa info for 70+ countries for Pakistani passport holders! ${shareUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
   }, []);
 
   // Popular countries data (from fetched countries)
@@ -506,7 +533,29 @@ export default function HomePage() {
               Instant visa requirements, fees, and processing times for 70+ countries. Trusted by thousands of Pakistani travelers.
             </p>
             {/* Search bar */}
-            <div className="max-w-lg mx-auto relative">
+            <form
+              className="max-w-lg mx-auto relative"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const query = searchQuery.trim();
+                if (!query) return;
+                // Wait for React to re-render, then scroll
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    const results = filteredCountriesRef.current;
+                    if (results.length === 1) {
+                      setExpandedCountry(results[0].code);
+                      scrollToCountry(results[0].code);
+                    } else if (results.length > 0) {
+                      // Scroll to the first matching card
+                      scrollToCountry(results[0].code);
+                    } else {
+                      scrollToCountry(null);
+                    }
+                  }, 150);
+                });
+              }}
+            >
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 ref={searchInputRef}
@@ -518,6 +567,7 @@ export default function HomePage() {
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Clear search"
@@ -525,7 +575,7 @@ export default function HomePage() {
                   <X className="w-4 h-4" />
                 </button>
               )}
-            </div>
+            </form>
             {/* Popular pills */}
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {POPULAR_COUNTRIES.map((name) => {
@@ -551,7 +601,7 @@ export default function HomePage() {
         {/* ==================== SECTION 3: STATS BAR ==================== */}
         <section className="px-4 pb-8">
           <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {stats ? [
                 { label: 'Countries', value: stats.totalCountries, suffix: '+', icon: Globe, color: 'text-emerald-600' },
                 { label: 'Visa Free', value: stats.visaFreeCount, suffix: '', icon: CheckCircle2, color: 'text-emerald-600' },
@@ -645,7 +695,7 @@ export default function HomePage() {
         </section>
 
         {/* ==================== SECTION 6: FILTER BAR + COUNTRY LIST ==================== */}
-        <section className="px-4 pb-10" ref={countryListRef}>
+        <section className="px-4 pb-10 scroll-mt-16" ref={countryListRef}>
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-xl font-bold">All Destinations</h2>
@@ -728,6 +778,7 @@ export default function HomePage() {
                     value={filters.sortDir}
                     onChange={(e) => setFilters((f) => ({ ...f, sortDir: e.target.value }))}
                     className="ml-auto px-3 py-1.5 rounded-full text-xs font-medium border bg-card hover:bg-muted cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                    aria-label="Sort destinations"
                   >
                     <option value="az">A → Z</option>
                     <option value="za">Z → A</option>
@@ -759,14 +810,15 @@ export default function HomePage() {
                 ) : (
                   <div className="space-y-2">
                     {paginatedCountries.map((c) => (
-                      <CountryResultCard
-                        key={c.code}
-                        country={c}
-                        expanded={expandedCountry === c.code}
-                        onToggle={() => setExpandedCountry((prev) => prev === c.code ? null : c.code)}
-                        isFav={favorites.includes(c.code)}
-                        onToggleFav={() => toggleFavorite(c.code)}
-                      />
+                      <div key={c.code} id={`country-card-${c.code}`} className="scroll-mt-16">
+                        <CountryResultCard
+                          country={c}
+                          expanded={expandedCountry === c.code}
+                          onToggle={() => setExpandedCountry((prev) => prev === c.code ? null : c.code)}
+                          isFav={favorites.includes(c.code)}
+                          onToggleFav={() => toggleFavorite(c.code)}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}

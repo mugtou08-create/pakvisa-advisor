@@ -4,7 +4,22 @@ import { db } from '@/lib/db';
 export async function GET() {
   try {
     const countries = await db.country.findMany({
-      include: { costProfiles: true },
+      select: {
+        name: true,
+        code: true,
+        flagEmoji: true,
+        visaFree: true,
+        visaOnArrival: true,
+        etaAvailable: true,
+        processingDaysMin: true,
+        costProfiles: {
+          select: {
+            totalMonthlyUSD: true,
+            visaFeeUSD: true,
+          },
+          take: 1,
+        },
+      },
     });
 
     const totalCountries = countries.length;

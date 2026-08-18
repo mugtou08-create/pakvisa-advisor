@@ -5,9 +5,9 @@ import { rateLimit } from '@/lib/rate-limit';
 export async function POST(req: NextRequest) {
   try {
     // Rate limit: 10 requests/minute
-    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 10, 60000)) {
-      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+      return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     }
 
     const body = await req.json();
@@ -17,7 +17,11 @@ export async function POST(req: NextRequest) {
     };
 
     if (!countryCodes || countryCodes.length === 0) {
-      return NextResponse.json({ error: 'countryCodes is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'countryCodes is required' }, { status: 400 });
+    }
+
+    if (countryCodes.length > 20) {
+      return NextResponse.json({ success: false, error: 'Maximum 20 countries per export request' }, { status: 400 });
     }
 
     const countries = await db.country.findMany({
@@ -86,7 +90,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (reportData.length === 0) {
-      return NextResponse.json({ error: 'No matching countries found for the provided codes' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'No matching countries found for the provided codes' }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -115,6 +119,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Export error:', error);
-    return NextResponse.json({ error: 'Failed to generate report data' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to generate report data' }, { status: 500 });
   }
 }

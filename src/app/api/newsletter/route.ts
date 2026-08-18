@@ -7,7 +7,7 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export async function POST(request: NextRequest) {
   try {
     // Rate limit: 5 requests per minute per IP
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 5, 60000)) {
       return NextResponse.json(
         { success: false, message: 'Too many requests. Please try again later.' },

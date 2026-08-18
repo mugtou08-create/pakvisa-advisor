@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rate-limit';
 
 const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes cache
 
@@ -107,10 +108,21 @@ async function fetchRates(): Promise<Record<string, number>> {
 
 export async function GET(request: Request) {
   try {
+    // Rate limit
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
+    if (!rateLimit(ip, 60, 60000)) {
+      return Response.json({ success: false, error: 'Too many requests' }, { status: 429 });
+    }
+
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from') || 'PKR';
     const to = searchParams.get('to') || 'USD';
     const amount = parseFloat(searchParams.get('amount') || '1');
+
+    // Validate amount
+    if (isNaN(amount) || amount < 0) {
+      return Response.json({ success: false, error: 'Invalid amount. Must be a positive number.' }, { status: 400 });
+    }
     const refresh = searchParams.get('refresh') === 'true';
 
     if (refresh) {

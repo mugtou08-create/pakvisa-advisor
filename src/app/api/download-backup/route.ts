@@ -1,18 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function GET() {
+const BACKUP_SECRET = process.env.BACKUP_SECRET || 'pakvisa-admin-backup-2026';
+
+export async function GET(request: NextRequest) {
   try {
-    // On serverless (Vercel) there is no filesystem access; generate backup from DB.
-    // Export key tables as JSON and stream as response.
+    // Require secret key to prevent unauthorized data access
+    const key = request.nextUrl.searchParams.get('key');
+    if (key !== BACKUP_SECRET) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     const countries = await db.country.findMany({
       include: { visaTypes: true, requirements: true, costProfiles: true },
       orderBy: { name: 'asc' },
-    });
-
-    const userProfiles = await db.userProfile.findMany({
-      orderBy: { createdAt: 'desc' },
     });
 
     const siteSettings = await db.siteSettings.findMany();
@@ -22,7 +26,6 @@ export async function GET() {
       version: '1.0',
       tables: {
         countries,
-        userProfiles,
         siteSettings,
       },
     };
@@ -41,10 +44,7 @@ export async function GET() {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Backup export failed:', message);
     return NextResponse.json(
-      {
-        error: 'Failed to generate backup',
-        ...(process.env.NODE_ENV !== 'production' ? { details: message } : {}),
-      },
+      { success: false, error: 'Failed to generate backup' },
       { status: 500 }
     );
   }

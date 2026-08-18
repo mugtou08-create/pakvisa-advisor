@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get('limit');
     const offsetParam = searchParams.get('offset');
 
-    const limit = limitParam ? parseInt(limitParam, 10) : 100;
-    const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+    const limit = Math.min(Math.max(parseInt(limitParam) || 100, 1), 500);
+    const offset = Math.max(parseInt(offsetParam) || 0, 0);
 
     // Build where clause
     const where: Prisma.CountryWhereInput = {};

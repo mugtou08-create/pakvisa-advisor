@@ -63,9 +63,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
-  verification: {
-    google: "google-site-verification-code-here",
-  },
+  // verification: {
+  //   google: "YOUR_ACTUAL_GOOGLE_VERIFICATION_CODE",
+  // },
 };
 
 export default function RootLayout({
@@ -94,12 +94,7 @@ export default function RootLayout({
                 price: "0",
                 priceCurrency: "PKR",
               },
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: "4.8",
-                ratingCount: "2450",
-                bestRating: "5",
-              },
+              // aggregateRating removed until real review data is collected
             }),
           }}
         />

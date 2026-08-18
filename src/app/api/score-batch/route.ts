@@ -180,6 +180,7 @@ export async function POST(request: NextRequest) {
         requirements: true,
         costProfiles: true,
       },
+      take: 500,
     });
 
     if (countries.length === 0) {

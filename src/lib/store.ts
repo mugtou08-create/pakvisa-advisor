@@ -207,7 +207,6 @@ export const useAppStore = create<AppState>()(
         userFeedback: state.userFeedback,
         tripPlan: state.tripPlan,
         recentSearches: state.recentSearches,
-        viewPreference: state.viewPreference,
         dashboardWidgets: state.dashboardWidgets,
         // isProUser intentionally excluded from persistence — runtime-only state
       }),

@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: NextRequest) {
   try {
     // Rate limit: 5 requests/minute
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 5, 60000)) {
       return NextResponse.json(
         { success: false, error: 'Too many login attempts. Please try again later.' },

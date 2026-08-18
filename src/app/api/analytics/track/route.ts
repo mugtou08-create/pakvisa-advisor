@@ -20,7 +20,7 @@ function isValidEvent(event: unknown): event is EventType {
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown').split(',')[0].trim();
 
     if (!rateLimit(ip, 30, 60000)) {
       return NextResponse.json(

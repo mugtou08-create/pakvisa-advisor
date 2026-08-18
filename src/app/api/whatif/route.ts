@@ -153,7 +153,7 @@ function transformCountryToData(country: {
 export async function POST(request: NextRequest) {
   try {
     // Rate limit: 10 requests/minute
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 10, 60000)) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     }
