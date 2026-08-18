@@ -246,41 +246,57 @@ ${proContextInstruction}`;
       }],
     });
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemPrompt }],
-          },
-          contents: geminiContents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-            topP: 0.9,
-          },
-        }),
-      }
-    );
+    // Try models in order of preference (fallback if one is unavailable)
+    const MODELS = [
+      'gemini-3.6-flash',
+      'gemini-2.5-flash',
+      'gemini-1.5-flash',
+    ];
 
-    if (!geminiRes.ok) {
-      const errBody = await geminiRes.text().catch(() => '');
-      console.error('Gemini API error:', geminiRes.status, errBody);
+    let aiResponse: string | null = null;
+    let lastError = '';
+
+    for (const model of MODELS) {
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              contents: geminiContents,
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 2048,
+                topP: 0.9,
+              },
+            }),
+          }
+        );
+
+        if (geminiRes.ok) {
+          const geminiJson = await geminiRes.json();
+          aiResponse = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+          if (aiResponse) break;
+        } else {
+          const errText = await geminiRes.text().catch(() => '');
+          lastError = `${model}: ${geminiRes.status} ${errText.slice(0, 200)}`;
+          console.error('Gemini model failed:', lastError);
+        }
+      } catch (err) {
+        lastError = `${model}: ${String(err)}`;
+        console.error('Gemini model error:', lastError);
+      }
+    }
+
+    if (!aiResponse) {
+      console.error('All Gemini models failed:', lastError);
       return NextResponse.json(
         { success: false, error: 'AI service temporarily unavailable. Please try again in a moment.' },
         { status: 502 }
-      );
-    }
-
-    const geminiJson = await geminiRes.json();
-    const aiResponse = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!aiResponse) {
-      return NextResponse.json(
-        { success: false, error: 'Empty response from AI' },
-        { status: 500 }
       );
     }
 
