@@ -1095,6 +1095,46 @@ export default function HomePage() {
 
       {/* ==================== SECTION 15: FOOTER ==================== */}
       <footer className="border-t bg-muted/30 mt-auto">
+        {/* Affiliate Partners Bar */}
+        <div className="border-b border-border">
+          <div className="max-w-6xl mx-auto px-4 py-3">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5">
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Trusted Partners</span>
+              <a
+                href="https://www.ivisa.com/?ref=pakvisa&utm_source=pakvisa"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <FileText className="w-3 h-3" /> iVisa
+              </a>
+              <a
+                href="https://safetywing.com/?referral=pakvisa&utm_source=pakvisa"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Shield className="w-3 h-3" /> SafetyWing
+              </a>
+              <a
+                href="https://www.booking.com/?aid=304142&label=pakvisa"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Building className="w-3 h-3" /> Booking.com
+              </a>
+              <a
+                href="https://www.skyscanner.net/?ref=pakvisa"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Plane className="w-3 h-3" /> Skyscanner
+              </a>
+            </div>
+          </div>
+        </div>
         <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
           <div className="flex items-center gap-4">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { GoogleAnalytics, GoogleAdSense } from "@/components/analytics";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -76,6 +77,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <GoogleAnalytics />
+        <GoogleAdSense />
         <meta name="theme-color" content="#059669" />
         <link rel="canonical" href="https://pakvisaadvisor.com" />
         <script

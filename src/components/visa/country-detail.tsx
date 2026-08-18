@@ -5,6 +5,7 @@ import {
   Clock, Globe, DollarSign, Languages, Plug, Phone, Droplets, UtensilsCrossed,
   Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
   Calculator, ChevronDown, ChevronUp, AlertTriangle, Banknote, ArrowRightLeft,
+  FileText, Plane,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { CountryData } from '@/lib/types';
@@ -464,6 +465,101 @@ function TripCalculator({ costProfile }: { costProfile: NonNullable<CountryData[
 }
 
 // ============================================================
+// Affiliate: Travel Resources (iVisa, Insurance, Hotels, Flights)
+// ============================================================
+function AffiliateResources({ country }: { country: CountryData }) {
+  // Build iVisa search URL for this country
+  const ivisaUrl = `https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&ref=pakvisa`;
+  // Build travel insurance URL
+  const safetyWingUrl = `https://safetywing.com/?referral=pakvisa&utm_source=pakvisa&utm_medium=affiliate`;
+  // Build hotel search URL
+  const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(country.name)}&aid=304142&label=pakvisa`;
+  // Build flight search URL
+  const skyscannerUrl = `https://www.skyscanner.net/transport/flights/to/${country.code.toLowerCase()}/?ref=pakvisa`;
+
+  return (
+    <div className="rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/10 p-3 space-y-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wide">Travel Resources</span>
+        <span className="text-[9px] text-amber-600/70 dark:text-amber-400/60">(sponsored)</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {/* Visa Service */}
+        <a
+          href={ivisaUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="flex items-center gap-2 rounded-lg bg-white dark:bg-background border border-amber-200/70 dark:border-amber-800/40 p-2.5 hover:border-amber-400 dark:hover:border-amber-600 transition-colors group"
+        >
+          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors truncate">Apply for Visa</p>
+            <p className="text-[10px] text-muted-foreground">via iVisa</p>
+          </div>
+          <ExternalLink className="w-3 h-3 text-muted-foreground/50 ml-auto shrink-0" />
+        </a>
+
+        {/* Travel Insurance */}
+        <a
+          href={safetyWingUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="flex items-center gap-2 rounded-lg bg-white dark:bg-background border border-amber-200/70 dark:border-amber-800/40 p-2.5 hover:border-amber-400 dark:hover:border-amber-600 transition-colors group"
+        >
+          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors truncate">Travel Insurance</p>
+            <p className="text-[10px] text-muted-foreground">from $42/mo</p>
+          </div>
+          <ExternalLink className="w-3 h-3 text-muted-foreground/50 ml-auto shrink-0" />
+        </a>
+
+        {/* Hotels */}
+        <a
+          href={bookingUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="flex items-center gap-2 rounded-lg bg-white dark:bg-background border border-amber-200/70 dark:border-amber-800/40 p-2.5 hover:border-amber-400 dark:hover:border-amber-600 transition-colors group"
+        >
+          <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
+            <Building2 className="w-4 h-4 text-violet-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors truncate">Find Hotels</p>
+            <p className="text-[10px] text-muted-foreground">via Booking.com</p>
+          </div>
+          <ExternalLink className="w-3 h-3 text-muted-foreground/50 ml-auto shrink-0" />
+        </a>
+
+        {/* Flights */}
+        <a
+          href={skyscannerUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="flex items-center gap-2 rounded-lg bg-white dark:bg-background border border-amber-200/70 dark:border-amber-800/40 p-2.5 hover:border-amber-400 dark:hover:border-amber-600 transition-colors group"
+        >
+          <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+            <Plane className="w-4 h-4 text-orange-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors truncate">Search Flights</p>
+            <p className="text-[10px] text-muted-foreground">via Skyscanner</p>
+          </div>
+          <ExternalLink className="w-3 h-3 text-muted-foreground/50 ml-auto shrink-0" />
+        </a>
+      </div>
+      <p className="text-[9px] text-amber-600/60 dark:text-amber-400/50 text-center">
+        We may earn a commission at no extra cost to you. Prices shown are from partners.
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Country Detail Panel
 // ============================================================
 export function CountryDetailPanel({ country }: { country: CountryData }) {
@@ -611,6 +707,9 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
       {/* Emergency & Health (collapsible) */}
       <EmergencyHealth info={travel} />
+
+      {/* Affiliate: Travel Resources */}
+      <AffiliateResources country={country} />
 
       {/* Embassy Contact (only for embassy-required countries) */}
       {isEmbassyRequired && <EmbassyContact countryCode={country.code} />}
