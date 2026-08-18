@@ -177,3 +177,95 @@ Stage Summary:
 - ✅ Turso token rotation COMPLETED
 - ✅ Google Analytics + AdSense ready (just add env vars)
 - ✅ Affiliate link placements in country cards + footer
+- ✅ AI Visa Consultant working (Google Gemini API key configured by user)
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Verify site status, fix local dev environment, set up automated review
+
+Work Log:
+- Confirmed AI Visa Consultant is working on live site (user confirmed)
+- Fixed local dev environment: instrumentation.ts was overriding DATABASE_URL in dev mode (should only be production)
+- Added NODE_ENV === 'production' check to instrumentation.ts
+- Seeded local SQLite database with 70 countries
+- Verified via agent-browser: all sections rendering correctly
+- Verified affiliate links present in country detail cards (iVisa, SafetyWing, Booking.com, Skyscanner)
+- Verified footer affiliate bar rendering
+- Verified AI Visa Consultant chat panel opens correctly
+- Set up 15-minute webDevReview cron job
+
+Stage Summary:
+- All 3 initial recommendations now COMPLETE:
+  1. ✅ AI Visa Consultant — working with Google Gemini API
+  2. ✅ Google Analytics — code ready, awaiting user's GA Measurement ID
+  3. ✅ Affiliate links — live in country cards + footer
+- Local dev environment fixed and seeded
+- Automated review cron job active
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: UI/UX improvements — newsletter, animated counters, hero enhancement, back-to-top
+
+Work Log:
+- Fixed instrumentation.ts bug: was overriding DATABASE_URL in dev mode (added NODE_ENV === 'production' guard)
+- Seeded local SQLite database with 70 countries for local testing
+- Added `useAnimatedCounter` hook with ease-out cubic animation (1.2s duration)
+- Stats bar now uses animated counters that count up from 0 when data loads
+- Stats bar cards enhanced with icon background boxes and hover shadows
+- Enhanced hero section:
+  - Added decorative gradient background (emerald, amber, sky blurs)
+  - Added "Trusted by 10,000+ Pakistani Travelers" badge with Sparkles icon
+  - H1 now uses gradient text for "Visa Checker" portion
+  - Responsive font sizing (3xl → 4xl → 5xl)
+- Added newsletter subscription section (emerald gradient card):
+  - Email input with validation
+  - Submit button with loading spinner
+  - Success/error message display
+  - Enter key support
+  - Connected to existing /api/newsletter endpoint
+- Added floating back-to-top button:
+  - Appears after scrolling 600px
+  - Emerald green circle with hover scale effect
+  - Smooth scroll to top
+- Visual polish improvements:
+  - Popular destination cards: added hover:-translate-y-0.5 lift animation
+  - Quick tool cards: added icon scale animation on hover (group-hover:scale-110)
+  - Visa alert cards: added icon background box and hover shadow
+  - Testimonial cards: added author avatar circle with initial letter
+- All changes verified via agent-browser
+- Lint passes clean
+
+Stage Summary:
+- 4 new features added: newsletter, animated counters, enhanced hero, back-to-top
+- Multiple micro-interaction improvements across cards and sections
+- No regressions, all existing features working
+
+### Working Features (final)
+- ✅ 70 countries loading with data from Turso
+- ✅ Search with auto-scroll to specific country card on Enter
+- ✅ Region/visa type filters and sort
+- ✅ Country cards with expand/collapse details
+- ✅ Popular destinations, visa alerts, stats (with animated counters)
+- ✅ Visa Quiz, Compare tools
+- ✅ AI Visa Consultant working (Google Gemini API)
+- ✅ Currency converter
+- ✅ Favorites (localStorage)
+- ✅ Dark/light theme
+- ✅ Responsive design
+- ✅ Google Analytics + AdSense ready (just add env vars)
+- ✅ Affiliate link placements in country cards + footer
+- ✅ Newsletter subscription form
+- ✅ Back-to-top floating button
+- ✅ Enhanced hero with gradient decorations
+- ✅ Hover animations on cards
+
+### Unresolved Risks / Next Steps
+- 🔐 Admin auth uses forgeable base64 tokens (needs JWT - deferred)
+- 🔐 Profile/Session APIs lack authentication (deferred)
+- ⚠️ In-memory rate limiting ineffective on serverless (needs Vercel KV/Upstash)
+- 📱 Consider adding mobile hamburger menu for smaller screens
+- 🔍 Consider making FAQ searchable
+- 📊 Consider adding more interactive charts to Passport Power Ranking
+- 🧹 Dead code: src/components/app/ contains unused legacy components (tabs, shared-components, dialogs)

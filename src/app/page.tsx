@@ -8,6 +8,7 @@ import {
   Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
   CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building,
+  ArrowUp, Mail, Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,33 @@ import { ComparePanel } from '@/components/visa/compare-panel';
 import { CountryDetailPanel } from '@/components/visa/country-detail';
 import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
+
+// ============================================================
+// Animated Counter Hook
+// ============================================================
+function useAnimatedCounter(target: number, duration: number = 1200, enabled: boolean = true) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!enabled || target === 0) return;
+    let start = 0;
+    let startTime: number | null = null;
+    let raf: number;
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(eased * target);
+      setCount(current);
+      if (progress < 1) {
+        raf = requestAnimationFrame(step);
+      }
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, enabled]);
+  return count;
+}
 
 // ============================================================
 // Testimonials
@@ -141,10 +169,10 @@ function QuickToolCard({ icon, title, description, colorClass, onClick, badge }:
   return (
     <button
       onClick={onClick}
-      className={`text-left rounded-xl border bg-card p-5 transition-all hover:shadow-md ${colorClass} group`}
+      className={`text-left rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${colorClass} group`}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className="p-2.5 rounded-lg bg-muted group-hover:bg-primary/10 transition-colors">
+        <div className="p-2.5 rounded-lg bg-muted group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-200">
           {icon}
         </div>
         {badge && <Badge variant="secondary" className="text-[10px]">{badge}</Badge>}
@@ -267,6 +295,26 @@ export default function HomePage() {
 
   // FAQ
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  // Newsletter
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [newsletterMessage, setNewsletterMessage] = useState('');
+
+  // Back to top
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 600);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Animated counters
+  const statCountries = useAnimatedCounter(stats?.totalCountries ?? 0, 1000, !loading && !!stats);
+  const statVisaFree = useAnimatedCounter(stats?.visaFreeCount ?? 0, 1000, !loading && !!stats);
+  const statVoA = useAnimatedCounter(stats?.visaOnArrivalCount ?? 0, 1000, !loading && !!stats);
+  const statEVisa = useAnimatedCounter(stats?.eVisaCount ?? 0, 1000, !loading && !!stats);
+  const statEmbassy = useAnimatedCounter(stats?.embassyRequiredCount ?? 0, 1000, !loading && !!stats);
 
   // Fetch all countries (no limit — client-side filtering)
   useEffect(() => {
@@ -410,6 +458,32 @@ export default function HomePage() {
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
   }, []);
 
+  // Newsletter subscribe
+  const handleNewsletterSubscribe = useCallback(async () => {
+    if (!newsletterEmail.trim()) return;
+    setNewsletterStatus('loading');
+    setNewsletterMessage('');
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newsletterEmail.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewsletterStatus('success');
+        setNewsletterMessage(data.message);
+        setNewsletterEmail('');
+      } else {
+        setNewsletterStatus('error');
+        setNewsletterMessage(data.message || 'Something went wrong.');
+      }
+    } catch {
+      setNewsletterStatus('error');
+      setNewsletterMessage('Network error. Please try again.');
+    }
+  }, [newsletterEmail]);
+
   // Popular countries data (from fetched countries)
   const popularData = useMemo(() => {
     return POPULAR_COUNTRIES.map((name) => countries.find((c) => c.name === name)).filter((c): c is CountryData => Boolean(c));
@@ -524,10 +598,21 @@ export default function HomePage() {
       {/* ==================== MAIN CONTENT ==================== */}
       <main className="flex-1">
         {/* ==================== SECTION 2: HERO + SEARCH ==================== */}
-        <section className="px-4 pt-10 pb-8">
-          <div className="max-w-6xl mx-auto text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
-              Pakistan&apos;s #1 Free Visa Checker
+        <section className="relative px-4 pt-10 pb-8 overflow-hidden">
+          {/* Decorative background elements */}
+          <div className="absolute inset-0 -z-10">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-br from-emerald-200/40 via-emerald-100/20 to-transparent dark:from-emerald-900/20 dark:via-emerald-800/10 rounded-full blur-3xl" />
+            <div className="absolute top-20 left-10 w-40 h-40 bg-amber-200/20 dark:bg-amber-900/10 rounded-full blur-3xl" />
+            <div className="absolute top-10 right-10 w-32 h-32 bg-sky-200/20 dark:bg-sky-900/10 rounded-full blur-3xl" />
+          </div>
+          <div className="max-w-6xl mx-auto text-center relative">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-medium mb-4">
+              <Sparkles className="w-3 h-3" />
+              Trusted by 10,000+ Pakistani Travelers
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-2">
+              Pakistan&apos;s #1 Free{' '}
+              <span className="bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-400 dark:to-emerald-300 bg-clip-text text-transparent">Visa Checker</span>
             </h1>
             <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto mb-6">
               Instant visa requirements, fees, and processing times for 70+ countries. Trusted by thousands of Pakistani travelers.
@@ -603,16 +688,18 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {stats ? [
-                { label: 'Countries', value: stats.totalCountries, suffix: '+', icon: Globe, color: 'text-emerald-600' },
-                { label: 'Visa Free', value: stats.visaFreeCount, suffix: '', icon: CheckCircle2, color: 'text-emerald-600' },
-                { label: 'Visa on Arrival', value: stats.visaOnArrivalCount, suffix: '', icon: Plane, color: 'text-amber-600' },
-                { label: 'e-Visa', value: stats.eVisaCount, suffix: '', icon: FileText, color: 'text-sky-600' },
-                { label: 'Embassy', value: stats.embassyRequiredCount || 0, suffix: '', icon: Building, color: 'text-gray-500' },
+                { label: 'Countries', value: statCountries, suffix: '+', icon: Globe, color: 'text-emerald-600' },
+                { label: 'Visa Free', value: statVisaFree, suffix: '', icon: CheckCircle2, color: 'text-emerald-600' },
+                { label: 'Visa on Arrival', value: statVoA, suffix: '', icon: Plane, color: 'text-amber-600' },
+                { label: 'e-Visa', value: statEVisa, suffix: '', icon: FileText, color: 'text-sky-600' },
+                { label: 'Embassy', value: statEmbassy, suffix: '', icon: Building, color: 'text-gray-500' },
               ].map((stat) => (
-                <div key={stat.label} className="flex items-center gap-3 rounded-xl border bg-card p-4">
-                  <stat.icon className={`w-5 h-5 ${stat.color} shrink-0`} />
+                <div key={stat.label} className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-sm transition-shadow">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <stat.icon className={`w-5 h-5 ${stat.color} shrink-0`} />
+                  </div>
                   <div>
-                    <p className="text-lg font-bold">{stat.value}{stat.suffix}</p>
+                    <p className="text-xl font-bold tabular-nums">{stat.value}{stat.suffix}</p>
                     <p className="text-xs text-muted-foreground">{stat.label}</p>
                   </div>
                 </div>
@@ -652,7 +739,7 @@ export default function HomePage() {
                   <button
                     key={c.code}
                     onClick={() => handleDestClick(c.name)}
-                    className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-all group"
+                    className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-all group hover:-translate-y-0.5 duration-200"
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-10 h-7 rounded overflow-hidden bg-muted shrink-0">
@@ -681,8 +768,10 @@ export default function HomePage() {
             <h2 className="text-xl font-bold mb-4">Visa Policy Alerts</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {VISA_ALERTS.map((alert) => (
-                <div key={alert.id} className="flex items-start gap-3 rounded-xl border bg-card p-4">
-                  <alert.icon className={`w-5 h-5 ${alert.color} shrink-0 mt-0.5`} />
+                <div key={alert.id} className="flex items-start gap-3 rounded-xl border bg-card p-4 hover:shadow-sm transition-shadow">
+                  <div className="p-1.5 rounded-lg bg-muted shrink-0 mt-0.5">
+                    <alert.icon className={`w-4 h-4 ${alert.color}`} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">{alert.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{alert.desc}</p>
@@ -921,14 +1010,21 @@ export default function HomePage() {
             <h2 className="text-xl font-bold mb-4">What Travelers Say</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {TESTIMONIALS.map((t, i) => (
-                <Card key={i} className="p-5">
+                <Card key={i} className="p-5 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-0.5 mb-3">
                     {Array.from({ length: t.rating }).map((_, si) => (
                       <Star key={si} className="w-4 h-4 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">&ldquo;{t.text}&rdquo;</p>
-                  <p className="text-xs font-semibold">{t.author}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      {t.author.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold">{t.author}</p>
+                    </div>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -1091,6 +1187,62 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ==================== SECTION 15: NEWSLETTER ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <Card className="p-6 bg-gradient-to-br from-emerald-50 to-sky-50/50 dark:from-emerald-950/20 dark:to-sky-950/10 border-emerald-200 dark:border-emerald-800">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                  <Mail className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="font-bold text-lg">Stay Updated on Visa Changes</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Get notified when visa policies change for Pakistani passport holders. No spam, ever.</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col sm:flex-row gap-2 max-w-md mx-auto sm:mx-0">
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={newsletterEmail}
+                  onChange={(e) => { setNewsletterEmail(e.target.value); setNewsletterStatus('idle'); setNewsletterMessage(''); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleNewsletterSubscribe(); }}
+                  className="flex-1 h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
+                  disabled={newsletterStatus === 'loading'}
+                />
+                <Button
+                  onClick={handleNewsletterSubscribe}
+                  disabled={newsletterStatus === 'loading' || !newsletterEmail.trim()}
+                  className="gap-1.5"
+                >
+                  {newsletterStatus === 'loading' ? (
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  {newsletterStatus === 'loading' ? 'Subscribing...' : 'Subscribe Free'}
+                </Button>
+              </div>
+              {newsletterMessage && (
+                <p className={`mt-2 text-xs text-center sm:text-left ${newsletterStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {newsletterStatus === 'success' ? '✓ ' : '⚠ '}{newsletterMessage}
+                </p>
+              )}
+            </Card>
+          </div>
+        </section>
+
+        {/* ==================== BACK TO TOP ==================== */}
+        {showBackToTop && (
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-20 right-4 z-40 p-3 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 transition-all hover:shadow-xl hover:scale-105"
+            aria-label="Back to top"
+          >
+            <ArrowUp className="w-5 h-5" />
+          </button>
+        )}
       </main>
 
       {/* ==================== SECTION 15: FOOTER ==================== */}

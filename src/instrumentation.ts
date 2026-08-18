@@ -4,11 +4,12 @@
 // which completely bypasses DATABASE_URL for real database operations.
 
 export async function register() {
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.NODE_ENV === 'production') {
     // Override DATABASE_URL with a dummy SQLite path for Prisma's validation.
     // Prisma schema has provider = "sqlite" which requires "file:" URLs,
     // but Vercel's DATABASE_URL points to a Turso libsql:// URL.
     // The adapter handles the real connection, so this is purely for validation.
+    // Only applies in production — development uses local SQLite directly.
     process.env.DATABASE_URL = 'file:./dummy.db';
   }
 }
