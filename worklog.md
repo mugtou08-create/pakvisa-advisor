@@ -51,34 +51,6 @@ Stage Summary:
 - All changes deployed to live site
 
 ---
-## Current Project Status
-
-### Working Features
-- ✅ 70 countries loading with data from Turso
-- ✅ Search with auto-scroll on Enter
-- ✅ Region/visa type filters and sort
-- ✅ Country cards with expand/collapse details
-- ✅ Popular destinations, visa alerts, stats
-- ✅ AI Chat, Visa Quiz, Compare tools
-- ✅ Currency converter
-- ✅ Favorites (localStorage)
-- ✅ Dark/light theme
-- ✅ Responsive design
-- ✅ All API routes returning 200
-
-### Pending Items
-- 🔒 Rotate Turso auth token (USER ACTION REQUIRED - see instructions below)
-- 🔐 Admin auth uses forgeable base64 tokens (needs JWT - deferred)
-- 🔐 Profile/Session APIs lack authentication (deferred - no real users yet)
-- 🔐 Set strong BACKUP_SECRET env var on Vercel (currently uses weak default)
-- ♿ Some accessibility improvements needed (ARIA attributes, focus trapping)
-- ⚠️ In-memory rate limiting ineffective on serverless (needs Vercel KV/Upstash)
-
-### Unresolved Risks
-- Turso auth token was briefly exposed in public backup file (ROTATION PENDING)
-- In-memory rate limiting ineffective on serverless (needs Vercel KV/Upstash)
-
----
 Task ID: 3
 Agent: Main Agent
 Task: Search auto-scroll fix (improved), full audit round 2, bug fixes
@@ -110,6 +82,25 @@ Stage Summary:
 - Remaining Critical/High issues require user action (token rotation, env vars) or are deferred (JWT auth, PII encryption)
 
 ---
+Task ID: 4
+Agent: Main Agent
+Task: Explain AI Visa Consultant feature to user in non-technical terms
+
+Work Log:
+- Investigated why AI Visa Consultant not working on live site
+- Root cause: api/chat/route.ts uses z-ai-web-dev-sdk which only works in dev sandbox
+- For production (Vercel), need real AI API key (Google Gemini, OpenAI, etc.)
+- Explained feature to user in simple non-technical language
+- Recommended Google Gemini (free tier: 1,500 queries/day, $0/month)
+- User needs to: (1) create Google AI Studio account, (2) generate API key, (3) share it
+- Awaiting user's API key to implement the fix
+
+Stage Summary:
+- AI chat broken on live site because of dev-only SDK dependency
+- Google Gemini free tier recommended ($0, supports ~500 visitors/day)
+- User informed, awaiting API key to proceed with fix
+
+---
 ## Current Project Status
 
 ### Working Features
@@ -118,7 +109,7 @@ Stage Summary:
 - ✅ Region/visa type filters and sort
 - ✅ Country cards with expand/collapse details
 - ✅ Popular destinations, visa alerts, stats
-- ✅ AI Chat, Visa Quiz, Compare tools
+- ✅ Visa Quiz, Compare tools
 - ✅ Currency converter
 - ✅ Favorites (localStorage)
 - ✅ Dark/light theme
@@ -126,9 +117,10 @@ Stage Summary:
 - ✅ All API routes returning 200 on production
 - ✅ Rate limiting with proper IP extraction on all routes
 - ✅ Pro toggle clearly marked as "Demo" mode
+- ✅ Turso token rotation COMPLETED (old tokens invalidated)
 
 ### Pending Items
-- 🔒 Rotate Turso auth token (USER ACTION REQUIRED - see instructions below)
+- 🤖 AI Visa Consultant needs real AI API key (user informed, awaiting Google Gemini key)
 - 🔐 Admin auth uses forgeable base64 tokens (needs JWT - deferred)
 - 🔐 Profile/Session APIs lack authentication (deferred - no real users yet)
 - 🔐 Set strong BACKUP_SECRET env var on Vercel (currently uses weak default)
@@ -136,5 +128,6 @@ Stage Summary:
 - ⚠️ In-memory rate limiting ineffective on serverless (needs Vercel KV/Upstash)
 
 ### Unresolved Risks
-- Turso auth token was briefly exposed in public backup file (ROTATION PENDING)
+- ~~Turso auth token was briefly exposed~~ → **FIXED: Old tokens invalidated by user**
+- AI Visa Consultant NOT working on live site — needs Google Gemini API key ($0 free tier)
 - In-memory rate limiting ineffective on serverless (needs Vercel KV/Upstash)
