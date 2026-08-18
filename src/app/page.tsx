@@ -8,7 +8,7 @@ import {
   Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
   CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building,
-  ArrowUp, Mail, Send,
+  ArrowUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -296,11 +296,6 @@ export default function HomePage() {
   // FAQ
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
-  // Newsletter
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [newsletterMessage, setNewsletterMessage] = useState('');
-
   // Back to top
   const [showBackToTop, setShowBackToTop] = useState(false);
   useEffect(() => {
@@ -457,32 +452,6 @@ export default function HomePage() {
     const shareText = `Check out PakVisa — Free visa info for 70+ countries for Pakistani passport holders! ${shareUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
   }, []);
-
-  // Newsletter subscribe
-  const handleNewsletterSubscribe = useCallback(async () => {
-    if (!newsletterEmail.trim()) return;
-    setNewsletterStatus('loading');
-    setNewsletterMessage('');
-    try {
-      const res = await fetch('/api/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newsletterEmail.trim() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setNewsletterStatus('success');
-        setNewsletterMessage(data.message);
-        setNewsletterEmail('');
-      } else {
-        setNewsletterStatus('error');
-        setNewsletterMessage(data.message || 'Something went wrong.');
-      }
-    } catch {
-      setNewsletterStatus('error');
-      setNewsletterMessage('Network error. Please try again.');
-    }
-  }, [newsletterEmail]);
 
   // Popular countries data (from fetched countries)
   const popularData = useMemo(() => {
@@ -1185,51 +1154,6 @@ export default function HomePage() {
                 <Share2 className="w-3.5 h-3.5" /> Share
               </Button>
             </div>
-          </div>
-        </section>
-
-        {/* ==================== SECTION 15: NEWSLETTER ==================== */}
-        <section className="px-4 pb-10">
-          <div className="max-w-6xl mx-auto">
-            <Card className="p-6 bg-gradient-to-br from-emerald-50 to-sky-50/50 dark:from-emerald-950/20 dark:to-sky-950/10 border-emerald-200 dark:border-emerald-800">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
-                  <Mail className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div className="flex-1 text-center sm:text-left">
-                  <h3 className="font-bold text-lg">Stay Updated on Visa Changes</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Get notified when visa policies change for Pakistani passport holders. No spam, ever.</p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-col sm:flex-row gap-2 max-w-md mx-auto sm:mx-0">
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  value={newsletterEmail}
-                  onChange={(e) => { setNewsletterEmail(e.target.value); setNewsletterStatus('idle'); setNewsletterMessage(''); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleNewsletterSubscribe(); }}
-                  className="flex-1 h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
-                  disabled={newsletterStatus === 'loading'}
-                />
-                <Button
-                  onClick={handleNewsletterSubscribe}
-                  disabled={newsletterStatus === 'loading' || !newsletterEmail.trim()}
-                  className="gap-1.5"
-                >
-                  {newsletterStatus === 'loading' ? (
-                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  {newsletterStatus === 'loading' ? 'Subscribing...' : 'Subscribe Free'}
-                </Button>
-              </div>
-              {newsletterMessage && (
-                <p className={`mt-2 text-xs text-center sm:text-left ${newsletterStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {newsletterStatus === 'success' ? '✓ ' : '⚠ '}{newsletterMessage}
-                </p>
-              )}
-            </Card>
           </div>
         </section>
 
