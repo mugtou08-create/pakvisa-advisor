@@ -239,7 +239,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         <div className="flex items-center gap-2 shrink-0">
           {!country.visaFree && (
             <a
-              href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&ref=pakvisa`}
+              href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}
@@ -748,7 +748,7 @@ export default function HomePage() {
             <div className="rounded-xl border bg-card p-4">
               <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
                 <a
-                  href="https://www.ivisa.com/?ref=pakvisa&utm_source=pakvisa"
+                  href="https://www.ivisa.com/?promotion=SHARE20"
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   className="flex items-center gap-2 group"
@@ -1258,7 +1258,7 @@ export default function HomePage() {
             <p className="text-center text-[10px] text-muted-foreground/70 font-medium uppercase tracking-widest mb-3">Trusted Travel Partners</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <a
-                href="https://www.ivisa.com/?ref=pakvisa&utm_source=pakvisa"
+                href="https://www.ivisa.com/?promotion=SHARE20"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:shadow-sm transition-all group"

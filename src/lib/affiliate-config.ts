@@ -6,7 +6,7 @@
  * 2. Replace the placeholder URLs below with your actual affiliate URLs
  * 3. The URLs are used in country detail cards and the footer
  * 
- * CURRENT STATUS: SafetyWing ✅ LIVE | iVisa, Booking.com, Skyscanner — placeholders
+ * CURRENT STATUS: SafetyWing ✅ LIVE | iVisa ✅ LIVE | Booking.com, Skyscanner — placeholders
  */
 
 export const AFFILIATE_CONFIG = {
@@ -14,10 +14,10 @@ export const AFFILIATE_CONFIG = {
   ivisa: {
     name: 'iVisa',
     baseUrl: 'https://www.ivisa.com',
-    referralParam: 'ref=pakvisa',
+    referralParam: 'promotion=SHARE20',
     utmSource: 'pakvisa',
     getCountryUrl: (countryName: string) =>
-      `https://www.ivisa.com/search?q=${encodeURIComponent(countryName)}&ref=pakvisa&utm_source=pakvisa`,
+      `https://www.ivisa.com/search?q=${encodeURIComponent(countryName)}&promotion=SHARE20`,
   },
 
   /** SafetyWing — travel insurance (10-20% commission) */

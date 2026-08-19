@@ -468,7 +468,7 @@ function TripCalculator({ costProfile }: { costProfile: NonNullable<CountryData[
 // Affiliate: Travel Resources (iVisa, Insurance, Hotels, Flights)
 // ============================================================
 function AffiliateResources({ country }: { country: CountryData }) {
-  const ivisaUrl = `https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&ref=pakvisa`;
+  const ivisaUrl = `https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`;
   const safetyWingUrl = `https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador`;
   const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(country.name)}&aid=304142&label=pakvisa`;
   const skyscannerUrl = `https://www.skyscanner.net/transport/flights/to/${country.code.toLowerCase()}/?ref=pakvisa`;
