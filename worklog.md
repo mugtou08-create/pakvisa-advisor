@@ -269,3 +269,54 @@ Stage Summary:
 - 🔍 Consider making FAQ searchable
 - 📊 Consider adding more interactive charts to Passport Power Ranking
 - 🧹 Dead code: src/components/app/ contains unused legacy components (tabs, shared-components, dialogs)
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Implement 5 strategic affiliate link improvements for passive income
+
+Work Log:
+- #1 Added green "Apply" button on every non-visa-free country card (collapsed view)
+  - Links directly to iVisa search for that specific country
+  - Hidden on visa-free countries (Azerbaijan, Malaysia, etc.) — only shows when visa needed
+  - Uses e.stopPropagation() so clicking Apply doesn't expand the card
+  - Hidden on mobile (sm breakpoint) to avoid crowding small screens
+- #2 Redesigned "Prepare Your Trip" strip in expanded country cards
+  - Changed from 2x2 grid of small horizontal cards to a 4-column icon-based strip
+  - Gradient background (emerald to sky)
+  - Icons: Apply Visa (emerald), Find Flights (orange), Book Hotel (violet), Get Insurance (blue)
+  - Moved to be the VERY LAST section in expanded panel (after embassy contact)
+  - Visa application link hidden for visa-free countries (only shows flights, hotel, insurance)
+- #3 Added smart affiliate suggestion rules to AI chat system prompt
+  - AI can suggest AT MOST ONE service per response
+  - Only when it naturally fits the conversation
+  - Uses "many travelers use" language (not "I recommend")
+  - Covers iVisa (visa applications), SafetyWing (insurance), Skyscanner (flights), Booking.com (hotels)
+- #4 Added "Travel Essentials" bar below Popular Destinations
+  - Clean rounded card with 4 colored icon buttons (Visa Help, Cheap Flights, Best Hotels, Travel Insurance)
+  - Vertical dividers between items on desktop
+  - Subtle FTC disclosure text
+- #5 Enhanced footer affiliate links
+  - Changed from plain text links to styled pill buttons with colored icons
+  - Each has border, bg-card, hover shadow effect
+  - Icons match their brand colors (emerald iVisa, blue SafetyWing, violet Booking.com, orange Skyscanner)
+  - Increased padding from py-3 to py-4
+- Fixed duplicate ExternalLink import that caused 500 error
+- All changes verified via agent-browser:
+  - Apply buttons on non-visa-free cards ✅
+  - No Apply button on visa-free cards ✅
+  - Prepare Your Trip strip in expanded China card ✅
+  - Travel Essentials bar below Popular Destinations ✅
+  - Enhanced footer links ✅
+- Lint passes clean
+
+Stage Summary:
+- All 5 affiliate improvements implemented and verified
+- Affiliate links now appear in 6 locations total:
+  1. Country cards (collapsed) — Apply button
+  2. Country cards (expanded) — Prepare Your Trip strip
+  3. Below Popular Destinations — Travel Essentials bar
+  4. Footer — Trusted Partners pills
+  5. AI Chat — Smart natural suggestions
+  6. Popular destination pills (header area)
+- Design kept clean and non-cluttered as requested

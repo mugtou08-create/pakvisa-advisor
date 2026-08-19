@@ -1,0 +1,1320 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+     4→import {
+     5→  Globe, Search, Sun, Moon, HelpCircle, Sparkles, MessageSquare,
+     6→  BarChart3, ClipboardList, Shield, Clock, DollarSign, Plane,
+     7→  ChevronDown, ChevronUp, Heart, X, ArrowRight, Check, Lock,
+     8→  Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
+     9→  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
+    10→  CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building,
+    11→  ArrowUp, ExternalLink,
+    12→} from 'lucide-react';
+    13→import { Button } from '@/components/ui/button';
+    14→import { Badge } from '@/components/ui/badge';
+    15→import { Card, CardContent } from '@/components/ui/card';
+    16→import { Skeleton } from '@/components/ui/skeleton';
+    17→import { useTheme } from 'next-themes';
+    18→import { useAppStore } from '@/lib/store';
+    19→import type { CountryData } from '@/lib/types';
+    20→import { AiChatPanel } from '@/components/visa/ai-chat-panel';
+    21→import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
+    22→import { ComparePanel } from '@/components/visa/compare-panel';
+    23→import { CountryDetailPanel } from '@/components/visa/country-detail';
+    24→import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
+    25→import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
+    26→
+    27→// ============================================================
+    28→// Animated Counter Hook
+    29→// ============================================================
+    30→function useAnimatedCounter(target: number, duration: number = 1200, enabled: boolean = true) {
+    31→  const [count, setCount] = useState(0);
+    32→  useEffect(() => {
+    33→    if (!enabled || target === 0) return;
+    34→    let start = 0;
+    35→    let startTime: number | null = null;
+    36→    let raf: number;
+    37→    const step = (timestamp: number) => {
+    38→      if (!startTime) startTime = timestamp;
+    39→      const progress = Math.min((timestamp - startTime) / duration, 1);
+    40→      // Ease-out cubic
+    41→      const eased = 1 - Math.pow(1 - progress, 3);
+    42→      const current = Math.round(eased * target);
+    43→      setCount(current);
+    44→      if (progress < 1) {
+    45→        raf = requestAnimationFrame(step);
+    46→      }
+    47→    };
+    48→    raf = requestAnimationFrame(step);
+    49→    return () => cancelAnimationFrame(raf);
+    50→  }, [target, duration, enabled]);
+    51→  return count;
+    52→}
+    53→
+    54→// ============================================================
+    55→// Testimonials
+    56→// ============================================================
+    57→const TESTIMONIALS = [
+    58→  { text: "Found out I can get Turkey e-visa in 5 minutes! Saved me a trip to the embassy.", author: "Ahmed K., Lahore", rating: 5 },
+    59→  { text: "Compared 4 countries side by side. Chose Malaysia — visa free, no hassle!", author: "Sara M., Karachi", rating: 5 },
+    60→  { text: "The AI told me exactly which documents I was missing. Got approved first try.", author: "Bilal R., Islamabad", rating: 5 },
+    61→];
+    62→
+    63→// ============================================================
+    64→// Popular Countries
+    65→// ============================================================
+    66→const POPULAR_COUNTRIES = [
+    67→  'UAE', 'Saudi Arabia', 'Turkey', 'Malaysia',
+    68→  'Thailand', 'UK', 'USA', 'China',
+    69→];
+    70→
+    71→// ============================================================
+    72→// Visa Policy Alerts
+    73→// ============================================================
+    74→const VISA_ALERTS = [
+    75→  { id: 1, icon: CheckCircle2, color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can now apply for a Turkish e-Visa online in minutes.', source: 'evisa.gov.tr' },
+    76→  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Malaysia has extended visa-free entry for Pakistani passport holders through 2025.', source: 'imi.gov.my' },
+    77→  { id: 3, icon: Info, color: 'text-sky-600', title: 'Saudi e-Visa for Tourism', desc: 'Saudi Arabia now offers e-Visa for Pakistani tourists including Umrah travelers.', source: 'visa.visitsaudi.com' },
+    78→  { id: 4, icon: AlertTriangle, color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.', source: 'uaevisaonline.com' },
+    79→  { id: 5, icon: CheckCircle2, color: 'text-emerald-600', title: 'Azerbaijan Visa-Free Access', desc: 'Pakistani passport holders enjoy visa-free entry to Azerbaijan for up to 90 days.', source: 'mfa.gov.az' },
+    80→  { id: 6, icon: Info, color: 'text-sky-600', title: 'Thailand Visa on Arrival Updated', desc: 'Thailand offers VoA for Pakistani tourists. Ensure you have 10,000 THB in cash proof.', source: 'thaievisa.go.th' },
+    81→];
+    82→
+    83→// ============================================================
+    84→// FAQ Data
+    85→// ============================================================
+    86→const FAQ_DATA = [
+    87→  { q: 'Do Pakistani citizens need a visa for UAE?', a: 'Pakistani citizens can get a Visa on Arrival in the UAE for up to 30 days. You need a valid passport with 6 months validity, a return ticket, hotel booking confirmation, and travel insurance. The visa is stamped at the airport immigration counter.' },
+    88→  { q: 'What is the easiest country to visit with a Pakistani passport?', a: 'Several countries are easy to visit. Malaysia offers visa-free entry. UAE, Qatar, and Saudi Arabia offer Visa on Arrival. Turkey offers a simple e-Visa that can be obtained online in minutes. These are generally the most straightforward options for Pakistani travelers.' },
+    89→  { q: 'How many countries can Pakistani citizens visit visa-free?', a: 'Pakistani citizens can visit approximately 30+ countries visa-free or with visa on arrival. This includes several African nations, some Asian countries, and Caribbean destinations. Check our full list above for the most up-to-date information.' },
+    90→  { q: 'Is the e-Visa process safe and reliable?', a: 'Yes, e-Visas are official government-issued visas. Countries like Turkey, Saudi Arabia, and others process e-Visas through their official government portals. Always apply through the official government website and never through unauthorized third-party agencies.' },
+    91→  { q: 'What documents do I need for a visa application?', a: 'Common requirements include: a valid passport (6+ months validity), passport-sized photographs, bank statements (3-6 months), employment letter or business documents, travel itinerary, hotel bookings, and travel insurance. Specific requirements vary by country.' },
+    92→  { q: 'How long does visa processing take?', a: 'Processing times vary significantly. e-Visas like Turkey can be approved within 24 hours. Visa on Arrival is instant at the airport. Embassy visas for countries like UK, USA, or Schengen states can take 2-6 weeks. Check individual country pages for specific timelines.' },
+    93→  { q: 'Can I travel to Europe with a Pakistani passport?', a: 'Pakistani citizens need a Schengen visa to visit most European countries. This requires applying at the embassy or consulate of your main destination. The process typically takes 2-4 weeks and requires comprehensive documentation including financial proof, travel insurance, and accommodation bookings.' },
+    94→  { q: 'What is the cost of a visa for popular destinations?', a: 'Costs vary widely. Turkey e-Visa costs around $50. Saudi Arabia e-Visa is approximately $80-120. UAE Visa on Arrival is free but requires insurance. Schengen visa fees are around €80. UK visa costs approximately $130-200. Check each country page for exact fees.' },
+    95→  { q: 'How accurate is the information on PakVisa Advisor?', a: 'We source our data from official embassy websites and government portals. Our data is regularly verified and updated. However, visa policies can change with little notice, so we always recommend verifying with the official embassy or consulate before making travel plans.' },
+    96→  { q: 'Is PakVisa Advisor free to use?', a: 'Yes! Basic visa search, requirements viewing, and limited AI queries are completely free. We offer a premium plan (PakVisa Pro) for additional features like document checklists, step-by-step guides, and unlimited AI access at $14.90/month (≈ PKR 4,150).' },
+    97→  { q: 'What is the best time to apply for a visa?', a: 'Apply at least 4-6 weeks before your planned travel date for embassy visas. For e-Visas, 1-2 weeks is usually sufficient. Avoid peak travel seasons (summer, December holidays) as processing times may be longer. Some countries have specific application windows.' },
+    98→  { q: 'Can I get a visa if I have been previously rejected?', a: 'A previous rejection does not automatically disqualify you, but you must address the reasons for the previous rejection in your new application. Provide additional documentation, stronger financial proof, and a clear explanation of any changes in your circumstances. Consult our AI advisor for personalized guidance.' },
+    99→  { q: 'Does PakVisa Advisor help with the actual visa application?', a: 'PakVisa Advisor provides information, guidance, and tools to help you prepare. We show you requirements, costs, processing times, and provide AI-powered advice. However, you must submit your application directly to the relevant embassy, consulate, or official e-Visa portal.' },
+   100→];
+   101→
+   102→// ============================================================
+   103→// Passport Power Rankings
+   104→// ============================================================
+   105→const PASSPORT_RANKINGS = [
+   106→  { country: 'Pakistan', flag: '🇵🇰', rank: 106, score: 36, visaFree: 33 },
+   107→  { country: 'India', flag: '🇮🇳', rank: 82, score: 58, visaFree: 58 },
+   108→  { country: 'Bangladesh', flag: '🇧🇩', rank: 101, score: 40, visaFree: 40 },
+   109→  { country: 'Afghanistan', flag: '🇦🇫', rank: 111, score: 26, visaFree: 26 },
+   110→];
+   111→
+   112→// ============================================================
+   113→// Filter State Type
+   114→// ============================================================
+   115→type FilterState = {
+   116→  access: string | null;
+   117→  region: string | null;
+   118→  sortDir: string;
+   119→};
+   120→
+   121→// ============================================================
+   122→// Pagination Helper
+   123→// ============================================================
+   124→function generatePageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+   125→  if (total <= 7) {
+   126→    return Array.from({ length: total }, (_, i) => i + 1);
+   127→  }
+   128→  const pages: (number | 'ellipsis')[] = [1];
+   129→  if (current > 3) pages.push('ellipsis');
+   130→  const start = Math.max(2, current - 1);
+   131→  const end = Math.min(total - 1, current + 1);
+   132→  for (let i = start; i <= end; i++) pages.push(i);
+   133→  if (current < total - 2) pages.push('ellipsis');
+   134→  if (total > 1) pages.push(total);
+   135→  return pages;
+   136→}
+   137→
+   138→// ============================================================
+   139→// Visa Type Helpers (single source of truth for access type)
+   140→// Priority: visaFree > visaOnArrival > etaAvailable > embassy
+   141→// ============================================================
+   142→function getPrimaryAccess(c: CountryData): string {
+   143→  if (c.visaFree) return 'visa-free';
+   144→  if (c.visaOnArrival) return 'visa-on-arrival';
+   145→  if (c.etaAvailable) return 'e-visa';
+   146→  return 'embassy';
+   147→}
+   148→function getVisaType(c: CountryData) {
+   149→  const access = getPrimaryAccess(c);
+   150→  switch (access) {
+   151→    case 'visa-free':     return { label: 'Visa Free', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', dot: 'bg-emerald-500' };
+   152→    case 'visa-on-arrival': return { label: 'Visa on Arrival', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', dot: 'bg-amber-500' };
+   153→    case 'e-visa':       return { label: 'e-Visa', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', dot: 'bg-sky-500' };
+   154→    default:             return { label: 'Embassy Required', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', dot: 'bg-gray-400' };
+   155→  }
+   156→}
+   157→
+   158→// ============================================================
+   159→// Quick Tool Card
+   160→// ============================================================
+   161→function QuickToolCard({ icon, title, description, colorClass, onClick, badge }: {
+   162→  icon: React.ReactNode;
+   163→  title: string;
+   164→  description: string;
+   165→  colorClass: string;
+   166→  onClick: () => void;
+   167→  badge?: string;
+   168→}) {
+   169→  return (
+   170→    <button
+   171→      onClick={onClick}
+   172→      className={`text-left rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${colorClass} group`}
+   173→    >
+   174→      <div className="flex items-start justify-between mb-3">
+   175→        <div className="p-2.5 rounded-lg bg-muted group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-200">
+   176→          {icon}
+   177→        </div>
+   178→        {badge && <Badge variant="secondary" className="text-[10px]">{badge}</Badge>}
+   179→      </div>
+   180→      <h4 className="font-semibold mb-1">{title}</h4>
+   181→      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+   182→    </button>
+   183→  );
+   184→}
+   185→
+   186→// ============================================================
+   187→// Country Result Card
+   188→// ============================================================
+   189→function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: {
+   190→  country: CountryData;
+   191→  expanded: boolean;
+   192→  onToggle: () => void;
+   193→  isFav: boolean;
+   194→  onToggleFav: () => void;
+   195→}) {
+   196→  const vt = getVisaType(country);
+   197→
+   198→  return (
+   199→    <Card className="overflow-hidden transition-shadow hover:shadow-md">
+   200→      <div
+   201→        onClick={onToggle}
+   202→        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+   203→        role="button"
+   204→        tabIndex={0}
+   205→        className="w-full text-left p-4 flex items-center gap-4 cursor-pointer select-none"
+   206→        aria-expanded={expanded}
+   207→ >
+   208→        {/* Flag */}
+   209→        <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+   210→          {country.flagUrl ? (
+   211→            <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" />
+   212→          ) : (
+   213→            <span className="text-lg">{country.flagEmoji}</span>
+   214→          )}
+   215→        </div>
+   216→
+   217→        {/* Info */}
+   218→        <div className="flex-1 min-w-0">
+   219→          <div className="flex items-center gap-2 flex-wrap">
+   220→            <span className="font-semibold text-sm truncate">{country.name}</span>
+   221→            <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${vt.color}`}>
+   222→              <span className={`w-1.5 h-1.5 rounded-full ${vt.dot}`} />
+   223→              {vt.label}
+   224→            </span>
+   225→          </div>
+   226→          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+   227→            {country.costProfile?.visaFeeUSD ? (
+   228→              <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />${country.costProfile.visaFeeUSD}</span>
+   229→            ) : null}
+   230→            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{country.processingDaysMin}-{country.processingDaysMax}d</span>
+   231→            <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{Math.min(country.safetyRating, 5)}/5</span>
+   232→            {country.currencyCode && (
+   233→              <span className="flex items-center gap-1 hidden sm:flex"><Globe className="w-3 h-3" />{country.currencyCode}</span>
+   234→            )}
+   235→          </div>
+   236→        </div>
+   237→
+   238→        {/* Apply + Favorite + Expand */}
+   239→        <div className="flex items-center gap-2 shrink-0">
+   240→          {!country.visaFree && (
+   241→            <a
+   242→              href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&ref=pakvisa`}
+   243→              target="_blank"
+   244→              rel="noopener noreferrer sponsored"
+   245→              onClick={(e) => e.stopPropagation()}
+   246→              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium transition-colors"
+   247→            >
+   248→              Apply <ExternalLink className="w-3 h-3" />
+   249→            </a>
+   250→          )}
+   251→          <button
+   252→            onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
+   253→            className="p-1.5 rounded-full hover:bg-muted transition-colors"
+   254→            aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+   255→          >
+   256→            <Heart className={`w-4 h-4 ${isFav ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
+   257→          </button>
+   258→          {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+   259→        </div>
+   260→      </div>
+   261→
+   262→      {/* Expanded Details - Full Info Panel */}
+   263→      {expanded && <CountryDetailPanel country={country} />}
+   264→    </Card>
+   265→  );
+   266→}
+   267→
+   268→// ============================================================
+   269→// ITEMS_PER_PAGE
+   270→// ============================================================
+   271→const ITEMS_PER_PAGE = 15;
+   272→
+   273→// ============================================================
+   274→// Main Component
+   275→// ============================================================
+   276→export default function HomePage() {
+   277→  // Theme
+   278→  const { theme, setTheme } = useTheme();
+   279→  const [mounted, setMounted] = useState(false);
+   280→  useEffect(() => setMounted(true), []);
+   281→
+   282→  // Store
+   283→  const favorites = useAppStore((s) => s.favorites);
+   284→  const toggleFavorite = useAppStore((s) => s.toggleFavorite);
+   285→
+   286→  // Modals
+   287→  const [activeModal, setActiveModal] = useState<string | null>(null);
+   288→
+   289→  // Tool panels
+   290→  const [activeTool, setActiveTool] = useState<string | null>(null);
+   291→
+   292→  // Search
+   293→  const [searchQuery, setSearchQuery] = useState('');
+   294→  const searchInputRef = useRef<HTMLInputElement>(null);
+   295→
+   296→  // Filters
+   297→  const [filters, setFilters] = useState<FilterState>({ access: null, region: null, sortDir: 'az' });
+   298→  const [currentPage, setCurrentPage] = useState(1);
+   299→  const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
+   300→
+   301→  // Data
+   302→  const [countries, setCountries] = useState<CountryData[]>([]);
+   303→  const [stats, setStats] = useState<{ totalCountries: number; visaFreeCount: number; visaOnArrivalCount: number; eVisaCount: number; embassyRequiredCount?: number } | null>(null);
+   304→  const [loading, setLoading] = useState(true);
+   305→  const [error, setError] = useState<string | null>(null);
+   306→
+   307→  // FAQ
+   308→  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+   309→
+   310→  // Back to top
+   311→  const [showBackToTop, setShowBackToTop] = useState(false);
+   312→  useEffect(() => {
+   313→    const handleScroll = () => setShowBackToTop(window.scrollY > 600);
+   314→    window.addEventListener('scroll', handleScroll, { passive: true });
+   315→    return () => window.removeEventListener('scroll', handleScroll);
+   316→  }, []);
+   317→
+   318→  // Animated counters
+   319→  const statCountries = useAnimatedCounter(stats?.totalCountries ?? 0, 1000, !loading && !!stats);
+   320→  const statVisaFree = useAnimatedCounter(stats?.visaFreeCount ?? 0, 1000, !loading && !!stats);
+   321→  const statVoA = useAnimatedCounter(stats?.visaOnArrivalCount ?? 0, 1000, !loading && !!stats);
+   322→  const statEVisa = useAnimatedCounter(stats?.eVisaCount ?? 0, 1000, !loading && !!stats);
+   323→  const statEmbassy = useAnimatedCounter(stats?.embassyRequiredCount ?? 0, 1000, !loading && !!stats);
+   324→
+   325→  // Fetch all countries (no limit — client-side filtering)
+   326→  useEffect(() => {
+   327→    async function fetchData() {
+   328→      try {
+   329→        setLoading(true);
+   330→        setError(null);
+   331→        const [countriesRes, statsRes] = await Promise.all([
+   332→          fetch('/api/countries?limit=200'),
+   333→          fetch('/api/countries/stats'),
+   334→        ]);
+   335→        if (!countriesRes.ok || !statsRes.ok) {
+   336→          throw new Error('Failed to fetch data');
+   337→        }
+   338→        const countriesJson = await countriesRes.json();
+   339→        const statsJson = await statsRes.json();
+   340→        if (countriesJson.success) setCountries(countriesJson.data);
+   341→        else throw new Error('Invalid response');
+   342→        if (statsJson.success) setStats(statsJson.data);
+   343→      } catch (err) {
+   344→        console.error(err);
+   345→        setError('Something went wrong. Please try again.');
+   346→      } finally {
+   347→        setLoading(false);
+   348→      }
+   349→    }
+   350→    fetchData();
+   351→  }, []);
+   352→
+   353→  // Filtered + sorted countries
+   354→  const filteredCountries = useMemo(() => {
+   355→    let result = [...countries];
+   356→
+   357→    // Region filter
+   358→    if (filters.region) {
+   359→      result = result.filter((c) => getRegion(c) === filters.region);
+   360→    }
+   361→
+   362→    // Access type filter — uses primary access type (same priority as display)
+   363→    if (filters.access) {
+   364→      result = result.filter((c) => getPrimaryAccess(c) === filters.access);
+   365→    }
+   366→
+   367→    // Text search
+   368→    if (searchQuery.trim()) {
+   369→      const q = searchQuery.trim().toLowerCase();
+   370→      result = result.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
+   371→    }
+   372→
+   373→    // Sort
+   374→    switch (filters.sortDir) {
+   375→      case 'az': result.sort((a, b) => a.name.localeCompare(b.name)); break;
+   376→      case 'za': result.sort((a, b) => b.name.localeCompare(a.name)); break;
+   377→      case 'cheapest': result.sort((a, b) => (a.costProfile?.visaFeeUSD ?? 9999) - (b.costProfile?.visaFeeUSD ?? 9999)); break;
+   378→      case 'fastest': result.sort((a, b) => a.processingDaysMin - b.processingDaysMin); break;
+   379→      case 'safest': result.sort((a, b) => b.safetyRating - a.safetyRating); break;
+   380→    }
+   381→
+   382→    return result;
+   383→  }, [countries, filters, searchQuery]);
+   384→
+   385→  // Pagination
+   386→  const totalPages = Math.max(1, Math.ceil(filteredCountries.length / ITEMS_PER_PAGE));
+   387→  const paginatedCountries = useMemo(() => {
+   388→    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+   389→    return filteredCountries.slice(start, start + ITEMS_PER_PAGE);
+   390→  }, [filteredCountries, currentPage]);
+   391→  const pageNumbers = useMemo(() => generatePageNumbers(currentPage, totalPages), [currentPage, totalPages]);
+   392→
+   393→  // Reset page when filters/search change
+   394→  useEffect(() => { setCurrentPage(1); }, [filters, searchQuery]);
+   395→
+   396→  // Scroll to country list when searching or expanding
+   397→  const countryListRef = useRef<HTMLDivElement>(null);
+   398→  const filteredCountriesRef = useRef<CountryData[]>([]);
+   399→
+   400→  // Helper: scroll to a specific country card by code, or fall back to section
+   401→  const scrollToCountry = useCallback((code: string | null) => {
+   402→    if (code) {
+   403→      const el = document.getElementById(`country-card-${code}`);
+   404→      if (el) {
+   405→        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   406→        return;
+   407→      }
+   408→    }
+   409→    // Fallback: scroll to the section
+   410→    countryListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   411→  }, []);
+   412→
+   413→  const handlePopularClick = useCallback((name: string) => {
+   414→    setSearchQuery(name);
+   415→    setFilters({ access: null, region: null, sortDir: 'az' });
+   416→    setCurrentPage(1);
+   417→    // After React re-renders with new search, scroll to the country
+   418→    requestAnimationFrame(() => {
+   419→      setTimeout(() => {
+   420→        const match = filteredCountriesRef.current.find((c) => c.name === name);
+   421→        if (match) {
+   422→          setExpandedCountry(match.code);
+   423→          scrollToCountry(match.code);
+   424→        } else {
+   425→          scrollToCountry(null);
+   426→        }
+   427→      }, 150);
+   428→    });
+   429→  }, [scrollToCountry]);
+   430→
+   431→  // Keep filteredCountries ref in sync
+   432→  filteredCountriesRef.current = filteredCountries;
+   433→
+   434→  const handleDestClick = useCallback((name: string) => {
+   435→    setSearchQuery(name);
+   436→    setFilters({ access: null, region: null, sortDir: 'az' });
+   437→    setCurrentPage(1);
+   438→    // Find and expand
+   439→    requestAnimationFrame(() => {
+   440→      setTimeout(() => {
+   441→        const match = filteredCountriesRef.current.find((c) => c.name === name);
+   442→        if (match) {
+   443→          setExpandedCountry(match.code);
+   444→          scrollToCountry(match.code);
+   445→        } else {
+   446→          scrollToCountry(null);
+   447→        }
+   448→      }, 200);
+   449→    });
+   450→  }, [scrollToCountry]);
+   451→
+   452→  const clearAllFilters = useCallback(() => {
+   453→    setFilters({ access: null, region: null, sortDir: 'az' });
+   454→    setSearchQuery('');
+   455→    setCurrentPage(1);
+   456→  }, []);
+   457→
+   458→  const hasActiveFilters = filters.access !== null || filters.region !== null || searchQuery.trim() !== '';
+   459→
+   460→  // Share WhatsApp
+   461→  const handleShareWhatsApp = useCallback(() => {
+   462→    const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://pakvisa.vercel.app';
+   463→    const shareText = `Check out PakVisa — Free visa info for 70+ countries for Pakistani passport holders! ${shareUrl}`;
+   464→    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
+   465→  }, []);
+   466→
+   467→  // Popular countries data (from fetched countries)
+   468→  const popularData = useMemo(() => {
+   469→    return POPULAR_COUNTRIES.map((name) => countries.find((c) => c.name === name)).filter((c): c is CountryData => Boolean(c));
+   470→  }, [countries]);
+   471→
+   472→  // ============================================================
+   473→  // Render: Tool Panel View (replaces main content, footer stays)
+   474→  // ============================================================
+   475→  const closeTool = useCallback(() => setActiveTool(null), []);
+   476→  const selectCountryFromTool = useCallback((name: string) => {
+   477→    setActiveTool(null);
+   478→    // Find the country code by name and expand it
+   479→    const match = countries.find((c) => c.name === name);
+   480→    if (match) setExpandedCountry(match.code);
+   481→    // Scroll to top of results
+   482→    window.scrollTo({ top: 0, behavior: 'smooth' });
+   483→  }, [countries]);
+   484→
+   485→  const renderToolPanel = () => {
+   486→    if (activeTool === 'ai') return <AiChatPanel onClose={closeTool} />;
+   487→    if (activeTool === 'quiz') return <VisaQuizPanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
+   488→    if (activeTool === 'compare') return <ComparePanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
+   489→    return null;
+   490→  };
+   491→
+   492→  // ============================================================
+   493→  // If a tool panel is active, render it with back button + footer
+   494→  // ============================================================
+   495→  if (activeTool) {
+   496→    return (
+   497→      <div className="min-h-screen flex flex-col bg-background">
+   498→        {/* Header */}
+   499→        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+   500→          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+   501→            <div className="flex items-center gap-3">
+   502→              <Button variant="ghost" size="sm" onClick={() => setActiveTool(null)}>
+   503→                <ArrowRight className="w-4 h-4 rotate-180 mr-1" /> Back
+   504→              </Button>
+   505→              <div className="flex items-center gap-2 font-bold text-lg">
+   506→                <Globe className="w-5 h-5 text-emerald-600" />
+   507→                <span>PakVisa</span>
+   508→              </div>
+   509→            </div>
+   510→            <div className="flex items-center gap-2">
+   511→              <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+   512→                {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <Skeleton className="h-4 w-4 rounded" />}
+   513→              </Button>
+   514→            </div>
+   515→          </div>
+   516→        </header>
+   517→
+   518→        {/* Tool content */}
+   519→        <main className="flex-1">
+   520→          {renderToolPanel()}
+   521→        </main>
+   522→
+   523→        {/* Footer (always visible) */}
+   524→        <footer className="border-t bg-muted/30 mt-auto">
+   525→          <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+   526→            <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+   527→            <div className="flex items-center gap-4">
+   528→              <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
+   529→              <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
+   530→              <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
+   531→              <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
+   532→            </div>
+   533→          </div>
+   534→          <div className="max-w-6xl mx-auto px-4 pb-4">
+   535→            <p className="text-[11px] text-muted-foreground/70 text-center leading-relaxed">
+   536→              <span className="font-medium">Disclaimer:</span> PakVisa Advisor provides visa information for educational and planning purposes only. We are not a government agency, embassy, or visa processing service. Visa policies change frequently — always verify requirements with the official embassy or consulate before making travel plans. We are not liable for decisions made based on the information provided.
+   537→            </p>
+   538→          </div>
+   539→        </footer>
+   540→
+   541→        {/* Modals */}
+   542→        {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} />}
+   543→        {activeModal === 'help' && <HelpModal onClose={() => setActiveModal(null)} />}
+   544→        {activeModal === 'about' && <AboutModal onClose={() => setActiveModal(null)} />}
+   545→        {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
+   546→        {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
+   547→        {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
+   548→      </div>
+   549→    );
+   550→  }
+   551→
+   552→  // ============================================================
+   553→  // Main Page Render
+   554→  // ============================================================
+   555→  return (
+   556→    <div className="min-h-screen flex flex-col bg-background">
+   557→      {/* ==================== SECTION 1: HEADER ==================== */}
+   558→      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+   559→        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+   560→          <div className="flex items-center gap-2 font-bold text-lg">
+   561→            <Globe className="w-5 h-5 text-emerald-600" />
+   562→            <span>PakVisa</span>
+   563→          </div>
+   564→          <div className="flex items-center gap-2">
+   565→            <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+   566→              {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <Skeleton className="h-4 w-4 rounded" />}
+   567→            </Button>
+   568→            <Button variant="outline" size="sm" onClick={() => setActiveModal('pricing')} className="gap-1.5 text-xs">
+   569→              <Crown className="w-3.5 h-3.5 text-amber-500" /> Premium
+   570→            </Button>
+   571→            <Button variant="ghost" size="icon" onClick={() => setActiveModal('help')} aria-label="Help">
+   572→              <HelpCircle className="w-4 h-4" />
+   573→            </Button>
+   574→          </div>
+   575→        </div>
+   576→      </header>
+   577→
+   578→      {/* ==================== MAIN CONTENT ==================== */}
+   579→      <main className="flex-1">
+   580→        {/* ==================== SECTION 2: HERO + SEARCH ==================== */}
+   581→        <section className="relative px-4 pt-10 pb-8 overflow-hidden">
+   582→          {/* Decorative background elements */}
+   583→          <div className="absolute inset-0 -z-10">
+   584→            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-br from-emerald-200/40 via-emerald-100/20 to-transparent dark:from-emerald-900/20 dark:via-emerald-800/10 rounded-full blur-3xl" />
+   585→            <div className="absolute top-20 left-10 w-40 h-40 bg-amber-200/20 dark:bg-amber-900/10 rounded-full blur-3xl" />
+   586→            <div className="absolute top-10 right-10 w-32 h-32 bg-sky-200/20 dark:bg-sky-900/10 rounded-full blur-3xl" />
+   587→          </div>
+   588→          <div className="max-w-6xl mx-auto text-center relative">
+   589→            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-medium mb-4">
+   590→              <Sparkles className="w-3 h-3" />
+   591→              Trusted by 10,000+ Pakistani Travelers
+   592→            </div>
+   593→            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-2">
+   594→              Pakistan&apos;s #1 Free{' '}
+   595→              <span className="bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-400 dark:to-emerald-300 bg-clip-text text-transparent">Visa Checker</span>
+   596→            </h1>
+   597→            <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto mb-6">
+   598→              Instant visa requirements, fees, and processing times for 70+ countries. Trusted by thousands of Pakistani travelers.
+   599→            </p>
+   600→            {/* Search bar */}
+   601→            <form
+   602→              className="max-w-lg mx-auto relative"
+   603→              onSubmit={(e) => {
+   604→                e.preventDefault();
+   605→                const query = searchQuery.trim();
+   606→                if (!query) return;
+   607→                // Wait for React to re-render, then scroll
+   608→                requestAnimationFrame(() => {
+   609→                  setTimeout(() => {
+   610→                    const results = filteredCountriesRef.current;
+   611→                    if (results.length === 1) {
+   612→                      setExpandedCountry(results[0].code);
+   613→                      scrollToCountry(results[0].code);
+   614→                    } else if (results.length > 0) {
+   615→                      // Scroll to the first matching card
+   616→                      scrollToCountry(results[0].code);
+   617→                    } else {
+   618→                      scrollToCountry(null);
+   619→                    }
+   620→                  }, 150);
+   621→                });
+   622→              }}
+   623→            >
+   624→              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   625→              <input
+   626→                ref={searchInputRef}
+   627→                type="text"
+   628→                placeholder="Search any country..."
+   629→                value={searchQuery}
+   630→                onChange={(e) => setSearchQuery(e.target.value)}
+   631→                className="w-full h-11 pl-10 pr-10 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
+   632→              />
+   633→              {searchQuery && (
+   634→                <button
+   635→                  type="button"
+   636→                  onClick={() => setSearchQuery('')}
+   637→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   638→                  aria-label="Clear search"
+   639→                >
+   640→                  <X className="w-4 h-4" />
+   641→                </button>
+   642→              )}
+   643→            </form>
+   644→            {/* Popular pills */}
+   645→            <div className="flex flex-wrap justify-center gap-2 mt-4">
+   646→              {POPULAR_COUNTRIES.map((name) => {
+   647→                const c = countries.find((x) => x.name === name);
+   648→                if (!c) return null;
+   649→                const vt = getVisaType(c);
+   650→                return (
+   651→                  <button
+   652→                    key={name}
+   653→                    onClick={() => handlePopularClick(name)}
+   654→                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-card text-xs font-medium hover:bg-muted transition-colors"
+   655→                  >
+   656→                    <span className="text-sm">{c.flagEmoji}</span>
+   657→                    {name}
+   658→                    <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full ${vt.color}`}>{vt.label}</span>
+   659→                  </button>
+   660→                );
+   661→              })}
+   662→            </div>
+   663→          </div>
+   664→        </section>
+   665→
+   666→        {/* ==================== SECTION 3: STATS BAR ==================== */}
+   667→        <section className="px-4 pb-8">
+   668→          <div className="max-w-6xl mx-auto">
+   669→            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+   670→              {stats ? [
+   671→                { label: 'Countries', value: statCountries, suffix: '+', icon: Globe, color: 'text-emerald-600' },
+   672→                { label: 'Visa Free', value: statVisaFree, suffix: '', icon: CheckCircle2, color: 'text-emerald-600' },
+   673→                { label: 'Visa on Arrival', value: statVoA, suffix: '', icon: Plane, color: 'text-amber-600' },
+   674→                { label: 'e-Visa', value: statEVisa, suffix: '', icon: FileText, color: 'text-sky-600' },
+   675→                { label: 'Embassy', value: statEmbassy, suffix: '', icon: Building, color: 'text-gray-500' },
+   676→              ].map((stat) => (
+   677→                <div key={stat.label} className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-sm transition-shadow">
+   678→                  <div className="p-2 rounded-lg bg-muted">
+   679→                    <stat.icon className={`w-5 h-5 ${stat.color} shrink-0`} />
+   680→                  </div>
+   681→                  <div>
+   682→                    <p className="text-xl font-bold tabular-nums">{stat.value}{stat.suffix}</p>
+   683→                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+   684→                  </div>
+   685→                </div>
+   686→              )) : (
+   687→                Array.from({ length: 5 }).map((_, i) => (
+   688→                  <div key={i} className="flex items-center gap-3 rounded-xl border bg-card p-4">
+   689→                    <Skeleton className="w-5 h-5 rounded" />
+   690→                    <div className="space-y-2">
+   691→                      <Skeleton className="h-5 w-10" />
+   692→                      <Skeleton className="h-3 w-16" />
+   693→                    </div>
+   694→                  </div>
+   695→                ))
+   696→              )}
+   697→            </div>
+   698→          </div>
+   699→        </section>
+   700→
+   701→        {/* ==================== SECTION 4: POPULAR DESTINATIONS GRID ==================== */}
+   702→        <section className="px-4 pb-10">
+   703→          <div className="max-w-6xl mx-auto">
+   704→            <h2 className="text-xl font-bold mb-4">Popular Destinations</h2>
+   705→            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   706→              {loading ? (
+   707→                Array.from({ length: 8 }).map((_, i) => (
+   708→                  <div key={i} className="rounded-xl border bg-card p-4">
+   709→                    <div className="flex items-center gap-3 mb-2">
+   710→                      <Skeleton className="w-10 h-7 rounded" />
+   711→                      <Skeleton className="h-4 w-20" />
+   712→                    </div>
+   713→                    <Skeleton className="h-5 w-24 rounded-full" />
+   714→                  </div>
+   715→                ))
+   716→              ) : popularData.map((c) => {
+   717→                const vt = getVisaType(c);
+   718→                return (
+   719→                  <button
+   720→                    key={c.code}
+   721→                    onClick={() => handleDestClick(c.name)}
+   722→                    className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-all group hover:-translate-y-0.5 duration-200"
+   723→                  >
+   724→                    <div className="flex items-center gap-3 mb-2">
+   725→                      <div className="w-10 h-7 rounded overflow-hidden bg-muted shrink-0">
+   726→                        {c.flagUrl ? (
+   727→                          <img src={c.flagUrl} alt={`${c.name} flag`} className="w-full h-full object-cover" />
+   728→                        ) : (
+   729→                          <span className="text-base">{c.flagEmoji}</span>
+   730→                        )}
+   731→                      </div>
+   732→                      <span className="font-semibold text-sm group-hover:text-emerald-600 transition-colors truncate">{c.name}</span>
+   733→                    </div>
+   734→                    <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${vt.color}`}>
+   735→                      <span className={`w-1.5 h-1.5 rounded-full ${vt.dot}`} />
+   736→                      {vt.label}
+   737→                    </span>
+   738→                  </button>
+   739→                );
+   740→              })}
+   741→            </div>
+   742→          </div>
+   743→        </section>
+   744→
+   745→        {/* ==================== TRAVEL ESSENTIALS BAR ==================== */}
+   746→        <section className="px-4 pb-10">
+   747→          <div className="max-w-6xl mx-auto">
+   748→            <div className="rounded-xl border bg-card p-4">
+   749→              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+   750→                <a
+   751→                  href="https://www.ivisa.com/?ref=pakvisa&utm_source=pakvisa"
+   752→                  target="_blank"
+   753→                  rel="noopener noreferrer sponsored"
+   754→                  className="flex items-center gap-2 group"
+   755→                >
+   756→                  <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/50 transition-colors">
+   757→                    <FileText className="w-4 h-4 text-emerald-600" />
+   758→                  </div>
+   759→                  <div className="hidden sm:block">
+   760→                    <p className="text-xs font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">Visa Help</p>
+   761→                    <p className="text-[10px] text-muted-foreground">iVisa</p>
+   762→                  </div>
+   763→                </a>
+   764→                <div className="w-px h-8 bg-border hidden sm:block" />
+   765→                <a
+   766→                  href="https://www.skyscanner.net/?ref=pakvisa&utm_source=pakvisa"
+   767→                  target="_blank"
+   768→                  rel="noopener noreferrer sponsored"
+   769→                  className="flex items-center gap-2 group"
+   770→                >
+   771→                  <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
+   772→                    <Plane className="w-4 h-4 text-orange-600" />
+   773→                  </div>
+   774→                  <div className="hidden sm:block">
+   775→                    <p className="text-xs font-medium group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">Cheap Flights</p>
+   776→                    <p className="text-[10px] text-muted-foreground">Skyscanner</p>
+   777→                  </div>
+   778→                </a>
+   779→                <div className="w-px h-8 bg-border hidden sm:block" />
+   780→                <a
+   781→                  href="https://www.booking.com/?aid=304142&label=pakvisa"
+   782→                  target="_blank"
+   783→                  rel="noopener noreferrer sponsored"
+   784→                  className="flex items-center gap-2 group"
+   785→                >
+   786→                  <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center group-hover:bg-violet-200 dark:group-hover:bg-violet-900/50 transition-colors">
+   787→                    <Building className="w-4 h-4 text-violet-600" />
+   788→                  </div>
+   789→                  <div className="hidden sm:block">
+   790→                    <p className="text-xs font-medium group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">Best Hotels</p>
+   791→                    <p className="text-[10px] text-muted-foreground">Booking.com</p>
+   792→                  </div>
+   793→                </a>
+   794→                <div className="w-px h-8 bg-border hidden sm:block" />
+   795→                <a
+   796→                  href="https://safetywing.com/?referral=pakvisa&utm_source=pakvisa&utm_medium=affiliate"
+   797→                  target="_blank"
+   798→                  rel="noopener noreferrer sponsored"
+   799→                  className="flex items-center gap-2 group"
+   800→                >
+   801→                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
+   802→                    <Shield className="w-4 h-4 text-blue-600" />
+   803→                  </div>
+   804→                  <div className="hidden sm:block">
+   805→                    <p className="text-xs font-medium group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">Travel Insurance</p>
+   806→                    <p className="text-[10px] text-muted-foreground">SafetyWing</p>
+   807→                  </div>
+   808→                </a>
+   809→              </div>
+   810→              <p className="text-[9px] text-muted-foreground/50 text-center mt-3">Trusted travel partners — we may earn a commission at no extra cost to you</p>
+   811→            </div>
+   812→          </div>
+   813→        </section>
+   814→
+   815→        {/* ==================== SECTION 5: VISA POLICY ALERTS ==================== */}
+   816→        <section className="px-4 pb-10">
+   817→          <div className="max-w-6xl mx-auto">
+   818→            <h2 className="text-xl font-bold mb-4">Visa Policy Alerts</h2>
+   819→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   820→              {VISA_ALERTS.map((alert) => (
+   821→                <div key={alert.id} className="flex items-start gap-3 rounded-xl border bg-card p-4 hover:shadow-sm transition-shadow">
+   822→                  <div className="p-1.5 rounded-lg bg-muted shrink-0 mt-0.5">
+   823→                    <alert.icon className={`w-4 h-4 ${alert.color}`} />
+   824→                  </div>
+   825→                  <div className="flex-1 min-w-0">
+   826→                    <p className="font-semibold text-sm">{alert.title}</p>
+   827→                    <p className="text-xs text-muted-foreground mt-0.5">{alert.desc}</p>
+   828→                    {alert.source && <p className="text-[10px] text-muted-foreground/70 mt-1">Source: {alert.source}</p>}
+   829→                  </div>
+   830→                </div>
+   831→              ))}
+   832→            </div>
+   833→          </div>
+   834→        </section>
+   835→
+   836→        {/* ==================== SECTION 6: FILTER BAR + COUNTRY LIST ==================== */}
+   837→        <section className="px-4 pb-10 scroll-mt-16" ref={countryListRef}>
+   838→          <div className="max-w-6xl mx-auto">
+   839→            <div className="flex items-center gap-3 mb-4">
+   840→              <h2 className="text-xl font-bold">All Destinations</h2>
+   841→              {!loading && filteredCountries.length > 0 && (
+   842→                <Badge variant="secondary" className="text-xs font-normal">{filteredCountries.length} result{filteredCountries.length !== 1 ? 's' : ''}</Badge>
+   843→              )}
+   844→            </div>
+   845→
+   846→            {/* Error state */}
+   847→            {error && (
+   848→              <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/30 dark:bg-red-950/20 p-4 mb-6">
+   849→                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+   850→                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+   851→                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="ml-auto shrink-0">Retry</Button>
+   852→              </div>
+   853→            )}
+   854→
+   855→            {/* Loading skeleton */}
+   856→            {loading && !error && (
+   857→              <div className="space-y-3">
+   858→                {Array.from({ length: 5 }).map((_, i) => (
+   859→                  <div key={i} className="rounded-xl border p-4 flex items-center gap-4">
+   860→                    <Skeleton className="w-12 h-8 rounded" />
+   861→                    <div className="flex-1 space-y-2">
+   862→                      <Skeleton className="h-4 w-32" />
+   863→                      <Skeleton className="h-3 w-48" />
+   864→                    </div>
+   865→                  </div>
+   866→                ))}
+   867→              </div>
+   868→            )}
+   869→
+   870→            {/* Filter bar + list (only when data is loaded) */}
+   871→            {!loading && !error && (
+   872→              <>
+   873→                {/* Filter Row 1: Region */}
+   874→                <div className="flex flex-wrap gap-2 mb-2">
+   875→                  <button
+   876→                    onClick={() => setFilters((f) => ({ ...f, region: null }))}
+   877→                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.region === null ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+   878→                  >
+   879→                    All Regions
+   880→                  </button>
+   881→                  {REGIONS.map((r) => (
+   882→                    <button
+   883→                      key={r}
+   884→                      onClick={() => setFilters((f) => ({ ...f, region: f.region === r ? null : r }))}
+   885→                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.region === r ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+   886→                    >
+   887→                      {r}
+   888→                    </button>
+   889→                  ))}
+   890→                </div>
+   891→
+   892→                {/* Filter Row 2: Access Type */}
+   893→                <div className="flex flex-wrap gap-2 mb-3">
+   894→                  <button
+   895→                    onClick={() => setFilters((f) => ({ ...f, access: null }))}
+   896→                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.access === null ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+   897→                  >
+   898→                    All Types
+   899→                  </button>
+   900→                  {[
+   901→                    { id: 'visa-free', label: 'Visa Free' },
+   902→                    { id: 'visa-on-arrival', label: 'Visa on Arrival' },
+   903→                    { id: 'e-visa', label: 'e-Visa' },
+   904→                    { id: 'embassy', label: 'Embassy' },
+   905→                  ].map((t) => (
+   906→                    <button
+   907→                      key={t.id}
+   908→                      onClick={() => setFilters((f) => ({ ...f, access: f.access === t.id ? null : t.id }))}
+   909→                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.access === t.id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+   910→                    >
+   911→                      {t.label}
+   912→                    </button>
+   913→                  ))}
+   914→
+   915→                  {/* Sort dropdown */}
+   916→                  <select
+   917→                    value={filters.sortDir}
+   918→                    onChange={(e) => setFilters((f) => ({ ...f, sortDir: e.target.value }))}
+   919→                    className="ml-auto px-3 py-1.5 rounded-full text-xs font-medium border bg-card hover:bg-muted cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+   920→                    aria-label="Sort destinations"
+   921→                  >
+   922→                    <option value="az">A → Z</option>
+   923→                    <option value="za">Z → A</option>
+   924→                    <option value="cheapest">Cheapest</option>
+   925→                    <option value="fastest">Fastest</option>
+   926→                    <option value="safest">Safest</option>
+   927→                  </select>
+   928→                </div>
+   929→
+   930→                {/* Clear filters button */}
+   931→                {hasActiveFilters && (
+   932→                  <div className="mb-3">
+   933→                    <button
+   934→                      onClick={clearAllFilters}
+   935→                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+   936→                    >
+   937→                      <X className="w-3 h-3" /> Clear all filters
+   938→                    </button>
+   939→                  </div>
+   940→                )}
+   941→
+   942→                {/* Country list */}
+   943→                {paginatedCountries.length === 0 ? (
+   944→                  <div className="text-center py-12">
+   945→                    <SearchX className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+   946→                    <p className="text-muted-foreground text-sm">No countries match your search or filters.</p>
+   947→                    <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-3">Clear Filters</Button>
+   948→                  </div>
+   949→                ) : (
+   950→                  <div className="space-y-2">
+   951→                    {paginatedCountries.map((c) => (
+   952→                      <div key={c.code} id={`country-card-${c.code}`} className="scroll-mt-16">
+   953→                        <CountryResultCard
+   954→                          country={c}
+   955→                          expanded={expandedCountry === c.code}
+   956→                          onToggle={() => setExpandedCountry((prev) => prev === c.code ? null : c.code)}
+   957→                          isFav={favorites.includes(c.code)}
+   958→                          onToggleFav={() => toggleFavorite(c.code)}
+   959→                        />
+   960→                      </div>
+   961→                    ))}
+   962→                  </div>
+   963→                )}
+   964→
+   965→                {/* Pagination */}
+   966→                {totalPages > 1 && (
+   967→                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+   968→                    <p className="text-xs text-muted-foreground">
+   969→                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredCountries.length)} of {filteredCountries.length} destinations
+   970→                    </p>
+   971→                    <div className="flex items-center gap-1">
+   972→                      <button
+   973→                        onClick={() => setCurrentPage(1)}
+   974→                        disabled={currentPage === 1}
+   975→                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+   976→                        aria-label="First page"
+   977→                      >
+   978→                        <ChevronsLeft className="w-4 h-4" />
+   979→                      </button>
+   980→                      <button
+   981→                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+   982→                        disabled={currentPage === 1}
+   983→                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+   984→                        aria-label="Previous page"
+   985→                      >
+   986→                        <ChevronLeft className="w-4 h-4" />
+   987→                      </button>
+   988→                      {pageNumbers.map((pn, idx) =>
+   989→                        pn === 'ellipsis' ? (
+   990→                          <span key={`e-${idx}`} className="px-1 text-muted-foreground">...</span>
+   991→                        ) : (
+   992→                          <button
+   993→                            key={pn}
+   994→                            onClick={() => setCurrentPage(pn)}
+   995→                            className={`w-8 h-8 rounded border text-xs font-medium transition-colors ${currentPage === pn ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card hover:bg-muted'}`}
+   996→                          >
+   997→                            {pn}
+   998→                          </button>
+   999→                        )
+  1000→                      )}
+  1001→                      <button
+  1002→                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+  1003→                        disabled={currentPage === totalPages}
+  1004→                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+  1005→                        aria-label="Next page"
+  1006→                      >
+  1007→                        <ChevronRight className="w-4 h-4" />
+  1008→                      </button>
+  1009→                      <button
+  1010→                        onClick={() => setCurrentPage(totalPages)}
+  1011→                        disabled={currentPage === totalPages}
+  1012→                        className="p-1.5 rounded border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+  1013→                        aria-label="Last page"
+  1014→                      >
+  1015→                        <ChevronsRight className="w-4 h-4" />
+  1016→                      </button>
+  1017→                    </div>
+  1018→                  </div>
+  1019→                )}
+  1020→              </>
+  1021→            )}
+  1022→          </div>
+  1023→        </section>
+  1024→
+  1025→        {/* ==================== SECTION 7: QUICK TOOLS STRIP ==================== */}
+  1026→        <section className="px-4 pb-10">
+  1027→          <div className="max-w-6xl mx-auto">
+  1028→            <h2 className="text-xl font-bold mb-4">Quick Tools</h2>
+  1029→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+  1030→              <QuickToolCard
+  1031→                icon={<MessageSquare className="w-5 h-5 text-emerald-600" />}
+  1032→                title="AI Visa Consultant"
+  1033→                description="Ask any visa question and get instant, personalized answers."
+  1034→                colorClass="hover:border-emerald-200"
+  1035→                onClick={() => setActiveTool('ai')}
+  1036→                badge="Free"
+  1037→              />
+  1038→              <QuickToolCard
+  1039→                icon={<ClipboardList className="w-5 h-5 text-amber-600" />}
+  1040→                title="Free Visa Quiz"
+  1041→                description="Answer a few questions and get personalized visa recommendations."
+  1042→                colorClass="hover:border-amber-200"
+  1043→                onClick={() => setActiveTool('quiz')}
+  1044→                badge="Free"
+  1045→              />
+  1046→              <QuickToolCard
+  1047→                icon={<BarChart3 className="w-5 h-5 text-sky-600" />}
+  1048→                title="Compare Countries"
+  1049→                description="Compare visa requirements, fees, and costs side by side."
+  1050→                colorClass="hover:border-sky-200"
+  1051→                onClick={() => setActiveTool('compare')}
+  1052→              />
+  1053→            </div>
+  1054→          </div>
+  1055→        </section>
+  1056→
+  1057→        {/* ==================== SECTION 8: TESTIMONIALS ==================== */}
+  1058→        <section className="px-4 pb-10">
+  1059→          <div className="max-w-6xl mx-auto">
+  1060→            <h2 className="text-xl font-bold mb-4">What Travelers Say</h2>
+  1061→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+  1062→              {TESTIMONIALS.map((t, i) => (
+  1063→                <Card key={i} className="p-5 hover:shadow-md transition-shadow">
+  1064→                  <div className="flex items-center gap-0.5 mb-3">
+  1065→                    {Array.from({ length: t.rating }).map((_, si) => (
+  1066→                      <Star key={si} className="w-4 h-4 fill-amber-400 text-amber-400" />
+  1067→                    ))}
+  1068→                  </div>
+  1069→                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p>
+  1070→                  <div className="flex items-center gap-2">
+  1071→                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-400">
+  1072→                      {t.author.charAt(0)}
+  1073→                    </div>
+  1074→                    <div>
+  1075→                      <p className="text-xs font-semibold">{t.author}</p>
+  1076→                    </div>
+  1077→                  </div>
+  1078→                </Card>
+  1079→              ))}
+  1080→            </div>
+  1081→          </div>
+  1082→        </section>
+  1083→
+  1084→        {/* ==================== SECTION 9: PASSPORT POWER RANKING ==================== */}
+  1085→        <section className="px-4 pb-10">
+  1086→          <div className="max-w-6xl mx-auto">
+  1087→            <h2 className="text-xl font-bold mb-4">Pakistan Passport Power Ranking</h2>
+  1088→            <Card className="p-6">
+  1089→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  1090→                <div className="text-center">
+  1091→                  <p className="text-3xl font-bold text-emerald-600">#106</p>
+  1092→                  <p className="text-xs text-muted-foreground mt-1">Global Rank</p>
+  1093→                </div>
+  1094→                <div className="text-center">
+  1095→                  <p className="text-3xl font-bold">36</p>
+  1096→                  <p className="text-xs text-muted-foreground mt-1">Visa Score</p>
+  1097→                </div>
+  1098→                <div className="text-center">
+  1099→                  <p className="text-3xl font-bold">33</p>
+  1100→                  <p className="text-xs text-muted-foreground mt-1">Visa-Free Destinations</p>
+  1101→                </div>
+  1102→                <div className="text-center">
+  1103→                  <p className="text-3xl font-bold text-amber-600">70+</p>
+  1104→                  <p className="text-xs text-muted-foreground mt-1">Total Destinations</p>
+  1105→                </div>
+  1106→              </div>
+  1107→              <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Regional Comparison</h3>
+  1108→              <div className="space-y-2">
+  1109→                {PASSPORT_RANKINGS.map((p) => (
+  1110→                  <div key={p.country} className={`flex items-center gap-3 rounded-lg p-3 ${p.country === 'Pakistan' ? 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800' : 'bg-muted/50'}`}>
+  1111→                    <span className="text-lg">{p.flag}</span>
+  1112→                    <span className={`text-sm font-medium flex-1 ${p.country === 'Pakistan' ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>{p.country}</span>
+  1113→                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+  1114→                      <span>Rank #{p.rank}</span>
+  1115→                      <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+  1116→                        <div
+  1117→                          className={`h-full rounded-full ${p.country === 'Pakistan' ? 'bg-emerald-500' : 'bg-gray-400'}`}
+  1118→                          style={{ width: `${(p.score / 70) * 100}%` }}
+  1119→                        />
+  1120→                      </div>
+  1121→                      <span className="w-8 text-right font-medium">{p.score}</span>
+  1122→                    </div>
+  1123→                  </div>
+  1124→                ))}
+  1125→              </div>
+  1126→            </Card>
+  1127→          </div>
+  1128→        </section>
+  1129→
+  1130→        {/* ==================== SECTION 10: COMMUNITY EXPERIENCES ==================== */}
+  1131→        <section className="px-4 pb-10">
+  1132→          <div className="max-w-6xl mx-auto">
+  1133→            <h2 className="text-xl font-bold mb-4">Community Experiences</h2>
+  1134→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  1135→              {SUCCESS_STORIES.slice(0, 4).map((story) => (
+  1136→                <Card key={story.id} className="p-5">
+  1137→                  <div className="flex items-center gap-3 mb-3">
+  1138→                    <span className="text-2xl">{story.avatar}</span>
+  1139→                    <div>
+  1140→                      <p className="text-sm font-semibold">{story.name}</p>
+  1141→                      <p className="text-xs text-muted-foreground">{story.date}</p>
+  1142→                    </div>
+  1143→                  </div>
+  1144→                  <div className="flex items-center gap-2 mb-2">
+  1145→                    <span className="text-sm">{story.flag}</span>
+  1146→                    <span className="text-sm font-medium">{story.destination}</span>
+  1147→                    <Badge variant="outline" className="text-[10px]">{story.visaType}</Badge>
+  1148→                  </div>
+  1149→                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{story.story}</p>
+  1150→                </Card>
+  1151→              ))}
+  1152→            </div>
+  1153→          </div>
+  1154→        </section>
+  1155→
+  1156→        {/* ==================== SECTION 11: FAQ ==================== */}
+  1157→        <section className="px-4 pb-10">
+  1158→          <div className="max-w-6xl mx-auto">
+  1159→            <h2 className="text-xl font-bold mb-4">Frequently Asked Questions</h2>
+  1160→            <div className="space-y-2">
+  1161→              {FAQ_DATA.map((faq, i) => (
+  1162→                <div key={i} className="rounded-xl border bg-card overflow-hidden">
+  1163→                  <button
+  1164→                    onClick={() => setExpandedFaq((prev) => prev === i ? null : i)}
+  1165→                    className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+  1166→                    aria-expanded={expandedFaq === i}
+  1167→                  >
+  1168→                    <span className="text-sm font-medium pr-4">{faq.q}</span>
+  1169→                    {expandedFaq === i ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+  1170→                  </button>
+  1171→                  {expandedFaq === i && (
+  1172→                    <div className="px-4 pb-4 border-t">
+  1173→                      <p className="text-sm text-muted-foreground leading-relaxed pt-3">{faq.a}</p>
+  1174→                    </div>
+  1175→                  )}
+  1176→                </div>
+  1177→              ))}
+  1178→            </div>
+  1179→          </div>
+  1180→        </section>
+  1181→
+  1182→        {/* ==================== SECTION 12: TRUST BAR ==================== */}
+  1183→        <section className="px-4 pb-10">
+  1184→          <div className="max-w-6xl mx-auto">
+  1185→            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+  1186→              {[
+  1187→                'Verified from Official Embassy Sources',
+  1188→                'Data Updated August 2025',
+  1189→                '70+ Destinations Tracked',
+  1190→                '100% Free',
+  1191→              ].map((text) => (
+  1192→                <span key={text} className="flex items-center gap-1.5">
+  1193→                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+  1194→                  {text}
+  1195→                </span>
+  1196→              ))}
+  1197→            </div>
+  1198→          </div>
+  1199→        </section>
+  1200→
+  1201→        {/* ==================== SECTION 13: PREMIUM CTA ==================== */}
+  1202→        <section className="px-4 pb-10">
+  1203→          <div className="max-w-6xl mx-auto">
+  1204→            <Card className="p-6 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/10 border-amber-200 dark:border-amber-800">
+  1205→              <div className="flex flex-col sm:flex-row items-center gap-4">
+  1206→                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/40">
+  1207→                  <Crown className="w-6 h-6 text-amber-600" />
+  1208→                </div>
+  1209→                <div className="flex-1 text-center sm:text-left">
+  1210→                  <h3 className="font-bold text-lg">Get the Full Experience</h3>
+  1211→                  <p className="text-sm text-muted-foreground mt-1">Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</p>
+  1212→                </div>
+  1213→                <Button onClick={() => setActiveModal('pricing')} className="gap-1.5">
+  1214→                  View Premium Plans
+  1215→                </Button>
+  1216→              </div>
+  1217→            </Card>
+  1218→          </div>
+  1219→        </section>
+  1220→
+  1221→        {/* ==================== SECTION 14: SHARE WHATSAPP ==================== */}
+  1222→        <section className="px-4 pb-10">
+  1223→          <div className="max-w-6xl mx-auto">
+  1224→            <div className="flex items-center justify-between rounded-xl border bg-card p-4">
+  1225→              <div className="flex items-center gap-3">
+  1226→                <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
+  1227→                  <Phone className="w-5 h-5 text-green-600" />
+  1228→                </div>
+  1229→                <div>
+  1230→                  <p className="text-sm font-semibold">Share PakVisa</p>
+  1231→                  <p className="text-xs text-muted-foreground">Share with friends and family on WhatsApp</p>
+  1232→                </div>
+  1233→              </div>
+  1234→              <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/30">
+  1235→                <Share2 className="w-3.5 h-3.5" /> Share
+  1236→              </Button>
+  1237→            </div>
+  1238→          </div>
+  1239→        </section>
+  1240→
+  1241→        {/* ==================== BACK TO TOP ==================== */}
+  1242→        {showBackToTop && (
+  1243→          <button
+  1244→            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+  1245→            className="fixed bottom-20 right-4 z-40 p-3 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 transition-all hover:shadow-xl hover:scale-105"
+  1246→            aria-label="Back to top"
+  1247→          >
+  1248→            <ArrowUp className="w-5 h-5" />
+  1249→          </button>
+  1250→        )}
+  1251→      </main>
+  1252→
+  1253→      {/* ==================== SECTION 15: FOOTER ==================== */}
+  1254→      <footer className="border-t bg-muted/30 mt-auto">
+  1255→        {/* Affiliate Partners Bar */}
+  1256→        <div className="border-b border-border">
+  1257→          <div className="max-w-6xl mx-auto px-4 py-4">
+  1258→            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+  1259→              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Trusted Partners</span>
+  1260→              <a
+  1261→                href="https://www.ivisa.com/?ref=pakvisa&utm_source=pakvisa"
+  1262→                target="_blank"
+  1263→                rel="noopener noreferrer sponsored"
+  1264→                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+  1265→              >
+  1266→                <FileText className="w-3.5 h-3.5 text-emerald-600" /> iVisa
+  1267→              </a>
+  1268→              <a
+  1269→                href="https://safetywing.com/?referral=pakvisa&utm_source=pakvisa"
+  1270→                target="_blank"
+  1271→                rel="noopener noreferrer sponsored"
+  1272→                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+  1273→              >
+  1274→                <Shield className="w-3.5 h-3.5 text-blue-600" /> SafetyWing
+  1275→              </a>
+  1276→              <a
+  1277→                href="https://www.booking.com/?aid=304142&label=pakvisa"
+  1278→                target="_blank"
+  1279→                rel="noopener noreferrer sponsored"
+  1280→                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+  1281→              >
+  1282→                <Building className="w-3.5 h-3.5 text-violet-600" /> Booking.com
+  1283→              </a>
+  1284→              <a
+  1285→                href="https://www.skyscanner.net/?ref=pakvisa"
+  1286→                target="_blank"
+  1287→                rel="noopener noreferrer sponsored"
+  1288→                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+  1289→              >
+  1290→                <Plane className="w-3.5 h-3.5 text-orange-600" /> Skyscanner
+  1291→              </a>
+  1292→            </div>
+  1293→          </div>
+  1294→        </div>
+  1295→        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+  1296→          <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+  1297→          <div className="flex items-center gap-4">
+  1298→            <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
+  1299→            <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
+  1300→            <button onClick={() => setActiveModal('terms')} className="hover:text-foreground transition-colors">Terms</button>
+  1301→            <button onClick={() => setActiveModal('contact')} className="hover:text-foreground transition-colors">Contact</button>
+  1302→          </div>
+  1303→        </div>
+  1304→        <div className="max-w-6xl mx-auto px-4 pb-4">
+  1305→          <p className="text-[11px] text-muted-foreground/70 text-center leading-relaxed">
+  1306→            <span className="font-medium">Disclaimer:</span> PakVisa Advisor provides visa information for educational and planning purposes only. We are not a government agency, embassy, or visa processing service. Visa policies change frequently — always verify requirements with the official embassy or consulate before making travel plans. We are not liable for decisions made based on the information provided.
+  1307→          </p>
+  1308→        </div>
+  1309→      </footer>
+  1310→
+  1311→      {/* ==================== MODALS ==================== */}
+  1312→      {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} />}
+  1313→      {activeModal === 'help' && <HelpModal onClose={() => setActiveModal(null)} />}
+  1314→      {activeModal === 'about' && <AboutModal onClose={() => setActiveModal(null)} />}
+  1315→      {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
+  1316→      {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
+  1317→      {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
+  1318→    </div>
+  1319→  );
+  1320→}

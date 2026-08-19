@@ -206,6 +206,15 @@ Key rules:
 - If mentioning costs, provide both USD and approximate PKR (1 USD ≈ PKR 278)
 - Reference the specific country's visa requirements, costs, and processing times when relevant
 - Provide actionable advice for Pakistani passport holders
+
+AFFILIATE SUGGESTION RULES (very important):
+- You may suggest AT MOST ONE service recommendation per response, and ONLY when it naturally fits the conversation
+- When a user asks about applying for a visa or which visa service to use, you may mention: "Many Pakistani travelers use iVisa (ivisa.com) to apply for e-Visas online — it's straightforward and saves a trip to the embassy."
+- When a user asks about travel insurance, you may mention: "SafetyWing (safetywing.com) offers affordable travel insurance starting around $42/month, popular with long-term travelers."
+- When a user asks about booking flights or hotels, you may briefly mention Skyscanner or Booking.com as useful tools
+- NEVER force a recommendation. If it doesn't naturally fit, don't include one.
+- NEVER use phrases like "I recommend" or "you should use" — instead say "many travelers use" or "a popular option is"
+- Keep any service mention to ONE short sentence. Do not elaborate or push.
 ${proContextInstruction}`;
 
     // ============================================================
