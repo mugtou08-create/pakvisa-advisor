@@ -6,7 +6,7 @@ export function WhatsAppButton() {
   // Replace with your actual WhatsApp number (with country code, no +)
   // Example: '923001234567' for Pakistan
   const WHATSAPP_NUMBER = '923001234567';
-  const message = encodeURIComponent('Hi! I have a question about visa requirements for Pakistani passport holders.');
+  const message = encodeURIComponent('Hi! I have a question about visa requirements for Pakistani passport holders. (Text message only, please — no calls 🙏)');
   const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
 
   return (
