@@ -7,14 +7,13 @@ import {
   RefreshCw, Server, FileCheck, MessageSquare, Mail, Send, Trash2,
   ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
   Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
-  Filter, X, ChevronDown, MessageCircle, Hash,
+  Filter, X, ChevronDown, MessageCircle, Hash, XIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -442,30 +441,35 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const sparklineMax = useMemo(() => Math.max(1, ...sparklineData.map(d => d.count)), [sparklineData]);
 
   // ===== RENDER =====
-  return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="w-[calc(100%-1rem)] h-[calc(100vh-1rem)] sm:w-[calc(100%-2rem)] sm:h-[calc(100vh-2rem)] max-w-none max-h-none p-0 overflow-hidden flex flex-col rounded-xl">
-        <DialogHeader className="p-4 sm:p-5 pb-0 border-b shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
-                <Shield className="w-4.5 h-4.5 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-base sm:text-lg">Admin Dashboard</DialogTitle>
-                <DialogDescription className="text-xs hidden sm:block">Manage your PakVisa Advisor</DialogDescription>
-              </div>
-            </div>
-            {isLoggedIn && (
-              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-1.5" /> Logout
-              </Button>
-            )}
-          </div>
-        </DialogHeader>
+  if (!open) return null;
 
-        {!isLoggedIn ? (
-          <div className="p-8 flex-1 flex items-center justify-center">
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 sm:p-5 border-b shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
+            <Shield className="w-4.5 h-4.5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-semibold leading-none">Admin Dashboard</h2>
+            <p className="text-xs text-muted-foreground hidden sm:block mt-1">Manage your PakVisa Advisor</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isLoggedIn && (
+            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Logout</span>
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+            <XIcon className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
+
+      {!isLoggedIn ? (
+        <div className="p-8 flex-1 flex items-center justify-center">
             <Card className="w-full max-w-sm border-emerald-200 dark:border-emerald-800">
               <CardHeader className="text-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-3">
@@ -1107,8 +1111,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
             </ScrollArea>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }
 

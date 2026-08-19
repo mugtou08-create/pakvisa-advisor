@@ -515,3 +515,20 @@ Stage Summary:
 - ⚠️ In-memory rate limiting ineffective on serverless
 - Booking.com affiliate via CJ — waiting for approval
 - Skyscanner affiliate via CJ — waiting for approval
+
+---
+Task ID: fix-admin-dialog-div-mismatch
+Agent: Main Agent
+Task: Fix JSX div nesting mismatch in admin-dialog.tsx
+
+Work Log:
+- Identified parsing error `')' expected` on line 1115 caused by extra `</div>` closing tag
+- Root cause: Previous refactor replaced `<Dialog><DialogContent>` wrapper with a plain `<div>` but left two `</div>` closing tags (one for DialogContent, one for Dialog)
+- Removed the extra `</div>` (the remnant of `</DialogContent>`) at line 1114
+- Verified `if (!open) return null;` is correctly placed before the return block
+- Confirmed `bun run lint` passes with zero errors
+
+Stage Summary:
+- Single extra `</div>` removed — div nesting now balanced
+- No logic, state, callbacks, or tab content changed
+- Lint clean
