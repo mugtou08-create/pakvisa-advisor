@@ -22,6 +22,9 @@ import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
 import { ComparePanel } from '@/components/visa/compare-panel';
 import { CountryDetailPanel } from '@/components/visa/country-detail';
 import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
+import { AdminDialog } from '@/components/app/admin-dialog';
+import { ContactForm } from '@/components/app/contact-form';
+import { WhatsAppButton } from '@/components/app/whatsapp-button';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 
 // ============================================================
@@ -286,6 +289,10 @@ export default function HomePage() {
   // Modals
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
+  // Admin
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
+
   // Tool panels
   const [activeTool, setActiveTool] = useState<string | null>(null);
 
@@ -523,7 +530,12 @@ export default function HomePage() {
         {/* Footer (always visible) */}
         <footer className="border-t bg-muted/30 mt-auto">
           <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+            <div className="flex items-center gap-3">
+              <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+              <button onClick={() => setAdminOpen(true)} className="p-1.5 rounded-full hover:bg-muted transition-colors" aria-label="Admin Dashboard" title="Admin Dashboard">
+                <Lock className="w-3.5 h-3.5 opacity-40 hover:opacity-70" />
+              </button>
+            </div>
             <div className="flex items-center gap-4">
               <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
               <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
@@ -545,6 +557,8 @@ export default function HomePage() {
         {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
+        <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />
+        <WhatsAppButton />
       </div>
     );
   }
@@ -1238,19 +1252,15 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ==================== BACK TO TOP ==================== */}
-        {showBackToTop && (
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-20 right-4 z-40 p-3 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 transition-all hover:shadow-xl hover:scale-105"
-            aria-label="Back to top"
-          >
-            <ArrowUp className="w-5 h-5" />
-          </button>
-        )}
+        {/* ==================== SECTION 15: CONTACT US ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-xl mx-auto">
+            <ContactForm />
+          </div>
+        </section>
       </main>
 
-      {/* ==================== SECTION 15: FOOTER ==================== */}
+      {/* ==================== SECTION 16: FOOTER ==================== */}
       <footer className="border-t bg-muted/30 mt-auto">
         {/* Affiliate Partners Bar */}
         <div className="border-b border-border">
@@ -1293,7 +1303,12 @@ export default function HomePage() {
           </div>
         </div>
         <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+          <div className="flex items-center gap-3">
+            <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
+            <button onClick={() => setAdminOpen(true)} className="p-1.5 rounded-full hover:bg-muted transition-colors" aria-label="Admin Dashboard" title="Admin Dashboard">
+              <Lock className="w-3.5 h-3.5 opacity-40 hover:opacity-70" />
+            </button>
+          </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setActiveModal('about')} className="hover:text-foreground transition-colors">About</button>
             <button onClick={() => setActiveModal('privacy')} className="hover:text-foreground transition-colors">Privacy</button>
@@ -1315,6 +1330,21 @@ export default function HomePage() {
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
+
+      {/* Admin Dashboard */}
+      <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />
+
+      {/* Floating Buttons */}
+      <WhatsAppButton />
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 left-6 z-50 w-11 h-11 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+          aria-label="Back to top"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }

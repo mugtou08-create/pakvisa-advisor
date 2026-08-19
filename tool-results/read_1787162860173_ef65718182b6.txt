@@ -1,0 +1,585 @@
+    39→export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDialogProps) {
+    40→  const [isLoggedIn, setIsLoggedIn] = useState(false);
+    41→  const [token, setToken] = useState<string | null>(null);
+    42→  const [username, setUsername] = useState('');
+    43→  const [password, setPassword] = useState('');
+    44→  const [showPassword, setShowPassword] = useState(false);
+    45→  const [loginLoading, setLoginLoading] = useState(false);
+    46→  const [activeSection, setActiveSection] = useState<'settings' | 'analytics'>('settings');
+    47→  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+    48→  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    49→  const [maintenanceMode, setMaintenanceMode] = useState(false);
+    50→  const [togglingAi, setTogglingAi] = useState(false);
+    51→  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+    52→  const [refreshingAnalytics, setRefreshingAnalytics] = useState(false);
+    53→
+    54→  // Check localStorage for existing token on mount
+    55→  useEffect(() => {
+    56→    const savedToken = localStorage.getItem('pakvisa-admin-token');
+    57→    if (savedToken) {
+    58→      setToken(savedToken);
+    59→      setIsLoggedIn(true);
+    60→    }
+    61→  }, []);
+    62→
+    63→  const handleLogin = useCallback(async () => {
+    64→    if (!username.trim() || !password.trim()) {
+    65→      toast.error('Please enter username and password');
+    66→      return;
+    67→    }
+    68→    setLoginLoading(true);
+    69→    try {
+    70→      const res = await fetch('/api/admin', {
+    71→        method: 'POST',
+    72→        headers: { 'Content-Type': 'application/json' },
+    73→        body: JSON.stringify({ username: username.trim(), password }),
+    74→      });
+    75→      const data = await res.json();
+    76→      if (data.success) {
+    77→        localStorage.setItem('pakvisa-admin-token', data.data.token);
+    78→        setToken(data.data.token);
+    79→        setIsLoggedIn(true);
+    80→        toast.success('Logged in successfully');
+    81→      } else {
+    82→        toast.error(data.error || 'Login failed');
+    83→      }
+    84→    } catch {
+    85→      toast.error('Connection error');
+    86→    } finally {
+    87→      setLoginLoading(false);
+    88→    }
+    89→  }, [username, password]);
+    90→
+    91→  const handleLogout = useCallback(() => {
+    92→    localStorage.removeItem('pakvisa-admin-token');
+    93→    setToken(null);
+    94→    setIsLoggedIn(false);
+    95→    setUsername('');
+    96→    setPassword('');
+    97→    setAnalytics(null);
+    98→    toast.success('Logged out');
+    99→  }, []);
+   100→
+   101→  const fetchAnalytics = useCallback(async (showLoading = true) => {
+   102→    if (!token) return;
+   103→    if (showLoading) setAnalyticsLoading(true);
+   104→    if (showLoading) setRefreshingAnalytics(true);
+   105→    try {
+   106→      const res = await fetch('/api/admin/analytics', {
+   107→        headers: { 'Authorization': `Bearer ${token}` },
+   108→      });
+   109→      const data = await res.json();
+   110→      if (data.success) {
+   111→        setAnalytics(data.data);
+   112→        setMaintenanceMode(data.data.settings?.maintenance_mode === 'true');
+   113→      }
+   114→    } catch {
+   115→      toast.error('Failed to fetch analytics');
+   116→    } finally {
+   117→      setAnalyticsLoading(false);
+   118→      setRefreshingAnalytics(false);
+   119→    }
+   120→  }, [token]);
+   121→
+   122→  // Fetch analytics when logged in and section changes
+   123→  useEffect(() => {
+   124→    if (isLoggedIn && token && activeSection === 'analytics' && !analytics) {
+   125→      fetchAnalytics();
+   126→    }
+   127→  }, [isLoggedIn, token, activeSection, analytics, fetchAnalytics]);
+   128→
+   129→  const toggleAiFeature = useCallback(async (enabled: boolean) => {
+   130→    if (!token) return;
+   131→    setTogglingAi(true);
+   132→    try {
+   133→      const res = await fetch('/api/admin/settings', {
+   134→        method: 'PUT',
+   135→        headers: {
+   136→          'Content-Type': 'application/json',
+   137→          'Authorization': `Bearer ${token}`,
+   138→        },
+   139→        body: JSON.stringify({ key: 'ai_enabled', value: String(enabled) }),
+   140→      });
+   141→      const data = await res.json();
+   142→      if (data.success) {
+   143→        setAiEnabled(enabled);
+   144→        toast.success(`AI features ${enabled ? 'enabled' : 'disabled'}`);
+   145→      } else {
+   146→        toast.error('Failed to update setting');
+   147→      }
+   148→    } catch {
+   149→      toast.error('Connection error');
+   150→    } finally {
+   151→      setTogglingAi(false);
+   152→    }
+   153→  }, [token, setAiEnabled]);
+   154→
+   155→  const toggleMaintenance = useCallback(async (enabled: boolean) => {
+   156→    if (!token) return;
+   157→    setTogglingMaintenance(true);
+   158→    try {
+   159→      const res = await fetch('/api/admin/settings', {
+   160→        method: 'PUT',
+   161→        headers: {
+   162→          'Content-Type': 'application/json',
+   163→          'Authorization': `Bearer ${token}`,
+   164→        },
+   165→        body: JSON.stringify({ key: 'maintenance_mode', value: String(enabled) }),
+   166→      });
+   167→      const data = await res.json();
+   168→      if (data.success) {
+   169→        setMaintenanceMode(enabled);
+   170→        toast.success(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`);
+   171→      } else {
+   172→        toast.error('Failed to update setting');
+   173→      }
+   174→    } catch {
+   175→      toast.error('Connection error');
+   176→    } finally {
+   177→      setTogglingMaintenance(false);
+   178→    }
+   179→  }, [token]);
+   180→
+   181→  return (
+   182→    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+   183→      <DialogContent className="max-w-2xl max-h-[85vh] p-0 overflow-hidden flex flex-col glass-card">
+   184→        <DialogHeader className="p-6 pb-0">
+   185→          <DialogTitle className="flex items-center gap-2">
+   186→            <div className="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center">
+   187→              <Settings className="w-4 h-4 text-white" />
+   188→            </div>
+   189→            Admin Dashboard
+   190→          </DialogTitle>
+   191→          <DialogDescription>Manage site settings and view analytics</DialogDescription>
+   192→        </DialogHeader>
+   193→
+   194→        {!isLoggedIn ? (
+   195→          // Login Gate
+   196→          <div className="p-6 flex-1 flex items-center justify-center">
+   197→            <Card className="w-full max-w-sm border-amber-200 dark:border-amber-800">
+   198→              <CardHeader className="text-center">
+   199→                <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-3">
+   200→                  <Lock className="w-8 h-8 text-amber-600" />
+   201→                </div>
+   202→                <CardTitle className="text-lg">Admin Login</CardTitle>
+   203→                <CardDescription>Enter your credentials to access the dashboard</CardDescription>
+   204→              </CardHeader>
+   205→              <CardContent className="space-y-4">
+   206→                <div className="space-y-2">
+   207→                  <label className="text-sm font-medium" htmlFor="admin-username">Username</label>
+   208→                  <Input
+   209→                    id="admin-username"
+   210→                    placeholder="admin"
+   211→                    value={username}
+   212→                    onChange={(e) => setUsername(e.target.value)}
+   213→                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+   214→                    autoComplete="username"
+   215→                  />
+   216→                </div>
+   217→                <div className="space-y-2">
+   218→                  <label className="text-sm font-medium" htmlFor="admin-password">Password</label>
+   219→                  <div className="relative">
+   220→                    <Input
+   221→                      id="admin-password"
+   222→                      type={showPassword ? 'text' : 'password'}
+   223→                      placeholder="••••••••"
+   224→                      value={password}
+   225→                      onChange={(e) => setPassword(e.target.value)}
+   226→                      onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+   227→                      autoComplete="current-password"
+   228→                    />
+   229→                    <Button
+   230→                      variant="ghost"
+   231→                      size="icon"
+   232→                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+   233→                      onClick={() => setShowPassword(!showPassword)}
+   234→                    >
+   235→                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   236→                    </Button>
+   237→                  </div>
+   238→                </div>
+   239→                <Button
+   240→                  className="w-full bg-amber-600 hover:bg-amber-700"
+   241→                  onClick={handleLogin}
+   242→                  disabled={loginLoading}
+   243→                >
+   244→                  {loginLoading ? (
+   245→                    <>
+   246→                      <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+   247→                      Logging in...
+   248→                    </>
+   249→                  ) : (
+   250→                    <>
+   251→                      <Lock className="w-4 h-4 mr-2" />
+   252→                      Sign In
+   253→                    </>
+   254→                  )}
+   255→                </Button>
+   256→              </CardContent>
+   257→            </Card>
+   258→          </div>
+   259→        ) : (
+   260→          // Admin Dashboard
+   261→          <div className="flex flex-1 overflow-hidden">
+   262→            {/* Sidebar Navigation */}
+   263→            <div className="w-48 border-r bg-muted/30 p-3 space-y-1 hidden sm:block">
+   264→              <button
+   265→                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${activeSection === 'settings' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+   266→                onClick={() => setActiveSection('settings')}
+   267→              >
+   268→                <ToggleLeft className="w-4 h-4" />
+   269→                Settings
+   270→              </button>
+   271→              <button
+   272→                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${activeSection === 'analytics' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}
+   273→                onClick={() => setActiveSection('analytics')}
+   274→              >
+   275→                <BarChart3 className="w-4 h-4" />
+   276→                Analytics
+   277→              </button>
+   278→              <Separator className="my-3" />
+   279→              <button
+   280→                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+   281→                onClick={handleLogout}
+   282→              >
+   283→                <LogOut className="w-4 h-4" />
+   284→                Logout
+   285→              </button>
+   286→            </div>
+   287→
+   288→            {/* Content Area */}
+   289→            <ScrollArea className="flex-1 p-6">
+   290→              {/* Mobile Section Toggle */}
+   291→              <div className="sm:hidden flex gap-2 mb-4">
+   292→                <Button
+   293→                  variant={activeSection === 'settings' ? 'default' : 'outline'}
+   294→                  size="sm"
+   295→                  className={activeSection === 'settings' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+   296→                  onClick={() => setActiveSection('settings')}
+   297→                >
+   298→                  Settings
+   299→                </Button>
+   300→                <Button
+   301→                  variant={activeSection === 'analytics' ? 'default' : 'outline'}
+   302→                  size="sm"
+   303→                  className={activeSection === 'analytics' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+   304→                  onClick={() => setActiveSection('analytics')}
+   305→                >
+   306→                  Analytics
+   307→                </Button>
+   308→                <Button variant="outline" size="sm" className="ml-auto text-red-500" onClick={handleLogout}>
+   309→                  <LogOut className="w-4 h-4" />
+   310→                </Button>
+   311→              </div>
+   312→
+   313→              {activeSection === 'settings' && (
+   314→                <div className="space-y-6">
+   315→                  <h3 className="card-section-title text-lg font-semibold flex items-center gap-2">
+   316→                    <Settings className="w-5 h-5 text-amber-500" />
+   317→                    Feature Toggles
+   318→                  </h3>
+   319→
+   320→                  {/* AI Features Toggle */}
+   321→                  <Card className="border-amber-200 dark:border-amber-800 hover-glow-amber">
+   322→                    <CardHeader className="pb-3">
+   323→                      <div className="flex items-center justify-between">
+   324→                        <div className="flex items-center gap-3">
+   325→                          <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+   326→                            <Zap className="w-5 h-5 text-amber-600" />
+   327→                          </div>
+   328→                          <div>
+   329→                            <CardTitle className="text-base">AI Features</CardTitle>
+   330→                            <CardDescription>Enable or disable AI Chat and Document Analysis</CardDescription>
+   331→                          </div>
+   332→                        </div>
+   333→                        <Switch
+   334→                          checked={aiEnabled}
+   335→                          onCheckedChange={toggleAiFeature}
+   336→                          disabled={togglingAi}
+   337→                          className="data-[state=checked]:bg-amber-600"
+   338→                        />
+   339→                      </div>
+   340→                    </CardHeader>
+   341→                    <CardContent>
+   342→                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+   343→                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+   344→                        <p className="text-xs text-muted-foreground">
+   345→                          When disabled, the AI Consultant tab and floating chat widget will be hidden from users. Users will see a placeholder message instead.
+   346→                        </p>
+   347→                      </div>
+   348→                      <div className="flex items-center gap-2 mt-2">
+   349→                        <Badge variant={aiEnabled ? 'default' : 'secondary'} className={aiEnabled ? 'bg-amber-600' : ''}>
+   350→                          {aiEnabled ? 'Enabled' : 'Disabled'}
+   351→                        </Badge>
+   352→                        {togglingAi && (
+   353→                          <span className="text-xs text-muted-foreground">Updating...</span>
+   354→                        )}
+   355→                      </div>
+   356→                    </CardContent>
+   357→                  </Card>
+   358→
+   359→                  {/* Maintenance Mode Toggle */}
+   360→                  <Card className="border-orange-200 dark:border-orange-800">
+   361→                    <CardHeader className="pb-3">
+   362→                      <div className="flex items-center justify-between">
+   363→                        <div className="flex items-center gap-3">
+   364→                          <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+   365→                            <Server className="w-5 h-5 text-orange-600" />
+   366→                          </div>
+   367→                          <div>
+   368→                            <CardTitle className="text-base">Maintenance Mode</CardTitle>
+   369→                            <CardDescription>Show maintenance banner to users</CardDescription>
+   370→                          </div>
+   371→                        </div>
+   372→                        <Switch
+   373→                          checked={maintenanceMode}
+   374→                          onCheckedChange={toggleMaintenance}
+   375→                          disabled={togglingMaintenance}
+   376→                          className="data-[state=checked]:bg-orange-600"
+   377→                        />
+   378→                      </div>
+   379→                    </CardHeader>
+   380→                    <CardContent>
+   381→                      <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+   382→                        <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+   383→                        <p className="text-xs text-muted-foreground">
+   384→                          When enabled, a maintenance banner will be shown to all users. Use this during updates or data refreshes.
+   385→                        </p>
+   386→                      </div>
+   387→                      <div className="flex items-center gap-2 mt-2">
+   388→                        <Badge variant={maintenanceMode ? 'default' : 'secondary'} className={maintenanceMode ? 'bg-orange-600' : ''}>
+   389→                          {maintenanceMode ? 'Active' : 'Inactive'}
+   390→                        </Badge>
+   391→                        {togglingMaintenance && (
+   392→                          <span className="text-xs text-muted-foreground">Updating...</span>
+   393→                        )}
+   394→                      </div>
+   395→                    </CardContent>
+   396→                  </Card>
+   397→
+   398→                  {/* Quick Stats */}
+   399→                  <Card>
+   400→                    <CardHeader className="pb-3">
+   401→                      <CardTitle className="text-base flex items-center gap-2">
+   402→                        <Activity className="w-4 h-4 text-amber-500" />
+   403→                        Quick Status
+   404→                      </CardTitle>
+   405→                    </CardHeader>
+   406→                    <CardContent>
+   407→                      <div className="grid grid-cols-2 gap-3">
+   408→                        <div className="stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50">
+   409→                          <div className="flex items-center gap-2 mb-1">
+   410→                            <Zap className="w-3.5 h-3.5 text-amber-500" />
+   411→                            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">AI Engine</span>
+   412→                          </div>
+   413→                          <span className={`stat-card-number text-sm font-semibold ${aiEnabled ? 'text-green-600' : 'text-red-500'}`}>
+   414→                            {aiEnabled ? 'Online' : 'Offline'}
+   415→                          </span>
+   416→                        </div>
+   417→                        <div className="stat-card-compact p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200/50">
+   418→                          <div className="flex items-center gap-2 mb-1">
+   419→                            <Server className="w-3.5 h-3.5 text-orange-500" />
+   420→                            <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Maintenance</span>
+   421→                          </div>
+   422→                          <span className={`stat-card-number text-sm font-semibold ${maintenanceMode ? 'text-red-500' : 'text-green-600'}`}>
+   423→                            {maintenanceMode ? 'Active' : 'Normal'}
+   424→                          </span>
+   425→                        </div>
+   426→                      </div>
+   427→                    </CardContent>
+   428→                  </Card>
+   429→                </div>
+   430→              )}
+   431→
+   432→              {activeSection === 'analytics' && (
+   433→                <div className="space-y-6">
+   434→                  <div className="flex items-center justify-between">
+   435→                    <h3 className="card-section-title text-lg font-semibold flex items-center gap-2">
+   436→                      <BarChart3 className="w-5 h-5 text-amber-500" />
+   437→                      Site Analytics
+   438→                    </h3>
+   439→                    <Button
+   440→                      variant="outline"
+   441→                      size="sm"
+   442→                      onClick={() => fetchAnalytics(true)}
+   443→                      disabled={refreshingAnalytics}
+   444→                      className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+   445→                    >
+   446→                      <RefreshCw className={`w-3.5 h-3.5 ${refreshingAnalytics ? 'animate-spin' : ''}`} />
+   447→                      Refresh
+   448→                    </Button>
+   449→                  </div>
+   450→
+   451→                  {analyticsLoading && !analytics ? (
+   452→                    <div className="flex items-center justify-center py-12">
+   453→                      <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+   454→                    </div>
+   455→                  ) : analytics ? (
+   456→                    <>
+   457→                      {/* Country Statistics */}
+   458→                      <Card>
+   459→                        <CardHeader className="pb-3">
+   460→                          <CardTitle className="text-base card-section-title flex items-center gap-2">
+   461→                            <Globe className="w-4 h-4 text-amber-500" />
+   462→                            Country Database
+   463→                          </CardTitle>
+   464→                        </CardHeader>
+   465→                        <CardContent>
+   466→                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   467→                            <div className="stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 text-center">
+   468→                              <div className="stat-card-number text-xl font-bold text-amber-700 dark:text-amber-400">{analytics.countries.total}</div>
+   469→                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">Total Countries</div>
+   470→                            </div>
+   471→                            <div className="stat-card-compact p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/50 text-center">
+   472→                              <div className="stat-card-number text-xl font-bold text-green-700 dark:text-green-400">{analytics.countries.visaFree}</div>
+   473→                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">Visa Free</div>
+   474→                            </div>
+   475→                            <div className="stat-card-compact p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200/50 text-center">
+   476→                              <div className="stat-card-number text-xl font-bold text-orange-700 dark:text-orange-400">{analytics.countries.visaOnArrival}</div>
+   477→                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">Visa on Arrival</div>
+   478→                            </div>
+   479→                            <div className="stat-card-compact p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/50 text-center">
+   480→                              <div className="stat-card-number text-xl font-bold text-amber-700 dark:text-amber-400">{analytics.countries.etaAvailable}</div>
+   481→                              <div className="stat-card-label text-[10px] text-muted-foreground mt-1">ETA Available</div>
+   482→                            </div>
+   483→                          </div>
+   484→                        </CardContent>
+   485→                      </Card>
+   486→
+   487→                      {/* Visa Categories */}
+   488→                      <Card>
+   489→                        <CardHeader className="pb-3">
+   490→                          <CardTitle className="text-base flex items-center gap-2">
+   491→                            <FileCheck className="w-4 h-4 text-amber-500" />
+   492→                            Visa Categories
+   493→                          </CardTitle>
+   494→                        </CardHeader>
+   495→                        <CardContent>
+   496→                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   497→                            <div className="p-3 rounded-lg bg-muted/50 text-center">
+   498→                              <div className="text-xl font-bold">{analytics.visaCategories.visaFree}</div>
+   499→                              <div className="text-[10px] text-muted-foreground mt-1">Visa Free</div>
+   500→                            </div>
+   501→                            <div className="p-3 rounded-lg bg-muted/50 text-center">
+   502→                              <div className="text-xl font-bold">{analytics.visaCategories.visaOnArrival}</div>
+   503→                              <div className="text-[10px] text-muted-foreground mt-1">On Arrival</div>
+   504→                            </div>
+   505→                            <div className="p-3 rounded-lg bg-muted/50 text-center">
+   506→                              <div className="text-xl font-bold">{analytics.visaCategories.etaAvailable}</div>
+   507→                              <div className="text-[10px] text-muted-foreground mt-1">ETA</div>
+   508→                            </div>
+   509→                            <div className="p-3 rounded-lg bg-muted/50 text-center">
+   510→                              <div className="text-xl font-bold">{analytics.visaCategories.regularVisa}</div>
+   511→                              <div className="text-[10px] text-muted-foreground mt-1">Regular Visa</div>
+   512→                            </div>
+   513→                          </div>
+   514→                        </CardContent>
+   515→                      </Card>
+   516→
+   517→                      {/* Continent Distribution */}
+   518→                      <Card>
+   519→                        <CardHeader className="pb-3">
+   520→                          <CardTitle className="text-base flex items-center gap-2">
+   521→                            <Globe className="w-4 h-4 text-amber-500" />
+   522→                            Continent Distribution
+   523→                          </CardTitle>
+   524→                        </CardHeader>
+   525→                        <CardContent>
+   526→                          <div className="space-y-2">
+   527→                            {analytics.continents.map((c) => {
+   528→                              const pct = analytics.countries.total > 0 ? (c.count / analytics.countries.total) * 100 : 0;
+   529→                              return (
+   530→                                <div key={c.continent} className="flex items-center gap-3">
+   531→                                  <span className="text-sm text-muted-foreground w-28 truncate">{c.continent}</span>
+   532→                                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+   533→                                    <div
+   534→                                      className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all"
+   535→                                      style={{ width: `${pct}%` }}
+   536→                                    />
+   537→                                  </div>
+   538→                                  <span className="text-sm font-medium w-16 text-right">{c.count}</span>
+   539→                                </div>
+   540→                              );
+   541→                            })}
+   542→                          </div>
+   543→                        </CardContent>
+   544→                      </Card>
+   545→
+   546→                      {/* Data & Usage Stats */}
+   547→                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   548→                        <Card>
+   549→                          <CardHeader className="pb-3">
+   550→                            <CardTitle className="text-base flex items-center gap-2">
+   551→                              <Database className="w-4 h-4 text-amber-500" />
+   552→                              Data Records
+   553→                            </CardTitle>
+   554→                          </CardHeader>
+   555→                          <CardContent className="space-y-2">
+   556→                            <div className="flex justify-between text-sm">
+   557→                              <span className="text-muted-foreground">Requirements</span>
+   558→                              <span className="font-medium">{analytics.requirements}</span>
+   559→                            </div>
+   560→                            <div className="flex justify-between text-sm">
+   561→                              <span className="text-muted-foreground">Cost Profiles</span>
+   562→                              <span className="font-medium">{analytics.costProfiles}</span>
+   563→                            </div>
+   564→                            <div className="flex justify-between text-sm">
+   565→                              <span className="text-muted-foreground">User Profiles</span>
+   566→                              <span className="font-medium">{analytics.users}</span>
+   567→                            </div>
+   568→                            <div className="flex justify-between text-sm">
+   569→                              <span className="text-muted-foreground">Sessions</span>
+   570→                              <span className="font-medium">{analytics.sessions}</span>
+   571→                            </div>
+   572→                          </CardContent>
+   573→                        </Card>
+   574→
+   575→                        <Card>
+   576→                          <CardHeader className="pb-3">
+   577→                            <CardTitle className="text-base flex items-center gap-2">
+   578→                              <Shield className="w-4 h-4 text-amber-500" />
+   579→                              Data Freshness
+   580→                            </CardTitle>
+   581→                          </CardHeader>
+   582→                          <CardContent>
+   583→                            {analytics.dataFreshness ? (
+   584→                              <div className="space-y-2">
+   585→                                <div className="flex items-center gap-2">
+   586→                                  <div className="w-2 h-2 rounded-full bg-green-500" />
+   587→                                  <span className="text-sm">Last updated:</span>
+   588→                                </div>
+   589→                                <p className="text-sm font-medium">
+   590→                                  {new Date(analytics.dataFreshness).toLocaleDateString('en-US', {
+   591→                                    year: 'numeric', month: 'long', day: 'numeric',
+   592→                                    hour: '2-digit', minute: '2-digit',
+   593→                                  })}
+   594→                                </p>
+   595→                                <p className="text-xs text-muted-foreground">
+   596→                                  {Math.round((Date.now() - new Date(analytics.dataFreshness).getTime()) / (1000 * 60 * 60 * 24))} days ago
+   597→                                </p>
+   598→                              </div>
+   599→                            ) : (
+   600→                              <p className="text-sm text-muted-foreground">No data fetch recorded</p>
+   601→                            )}
+   602→                          </CardContent>
+   603→                        </Card>
+   604→                      </div>
+   605→                    </>
+   606→                  ) : (
+   607→                    <div className="text-center py-8 text-muted-foreground">
+   608→                      <p>Failed to load analytics</p>
+   609→                      <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchAnalytics(true)}>
+   610→                        Try Again
+   611→                      </Button>
+   612→                    </div>
+   613→                  )}
+   614→                </div>
+   615→              )}
+   616→            </ScrollArea>
+   617→          </div>
+   618→        )}
+   619→      </DialogContent>
+   620→    </Dialog>
+   621→  );
+   622→}
+   623→

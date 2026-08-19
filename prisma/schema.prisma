@@ -217,3 +217,21 @@ model AnalyticsEvent {
   @@index([createdAt])
   @@index([event])
 }
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String   @default("")
+  message   String
+  isRead    Boolean  @default(false)
+  isReplied Boolean  @default(false)
+  reply     String   @default("")
+  repliedAt DateTime?
+  ip        String   @default("unknown")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isRead])
+  @@index([createdAt])
+}
