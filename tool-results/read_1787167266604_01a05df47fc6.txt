@@ -1,0 +1,897 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react';
+     4→import {
+     5→  Settings, Lock, Eye, EyeOff, Shield, Globe, Users, Activity,
+     6→  ToggleLeft, ToggleRight, BarChart3, LogOut, Database, Zap, AlertTriangle,
+     7→  RefreshCw, Server, FileCheck, MessageSquare, Mail, Send, Trash2,
+     8→  ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
+     9→  Phone, ExternalLink, Reply,
+    10→} from 'lucide-react';
+    11→import { Button } from '@/components/ui/button';
+    12→import { Input } from '@/components/ui/input';
+    13→import { Textarea } from '@/components/ui/textarea';
+    14→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+    15→import { Badge } from '@/components/ui/badge';
+    16→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+    17→import { ScrollArea } from '@/components/ui/scroll-area';
+    18→import { Separator } from '@/components/ui/separator';
+    19→import { Switch } from '@/components/ui/switch';
+    20→import { toast } from 'sonner';
+    21→
+    22→interface AdminDialogProps {
+    23→  open: boolean;
+    24→  onClose: () => void;
+    25→  aiEnabled: boolean;
+    26→  setAiEnabled: (enabled: boolean) => void;
+    27→}
+    28→
+    29→interface AnalyticsData {
+    30→  countries: { total: number; visaFree: number; visaOnArrival: number; etaAvailable: number };
+    31→  visaCategories: { visaFree: number; visaOnArrival: number; etaAvailable: number; regularVisa: number };
+    32→  continents: Array<{ continent: string; count: number }>;
+    33→  dataFreshness: string | null;
+    34→  requirements: number;
+    35→  costProfiles: number;
+    36→  users: number;
+    37→  sessions: number;
+    38→  adminUsers: Array<{ username: string; lastLogin: string | null; isOnline: boolean; createdAt: string }>;
+    39→  settings: Record<string, string>;
+    40→}
+    41→
+    42→interface ContactMessage {
+    43→  id: string;
+    44→  name: string;
+    45→  email: string;
+    46→  subject: string;
+    47→  message: string;
+    48→  isRead: boolean;
+    49→  isReplied: boolean;
+    50→  reply: string;
+    51→  ip: string;
+    52→  createdAt: string;
+    53→}
+    54→
+    55→interface NewsletterSubscriber {
+    56→  id: string;
+    57→  email: string;
+    58→  subscribedAt: string;
+    59→  isActive: boolean;
+    60→}
+    61→
+    62→type AdminSection = 'overview' | 'messages' | 'newsletter' | 'analytics' | 'settings';
+    63→
+    64→export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDialogProps) {
+    65→  const [isLoggedIn, setIsLoggedIn] = useState(false);
+    66→  const [token, setToken] = useState<string | null>(null);
+    67→  const [username, setUsername] = useState('');
+    68→  const [password, setPassword] = useState('');
+    69→  const [showPassword, setShowPassword] = useState(false);
+    70→  const [loginLoading, setLoginLoading] = useState(false);
+    71→  const [activeSection, setActiveSection] = useState<AdminSection>('overview');
+    72→  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+    73→  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    74→  const [maintenanceMode, setMaintenanceMode] = useState(false);
+    75→  const [togglingAi, setTogglingAi] = useState(false);
+    76→  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+    77→  const [refreshingAnalytics, setRefreshingAnalytics] = useState(false);
+    78→
+    79→  // Messages state
+    80→  const [messages, setMessages] = useState<ContactMessage[]>([]);
+    81→  const [messagesTotal, setMessagesTotal] = useState(0);
+    82→  const [messagesUnread, setMessagesUnread] = useState(0);
+    83→  const [messagesPage, setMessagesPage] = useState(1);
+    84→  const [messagesLoading, setMessagesLoading] = useState(false);
+    85→  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+    86→  const [replyText, setReplyText] = useState('');
+    87→  const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
+    88→
+    89→  // Newsletter state
+    90→  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
+    91→  const [subscribersTotal, setSubscribersTotal] = useState(0);
+    92→  const [subscribersActive, setSubscribersActive] = useState(0);
+    93→  const [subscribersPage, setSubscribersPage] = useState(1);
+    94→  const [subscribersLoading, setSubscribersLoading] = useState(false);
+    95→
+    96→  useEffect(() => {
+    97→    const savedToken = localStorage.getItem('pakvisa-admin-token');
+    98→    if (savedToken) {
+    99→      setToken(savedToken);
+   100→      setIsLoggedIn(true);
+   101→    }
+   102→  }, []);
+   103→
+   104→  const handleLogin = useCallback(async () => {
+   105→    if (!username.trim() || !password.trim()) {
+   106→      toast.error('Please enter username and password');
+   107→      return;
+   108→    }
+   109→    setLoginLoading(true);
+   110→    try {
+   111→      const res = await fetch('/api/admin', {
+   112→        method: 'POST',
+   113→        headers: { 'Content-Type': 'application/json' },
+   114→        body: JSON.stringify({ username: username.trim(), password }),
+   115→      });
+   116→      const data = await res.json();
+   117→      if (data.success) {
+   118→        localStorage.setItem('pakvisa-admin-token', data.data.token);
+   119→        setToken(data.data.token);
+   120→        setIsLoggedIn(true);
+   121→        toast.success('Logged in successfully');
+   122→      } else {
+   123→        toast.error(data.error || 'Login failed');
+   124→      }
+   125→    } catch {
+   126→      toast.error('Connection error');
+   127→    } finally {
+   128→      setLoginLoading(false);
+   129→    }
+   130→  }, [username, password]);
+   131→
+   132→  const handleLogout = useCallback(() => {
+   133→    localStorage.removeItem('pakvisa-admin-token');
+   134→    setToken(null);
+   135→    setIsLoggedIn(false);
+   136→    setUsername(''); setPassword('');
+   137→    setAnalytics(null);
+   138→    setMessages([]);
+   139→    setSubscribers([]);
+   140→    setActiveSection('overview');
+   141→    toast.success('Logged out');
+   142→  }, []);
+   143→
+   144→  const fetchAnalytics = useCallback(async (showLoading = true) => {
+   145→    if (!token) return;
+   146→    if (showLoading) setAnalyticsLoading(true);
+   147→    setRefreshingAnalytics(true);
+   148→    try {
+   149→      const res = await fetch('/api/admin/analytics', { headers: { 'Authorization': `Bearer ${token}` } });
+   150→      const data = await res.json();
+   151→      if (data.success) {
+   152→        setAnalytics(data.data);
+   153→        setMaintenanceMode(data.data.settings?.maintenance_mode === 'true');
+   154→      }
+   155→    } catch { toast.error('Failed to fetch analytics'); }
+   156→    finally { setAnalyticsLoading(false); setRefreshingAnalytics(false); }
+   157→  }, [token]);
+   158→
+   159→  const fetchMessages = useCallback(async (page = 1) => {
+   160→    if (!token) return;
+   161→    setMessagesLoading(true);
+   162→    try {
+   163→      const res = await fetch(`/api/admin/messages?page=${page}&limit=15`, {
+   164→        headers: { 'Authorization': `Bearer ${token}` },
+   165→      });
+   166→      const data = await res.json();
+   167→      if (data.success) {
+   168→        setMessages(data.data.messages);
+   169→        setMessagesTotal(data.data.total);
+   170→        setMessagesUnread(data.data.unreadCount);
+   171→        setMessagesPage(data.data.page);
+   172→      }
+   173→    } catch { toast.error('Failed to fetch messages'); }
+   174→    finally { setMessagesLoading(false); }
+   175→  }, [token]);
+   176→
+   177→  const fetchSubscribers = useCallback(async (page = 1) => {
+   178→    if (!token) return;
+   179→    setSubscribersLoading(true);
+   180→    try {
+   181→      const res = await fetch(`/api/admin/newsletter?page=${page}&limit=15`, {
+   182→        headers: { 'Authorization': `Bearer ${token}` },
+   183→      });
+   184→      const data = await res.json();
+   185→      if (data.success) {
+   186→        setSubscribers(data.data.subscribers);
+   187→        setSubscribersTotal(data.data.total);
+   188→        setSubscribersActive(data.data.activeCount);
+   189→        setSubscribersPage(data.data.page);
+   190→      }
+   191→    } catch { toast.error('Failed to fetch subscribers'); }
+   192→    finally { setSubscribersLoading(false); }
+   193→  }, [token]);
+   194→
+   195→  // Fetch data on section change
+   196→  useEffect(() => {
+   197→    if (!isLoggedIn || !token) return;
+   198→    if (activeSection === 'overview' || activeSection === 'analytics') {
+   199→      if (!analytics) fetchAnalytics();
+   200→    }
+   201→    if (activeSection === 'overview') {
+   202→      fetchMessages();
+   203→      fetchSubscribers();
+   204→    }
+   205→    if (activeSection === 'messages') fetchMessages();
+   206→    if (activeSection === 'newsletter') fetchSubscribers();
+   207→  }, [isLoggedIn, token, activeSection]);
+   208→
+   209→  const toggleAiFeature = useCallback(async (enabled: boolean) => {
+   210→    if (!token) return;
+   211→    setTogglingAi(true);
+   212→    try {
+   213→      const res = await fetch('/api/admin/settings', {
+   214→        method: 'PUT',
+   215→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   216→        body: JSON.stringify({ key: 'ai_enabled', value: String(enabled) }),
+   217→      });
+   218→      const data = await res.json();
+   219→      if (data.success) { setAiEnabled(enabled); toast.success(`AI features ${enabled ? 'enabled' : 'disabled'}`); }
+   220→      else toast.error('Failed to update setting');
+   221→    } catch { toast.error('Connection error'); }
+   222→    finally { setTogglingAi(false); }
+   223→  }, [token, setAiEnabled]);
+   224→
+   225→  const toggleMaintenance = useCallback(async (enabled: boolean) => {
+   226→    if (!token) return;
+   227→    setTogglingMaintenance(true);
+   228→    try {
+   229→      const res = await fetch('/api/admin/settings', {
+   230→        method: 'PUT',
+   231→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   232→        body: JSON.stringify({ key: 'maintenance_mode', value: String(enabled) }),
+   233→      });
+   234→      const data = await res.json();
+   235→      if (data.success) { setMaintenanceMode(enabled); toast.success(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`); }
+   236→      else toast.error('Failed to update setting');
+   237→    } catch { toast.error('Connection error'); }
+   238→    finally { setTogglingMaintenance(false); }
+   239→  }, [token]);
+   240→
+   241→  const markMessageRead = async (id: string) => {
+   242→    if (!token) return;
+   243→    try {
+   244→      await fetch('/api/admin/messages', {
+   245→        method: 'PUT',
+   246→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   247→        body: JSON.stringify({ id, action: 'mark_read' }),
+   248→      });
+   249→      setMessages(prev => prev.map(m => m.id === id ? { ...m, isRead: true } : m));
+   250→      setMessagesUnread(prev => Math.max(0, prev - 1));
+   251→    } catch { toast.error('Failed to mark as read'); }
+   252→  };
+   253→
+   254→  const sendMessageReply = async (id: string) => {
+   255→    if (!token || !replyText.trim()) return;
+   256→    try {
+   257→      const res = await fetch('/api/admin/messages', {
+   258→        method: 'PUT',
+   259→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   260→        body: JSON.stringify({ id, action: 'reply', reply: replyText }),
+   261→      });
+   262→      const data = await res.json();
+   263→      if (data.success) {
+   264→        setMessages(prev => prev.map(m => m.id === id ? { ...m, isReplied: true, reply: replyText.trim(), isRead: true } : m));
+   265→        setReplyingTo(null); setReplyText('');
+   266→        toast.success('Reply saved');
+   267→      }
+   268→    } catch { toast.error('Failed to send reply'); }
+   269→  };
+   270→
+   271→  const deleteMessage = async (id: string) => {
+   272→    if (!token) return;
+   273→    try {
+   274→      await fetch('/api/admin/messages', {
+   275→        method: 'PUT',
+   276→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   277→        body: JSON.stringify({ id, action: 'delete' }),
+   278→      });
+   279→      setMessages(prev => prev.filter(m => m.id !== id));
+   280→      setMessagesTotal(prev => prev - 1);
+   281→      toast.success('Message deleted');
+   282→    } catch { toast.error('Failed to delete'); }
+   283→  };
+   284→
+   285→  const deleteSubscriber = async (id: string) => {
+   286→    if (!token) return;
+   287→    try {
+   288→      await fetch(`/api/admin/newsletter?id=${id}`, {
+   289→        method: 'DELETE',
+   290→        headers: { 'Authorization': `Bearer ${token}` },
+   291→      });
+   292→      setSubscribers(prev => prev.filter(s => s.id !== id));
+   293→      setSubscribersTotal(prev => prev - 1);
+   294→      setSubscribersActive(prev => prev - 1);
+   295→      toast.success('Subscriber removed');
+   296→    } catch { toast.error('Failed to remove'); }
+   297→  };
+   298→
+   299→  const navItems: { key: AdminSection; label: string; icon: React.ReactNode; badge?: number }[] = [
+   300→    { key: 'overview', label: 'Overview', icon: <TrendingUp className="w-4 h-4" /> },
+   301→    { key: 'messages', label: 'Messages', icon: <Inbox className="w-4 h-4" />, badge: messagesUnread || undefined },
+   302→    { key: 'newsletter', label: 'Newsletter', icon: <Mail className="w-4 h-4" /> },
+   303→    { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+   304→    { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
+   305→  ];
+   306→
+   307→  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+   308→  const timeAgo = (d: string) => {
+   309→    const diff = Date.now() - new Date(d).getTime();
+   310→    const mins = Math.floor(diff / 60000);
+   311→    if (mins < 60) return `${mins}m ago`;
+   312→    const hours = Math.floor(mins / 60);
+   313→    if (hours < 24) return `${hours}h ago`;
+   314→    return `${Math.floor(hours / 24)}d ago`;
+   315→  };
+   316→
+   317→  // ===== RENDER =====
+   318→  return (
+   319→    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+   320→      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+   321→        <DialogHeader className="p-5 pb-0 border-b">
+   322→          <div className="flex items-center justify-between">
+   323→            <div className="flex items-center gap-3">
+   324→              <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
+   325→                <Shield className="w-4.5 h-4.5 text-white" />
+   326→              </div>
+   327→              <div>
+   328→                <DialogTitle className="text-lg">Admin Dashboard</DialogTitle>
+   329→                <DialogDescription className="text-xs">Manage your PakVisa Advisor</DialogDescription>
+   330→              </div>
+   331→            </div>
+   332→            {isLoggedIn && (
+   333→              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
+   334→                <LogOut className="w-4 h-4 mr-1.5" /> Logout
+   335→              </Button>
+   336→            )}
+   337→          </div>
+   338→        </DialogHeader>
+   339→
+   340→        {!isLoggedIn ? (
+   341→          <div className="p-8 flex-1 flex items-center justify-center">
+   342→            <Card className="w-full max-w-sm border-emerald-200 dark:border-emerald-800">
+   343→              <CardHeader className="text-center">
+   344→                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-3">
+   345→                  <Lock className="w-8 h-8 text-emerald-600" />
+   346→                </div>
+   347→                <CardTitle className="text-lg">Admin Login</CardTitle>
+   348→                <CardDescription>Enter credentials to access dashboard</CardDescription>
+   349→              </CardHeader>
+   350→              <CardContent className="space-y-4">
+   351→                <div className="space-y-2">
+   352→                  <label className="text-sm font-medium" htmlFor="admin-username">Username</label>
+   353→                  <Input id="admin-username" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} autoComplete="username" />
+   354→                </div>
+   355→                <div className="space-y-2">
+   356→                  <label className="text-sm font-medium" htmlFor="admin-password">Password</label>
+   357→                  <div className="relative">
+   358→                    <Input id="admin-password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} autoComplete="current-password" />
+   359→                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+   360→                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   361→                    </Button>
+   362→                  </div>
+   363→                </div>
+   364→                <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={handleLogin} disabled={loginLoading}>
+   365→                  {loginLoading ? (<><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Logging in...</>) : (<><Lock className="w-4 h-4 mr-2" />Sign In</>)}
+   366→                </Button>
+   367→              </CardContent>
+   368→            </Card>
+   369→          </div>
+   370→        ) : (
+   371→          <div className="flex flex-1 overflow-hidden">
+   372→            {/* Sidebar Navigation */}
+   373→            <div className="w-52 border-r bg-muted/20 p-3 space-y-1 hidden md:flex flex-col">
+   374→              {navItems.map((item) => (
+   375→                <button
+   376→                  key={item.key}
+   377→                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors relative ${
+   378→                    activeSection === item.key
+   379→                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium'
+   380→                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+   381→                  }`}
+   382→                  onClick={() => setActiveSection(item.key)}
+   383→                >
+   384→                  {item.icon}
+   385→                  <span>{item.label}</span>
+   386→                  {item.badge ? (
+   387→                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+   388→                      {item.badge > 99 ? '99+' : item.badge}
+   389→                    </span>
+   390→                  ) : null}
+   391→                </button>
+   392→              ))}
+   393→            </div>
+   394→
+   395→            {/* Mobile Nav */}
+   396→            <div className="md:hidden p-3 border-b flex gap-1.5 overflow-x-auto">
+   397→              {navItems.map((item) => (
+   398→                <Button
+   399→                  key={item.key}
+   400→                  variant={activeSection === item.key ? 'default' : 'outline'}
+   401→                  size="sm"
+   402→                  className={`shrink-0 gap-1.5 text-xs ${activeSection === item.key ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+   403→                  onClick={() => setActiveSection(item.key)}
+   404→                >
+   405→                  {item.icon}
+   406→                  {item.label}
+   407→                  {item.badge ? <span className="bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{item.badge}</span> : null}
+   408→                </Button>
+   409→              ))}
+   410→            </div>
+   411→
+   412→            {/* Content Area */}
+   413→            <ScrollArea className="flex-1">
+   414→              <div className="p-5 space-y-5">
+   415→                {/* ====== OVERVIEW TAB ====== */}
+   416→                {activeSection === 'overview' && (
+   417→                  <>
+   418→                    {/* Quick Stats Row */}
+   419→                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+   420→                      <StatCard icon={<Inbox className="w-4 h-4" />} label="Unread Messages" value={messagesUnread} color="red" />
+   421→                      <StatCard icon={<Mail className="w-4 h-4" />} label="Subscribers" value={subscribersActive} color="blue" />
+   422→                      <StatCard icon={<Globe className="w-4 h-4" />} label="Countries" value={analytics?.countries.total ?? '—'} color="emerald" />
+   423→                      <StatCard icon={<Zap className="w-4 h-4" />} label="AI Status" value={aiEnabled ? 'Online' : 'Offline'} color={aiEnabled ? 'green' : 'amber'} />
+   424→                    </div>
+   425→
+   426→                    {/* Two Column */}
+   427→                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+   428→                      {/* Recent Messages */}
+   429→                      <Card>
+   430→                        <CardHeader className="pb-3">
+   431→                          <div className="flex items-center justify-between">
+   432→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   433→                              <MessageSquare className="w-4 h-4 text-emerald-500" /> Recent Messages
+   434→                            </CardTitle>
+   435→                            <Button variant="ghost" size="sm" className="text-xs text-emerald-600" onClick={() => setActiveSection('messages')}>
+   436→                              View All
+   437→                            </Button>
+   438→                          </div>
+   439→                        </CardHeader>
+   440→                        <CardContent>
+   441→                          {messagesLoading ? (
+   442→                            <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   443→                          ) : messages.length === 0 ? (
+   444→                            <p className="text-sm text-muted-foreground text-center py-6">No messages yet</p>
+   445→                          ) : (
+   446→                            <div className="space-y-2">
+   447→                              {messages.slice(0, 5).map((m) => (
+   448→                                <div key={m.id} className={`flex items-start gap-3 p-2.5 rounded-lg transition-colors ${!m.isRead ? 'bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30' : 'hover:bg-muted/50'}`}>
+   449→                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${!m.isRead ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+   450→                                    {m.name.charAt(0).toUpperCase()}
+   451→                                  </div>
+   452→                                  <div className="min-w-0 flex-1">
+   453→                                    <div className="flex items-center gap-2">
+   454→                                      <span className={`text-sm ${!m.isRead ? 'font-semibold' : 'font-medium'}`}>{m.name}</span>
+   455→                                      {!m.isRead && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+   456→                                      <span className="text-xs text-muted-foreground ml-auto shrink-0">{timeAgo(m.createdAt)}</span>
+   457→                                    </div>
+   458→                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{m.subject || m.message}</p>
+   459→                                  </div>
+   460→                                </div>
+   461→                              ))}
+   462→                            </div>
+   463→                          )}
+   464→                        </CardContent>
+   465→                      </Card>
+   466→
+   467→                      {/* Visa Breakdown + Data Health */}
+   468→                      <div className="space-y-5">
+   469→                        <Card>
+   470→                          <CardHeader className="pb-3">
+   471→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   472→                              <FileCheck className="w-4 h-4 text-emerald-500" /> Visa Breakdown
+   473→                            </CardTitle>
+   474→                          </CardHeader>
+   475→                          <CardContent>
+   476→                            {analytics ? (
+   477→                              <div className="grid grid-cols-2 gap-3">
+   478→                                <MiniStat label="Visa Free" value={analytics.countries.visaFree} color="text-green-600" />
+   479→                                <MiniStat label="On Arrival" value={analytics.countries.visaOnArrival} color="text-orange-600" />
+   480→                                <MiniStat label="e-Visa/ETA" value={analytics.countries.etaAvailable} color="text-blue-600" />
+   481→                                <MiniStat label="Regular Visa" value={analytics.visaCategories.regularVisa} color="text-red-600" />
+   482→                              </div>
+   483→                            ) : <div className="flex justify-center py-4"><div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>}
+   484→                          </CardContent>
+   485→                        </Card>
+   486→
+   487→                        <Card>
+   488→                          <CardHeader className="pb-3">
+   489→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   490→                              <Activity className="w-4 h-4 text-emerald-500" /> System Health
+   491→                            </CardTitle>
+   492→                          </CardHeader>
+   493→                          <CardContent className="space-y-3">
+   494→                            <div className="flex items-center justify-between text-sm">
+   495→                              <span className="text-muted-foreground">AI Engine</span>
+   496→                              <Badge variant={aiEnabled ? 'default' : 'secondary'} className={aiEnabled ? 'bg-green-600' : ''}>{aiEnabled ? 'Online' : 'Offline'}</Badge>
+   497→                            </div>
+   498→                            <div className="flex items-center justify-between text-sm">
+   499→                              <span className="text-muted-foreground">Maintenance</span>
+   500→                              <Badge variant={maintenanceMode ? 'destructive' : 'secondary'}>{maintenanceMode ? 'Active' : 'Normal'}</Badge>
+   501→                            </div>
+   502→                            <div className="flex items-center justify-between text-sm">
+   503→                              <span className="text-muted-foreground">Data Records</span>
+   504→                              <span className="font-medium">{analytics?.requirements ?? '—'} reqs, {analytics?.costProfiles ?? '—'} costs</span>
+   505→                            </div>
+   506→                            {analytics?.dataFreshness && (
+   507→                              <div className="flex items-center justify-between text-sm">
+   508→                                <span className="text-muted-foreground">Last Updated</span>
+   509→                                <span className="text-xs">{timeAgo(analytics.dataFreshness)}</span>
+   510→                              </div>
+   511→                            )}
+   512→                          </CardContent>
+   513→                        </Card>
+   514→                      </div>
+   515→                    </div>
+   516→                  </>
+   517→                )}
+   518→
+   519→                {/* ====== MESSAGES TAB ====== */}
+   520→                {activeSection === 'messages' && (
+   521→                  <>
+   522→                    <div className="flex items-center justify-between">
+   523→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   524→                        <Inbox className="w-5 h-5 text-emerald-500" />
+   525→                        Messages
+   526→                        {messagesUnread > 0 && <Badge className="bg-red-500">{messagesUnread} unread</Badge>}
+   527→                      </h3>
+   528→                      <div className="flex gap-2">
+   529→                        <Button variant="outline" size="sm" onClick={() => fetchMessages(messagesPage)} disabled={messagesLoading}>
+   530→                          <RefreshCw className={`w-3.5 h-3.5 mr-1 ${messagesLoading ? 'animate-spin' : ''}`} /> Refresh
+   531→                        </Button>
+   532→                      </div>
+   533→                    </div>
+   534→                    {messagesLoading && messages.length === 0 ? (
+   535→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   536→                    ) : messages.length === 0 ? (
+   537→                      <div className="text-center py-16 text-muted-foreground">
+   538→                        <Inbox className="w-12 h-12 mx-auto mb-3 opacity-30" />
+   539→                        <p className="font-medium">No messages yet</p>
+   540→                        <p className="text-sm">Messages from the Contact Us form will appear here.</p>
+   541→                      </div>
+   542→                    ) : (
+   543→                      <div className="space-y-3">
+   544→                        {messages.map((m) => (
+   545→                          <Card key={m.id} className={`transition-colors ${!m.isRead ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-900/10' : ''}`}>
+   546→                            <CardContent className="p-4">
+   547→                              <div className="flex items-start justify-between gap-3">
+   548→                                <div className="flex items-start gap-3 min-w-0 flex-1">
+   549→                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${!m.isRead ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+   550→                                    {m.name.charAt(0).toUpperCase()}
+   551→                                  </div>
+   552→                                  <div className="min-w-0 flex-1">
+   553→                                    <div className="flex items-center gap-2 flex-wrap">
+   554→                                      <span className={`font-semibold ${!m.isRead ? '' : 'text-muted-foreground'}`}>{m.name}</span>
+   555→                                      <span className="text-xs text-muted-foreground">{m.email}</span>
+   556→                                      {!m.isRead && <Badge variant="default" className="bg-emerald-600 text-[10px] px-1.5 py-0">New</Badge>}
+   557→                                      {m.isReplied && <Badge variant="secondary" className="text-[10px] px-1.5 py-0"><Check className="w-3 h-3 mr-0.5" />Replied</Badge>}
+   558→                                    </div>
+   559→                                    {m.subject && <p className="text-sm font-medium mt-1">{m.subject}</p>}
+   560→                                    <p className={`text-sm text-muted-foreground mt-1 whitespace-pre-wrap ${expandedMessage === m.id ? '' : 'line-clamp-2'}`}>{m.message}</p>
+   561→                                    {m.message.length > 150 && (
+   562→                                      <button onClick={() => setExpandedMessage(expandedMessage === m.id ? null : m.id)} className="text-xs text-emerald-600 mt-1 hover:underline">
+   563→                                        {expandedMessage === m.id ? 'Show less' : 'Read more'}
+   564→                                      </button>
+   565→                                    )}
+   566→                                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+   567→                                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(m.createdAt)}</span>
+   568→                                    </div>
+   569→
+   570→                                    {/* Reply saved display */}
+   571→                                    {m.reply && (
+   572→                                      <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+   573→                                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1"><Reply className="w-3 h-3" /> Your Reply:</p>
+   574→                                        <p className="text-sm text-blue-800 dark:text-blue-300">{m.reply}</p>
+   575→                                      </div>
+   576→                                    )}
+   577→
+   578→                                    {/* Reply box */}
+   579→                                    {replyingTo === m.id && (
+   580→                                      <div className="mt-3 space-y-2">
+   581→                                        <Textarea placeholder="Write your reply... (saved for reference)" value={replyText} onChange={(e) => setReplyText(e.target.value)} rows={2} className="text-sm" />
+   582→                                        <div className="flex gap-2">
+   583→                                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => sendMessageReply(m.id)} disabled={!replyText.trim()}>
+   584→                                            <Send className="w-3.5 h-3.5 mr-1" /> Save Reply
+   585→                                          </Button>
+   586→                                          <Button size="sm" variant="ghost" onClick={() => { setReplyingTo(null); setReplyText(''); }}>Cancel</Button>
+   587→                                        </div>
+   588→                                      </div>
+   589→                                    )}
+   590→                                  </div>
+   591→                                </div>
+   592→                                <div className="flex flex-col gap-1 shrink-0">
+   593→                                  {!m.isRead && (
+   594→                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => markMessageRead(m.id)} title="Mark as read">
+   595→                                      <Eye className="w-4 h-4" />
+   596→                                    </Button>
+   597→                                  )}
+   598→                                  {!m.isReplied && (
+   599→                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReplyingTo(replyingTo === m.id ? null : m.id)} title="Reply">
+   600→                                      <Reply className="w-4 h-4" />
+   601→                                    </Button>
+   602→                                  )}
+   603→                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => deleteMessage(m.id)} title="Delete">
+   604→                                    <Trash2 className="w-4 h-4" />
+   605→                                  </Button>
+   606→                                </div>
+   607→                              </div>
+   608→                            </CardContent>
+   609→                          </Card>
+   610→                        ))}
+   611→                        {messagesTotal > 15 && (
+   612→                          <div className="flex items-center justify-center gap-2 pt-2">
+   613→                            <Button variant="outline" size="sm" disabled={messagesPage <= 1} onClick={() => fetchMessages(messagesPage - 1)}><ChevronLeft className="w-4 h-4" /></Button>
+   614→                            <span className="text-sm text-muted-foreground">Page {messagesPage} of {Math.ceil(messagesTotal / 15)}</span>
+   615→                            <Button variant="outline" size="sm" disabled={messagesPage >= Math.ceil(messagesTotal / 15)} onClick={() => fetchMessages(messagesPage + 1)}><ChevronRight className="w-4 h-4" /></Button>
+   616→                          </div>
+   617→                        )}
+   618→                      </div>
+   619→                    )}
+   620→                  </>
+   621→                )}
+   622→
+   623→                {/* ====== NEWSLETTER TAB ====== */}
+   624→                {activeSection === 'newsletter' && (
+   625→                  <>
+   626→                    <div className="flex items-center justify-between">
+   627→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   628→                        <Mail className="w-5 h-5 text-emerald-500" />
+   629→                        Newsletter Subscribers
+   630→                      </h3>
+   631→                      <div className="flex items-center gap-3">
+   632→                        <Badge variant="secondary" className="text-xs">{subscribersActive} active / {subscribersTotal} total</Badge>
+   633→                        <Button variant="outline" size="sm" onClick={() => fetchSubscribers(subscribersPage)} disabled={subscribersLoading}>
+   634→                          <RefreshCw className={`w-3.5 h-3.5 mr-1 ${subscribersLoading ? 'animate-spin' : ''}`} /> Refresh
+   635→                        </Button>
+   636→                      </div>
+   637→                    </div>
+   638→
+   639→                    {/* Stats Row */}
+   640→                    <div className="grid grid-cols-3 gap-3">
+   641→                      <Card className="p-4 text-center">
+   642→                        <div className="text-2xl font-bold text-emerald-600">{subscribersTotal}</div>
+   643→                        <div className="text-xs text-muted-foreground mt-1">Total Subscribers</div>
+   644→                      </Card>
+   645→                      <Card className="p-4 text-center">
+   646→                        <div className="text-2xl font-bold text-green-600">{subscribersActive}</div>
+   647→                        <div className="text-xs text-muted-foreground mt-1">Active</div>
+   648→                      </Card>
+   649→                      <Card className="p-4 text-center">
+   650→                        <div className="text-2xl font-bold text-red-500">{subscribersTotal - subscribersActive}</div>
+   651→                        <div className="text-xs text-muted-foreground mt-1">Inactive</div>
+   652→                      </Card>
+   653→                    </div>
+   654→
+   655→                    {subscribersLoading && subscribers.length === 0 ? (
+   656→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   657→                    ) : subscribers.length === 0 ? (
+   658→                      <div className="text-center py-16 text-muted-foreground">
+   659→                        <Mail className="w-12 h-12 mx-auto mb-3 opacity-30" />
+   660→                        <p className="font-medium">No subscribers yet</p>
+   661→                        <p className="text-sm">Newsletter signups will appear here.</p>
+   662→                      </div>
+   663→                    ) : (
+   664→                      <Card>
+   665→                        <CardContent className="p-0">
+   666→                          <div className="overflow-x-auto">
+   667→                            <table className="w-full text-sm">
+   668→                              <thead>
+   669→                                <tr className="border-b bg-muted/30">
+   670→                                  <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
+   671→                                  <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Subscribed</th>
+   672→                                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+   673→                                  <th className="p-3 w-10"></th>
+   674→                                </tr>
+   675→                              </thead>
+   676→                              <tbody>
+   677→                                {subscribers.map((s) => (
+   678→                                  <tr key={s.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+   679→                                    <td className="p-3 font-medium">{s.email}</td>
+   680→                                    <td className="p-3 text-muted-foreground hidden sm:table-cell">{formatDate(s.subscribedAt)}</td>
+   681→                                    <td className="p-3">
+   682→                                      <Badge variant={s.isActive ? 'default' : 'secondary'} className={s.isActive ? 'bg-green-600' : ''}>{s.isActive ? 'Active' : 'Inactive'}</Badge>
+   683→                                    </td>
+   684→                                    <td className="p-3">
+   685→                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => deleteSubscriber(s.id)}>
+   686→                                        <Trash2 className="w-3.5 h-3.5" />
+   687→                                      </Button>
+   688→                                    </td>
+   689→                                  </tr>
+   690→                                ))}
+   691→                              </tbody>
+   692→                            </table>
+   693→                          </div>
+   694→                        </CardContent>
+   695→                      </Card>
+   696→                    )}
+   697→                    {subscribersTotal > 15 && (
+   698→                      <div className="flex items-center justify-center gap-2">
+   699→                        <Button variant="outline" size="sm" disabled={subscribersPage <= 1} onClick={() => fetchSubscribers(subscribersPage - 1)}><ChevronLeft className="w-4 h-4" /></Button>
+   700→                        <span className="text-sm text-muted-foreground">Page {subscribersPage} of {Math.ceil(subscribersTotal / 15)}</span>
+   701→                        <Button variant="outline" size="sm" disabled={subscribersPage >= Math.ceil(subscribersTotal / 15)} onClick={() => fetchSubscribers(subscribersPage + 1)}><ChevronRight className="w-4 h-4" /></Button>
+   702→                      </div>
+   703→                    )}
+   704→                  </>
+   705→                )}
+   706→
+   707→                {/* ====== ANALYTICS TAB ====== */}
+   708→                {activeSection === 'analytics' && (
+   709→                  <>
+   710→                    <div className="flex items-center justify-between">
+   711→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   712→                        <BarChart3 className="w-5 h-5 text-emerald-500" /> Detailed Analytics
+   713→                      </h3>
+   714→                      <Button variant="outline" size="sm" onClick={() => fetchAnalytics(true)} disabled={refreshingAnalytics}>
+   715→                        <RefreshCw className={`w-3.5 h-3.5 mr-1 ${refreshingAnalytics ? 'animate-spin' : ''}`} /> Refresh
+   716→                      </Button>
+   717→                    </div>
+   718→
+   719→                    {analyticsLoading && !analytics ? (
+   720→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   721→                    ) : analytics ? (
+   722→                      <div className="space-y-5">
+   723→                        {/* Country Stats */}
+   724→                        <Card>
+   725→                          <CardHeader className="pb-3">
+   726→                            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Country Database</CardTitle>
+   727→                          </CardHeader>
+   728→                          <CardContent>
+   729→                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   730→                              <MiniStat label="Total Countries" value={analytics.countries.total} />
+   731→                              <MiniStat label="Visa Free" value={analytics.countries.visaFree} color="text-green-600" />
+   732→                              <MiniStat label="Visa on Arrival" value={analytics.countries.visaOnArrival} color="text-orange-600" />
+   733→                              <MiniStat label="ETA Available" value={analytics.countries.etaAvailable} color="text-blue-600" />
+   734→                            </div>
+   735→                          </CardContent>
+   736→                        </Card>
+   737→
+   738→                        {/* Continent Distribution */}
+   739→                        <Card>
+   740→                          <CardHeader className="pb-3">
+   741→                            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Continent Distribution</CardTitle>
+   742→                          </CardHeader>
+   743→                          <CardContent>
+   744→                            <div className="space-y-2.5">
+   745→                              {analytics.continents.map((c) => {
+   746→                                const pct = analytics.countries.total > 0 ? (c.count / analytics.countries.total) * 100 : 0;
+   747→                                return (
+   748→                                  <div key={c.continent} className="flex items-center gap-3">
+   749→                                    <span className="text-sm text-muted-foreground w-28 truncate">{c.continent}</span>
+   750→                                    <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+   751→                                      <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+   752→                                    </div>
+   753→                                    <span className="text-sm font-medium w-16 text-right">{c.count} <span className="text-xs text-muted-foreground">({Math.round(pct)}%)</span></span>
+   754→                                  </div>
+   755→                                );
+   756→                              })}
+   757→                            </div>
+   758→                          </CardContent>
+   759→                        </Card>
+   760→
+   761→                        {/* Data Records + Freshness */}
+   762→                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   763→                          <Card>
+   764→                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Database className="w-4 h-4 text-emerald-500" /> Data Records</CardTitle></CardHeader>
+   765→                            <CardContent className="space-y-2">
+   766→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Requirements</span><span className="font-medium">{analytics.requirements}</span></div>
+   767→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Cost Profiles</span><span className="font-medium">{analytics.costProfiles}</span></div>
+   768→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">User Profiles</span><span className="font-medium">{analytics.users}</span></div>
+   769→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sessions</span><span className="font-medium">{analytics.sessions}</span></div>
+   770→                            </CardContent>
+   771→                          </Card>
+   772→                          <Card>
+   773→                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-500" /> Data Freshness</CardTitle></CardHeader>
+   774→                            <CardContent>
+   775→                              {analytics.dataFreshness ? (
+   776→                                <div className="space-y-2">
+   777→                                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-sm">Last updated:</span></div>
+   778→                                  <p className="text-sm font-medium">{new Date(analytics.dataFreshness).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+   779→                                  <p className="text-xs text-muted-foreground">{Math.round((Date.now() - new Date(analytics.dataFreshness).getTime()) / (1000 * 60 * 60 * 24))} days ago</p>
+   780→                                </div>
+   781→                              ) : <p className="text-sm text-muted-foreground">No data fetch recorded</p>}
+   782→                            </CardContent>
+   783→                          </Card>
+   784→                        </div>
+   785→                      </div>
+   786→                    ) : (
+   787→                      <div className="text-center py-8 text-muted-foreground">
+   788→                        <p>Failed to load analytics</p>
+   789→                        <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchAnalytics(true)}>Try Again</Button>
+   790→                      </div>
+   791→                    )}
+   792→                  </>
+   793→                )}
+   794→
+   795→                {/* ====== SETTINGS TAB ====== */}
+   796→                {activeSection === 'settings' && (
+   797→                  <div className="space-y-5">
+   798→                    <h3 className="text-lg font-semibold flex items-center gap-2"><Settings className="w-5 h-5 text-emerald-500" /> Feature Toggles</h3>
+   799→
+   800→                    <Card className="hover:shadow-md transition-shadow">
+   801→                      <CardHeader className="pb-3">
+   802→                        <div className="flex items-center justify-between">
+   803→                          <div className="flex items-center gap-3">
+   804→                            <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><Zap className="w-5 h-5 text-emerald-600" /></div>
+   805→                            <div><CardTitle className="text-base">AI Features</CardTitle><CardDescription>Enable or disable AI Chat and Document Analysis</CardDescription></div>
+   806→                          </div>
+   807→                          <Switch checked={aiEnabled} onCheckedChange={toggleAiFeature} disabled={togglingAi} className="data-[state=checked]:bg-emerald-600" />
+   808→                        </div>
+   809→                      </CardHeader>
+   810→                      <CardContent>
+   811→                        <div className="flex items-center gap-2"><Badge variant={aiEnabled ? 'default' : 'secondary'} className={aiEnabled ? 'bg-emerald-600' : ''}>{aiEnabled ? 'Enabled' : 'Disabled'}</Badge>{togglingAi && <span className="text-xs text-muted-foreground">Updating...</span>}</div>
+   812→                      </CardContent>
+   813→                    </Card>
+   814→
+   815→                    <Card className="hover:shadow-md transition-shadow">
+   816→                      <CardHeader className="pb-3">
+   817→                        <div className="flex items-center justify-between">
+   818→                          <div className="flex items-center gap-3">
+   819→                            <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center"><Server className="w-5 h-5 text-orange-600" /></div>
+   820→                            <div><CardTitle className="text-base">Maintenance Mode</CardTitle><CardDescription>Show maintenance banner to all users</CardDescription></div>
+   821→                          </div>
+   822→                          <Switch checked={maintenanceMode} onCheckedChange={toggleMaintenance} disabled={togglingMaintenance} className="data-[state=checked]:bg-orange-600" />
+   823→                        </div>
+   824→                      </CardHeader>
+   825→                      <CardContent>
+   826→                        <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+   827→                          <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+   828→                          <p className="text-xs text-muted-foreground">When enabled, a maintenance banner will be shown to all users. Use during updates or data refreshes.</p>
+   829→                        </div>
+   830→                        <div className="flex items-center gap-2 mt-2"><Badge variant={maintenanceMode ? 'destructive' : 'secondary'}>{maintenanceMode ? 'Active' : 'Normal'}</Badge>{togglingMaintenance && <span className="text-xs text-muted-foreground">Updating...</span>}</div>
+   831→                      </CardContent>
+   832→                    </Card>
+   833→
+   834→                    {/* WhatsApp Config */}
+   835→                    <Card className="hover:shadow-md transition-shadow">
+   836→                      <CardHeader className="pb-3">
+   837→                        <div className="flex items-center gap-3">
+   838→                          <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center"><Phone className="w-5 h-5 text-green-600" /></div>
+   839→                          <div><CardTitle className="text-base">WhatsApp Number</CardTitle><CardDescription>Phone number for the floating WhatsApp button</CardDescription></div>
+   840→                        </div>
+   841→                      </CardHeader>
+   842→                      <CardContent>
+   843→                        <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+   844→                          <AlertTriangle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+   845→                          <p className="text-xs text-muted-foreground">
+   846→                            To change the WhatsApp number, edit <code className="bg-muted px-1 rounded">src/components/app/whatsapp-button.tsx</code> and replace <code className="bg-muted px-1 rounded">923001234567</code> with your number (country code, no +).
+   847→                          </p>
+   848→                        </div>
+   849→                      </CardContent>
+   850→                    </Card>
+   851→                  </div>
+   852→                )}
+   853→              </div>
+   854→            </ScrollArea>
+   855→          </div>
+   856→        )}
+   857→      </DialogContent>
+   858→    </Dialog>
+   859→  );
+   860→}
+   861→
+   862→// Helper Components
+   863→function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) {
+   864→  const colorMap: Record<string, string> = {
+   865→    red: 'bg-red-50 dark:bg-red-900/20 border-red-200/50 dark:border-red-800/30',
+   866→    blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200/50 dark:border-blue-800/30',
+   867→    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-800/30',
+   868→    green: 'bg-green-50 dark:bg-green-900/20 border-green-200/50 dark:border-green-800/30',
+   869→    amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200/50 dark:border-amber-800/30',
+   870→  };
+   871→  const textColorMap: Record<string, string> = {
+   872→    red: 'text-red-600 dark:text-red-400',
+   873→    blue: 'text-blue-600 dark:text-blue-400',
+   874→    emerald: 'text-emerald-600 dark:text-emerald-400',
+   875→    green: 'text-green-600 dark:text-green-400',
+   876→    amber: 'text-amber-600 dark:text-amber-400',
+   877→  };
+   878→  return (
+   879→    <div className={`p-3 rounded-xl border ${colorMap[color] || colorMap.emerald}`}>
+   880→      <div className="flex items-center gap-2 mb-2">
+   881→        <div className={textColorMap[color] || textColorMap.emerald}>{icon}</div>
+   882→        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+   883→      </div>
+   884→      <div className={`text-xl font-bold ${textColorMap[color] || textColorMap.emerald}`}>{value}</div>
+   885→    </div>
+   886→  );
+   887→}
+   888→
+   889→function MiniStat({ label, value, color }: { label: string; value: string | number; color?: string }) {
+   890→  return (
+   891→    <div className="p-3 rounded-lg bg-muted/50 text-center">
+   892→      <div className={`text-xl font-bold ${color || ''}`}>{value}</div>
+   893→      <div className="text-[10px] text-muted-foreground mt-1">{label}</div>
+   894→    </div>
+   895→  );
+   896→}
+   897→

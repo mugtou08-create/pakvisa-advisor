@@ -39,8 +39,22 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20')));
     const unreadOnly = searchParams.get('unread') === 'true';
+    const repliedOnly = searchParams.get('replied') === 'true';
+    const search = (searchParams.get('search') || '').trim();
 
-    const where = unreadOnly ? { isRead: false } : {};
+    // Build where clause
+    const where: Record<string, unknown> = {};
+    if (unreadOnly) where.isRead = false;
+    if (repliedOnly) where.isReplied = true;
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { email: { contains: search } },
+        { subject: { contains: search } },
+        { message: { contains: search } },
+      ];
+    }
+
     const [messages, total] = await Promise.all([
       db.contactMessage.findMany({
         where,
@@ -72,6 +86,14 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const { id, action, reply } = body;
+
+    if (action === 'mark_all_read') {
+      const result = await db.contactMessage.updateMany({
+        where: { isRead: false },
+        data: { isRead: true },
+      });
+      return NextResponse.json({ success: true, data: { updated: result.count } });
+    }
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'Message ID required' }, { status: 400 });

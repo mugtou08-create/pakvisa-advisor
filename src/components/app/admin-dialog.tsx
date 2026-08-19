@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Settings, Lock, Eye, EyeOff, Shield, Globe, Users, Activity,
   ToggleLeft, ToggleRight, BarChart3, LogOut, Database, Zap, AlertTriangle,
   RefreshCw, Server, FileCheck, MessageSquare, Mail, Send, Trash2,
   ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
-  Phone, ExternalLink, Reply,
+  Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
+  Filter, X, ChevronDown, MessageCircle, Hash,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,19 @@ interface AnalyticsData {
   sessions: number;
   adminUsers: Array<{ username: string; lastLogin: string | null; isOnline: boolean; createdAt: string }>;
   settings: Record<string, string>;
+  messageStats: {
+    total: number;
+    thisWeek: number;
+    unread: number;
+    replied: number;
+    responseRate: number;
+    dailyMessages: Array<{ date: string; count: number }>;
+  };
+  subscriberStats: {
+    total: number;
+    active: number;
+    thisWeek: number;
+  };
 }
 
 interface ContactMessage {
@@ -60,6 +74,14 @@ interface NewsletterSubscriber {
 }
 
 type AdminSection = 'overview' | 'messages' | 'newsletter' | 'analytics' | 'settings';
+type MessageFilter = 'all' | 'unread' | 'replied';
+
+const QUICK_REPLIES = [
+  'Thank you for reaching out! We will review your query and get back to you within 24 hours.',
+  'For the most up-to-date visa information, please check our website or use the AI Visa Consultant chat.',
+  'We recommend checking the official embassy/consulate website for the latest requirements and appointment availability.',
+  'Your question has been noted. For urgent visa matters, please contact the relevant embassy directly.',
+];
 
 export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDialogProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -85,6 +107,11 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
+  const [messageFilter, setMessageFilter] = useState<MessageFilter>('all');
+  const [messageSearch, setMessageSearch] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Newsletter state
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
@@ -92,6 +119,10 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [subscribersActive, setSubscribersActive] = useState(0);
   const [subscribersPage, setSubscribersPage] = useState(1);
   const [subscribersLoading, setSubscribersLoading] = useState(false);
+
+  // WhatsApp number settings
+  const [whatsappNumber, setWhatsappNumber] = useState('923001234567');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('pakvisa-admin-token');
@@ -151,16 +182,21 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
       if (data.success) {
         setAnalytics(data.data);
         setMaintenanceMode(data.data.settings?.maintenance_mode === 'true');
+        setWhatsappNumber(data.data.settings?.whatsapp_number || '923001234567');
       }
     } catch { toast.error('Failed to fetch analytics'); }
     finally { setAnalyticsLoading(false); setRefreshingAnalytics(false); }
   }, [token]);
 
-  const fetchMessages = useCallback(async (page = 1) => {
+  const fetchMessages = useCallback(async (page = 1, filter?: MessageFilter, search?: string) => {
     if (!token) return;
     setMessagesLoading(true);
     try {
-      const res = await fetch(`/api/admin/messages?page=${page}&limit=15`, {
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (filter === 'unread') params.set('unread', 'true');
+      if (filter === 'replied') params.set('replied', 'true');
+      if (search) params.set('search', search);
+      const res = await fetch(`/api/admin/messages?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       const data = await res.json();
@@ -199,12 +235,12 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
       if (!analytics) fetchAnalytics();
     }
     if (activeSection === 'overview') {
-      fetchMessages();
+      fetchMessages(1);
       fetchSubscribers();
     }
-    if (activeSection === 'messages') fetchMessages();
+    if (activeSection === 'messages') fetchMessages(1, messageFilter, messageSearch);
     if (activeSection === 'newsletter') fetchSubscribers();
-  }, [isLoggedIn, token, activeSection]);
+    }, [isLoggedIn, token, activeSection]);
 
   const toggleAiFeature = useCallback(async (enabled: boolean) => {
     if (!token) return;
@@ -238,6 +274,22 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     finally { setTogglingMaintenance(false); }
   }, [token]);
 
+  const saveWhatsappNumber = useCallback(async () => {
+    if (!token) return;
+    setSavingWhatsapp(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ key: 'whatsapp_number', value: whatsappNumber.replace(/[^\d]/g, '') }),
+      });
+      const data = await res.json();
+      if (data.success) toast.success('WhatsApp number saved');
+      else toast.error('Failed to save');
+    } catch { toast.error('Connection error'); }
+    finally { setSavingWhatsapp(false); }
+  }, [token, whatsappNumber]);
+
   const markMessageRead = async (id: string) => {
     if (!token) return;
     try {
@@ -249,6 +301,25 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
       setMessages(prev => prev.map(m => m.id === id ? { ...m, isRead: true } : m));
       setMessagesUnread(prev => Math.max(0, prev - 1));
     } catch { toast.error('Failed to mark as read'); }
+  };
+
+  const markAllAsRead = async () => {
+    if (!token) return;
+    setMarkingAllRead(true);
+    try {
+      const res = await fetch('/api/admin/messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'mark_all_read' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => prev.map(m => ({ ...m, isRead: true })));
+        setMessagesUnread(0);
+        toast.success(`${data.data?.updated || 'All'} messages marked as read`);
+      }
+    } catch { toast.error('Failed to mark all as read'); }
+    finally { setMarkingAllRead(false); }
   };
 
   const sendMessageReply = async (id: string) => {
@@ -278,6 +349,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
       });
       setMessages(prev => prev.filter(m => m.id !== id));
       setMessagesTotal(prev => prev - 1);
+      setDeleteConfirmId(null);
       toast.success('Message deleted');
     } catch { toast.error('Failed to delete'); }
   };
@@ -291,9 +363,59 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
       });
       setSubscribers(prev => prev.filter(s => s.id !== id));
       setSubscribersTotal(prev => prev - 1);
-      setSubscribersActive(prev => prev - 1);
+      setSubscribersActive(prev => Math.max(0, prev - 1));
       toast.success('Subscriber removed');
     } catch { toast.error('Failed to remove'); }
+  };
+
+  // Export functions
+  const exportMessagesCSV = () => {
+    if (messages.length === 0) { toast.error('No messages to export'); return; }
+    const header = 'Name,Email,Subject,Message,Status,Reply,Date\n';
+    const rows = messages.map(m =>
+      `"${m.name.replace(/"/g, '""')}","${m.email.replace(/"/g, '""')}","${m.subject.replace(/"/g, '""')}","${m.message.replace(/"/g, '""')}","${m.isRead ? (m.isReplied ? 'Replied' : 'Read') : 'Unread'}","${m.reply.replace(/"/g, '""')}","${m.createdAt}"`
+    ).join('\n');
+    downloadCSV(header + rows, 'pakvisa-messages.csv');
+  };
+
+  const exportSubscribersCSV = () => {
+    if (subscribers.length === 0) { toast.error('No subscribers to export'); return; }
+    const header = 'Email,Status,Subscribed Date\n';
+    const rows = subscribers.map(s =>
+      `"${s.email}","${s.isActive ? 'Active' : 'Inactive'}","${s.subscribedAt}"`
+    ).join('\n');
+    downloadCSV(header + rows, 'pakvisa-subscribers.csv');
+  };
+
+  const copySubscriberEmails = () => {
+    if (subscribers.length === 0) { toast.error('No emails to copy'); return; }
+    const emails = subscribers.map(s => s.email).join(', ');
+    navigator.clipboard.writeText(emails);
+    toast.success(`${subscribers.length} emails copied to clipboard`);
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast.success(`Exported ${filename}`);
+  };
+
+  const handleMessageFilterChange = (filter: MessageFilter) => {
+    setMessageFilter(filter);
+    setMessagesPage(1);
+    fetchMessages(1, filter, messageSearch);
+  };
+
+  const handleMessageSearch = (search: string) => {
+    setMessageSearch(search);
+    setMessagesPage(1);
+    // Debounce - fetch immediately for simplicity
+    if (search.length > 0 && search.length < 2) return;
+    fetchMessages(1, messageFilter, search);
   };
 
   const navItems: { key: AdminSection; label: string; icon: React.ReactNode; badge?: number }[] = [
@@ -308,11 +430,16 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const timeAgo = (d: string) => {
     const diff = Date.now() - new Date(d).getTime();
     const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
     if (mins < 60) return `${mins}m ago`;
     const hours = Math.floor(mins / 60);
     if (hours < 24) return `${hours}h ago`;
     return `${Math.floor(hours / 24)}d ago`;
   };
+
+  // Daily sparkline data for overview
+  const sparklineData = useMemo(() => analytics?.messageStats?.dailyMessages || [], [analytics]);
+  const sparklineMax = useMemo(() => Math.max(1, ...sparklineData.map(d => d.count)), [sparklineData]);
 
   // ===== RENDER =====
   return (
@@ -384,7 +511,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                   {item.icon}
                   <span>{item.label}</span>
                   {item.badge ? (
-                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1">
                       {item.badge > 99 ? '99+' : item.badge}
                     </span>
                   ) : null}
@@ -415,13 +542,41 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                 {/* ====== OVERVIEW TAB ====== */}
                 {activeSection === 'overview' && (
                   <>
-                    {/* Quick Stats Row */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                      <StatCard icon={<Inbox className="w-4 h-4" />} label="Unread Messages" value={messagesUnread} color="red" />
-                      <StatCard icon={<Mail className="w-4 h-4" />} label="Subscribers" value={subscribersActive} color="blue" />
+                    {/* Quick Stats Row - 6 cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+                      <StatCard icon={<Inbox className="w-4 h-4" />} label="Unread" value={analytics?.messageStats.unread ?? '—'} color="red" />
+                      <StatCard icon={<MessageSquare className="w-4 h-4" />} label="This Week" value={analytics?.messageStats.thisWeek ?? '—'} color="orange" />
+                      <StatCard icon={<CheckCheck className="w-4 h-4" />} label="Response Rate" value={analytics?.messageStats.responseRate != null ? `${analytics.messageStats.responseRate}%` : '—'} color="blue" />
+                      <StatCard icon={<Mail className="w-4 h-4" />} label="Subscribers" value={analytics?.subscriberStats.active ?? '—'} color="violet" />
                       <StatCard icon={<Globe className="w-4 h-4" />} label="Countries" value={analytics?.countries.total ?? '—'} color="emerald" />
-                      <StatCard icon={<Zap className="w-4 h-4" />} label="AI Status" value={aiEnabled ? 'Online' : 'Offline'} color={aiEnabled ? 'green' : 'amber'} />
+                      <StatCard icon={<Zap className="w-4 h-4" />} label="AI" value={aiEnabled ? 'Online' : 'Off'} color={aiEnabled ? 'green' : 'amber'} />
                     </div>
+
+                    {/* Daily Messages Sparkline */}
+                    {analytics?.messageStats && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-emerald-500" /> Messages — Last 7 Days
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-end gap-2 h-20">
+                            {sparklineData.map((d, i) => {
+                              const height = sparklineMax > 0 ? (d.count / sparklineMax) * 100 : 0;
+                              const dayLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+                              return (
+                                <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+                                  <span className="text-[10px] font-medium text-muted-foreground">{d.count}</span>
+                                  <div className="w-full max-w-8 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max(4, height)}%`, backgroundColor: i === sparklineData.length - 1 ? '#059669' : '#a7f3d0' }} />
+                                  <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* Two Column */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -433,7 +588,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                               <MessageSquare className="w-4 h-4 text-emerald-500" /> Recent Messages
                             </CardTitle>
                             <Button variant="ghost" size="sm" className="text-xs text-emerald-600" onClick={() => setActiveSection('messages')}>
-                              View All
+                              View All →
                             </Button>
                           </div>
                         </CardHeader>
@@ -453,6 +608,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                                     <div className="flex items-center gap-2">
                                       <span className={`text-sm ${!m.isRead ? 'font-semibold' : 'font-medium'}`}>{m.name}</span>
                                       {!m.isRead && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                                      {m.isReplied && <Check className="w-3 h-3 text-blue-500" />}
                                       <span className="text-xs text-muted-foreground ml-auto shrink-0">{timeAgo(m.createdAt)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground truncate mt-0.5">{m.subject || m.message}</p>
@@ -464,7 +620,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                         </CardContent>
                       </Card>
 
-                      {/* Visa Breakdown + Data Health */}
+                      {/* Visa Breakdown + System Health */}
                       <div className="space-y-5">
                         <Card>
                           <CardHeader className="pb-3">
@@ -519,25 +675,71 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                 {/* ====== MESSAGES TAB ====== */}
                 {activeSection === 'messages' && (
                   <>
-                    <div className="flex items-center justify-between">
+                    {/* Header with actions */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Inbox className="w-5 h-5 text-emerald-500" />
                         Messages
                         {messagesUnread > 0 && <Badge className="bg-red-500">{messagesUnread} unread</Badge>}
+                        <Badge variant="secondary" className="text-xs">{messagesTotal} total</Badge>
                       </h3>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => fetchMessages(messagesPage)} disabled={messagesLoading}>
+                      <div className="flex gap-2 flex-wrap">
+                        {messagesUnread > 0 && (
+                          <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={markingAllRead}>
+                            <CheckCheck className={`w-3.5 h-3.5 mr-1 ${markingAllRead ? 'animate-pulse' : ''}`} /> Mark All Read
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={exportMessagesCSV} disabled={messages.length === 0}>
+                          <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => fetchMessages(messagesPage, messageFilter, messageSearch)} disabled={messagesLoading}>
                           <RefreshCw className={`w-3.5 h-3.5 mr-1 ${messagesLoading ? 'animate-spin' : ''}`} /> Refresh
                         </Button>
                       </div>
                     </div>
+
+                    {/* Filter Tabs + Search */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <div className="flex gap-1 bg-muted p-1 rounded-lg">
+                        {(['all', 'unread', 'replied'] as MessageFilter[]).map((f) => (
+                          <button
+                            key={f}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                              messageFilter === f ? 'bg-white dark:bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                            onClick={() => handleMessageFilterChange(f)}
+                          >
+                            {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Replied'}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="relative flex-1 w-full sm:max-w-xs">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          ref={searchInputRef}
+                          placeholder="Search name, email, message..."
+                          value={messageSearch}
+                          onChange={(e) => handleMessageSearch(e.target.value)}
+                          className="pl-8 h-8 text-sm"
+                        />
+                        {messageSearch && (
+                          <button
+                            className="absolute right-2 top-1/2 -translate-y-1/2"
+                            onClick={() => { setMessageSearch(''); fetchMessages(1, messageFilter, ''); }}
+                          >
+                            <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     {messagesLoading && messages.length === 0 ? (
                       <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
                     ) : messages.length === 0 ? (
                       <div className="text-center py-16 text-muted-foreground">
                         <Inbox className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                        <p className="font-medium">No messages yet</p>
-                        <p className="text-sm">Messages from the Contact Us form will appear here.</p>
+                        <p className="font-medium">{messageSearch ? 'No messages match your search' : messageFilter !== 'all' ? `No ${messageFilter} messages` : 'No messages yet'}</p>
+                        <p className="text-sm">{messageSearch ? 'Try a different search term' : 'Messages from the Contact Us form will appear here.'}</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -552,7 +754,9 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className={`font-semibold ${!m.isRead ? '' : 'text-muted-foreground'}`}>{m.name}</span>
-                                      <span className="text-xs text-muted-foreground">{m.email}</span>
+                                      <a href={`mailto:${m.email}`} className="text-xs text-emerald-600 hover:underline flex items-center gap-0.5">
+                                        <Mail className="w-3 h-3" />{m.email}
+                                      </a>
                                       {!m.isRead && <Badge variant="default" className="bg-emerald-600 text-[10px] px-1.5 py-0">New</Badge>}
                                       {m.isReplied && <Badge variant="secondary" className="text-[10px] px-1.5 py-0"><Check className="w-3 h-3 mr-0.5" />Replied</Badge>}
                                     </div>
@@ -578,6 +782,20 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                                     {/* Reply box */}
                                     {replyingTo === m.id && (
                                       <div className="mt-3 space-y-2">
+                                        {/* Quick reply suggestions */}
+                                        <div className="flex flex-wrap gap-1.5">
+                                          <span className="text-[10px] text-muted-foreground leading-7">Quick:</span>
+                                          {QUICK_REPLIES.slice(0, 3).map((qr, i) => (
+                                            <button
+                                              key={i}
+                                              className="text-[10px] px-2 py-0.5 rounded-full border hover:bg-muted transition-colors truncate max-w-[200px]"
+                                              onClick={() => setReplyText(qr)}
+                                              title={qr}
+                                            >
+                                              {qr.slice(0, 40)}...
+                                            </button>
+                                          ))}
+                                        </div>
                                         <Textarea placeholder="Write your reply... (saved for reference)" value={replyText} onChange={(e) => setReplyText(e.target.value)} rows={2} className="text-sm" />
                                         <div className="flex gap-2">
                                           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => sendMessageReply(m.id)} disabled={!replyText.trim()}>
@@ -600,19 +818,30 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                                       <Reply className="w-4 h-4" />
                                     </Button>
                                   )}
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => deleteMessage(m.id)} title="Delete">
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
+                                  {deleteConfirmId === m.id ? (
+                                    <div className="flex flex-col gap-0.5">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 bg-red-50 dark:bg-red-900/20" onClick={() => deleteMessage(m.id)} title="Confirm delete">
+                                        <Check className="w-4 h-4" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDeleteConfirmId(null)} title="Cancel">
+                                        <X className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirmId(m.id)} title="Delete">
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             </CardContent>
                           </Card>
                         ))}
-                        {messagesTotal > 15 && (
+                        {messagesTotal > 20 && (
                           <div className="flex items-center justify-center gap-2 pt-2">
-                            <Button variant="outline" size="sm" disabled={messagesPage <= 1} onClick={() => fetchMessages(messagesPage - 1)}><ChevronLeft className="w-4 h-4" /></Button>
-                            <span className="text-sm text-muted-foreground">Page {messagesPage} of {Math.ceil(messagesTotal / 15)}</span>
-                            <Button variant="outline" size="sm" disabled={messagesPage >= Math.ceil(messagesTotal / 15)} onClick={() => fetchMessages(messagesPage + 1)}><ChevronRight className="w-4 h-4" /></Button>
+                            <Button variant="outline" size="sm" disabled={messagesPage <= 1} onClick={() => fetchMessages(messagesPage - 1, messageFilter, messageSearch)}><ChevronLeft className="w-4 h-4" /></Button>
+                            <span className="text-sm text-muted-foreground">Page {messagesPage} of {Math.ceil(messagesTotal / 20)}</span>
+                            <Button variant="outline" size="sm" disabled={messagesPage >= Math.ceil(messagesTotal / 20)} onClick={() => fetchMessages(messagesPage + 1, messageFilter, messageSearch)}><ChevronRight className="w-4 h-4" /></Button>
                           </div>
                         )}
                       </div>
@@ -623,13 +852,18 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                 {/* ====== NEWSLETTER TAB ====== */}
                 {activeSection === 'newsletter' && (
                   <>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Mail className="w-5 h-5 text-emerald-500" />
                         Newsletter Subscribers
                       </h3>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="secondary" className="text-xs">{subscribersActive} active / {subscribersTotal} total</Badge>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Button variant="outline" size="sm" onClick={copySubscriberEmails} disabled={subscribers.length === 0}>
+                          <Copy className="w-3.5 h-3.5 mr-1" /> Copy Emails
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={exportSubscribersCSV} disabled={subscribers.length === 0}>
+                          <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => fetchSubscribers(subscribersPage)} disabled={subscribersLoading}>
                           <RefreshCw className={`w-3.5 h-3.5 mr-1 ${subscribersLoading ? 'animate-spin' : ''}`} /> Refresh
                         </Button>
@@ -639,16 +873,16 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                     {/* Stats Row */}
                     <div className="grid grid-cols-3 gap-3">
                       <Card className="p-4 text-center">
-                        <div className="text-2xl font-bold text-emerald-600">{subscribersTotal}</div>
-                        <div className="text-xs text-muted-foreground mt-1">Total Subscribers</div>
+                        <div className="text-2xl font-bold text-emerald-600">{analytics?.subscriberStats.total ?? subscribersTotal}</div>
+                        <div className="text-xs text-muted-foreground mt-1">Total</div>
                       </Card>
                       <Card className="p-4 text-center">
-                        <div className="text-2xl font-bold text-green-600">{subscribersActive}</div>
+                        <div className="text-2xl font-bold text-green-600">{analytics?.subscriberStats.active ?? subscribersActive}</div>
                         <div className="text-xs text-muted-foreground mt-1">Active</div>
                       </Card>
                       <Card className="p-4 text-center">
-                        <div className="text-2xl font-bold text-red-500">{subscribersTotal - subscribersActive}</div>
-                        <div className="text-xs text-muted-foreground mt-1">Inactive</div>
+                        <div className="text-2xl font-bold text-orange-500">{analytics?.subscriberStats.thisWeek ?? 0}</div>
+                        <div className="text-xs text-muted-foreground mt-1">This Week</div>
                       </Card>
                     </div>
 
@@ -720,7 +954,6 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                       <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
                     ) : analytics ? (
                       <div className="space-y-5">
-                        {/* Country Stats */}
                         <Card>
                           <CardHeader className="pb-3">
                             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Country Database</CardTitle>
@@ -735,7 +968,6 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           </CardContent>
                         </Card>
 
-                        {/* Continent Distribution */}
                         <Card>
                           <CardHeader className="pb-3">
                             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Continent Distribution</CardTitle>
@@ -758,7 +990,6 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           </CardContent>
                         </Card>
 
-                        {/* Data Records + Freshness */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <Card>
                             <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Database className="w-4 h-4 text-emerald-500" /> Data Records</CardTitle></CardHeader>
@@ -770,18 +1001,28 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                             </CardContent>
                           </Card>
                           <Card>
-                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-500" /> Data Freshness</CardTitle></CardHeader>
-                            <CardContent>
-                              {analytics.dataFreshness ? (
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-sm">Last updated:</span></div>
-                                  <p className="text-sm font-medium">{new Date(analytics.dataFreshness).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                  <p className="text-xs text-muted-foreground">{Math.round((Date.now() - new Date(analytics.dataFreshness).getTime()) / (1000 * 60 * 60 * 24))} days ago</p>
-                                </div>
-                              ) : <p className="text-sm text-muted-foreground">No data fetch recorded</p>}
+                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-500" /> Contact Stats</CardTitle></CardHeader>
+                            <CardContent className="space-y-2">
+                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total Messages</span><span className="font-medium">{analytics.messageStats.total}</span></div>
+                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">This Week</span><span className="font-medium">{analytics.messageStats.thisWeek}</span></div>
+                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Response Rate</span><span className="font-medium">{analytics.messageStats.responseRate}%</span></div>
+                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Unread</span><span className="font-medium text-red-500">{analytics.messageStats.unread}</span></div>
                             </CardContent>
                           </Card>
                         </div>
+
+                        <Card>
+                          <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-500" /> Data Freshness</CardTitle></CardHeader>
+                          <CardContent>
+                            {analytics.dataFreshness ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-sm">Last updated:</span></div>
+                                <p className="text-sm font-medium">{new Date(analytics.dataFreshness).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                <p className="text-xs text-muted-foreground">{Math.round((Date.now() - new Date(analytics.dataFreshness).getTime()) / (1000 * 60 * 60 * 24))} days ago</p>
+                              </div>
+                            ) : <p className="text-sm text-muted-foreground">No data fetch recorded</p>}
+                          </CardContent>
+                        </Card>
                       </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
@@ -831,21 +1072,33 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                       </CardContent>
                     </Card>
 
-                    {/* WhatsApp Config */}
+                    {/* WhatsApp Number - Inline Editor */}
                     <Card className="hover:shadow-md transition-shadow">
                       <CardHeader className="pb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center"><Phone className="w-5 h-5 text-green-600" /></div>
-                          <div><CardTitle className="text-base">WhatsApp Number</CardTitle><CardDescription>Phone number for the floating WhatsApp button</CardDescription></div>
+                          <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center"><MessageCircle className="w-5 h-5 text-green-600" /></div>
+                          <div><CardTitle className="text-base">WhatsApp Number</CardTitle><CardDescription>Messages only — no calls allowed</CardDescription></div>
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-                          <AlertTriangle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                          <p className="text-xs text-muted-foreground">
-                            To change the WhatsApp number, edit <code className="bg-muted px-1 rounded">src/components/app/whatsapp-button.tsx</code> and replace <code className="bg-muted px-1 rounded">923001234567</code> with your number (country code, no +).
-                          </p>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Hash className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              value={whatsappNumber}
+                              onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^\d]/g, ''))}
+                              placeholder="923001234567"
+                              className="pl-9"
+                            />
+                          </div>
+                          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={saveWhatsappNumber} disabled={savingWhatsapp || whatsappNumber.length < 8}>
+                            {savingWhatsapp ? 'Saving...' : 'Save'}
+                          </Button>
                         </div>
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3 h-3" />
+                          Include country code (no + sign). E.g. 923001234567 for Pakistan.
+                        </p>
                       </CardContent>
                     </Card>
                   </div>
@@ -867,6 +1120,8 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
     emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-800/30',
     green: 'bg-green-50 dark:bg-green-900/20 border-green-200/50 dark:border-green-800/30',
     amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200/50 dark:border-amber-800/30',
+    orange: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200/50 dark:border-orange-800/30',
+    violet: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200/50 dark:border-violet-800/30',
   };
   const textColorMap: Record<string, string> = {
     red: 'text-red-600 dark:text-red-400',
@@ -874,6 +1129,8 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
     emerald: 'text-emerald-600 dark:text-emerald-400',
     green: 'text-green-600 dark:text-green-400',
     amber: 'text-amber-600 dark:text-amber-400',
+    orange: 'text-orange-600 dark:text-orange-400',
+    violet: 'text-violet-600 dark:text-violet-400',
   };
   return (
     <div className={`p-3 rounded-xl border ${colorMap[color] || colorMap.emerald}`}>

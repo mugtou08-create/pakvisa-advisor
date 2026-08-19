@@ -87,6 +87,37 @@ export async function GET(request: NextRequest) {
       settingsMap[s.key] = s.value;
     }
 
+    // Message stats for overview
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const totalMessages = await db.contactMessage.count();
+    const messagesThisWeek = await db.contactMessage.count({
+      where: { createdAt: { gte: weekAgo } },
+    });
+    const unreadCount = await db.contactMessage.count({ where: { isRead: false } });
+    const repliedCount = await db.contactMessage.count({ where: { isReplied: true } });
+    const responseRate = totalMessages > 0 ? Math.round((repliedCount / totalMessages) * 100) : 0;
+    const totalSubscribers = await db.newsletterSubscriber.count();
+    const activeSubscribers = await db.newsletterSubscriber.count({ where: { isActive: true } });
+    const subscribersThisWeek = await db.newsletterSubscriber.count({
+      where: { subscribedAt: { gte: weekAgo } },
+    });
+
+    // Daily messages for last 7 days (for sparkline)
+    const dailyMessages: Array<{ date: string; count: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+      const count = await db.contactMessage.count({
+        where: { createdAt: { gte: dayStart, lt: dayEnd } },
+      });
+      dailyMessages.push({
+        date: dayStart.toISOString().split('T')[0],
+        count,
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -105,6 +136,20 @@ export async function GET(request: NextRequest) {
         sessions: totalSessions,
         adminUsers,
         settings: settingsMap,
+        // New message/contact stats
+        messageStats: {
+          total: totalMessages,
+          thisWeek: messagesThisWeek,
+          unread: unreadCount,
+          replied: repliedCount,
+          responseRate,
+          dailyMessages,
+        },
+        subscriberStats: {
+          total: totalSubscribers,
+          active: activeSubscribers,
+          thisWeek: subscribersThisWeek,
+        },
       },
     });
   } catch (error) {
