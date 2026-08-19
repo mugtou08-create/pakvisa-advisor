@@ -411,3 +411,62 @@ Stage Summary:
 - metadataBase added to fix OG image warnings
 - **CRITICAL**: User must commit + push to trigger Vercel redeploy. After deploy, clear browser cache (Ctrl+Shift+R)
 - The Z logo on the live site is from Vercel's cached build — needs redeploy with new files
+
+---
+Task ID: 11
+Agent: Main Agent
+Task: Admin dashboard overhaul, contact form, WhatsApp button, user communication
+
+Work Log:
+- Added ContactMessage model to Prisma schema (name, email, subject, message, isRead, isReplied, reply, ip, timestamps)
+- Pushed schema to database with `bun run db:push`
+- Created 3 new API routes:
+  - /api/contact (POST) — public contact form submission with rate limiting (3/5min), validation, 2000 char limit
+  - /api/admin/messages (GET/PUT) — list/read/reply/delete messages, pagination, unread filter
+  - /api/admin/newsletter (GET/DELETE) — list/delete newsletter subscribers, pagination, active count
+- Created ContactForm component (src/components/app/contact-form.tsx):
+  - Name, email, subject (optional), message fields with validation
+  - Character counter (2000 max), loading state, success animation
+  - Emerald green design matching site theme
+- Created WhatsAppButton component (src/components/app/whatsapp-button.tsx):
+  - Fixed bottom-right floating green button
+  - Opens WhatsApp with pre-filled message
+  - Shows "Chat on WhatsApp" text on desktop, icon only on mobile
+  - Number configurable in component (currently placeholder 923001234567)
+- Completely rebuilt AdminDialog (src/components/app/admin-dialog.tsx) with 5 tabs:
+  1. **Overview** — 4 stat cards (unread messages, subscribers, countries, AI status), recent messages preview, visa breakdown, system health
+  2. **Messages** — Full inbox with read/unread indicators, mark read, reply, delete, pagination, expand/collapse long messages, "New" and "Replied" badges
+  3. **Newsletter** — Stats (total/active/inactive), table of subscribers with dates and status, delete, pagination
+  4. **Analytics** — Country database stats, continent distribution with progress bars, data records, data freshness
+  5. **Settings** — AI toggle, maintenance mode toggle, WhatsApp number config info
+- Added admin access: subtle lock icon in footer (both footers), opens admin dialog
+- Added ContactForm section on main page (before footer, max-w-xl centered)
+- Added WhatsAppButton as floating element on both main page and tool panel views
+- Added back-to-top button (bottom-left, emerald) on main page
+- Fixed MarkEmailRead import error (lucide-react doesn't have it → used Eye instead)
+- All changes verified via curl: HTTP 200, contact-name input present, wa.me link present, Admin Dashboard title present
+- Committed and pushed to GitHub (commit 624481e)
+
+Stage Summary:
+- **User communication channels**: WhatsApp (floating button) + Contact Form (on-page) + Newsletter (existing)
+- **Admin dashboard**: Complete overhaul with 5-tab layout, message management, newsletter management
+- **To configure WhatsApp**: Edit `src/components/app/whatsapp-button.tsx` and replace `923001234567` with real number
+- **Admin access**: Click the subtle lock icon 🔒 next to copyright in footer
+- Favicon fix also included in this push (regenerated icons + cache-busting + metadataBase)
+
+### Working Features (updated)
+- ✅ All previous features
+- ✅ Contact Us form (with database storage)
+- ✅ WhatsApp floating chat button
+- ✅ Admin dashboard with 5 tabs (Overview, Messages, Newsletter, Analytics, Settings)
+- ✅ Admin can manage user messages (read, reply, delete)
+- ✅ Admin can manage newsletter subscribers (view, delete)
+- ✅ Favicon cache-busting for reliable updates
+
+### Unresolved Risks / Next Steps
+- 📱 WhatsApp number needs to be set (currently placeholder)
+- 📧 Contact form replies are saved in DB but not emailed to user (needs email service like Resend)
+- 🔐 Admin auth still uses forgeable base64 tokens (needs JWT)
+- ⚠️ In-memory rate limiting ineffective on serverless
+- Booking.com affiliate via CJ — waiting for approval
+- Skyscanner affiliate via CJ — waiting for approval
