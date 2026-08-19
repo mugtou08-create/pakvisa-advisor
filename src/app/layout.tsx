@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://pakvisaadvisor.com'),
   title: "PakVisa Advisor — Pakistani Passport Visa Checker & Travel Tools",
   description:
     "Free AI-powered visa intelligence for Pakistani passport holders. Check visa requirements for 70+ countries, convert PKR currencies, estimate trip budgets, compare destinations, and plan your travels — all in one place.",
@@ -96,6 +97,9 @@ export default function RootLayout({
         <GoogleAdSense />
         <meta name="theme-color" content="#059669" />
         <link rel="canonical" href="https://pakvisaadvisor.com" />
+        <link rel="icon" href="/icon.png?v=2" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" type="image/x-icon" />
+        <link rel="apple-touch-icon" href="/apple-icon.png?v=2" sizes="180x180" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

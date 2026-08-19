@@ -380,3 +380,34 @@ Stage Summary:
 - Skyscanner affiliate via CJ — submitted, waiting for approval
 - User exploring additional affiliate programs (Wise, eSIM, Amazon)
 - User considering adding travel gear pages for Amazon affiliate
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Fix Z logo favicon still showing in browser tab
+
+Work Log:
+- Searched entire codebase for Z-CDN references — NONE found in src/ directory (all clean from previous session)
+- Verified no public/favicon.ico override exists
+- Verified layout.tsx icons metadata references only local files (/icon.png, /favicon.ico, /apple-icon.png)
+- Verified manifest.ts references only local PWA icons
+- Discovered favicon.ico embedded PNG (1428 bytes) didn't match icon.png (625 bytes) — regenerated ALL icon files from uploaded source
+- Regenerated from upload/pakvisafavicon.png using sharp:
+  - src/app/icon.png (32x32 PNG, 1428 bytes)
+  - src/app/apple-icon.png (180x180 PNG, 25856 bytes)
+  - src/app/favicon.ico (16x16 + 32x32 multi-resolution ICO, 2058 bytes)
+  - public/icons/icon-192x192.png (29598 bytes)
+  - public/icons/icon-512x512.png (190537 bytes)
+- Added metadataBase: new URL('https://pakvisaadvisor.com') to fix OG image resolution warning
+- Added explicit <link> tags in <head> with ?v=2 cache-busting query params
+- Cleared .next cache
+- Verified via curl: served favicon.ico returns 200, 2058 bytes, MD5 matches source file
+- Verified via agent-browser: all 7 icon link tags point to correct local PakVisa files (no Z CDN)
+
+Stage Summary:
+- Root cause: Old favicon.ico had different embedded PNG than icon.png (likely from earlier broken generation)
+- All icon files now regenerated from original uploaded PakVisa source image
+- Cache-busting (?v=2) added to force browsers to fetch new files
+- metadataBase added to fix OG image warnings
+- **CRITICAL**: User must commit + push to trigger Vercel redeploy. After deploy, clear browser cache (Ctrl+Shift+R)
+- The Z logo on the live site is from Vercel's cached build — needs redeploy with new files
