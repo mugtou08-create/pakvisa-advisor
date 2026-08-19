@@ -470,3 +470,48 @@ Stage Summary:
 - ⚠️ In-memory rate limiting ineffective on serverless
 - Booking.com affiliate via CJ — waiting for approval
 - Skyscanner affiliate via CJ — waiting for approval
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: WhatsApp calls prevention, admin dashboard overhaul
+
+Work Log:
+- Verified WhatsApp button already uses wa.me?text= (messages only, no calls possible)
+- Updated WhatsApp pre-filled message to include "(Text message only, please — no calls 🙏)" to set expectations
+- Enhanced /api/admin/analytics to include message stats (total, this week, unread, replied, response rate, daily sparkline data) and subscriber stats
+- Enhanced /api/admin/messages to support search, replied filter, and bulk mark_all_read action
+- Completely rewrote admin-dialog.tsx with major improvements:
+  - Overview: 6 stat cards (unread, this week, response rate, subscribers, countries, AI), daily messages sparkline bar chart
+  - Messages: Filter tabs (All/Unread/Replied), search by name/email/message, bulk "Mark All Read", export to CSV, delete confirmation dialog, clickable email addresses, quick reply templates, better empty states
+  - Newsletter: Export CSV, copy all emails to clipboard, "This Week" stat card
+  - Analytics: Added Contact Stats card (total, this week, response rate, unread)
+  - Settings: WhatsApp number inline editor (saves to SiteSettings), replaced Phone icon with MessageCircle to emphasize text-only, updated description to "Messages only — no calls allowed"
+- All changes committed and pushed to GitHub (commit 802c872)
+
+Stage Summary:
+- WhatsApp is 100% messages-only (wa.me?text= cannot make calls)
+- Admin dashboard significantly improved with 10+ new features
+- User can manage WhatsApp number directly from admin settings (no code editing needed)
+
+### Working Features (updated)
+- ✅ All previous features
+- ✅ WhatsApp button: messages only (no calls possible)
+- ✅ Admin dashboard with enhanced features:
+  - 6-card overview with sparkline chart
+  - Message search, filters (All/Unread/Replied)
+  - Bulk Mark All Read
+  - Export messages/subscribers to CSV
+  - Copy subscriber emails to clipboard
+  - Quick reply templates
+  - Delete confirmation
+  - Clickable email addresses
+  - WhatsApp number inline editor
+
+### Unresolved Risks / Next Steps
+- 📱 WhatsApp number still placeholder (923001234567) — user can now change it in admin settings
+- 📧 Contact form replies saved in DB but not emailed to user
+- 🔐 Admin auth still uses forgeable base64 tokens (needs JWT)
+- ⚠️ In-memory rate limiting ineffective on serverless
+- Booking.com affiliate via CJ — waiting for approval
+- Skyscanner affiliate via CJ — waiting for approval
