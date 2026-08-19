@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Sparkles, ArrowRight, Crown, ShieldCheck, AlertCircle, Info, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/lib/store';
 
@@ -14,6 +15,49 @@ interface ChatMessage {
     sourceUrl?: string;
     lastUpdated?: string;
   };
+}
+
+function renderWithAffiliateLinks(text: string): React.ReactNode {
+  if (!text) return text;
+
+  // Combined pattern matching service names (with optional parenthetical description)
+  const combinedPattern = /(iVisa\s*(?:\([^)]*\))?|SafetyWing\s*(?:\([^)]*\))?|Skyscanner\s*(?:\([^)]*\))?|Booking\.com\s*(?:\([^)]*\))?|ivisa\.com|safetywing\.com)/gi;
+
+  const parts = text.split(combinedPattern);
+  // If split produced only 1 element, no matches found
+  if (parts.length <= 1) return <>{text}</>;
+
+  const getUrl = (match: string): string | null => {
+    const lower = match.toLowerCase();
+    if (lower.includes('ivisa')) return 'https://www.ivisa.com/?ref=pakvisa&utm_source=pakvisa';
+    if (lower.includes('safetywing')) return 'https://safetywing.com/?referral=pakvisa&utm_source=pakvisa&utm_medium=affiliate';
+    if (lower.includes('skyscanner')) return 'https://www.skyscanner.net/?ref=pakvisa&utm_source=pakvisa';
+    if (lower.includes('booking.com')) return 'https://www.booking.com/?aid=304142&label=pakvisa';
+    return null;
+  };
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const url = getUrl(part);
+        if (url) {
+          return (
+            <a
+              key={i}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium hover:underline"
+            >
+              {part}
+              <ExternalLink className="w-3 h-3 inline" />
+            </a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
 }
 
 const SUGGESTIONS_FREE = [
@@ -234,7 +278,10 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
                           : 'bg-muted text-foreground rounded-bl-md'
                       }`}
                     >
-                      {msg.content}
+                      {msg.role === 'assistant'
+                        ? renderWithAffiliateLinks(msg.content)
+                        : msg.content
+                      }
                     </div>
 
                     {/* Data Verified Badge + Metadata */}

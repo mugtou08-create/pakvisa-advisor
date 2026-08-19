@@ -243,9 +243,9 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}
-              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium transition-colors shadow-sm hover:shadow-md"
             >
-              Apply <ExternalLink className="w-3 h-3" />
+              Apply for Visa <ArrowRight className="w-3 h-3" />
             </a>
           )}
           <button
@@ -1254,40 +1254,40 @@ export default function HomePage() {
       <footer className="border-t bg-muted/30 mt-auto">
         {/* Affiliate Partners Bar */}
         <div className="border-b border-border">
-          <div className="max-w-6xl mx-auto px-4 py-4">
-            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Trusted Partners</span>
+          <div className="max-w-6xl mx-auto px-4 py-5">
+            <p className="text-center text-[10px] text-muted-foreground/70 font-medium uppercase tracking-widest mb-3">Trusted Travel Partners</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <a
                 href="https://www.ivisa.com/?ref=pakvisa&utm_source=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:shadow-sm transition-all group"
               >
-                <FileText className="w-3.5 h-3.5 text-emerald-600" /> iVisa
+                <FileText className="w-4 h-4 text-emerald-600" /> <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 group-hover:underline">iVisa</span>
               </a>
               <a
                 href="https://safetywing.com/?referral=pakvisa&utm_source=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:shadow-sm transition-all group"
               >
-                <Shield className="w-3.5 h-3.5 text-blue-600" /> SafetyWing
+                <Shield className="w-4 h-4 text-blue-600" /> <span className="text-sm font-medium text-blue-700 dark:text-blue-400 group-hover:underline">SafetyWing</span>
               </a>
               <a
                 href="https://www.booking.com/?aid=304142&label=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/50 hover:bg-violet-100 dark:hover:bg-violet-950/40 hover:shadow-sm transition-all group"
               >
-                <Building className="w-3.5 h-3.5 text-violet-600" /> Booking.com
+                <Building className="w-4 h-4 text-violet-600" /> <span className="text-sm font-medium text-violet-700 dark:text-violet-400 group-hover:underline">Booking.com</span>
               </a>
               <a
                 href="https://www.skyscanner.net/?ref=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card hover:bg-muted hover:shadow-sm transition-all text-xs text-foreground font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 hover:bg-orange-100 dark:hover:bg-orange-950/40 hover:shadow-sm transition-all group"
               >
-                <Plane className="w-3.5 h-3.5 text-orange-600" /> Skyscanner
+                <Plane className="w-4 h-4 text-orange-600" /> <span className="text-sm font-medium text-orange-700 dark:text-orange-400 group-hover:underline">Skyscanner</span>
               </a>
             </div>
           </div>

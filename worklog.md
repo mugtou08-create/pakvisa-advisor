@@ -320,3 +320,22 @@ Stage Summary:
   5. AI Chat — Smart natural suggestions
   6. Popular destination pills (header area)
 - Design kept clean and non-cluttered as requested
+
+---
+Task ID: 1
+Agent: main
+Task: Implement 5 affiliate link improvements
+
+Work Log:
+- Assessed current code state: #2 (Prepare Your Trip strip) and #4 (Travel Essentials bar) were already implemented from a previous session
+- #1: Removed `hidden sm:flex` from "Apply" button on country cards → now visible on mobile. Changed text from "Apply" to "Apply for Visa" with ArrowRight icon. Added shadow-sm hover:shadow-md for depth.
+- #3: Added `renderWithAffiliateLinks()` function in ai-chat-panel.tsx that uses a combined regex pattern to detect iVisa, SafetyWing, Skyscanner, Booking.com mentions (with optional parenthetical descriptions and URL mentions) and converts them to clickable affiliate links with ExternalLink icons. Applied to assistant messages only.
+- #5: Redesigned footer affiliate links from plain `text-xs text-foreground` pills to colored, branded cards: iVisa (emerald), SafetyWing (blue), Booking.com (violet), Skyscanner (orange) — each with colored bg, border, hover effects, and underline. Added centered "TRUSTED TRAVEL PARTNERS" heading. Increased text to `text-sm`.
+- Ran `bun run lint` — passed clean
+- Verified via agent-browser: Apply for Visa buttons visible on all non-visa-free country cards (desktop + mobile), Prepare Your Trip strip in expanded cards, footer links showing with colors
+
+Stage Summary:
+- All 5 affiliate improvements implemented and verified
+- Files modified: `src/app/page.tsx` (Apply button + footer), `src/components/visa/ai-chat-panel.tsx` (affiliate link converter)
+- No new dependencies added
+- Zero lint errors, dev server compiles cleanly
