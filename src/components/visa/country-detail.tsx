@@ -261,19 +261,29 @@ function EmergencyHealth({ info }: { info: TravelInfo }) {
           {/* Emergency Numbers */}
           <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3">
             <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-2">Emergency Numbers</p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Police', icon: ShieldCheck, number: info.emergencyPolice },
-                { label: 'Ambulance', icon: Syringe, number: info.emergencyAmbulance },
-                { label: 'Fire', icon: AlertTriangle, number: info.emergencyFire },
-              ].map((e) => (
-                <div key={e.label} className="text-center">
-                  <e.icon className="w-3.5 h-3.5 mx-auto mb-1 text-red-500" />
-                  <p className="text-[10px] text-red-700 dark:text-red-400">{e.label}</p>
-                  <p className="text-sm font-bold text-red-900 dark:text-red-200">{e.number}</p>
-                </div>
-              ))}
-            </div>
+            {info.emergencyPolice === info.emergencyAmbulance && info.emergencyAmbulance === info.emergencyFire ? (
+              /* All three numbers are the same — show one clean line */
+              <div className="flex items-center justify-center gap-2">
+                <Phone className="w-4 h-4 text-red-500" />
+                <p className="text-lg font-bold text-red-900 dark:text-red-200">{info.emergencyPolice}</p>
+                <p className="text-[10px] text-red-600 dark:text-red-400">Police · Ambulance · Fire</p>
+              </div>
+            ) : (
+              /* Numbers differ — show 3-column grid */
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Police', icon: ShieldCheck, number: info.emergencyPolice },
+                  { label: 'Ambulance', icon: Syringe, number: info.emergencyAmbulance },
+                  { label: 'Fire', icon: AlertTriangle, number: info.emergencyFire },
+                ].map((e) => (
+                  <div key={e.label} className="text-center">
+                    <e.icon className="w-3.5 h-3.5 mx-auto mb-1 text-red-500" />
+                    <p className="text-[10px] text-red-700 dark:text-red-400">{e.label}</p>
+                    <p className="text-sm font-bold text-red-900 dark:text-red-200">{e.number}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {/* Vaccines */}
           {info.vaccines.length > 0 && (

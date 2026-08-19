@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, ArrowLeft, ClipboardList, Globe, Check, RotateCcw } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft, ClipboardList, Globe, AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { CountryData } from '@/lib/types';
@@ -64,6 +64,31 @@ const QUESTIONS: QuizQuestion[] = [
   },
 ];
 
+// Region name maps for display
+const REGION_LABELS: Record<string, string> = {
+  middle_east: 'Middle Eastern',
+  southeast_asia: 'Southeast Asian',
+  europe: 'European',
+  east_asia: 'East Asian',
+};
+
+// Check if a country belongs to a specific region
+function matchesRegion(c: CountryData, region: string): boolean {
+  const CONTINENT_MAP: Record<string, string[]> = {
+    europe: ['Europe', 'Europe/Asia'],
+  };
+  const NAME_MAP: Record<string, string[]> = {
+    middle_east: ['United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Oman', 'Bahrain', 'Kuwait', 'Türkiye', 'Jordan', 'Iraq', 'Iran'],
+    southeast_asia: ['Malaysia', 'Thailand', 'Indonesia', 'Singapore', 'Philippines', 'Vietnam', 'Myanmar', 'Cambodia', 'Sri Lanka'],
+    east_asia: ['China', 'Japan', 'South Korea', 'Hong Kong'],
+    europe: ['United Kingdom', 'Germany', 'France', 'Italy', 'Spain', 'Portugal', 'Denmark', 'Sweden', 'Norway', 'Switzerland', 'Austria', 'Luxembourg', 'Netherlands', 'Poland', 'Greece', 'Romania', 'Ireland', 'Belgium', 'Russia', 'Iceland', 'Hungary', 'Czech Republic', 'Türkiye'],
+  };
+
+  if (NAME_MAP[region]?.includes(c.name)) return true;
+  if (CONTINENT_MAP[region]?.includes(c.continent)) return true;
+  return false;
+}
+
 function scoreCountry(c: CountryData, answers: Record<string, string>): number {
   let score = 0;
 
@@ -105,20 +130,7 @@ function scoreCountry(c: CountryData, answers: Record<string, string>): number {
 
   // Region match (up to 10 points)
   if (answers.region && answers.region !== 'any') {
-    const regionMap: Record<string, string[]> = {
-      middle_east: ['Asia'],
-      southeast_asia: ['Asia'],
-      europe: ['Europe'],
-      east_asia: ['Asia'],
-    };
-    // Use continent match as a heuristic
-    const target = regionMap[answers.region] || [];
-    if (target.includes(c.continent)) score += 10;
-    // Special name-based overrides for better accuracy
-    else if (answers.region === 'middle_east' && ['United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Oman', 'Bahrain', 'Kuwait', 'Türkiye', 'Jordan', 'Iraq', 'Iran'].includes(c.name)) score += 10;
-    else if (answers.region === 'southeast_asia' && ['Malaysia', 'Thailand', 'Indonesia', 'Singapore', 'Philippines', 'Vietnam', 'Myanmar', 'Cambodia', 'Sri Lanka'].includes(c.name)) score += 10;
-    else if (answers.region === 'east_asia' && ['China', 'Japan', 'South Korea', 'Hong Kong'].includes(c.name)) score += 10;
-    else if (answers.region === 'europe' && c.continent === 'Europe') score += 10;
+    if (matchesRegion(c, answers.region)) score += 10;
   } else {
     score += 5;
   }
@@ -145,6 +157,7 @@ export function VisaQuizPanel({ countries, onClose, onSelectCountry }: Props) {
   const [results, setResults] = useState<CountryData[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [showResults, setShowResults] = useState(false);
+  const [regionNotice, setRegionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -157,18 +170,47 @@ export function VisaQuizPanel({ countries, onClose, onSelectCountry }: Props) {
     if (step < QUESTIONS.length - 1) {
       setStep(step + 1);
     } else {
-      // Calculate results
+      // Calculate scores for all countries
       const scoreMap: Record<string, number> = {};
       countries.forEach(c => {
         scoreMap[c.code] = scoreCountry(c, newAnswers);
       });
-      const ranked = countries
-        .filter(c => scoreMap[c.code] > 40)
-        .sort((a, b) => scoreMap[b.code] - scoreMap[a.code])
-        .slice(0, 6);
+
+      const selectedRegion = newAnswers.region;
+      let ranked: CountryData[] = [];
+      let notice: string | null = null;
+
+      if (selectedRegion && selectedRegion !== 'any') {
+        // First: try to get results from the SELECTED region only
+        const regionCountries = countries.filter(c => matchesRegion(c, selectedRegion));
+        const regionRanked = regionCountries
+          .filter(c => scoreMap[c.code] > 30)
+          .sort((a, b) => scoreMap[b.code] - scoreMap[a.code])
+          .slice(0, 6);
+
+        if (regionRanked.length > 0) {
+          // We have region-specific results — use them
+          ranked = regionRanked;
+        } else {
+          // No matches in selected region — show alternatives with a notice
+          const regionLabel = REGION_LABELS[selectedRegion] || selectedRegion;
+          notice = `No ${regionLabel} countries matched your preferences. Here are the best alternatives from other regions.`;
+          ranked = countries
+            .filter(c => scoreMap[c.code] > 30)
+            .sort((a, b) => scoreMap[b.code] - scoreMap[a.code])
+            .slice(0, 6);
+        }
+      } else {
+        // No region preference — show all top results
+        ranked = countries
+          .filter(c => scoreMap[c.code] > 30)
+          .sort((a, b) => scoreMap[b.code] - scoreMap[a.code])
+          .slice(0, 6);
+      }
 
       setScores(scoreMap);
       setResults(ranked);
+      setRegionNotice(notice);
       setShowResults(true);
     }
   };
@@ -179,6 +221,7 @@ export function VisaQuizPanel({ countries, onClose, onSelectCountry }: Props) {
     setResults([]);
     setScores({});
     setShowResults(false);
+    setRegionNotice(null);
   };
 
   const progress = showResults ? 100 : Math.round(((step + 1) / QUESTIONS.length) * 100);
@@ -192,7 +235,7 @@ export function VisaQuizPanel({ countries, onClose, onSelectCountry }: Props) {
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <ClipboardList className="w-4 h-4 text-amber-600 dark:amber-400" />
             </div>
             <div>
               <h2 className="text-sm font-semibold">Visa Quiz</h2>
@@ -260,6 +303,16 @@ export function VisaQuizPanel({ countries, onClose, onSelectCountry }: Props) {
                   Based on your answers, here are the top countries for you
                 </p>
               </div>
+
+              {/* Region notice — shown when no countries match selected region */}
+              {regionNotice && (
+                <div className="mb-6 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-800 dark:text-amber-300">{regionNotice}</p>
+                  </div>
+                </div>
+              )}
 
               {results.length > 0 ? (
                 <div className="space-y-3">

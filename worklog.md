@@ -339,3 +339,44 @@ Stage Summary:
 - Files modified: `src/app/page.tsx` (Apply button + footer), `src/components/visa/ai-chat-panel.tsx` (affiliate link converter)
 - No new dependencies added
 - Zero lint errors, dev server compiles cleanly
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Fix emergency numbers display, correct wrong data, fix quiz region filtering
+
+Work Log:
+- Fixed emergency numbers UI (country-detail.tsx):
+  - When all 3 emergency numbers are the same (e.g., Australia 000, USA 911), shows single line: "000 — Police · Ambulance · Fire" instead of 3 repetitive entries
+  - When numbers differ (e.g., Malaysia 999/999/994), keeps the original 3-column layout
+- Fixed incorrect emergency numbers in travel-info.ts:
+  - Hong Kong: Fire 999 → 992
+  - Bahrain: Fire 999 → 997
+  - Jordan: Ambulance 911 → 199, Fire 911 → 199
+  - Algeria: Police 14 → 17
+  - Spain: Police 092 → 091
+  - Verified all other universal numbers (000, 911, 112, 999, 111) are correct
+- Rewrote Visa Quiz region filtering (visa-quiz-panel.tsx):
+  - Created `matchesRegion()` function with proper name-based + continent-based matching
+  - Added explicit country lists for Middle East, Southeast Asia, East Asia, Europe
+  - Fixed Türkiye matching (continent "Europe/Asia" now matches Europe)
+  - When a region is selected, results are FIRST filtered to that region only
+  - If no countries from the selected region qualify, shows amber notice: "No [region] countries matched your preferences. Here are the best alternatives from other regions."
+  - Lowered result threshold from >40 to >30 to reduce false negatives
+  - Added `regionNotice` state and AlertCircle notice banner in results UI
+- Verified via agent-browser:
+  - Australia emergency: shows "000 Police · Ambulance · Fire" as single line ✅
+  - Quiz with Europe selected: shows only European countries (Türkiye, Hungary, Romania) ✅
+- Lint passes clean
+
+Stage Summary:
+- Emergency numbers display fixed: universal numbers show as single clean line
+- 5 countries had wrong emergency data — all corrected
+- Quiz now properly filters by region and shows helpful notice when no matches found
+- No regressions
+
+### Unresolved Risks / Next Steps
+- Booking.com affiliate via CJ — waiting for approval
+- Skyscanner affiliate via CJ — submitted, waiting for approval
+- User exploring additional affiliate programs (Wise, eSIM, Amazon)
+- User considering adding travel gear pages for Amazon affiliate
