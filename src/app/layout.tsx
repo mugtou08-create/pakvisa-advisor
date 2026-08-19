@@ -55,14 +55,29 @@ export const metadata: Metadata = {
     siteName: "PakVisa Advisor",
     title: "PakVisa Advisor — Pakistani Passport Visa Checker & Travel Tools",
     description: "Free AI-powered visa intelligence for Pakistani passport holders. Check visa requirements for 70+ countries, convert currencies, and estimate trip budgets.",
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'PakVisa Advisor',
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "PakVisa Advisor — Pakistani Passport Visa Checker & Travel Tools",
     description: "Free AI-powered visa intelligence for Pakistani passport holders. Check visa requirements for 70+ countries, convert currencies, and estimate trip budgets.",
+    images: ['/og-image.png'],
   },
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: [
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   // verification: {
   //   google: "YOUR_ACTUAL_GOOGLE_VERIFICATION_CODE",
