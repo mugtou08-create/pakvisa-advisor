@@ -6,7 +6,7 @@
  * 2. Replace the placeholder URLs below with your actual affiliate URLs
  * 3. The URLs are used in country detail cards and the footer
  * 
- * CURRENT STATUS: Placeholder URLs — replace with real affiliate IDs after signing up
+ * CURRENT STATUS: SafetyWing ✅ LIVE | iVisa, Booking.com, Skyscanner — placeholders
  */
 
 export const AFFILIATE_CONFIG = {
@@ -24,10 +24,10 @@ export const AFFILIATE_CONFIG = {
   safetyWing: {
     name: 'SafetyWing',
     baseUrl: 'https://safetywing.com',
-    referralParam: 'referral=pakvisa',
-    utmSource: 'pakvisa',
+    referralParam: 'referenceID=26323190',
+    utmSource: '26323190',
     getUrl: () =>
-      'https://safetywing.com/?referral=pakvisa&utm_source=pakvisa&utm_medium=affiliate',
+      'https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador',
   },
 
   /** Booking.com — hotel bookings (4-5% commission) */

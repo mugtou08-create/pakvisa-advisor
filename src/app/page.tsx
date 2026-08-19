@@ -793,7 +793,7 @@ export default function HomePage() {
                 </a>
                 <div className="w-px h-8 bg-border hidden sm:block" />
                 <a
-                  href="https://safetywing.com/?referral=pakvisa&utm_source=pakvisa&utm_medium=affiliate"
+                  href="https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador"
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   className="flex items-center gap-2 group"
@@ -1266,7 +1266,7 @@ export default function HomePage() {
                 <FileText className="w-4 h-4 text-emerald-600" /> <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 group-hover:underline">iVisa</span>
               </a>
               <a
-                href="https://safetywing.com/?referral=pakvisa&utm_source=pakvisa"
+                href="https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:shadow-sm transition-all group"
