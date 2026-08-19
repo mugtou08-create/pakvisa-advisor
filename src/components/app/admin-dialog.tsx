@@ -444,16 +444,16 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   // ===== RENDER =====
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="p-5 pb-0 border-b">
+      <DialogContent className="w-[calc(100%-1rem)] h-[calc(100vh-1rem)] sm:w-[calc(100%-2rem)] sm:h-[calc(100vh-2rem)] max-w-none max-h-none p-0 overflow-hidden flex flex-col rounded-xl">
+        <DialogHeader className="p-4 sm:p-5 pb-0 border-b shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
                 <Shield className="w-4.5 h-4.5 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-lg">Admin Dashboard</DialogTitle>
-                <DialogDescription className="text-xs">Manage your PakVisa Advisor</DialogDescription>
+                <DialogTitle className="text-base sm:text-lg">Admin Dashboard</DialogTitle>
+                <DialogDescription className="text-xs hidden sm:block">Manage your PakVisa Advisor</DialogDescription>
               </div>
             </div>
             {isLoggedIn && (
@@ -497,7 +497,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
         ) : (
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar Navigation */}
-            <div className="w-52 border-r bg-muted/20 p-3 space-y-1 hidden md:flex flex-col">
+            <div className="w-48 lg:w-56 border-r bg-muted/20 p-3 space-y-1 hidden md:flex flex-col shrink-0">
               {navItems.map((item) => (
                 <button
                   key={item.key}
