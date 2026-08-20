@@ -8,7 +8,7 @@ function validateToken(token: string): { valid: boolean; username?: string } {
     const [id, username] = decoded.split(':');
     if (!id || !username) return { valid: false };
     const timestamp = parseInt(decoded.split(':')[3]);
-    if (!timestamp || Date.now() - timestamp > 86400000) return { valid: false };
+    if (!timestamp || Date.now() - timestamp > 604800000) return { valid: false };
     return { valid: true, username };
   } catch {
     return { valid: false };
