@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
+import { getUserFromRequest } from '@/lib/auth';
 import { detectCountries } from '@/lib/country-detect';
 import type { ScoreBreakdown, UserProfileData } from '@/lib/types';
 
@@ -16,11 +17,11 @@ interface ChatRequestBody {
 }
 
 // Rate limits per tier
-const FREE_RATE_LIMIT = 5;     // 5 queries per day
+const FREE_RATE_LIMIT = 2;     // 2 queries per day
 const FREE_WINDOW = 86400000;  // 24 hours
 const PRO_RATE_LIMIT = 60;     // 60 queries per minute
 
-// In-memory tracking for free tier daily limits
+// In-memory tracking for free tier daily limits (anonymous users only)
 const freeUsageCounts = new Map<string, { count: number; resetAt: number }>();
 
 function checkFreeLimit(ip: string): boolean {
@@ -48,25 +49,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Never trust client-supplied isPro — always treat as free tier
-    const proUser = false;
+    // Check real auth
+    let proUser = false;
+    let userId: string | null = null;
+    try {
+      const authUser = await getUserFromRequest(request);
+      if (authUser) {
+        userId = authUser.id;
+        proUser = authUser.role === 'pro';
+      }
+    } catch { /* continue as anonymous */ }
 
-    // Rate limiting: Pro users get higher limits
+    // Rate limiting
     if (proUser) {
-      if (!rateLimit(ip, PRO_RATE_LIMIT, 60000)) {
-        return NextResponse.json(
-          { success: false, error: 'Too many requests. Please try again later.' },
-          { status: 429 }
-        );
+      if (!rateLimit(ip, 60, 60000)) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
+      }
+      // Log Pro usage
+      if (userId) {
+        await db.aiUsageLog.create({ data: { userId, message: message.slice(0, 200) } });
       }
     } else {
-      if (!checkFreeLimit(ip)) {
-        return NextResponse.json({
-          success: false,
-          error: 'You\'ve reached the free daily limit of 5 queries. Upgrade to Pro for unlimited access.',
-          code: 'LIMIT_REACHED',
-          remainingCount: 0,
-        });
+      if (userId) {
+        // Authenticated free user — use DB-based limit
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayCount = await db.aiUsageLog.count({ where: { userId, createdAt: { gte: todayStart, lte: todayEnd } } });
+        if (todayCount >= FREE_RATE_LIMIT) {
+          return NextResponse.json({
+            success: false,
+            error: `You've reached the free daily limit of ${FREE_RATE_LIMIT} queries. Upgrade to Pro for 15 queries/day with verified data.`,
+            code: 'LIMIT_REACHED',
+            remainingCount: 0,
+          });
+        }
+        await db.aiUsageLog.create({ data: { userId, message: message.slice(0, 200) } });
+      } else {
+        // Anonymous user — IP-based limit
+        if (!checkFreeLimit(ip)) {
+          return NextResponse.json({
+            success: false,
+            error: `You've reached the free daily limit of ${FREE_RATE_LIMIT} queries. Sign up for a free account or upgrade to Pro!`,
+            code: 'LIMIT_REACHED',
+            remainingCount: 0,
+          });
+        }
       }
     }
 
@@ -322,8 +349,18 @@ ${proContextInstruction}`;
       : 'August 2025';
 
     // Check remaining free usage
-    const freeEntry = freeUsageCounts.get(ip);
-    const remainingFree = proUser ? -1 : (FREE_RATE_LIMIT - (freeEntry?.count || 0));
+    let remainingFreeQueries = -1;
+    if (!proUser) {
+      if (userId) {
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayCount = await db.aiUsageLog.count({ where: { userId, createdAt: { gte: todayStart, lte: todayEnd } } });
+        remainingFreeQueries = Math.max(0, FREE_RATE_LIMIT - todayCount);
+      } else {
+        const freeEntry = freeUsageCounts.get(ip);
+        remainingFreeQueries = FREE_RATE_LIMIT - (freeEntry?.count || 0);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -335,7 +372,7 @@ ${proContextInstruction}`;
         sourceUrl: verifiedData?.sourceUrl || null,
         lastUpdated: verifiedData?.lastUpdated || null,
         globalFreshness,
-        remainingFreeQueries: remainingFree,
+        remainingFreeQueries,
       },
     });
   } catch (error) {

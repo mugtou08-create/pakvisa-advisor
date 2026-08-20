@@ -5,8 +5,10 @@ import {
   Clock, Globe, DollarSign, Languages, Plug, Phone, Droplets, UtensilsCrossed,
   Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
   Calculator, ChevronDown, ChevronUp, AlertTriangle, Banknote, ArrowRightLeft,
-  FileText, Plane,
+  FileText, Plane, Lock, Crown, CheckCircle2, ClipboardList,
 } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth-store';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { CountryData } from '@/lib/types';
 import {
@@ -617,18 +619,22 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
         </Badge>
       </div>
 
-      {/* Key Requirements */}
+      {/* Key Requirements (free preview — first 5) */}
       {reqs.length > 0 && (
         <div>
           <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Key Requirements</h5>
           <ul className="space-y-1.5">
             {reqs.map((r) => (
               <li key={r.id} className="flex items-start gap-2 text-sm">
-                <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${r.mandatory ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${r.mandatory ? 'bg-emerald-500' : 'bg-amber-400'`} />
                 <span className="text-muted-foreground">{r.requirement}</span>
               </li>
             ))}
           </ul>
+          {/* Pro: Full Document Checklist */}
+          {/* {country.requirements && country.requirements.length > 5 && (
+            <FullDocumentChecklist requirements={country.requirements} countryName={country.name} />
+          )} */}
         </div>
       )}
 
@@ -710,6 +716,107 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
       {/* Affiliate: Prepare Your Trip (always last) */}
       <AffiliateResources country={country} />
+    </div>
+  );
+}
+
+// ============================================================
+// Full Document Checklist (Pro Feature)
+// ============================================================
+function FullDocumentChecklist({
+  requirements,
+  countryName,
+}: {
+  requirements: { id: string; category: string; requirement: string; mandatory: boolean; description?: string }[];
+  countryName: string;
+}) {
+  const { user, isAuthenticated } = useAuthStore();
+  const [expanded, setExpanded] = useState(false);
+  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+
+  // Group requirements by category
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof requirements>();
+    for (const r of requirements) {
+      const cat = r.category || 'Other';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(r);
+    }
+    return Array.from(map.entries());
+  }, [requirements]);
+
+  const mandatoryCount = requirements.filter(r => r.mandatory).length;
+  const optionalCount = requirements.length - mandatoryCount;
+
+  return (
+    <div className="mt-3 border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {isPro ? (
+            <ClipboardList className="w-4 h-4 text-amber-600" />
+          ) : (
+            <Lock className="w-4 h-4 text-amber-600" />
+          )}
+          <div className="text-left">
+            <span className="text-sm font-semibold">Full Document Checklist</span>
+            <span className="text-[11px] text-muted-foreground ml-2">
+              ({mandatoryCount} required{optionalCount > 0 ? `, ${optionalCount} optional` : ''} items)
+            </span>
+          </div>
+        </div>
+        {isPro ? (
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        ) : (
+          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
+            <Crown className="w-3 h-3" /> Pro
+          </span>
+        )}
+      </button>
+
+      {expanded && isPro && (
+        <div className="p-3 space-y-4 max-h-80 overflow-y-auto">
+          {grouped.map(([category, items]) => (
+            <div key={category}>
+              <h6 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3 h-3" /> {category}
+              </h6>
+              <ul className="space-y-1">
+                {items.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2 text-sm">
+                    {item.mandatory ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                    ) : (
+                      <span className="mt-1.5 w-2 h-2 rounded-full border border-amber-400 shrink-0" />
+                    )}
+                    <div>
+                      <span className={item.mandatory ? 'text-foreground' : 'text-muted-foreground'}>{item.requirement}</span>
+                      {item.description && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{item.description}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {expanded && !isPro && (
+        <div className="p-4 text-center">
+          <Crown className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+          <p className="text-sm font-medium mb-1">Pro Feature</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Get the complete document checklist with {mandatoryCount} required items organized by category, with descriptions.
+          </p>
+          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5" onClick={() => window.dispatchEvent(new CustomEvent('open-pricing'))}>
+            <Crown className="w-3.5 h-3.5" /> Upgrade to Pro
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

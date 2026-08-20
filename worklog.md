@@ -557,3 +557,52 @@ Stage Summary:
 - All fixes now deployed to live site via GitHub push
 - 7-day admin session confirmed across all 4 admin API routes
 
+---
+Task ID: 3
+Agent: fullstack-dev
+Task: Build user account system (signup, login, logout, auth utilities, database models)
+
+Work Log:
+- Updated prisma/schema.prisma with User, AiUsageLog, PaymentProof models
+- Ran db:push to apply schema
+- Created /src/lib/auth.ts with token parsing, getUserFromRequest, isProUser
+- Created /src/lib/auth-store.ts with Zustand client auth state
+- Created /api/auth/signup, /api/auth/login, /api/auth/logout, /api/auth/me routes
+
+Stage Summary:
+- Complete user auth system with signup, login, logout, session management
+- Pro role support with auto-expiry check
+- AI usage logging table ready for rate limiting
+- Payment proof table ready for manual pro upgrade system
+
+---
+Task ID: 3c
+Agent: Main Agent
+Task: Integrate auth system into main page and API routes
+
+Work Log:
+- Added useAuthStore and AuthModal imports to page.tsx
+- Added LogIn, LogOut, User (aliased as UserIcon), Upload icons to lucide-react imports
+- Added auth state declarations (user, isAuthenticated, checkAuth, logout) and showAuthModal state
+- Added useEffect for checkAuth on mount
+- Added isProUser sync from auth store to app store (useEffect watching isAuthenticated, user)
+- Added isUserPro computed boolean for Pro status
+- Added user menu dropdown in header: shows user name + Crown badge if Pro, with dropdown containing My Account, Upgrade to Pro (if not Pro), Submit Payment Proof, Logout
+- Added Login/Sign Up button for unauthenticated users
+- Added AuthModal to both tool panel view and main page modals
+- Updated ComparePanel call to pass isProUser prop
+- Updated Premium CTA button: disabled + shows "You're a Pro Member ✓" for Pro users
+- Updated ai-chat-panel.tsx: added useAuthStore import, changed free limit from 5 to 2, updated all messages
+- Rewrote chat route.ts: auth-based rate limiting with DB tracking for authenticated users, IP-based for anonymous, FREE_RATE_LIMIT changed from 5 to 2, Pro users get 60/min with DB logging
+- Updated compare-panel.tsx: added isProUser prop, dynamic MAX_COMPARE (2 free, 5 pro), toast notification when limit reached
+- Updated export route.ts: added Pro check using getUserFromRequest, returns 403 with PRO_REQUIRED code for non-Pro users
+- Cleaned up unused imports (CreditCard, ArrowRight, useCallback)
+- All linting passes cleanly
+
+Stage Summary:
+- Full auth integration into main page with user menu, login/signup flow
+- Auth-based rate limiting in chat API (DB-backed for authenticated, IP-based for anonymous)
+- Free limit reduced from 5 to 2 queries/day
+- Compare panel: 2 countries for free, 5 for Pro
+- Export API gated behind Pro authentication
+- Premium CTA adapts for Pro users

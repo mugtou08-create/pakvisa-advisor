@@ -1,8 +1,9 @@
 'use client';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowRight, BarChart3, Plus, Trash2, Shield, Clock, DollarSign, MapPin, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, BarChart3, Plus, Trash2, Shield, Clock, DollarSign, MapPin, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import type { CountryData } from '@/lib/types';
 
 function getVisaType(c: CountryData) {
@@ -16,9 +17,11 @@ interface Props {
   countries: CountryData[];
   onClose: () => void;
   onSelectCountry: (name: string) => void;
+  isProUser?: boolean;
 }
 
-export function ComparePanel({ countries, onClose, onSelectCountry }: Props) {
+export function ComparePanel({ countries, onClose, onSelectCountry, isProUser }: Props) {
+  const MAX_COMPARE = isProUser ? 5 : 2;
   const [selected, setSelected] = useState<CountryData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -41,7 +44,12 @@ export function ComparePanel({ countries, onClose, onSelectCountry }: Props) {
   }, [showPicker]);
 
   const addCountry = (c: CountryData) => {
-    if (selected.length >= 4) return;
+    if (selected.length >= MAX_COMPARE) {
+      if (!isProUser) {
+        toast.info('Free accounts can compare up to 2 countries. Upgrade to Pro to compare up to 5!');
+      }
+      return;
+    }
     if (selected.find(s => s.code === c.code)) return;
     setSelected([...selected, c]);
     setShowPicker(false);
@@ -76,7 +84,7 @@ export function ComparePanel({ countries, onClose, onSelectCountry }: Props) {
             <div>
               <h2 className="text-sm font-semibold">Compare Countries</h2>
               <p className="text-[11px] text-muted-foreground">
-                {selected.length}/4 countries selected
+                {selected.length}/{MAX_COMPARE} countries selected
               </p>
             </div>
           </div>
@@ -109,7 +117,7 @@ export function ComparePanel({ countries, onClose, onSelectCountry }: Props) {
                   </button>
                 </div>
               ))}
-              {selected.length < 4 && (
+              {selected.length < MAX_COMPARE && (
                 <div className="relative" ref={pickerRef}>
                   <button
                     onClick={() => setShowPicker(!showPicker)}

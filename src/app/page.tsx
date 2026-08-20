@@ -7,8 +7,8 @@ import {
   ChevronDown, ChevronUp, Heart, X, ArrowRight, Check, Lock,
   Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
-  CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building,
-  ArrowUp,
+  CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building, Mail,
+  ArrowUp, LogIn, LogOut, User as UserIcon, Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from 'next-themes';
 import { useAppStore } from '@/lib/store';
+import { useAuthStore } from '@/lib/auth-store';
+import { AuthModal } from '@/components/visa/auth-modal';
 import type { CountryData } from '@/lib/types';
 import { AiChatPanel } from '@/components/visa/ai-chat-panel';
 import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
@@ -23,7 +25,6 @@ import { ComparePanel } from '@/components/visa/compare-panel';
 import { CountryDetailPanel } from '@/components/visa/country-detail';
 import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
 import { AdminDialog } from '@/components/app/admin-dialog';
-import { ContactForm } from '@/components/app/contact-form';
 import { WhatsAppButton } from '@/components/app/whatsapp-button';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 
@@ -271,7 +272,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
 // ============================================================
 // ITEMS_PER_PAGE
 // ============================================================
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 8;
 
 // ============================================================
 // Main Component
@@ -288,6 +289,27 @@ export default function HomePage() {
 
   // Modals
   const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // Auth
+  const { user, isAuthenticated, checkAuth, logout: authLogout } = useAuthStore();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Check auth on mount
+  useEffect(() => { checkAuth(); }, [checkAuth]);
+
+  // Sync isProUser with auth store
+  const setIsProUser = useAppStore((s) => s.setIsProUser);
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const isPro = user.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+      setIsProUser(isPro);
+    } else {
+      setIsProUser(false);
+    }
+  }, [isAuthenticated, user, setIsProUser]);
+
+  // User menu
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Admin
   const [adminOpen, setAdminOpen] = useState(false);
@@ -315,11 +337,26 @@ export default function HomePage() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   // Back to top
+  const isUserPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
   const [showBackToTop, setShowBackToTop] = useState(false);
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 600);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Listen for 'open-pricing' custom event (from Pro-gated components)
+  useEffect(() => {
+    const handler = () => setActiveModal('pricing');
+    window.addEventListener('open-pricing', handler);
+    return () => window.removeEventListener('open-pricing', handler);
+  }, []);
+
+  // Listen for 'open-auth' custom event
+  useEffect(() => {
+    const handler = () => setShowAuthModal(true);
+    window.addEventListener('open-auth', handler);
+    return () => window.removeEventListener('open-auth', handler);
   }, []);
 
   // Animated counters
@@ -492,7 +529,7 @@ export default function HomePage() {
   const renderToolPanel = () => {
     if (activeTool === 'ai') return <AiChatPanel onClose={closeTool} />;
     if (activeTool === 'quiz') return <VisaQuizPanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
-    if (activeTool === 'compare') return <ComparePanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
+    if (activeTool === 'compare') return <ComparePanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} isProUser={isUserPro} />;
     return null;
   };
 
@@ -557,6 +594,7 @@ export default function HomePage() {
         {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
         <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />
         <WhatsAppButton />
       </div>
@@ -576,6 +614,62 @@ export default function HomePage() {
             <span>PakVisa</span>
           </div>
           <div className="flex items-center gap-2">
+            {isAuthenticated && user ? (
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="gap-1.5 text-xs"
+                >
+                  <UserIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline max-w-[80px] truncate">{user.fullName.split(' ')[0]}</span>
+                  {isUserPro && <Crown className="w-3 h-3 text-amber-500" />}
+                </Button>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border bg-card shadow-lg py-1">
+                      <div className="px-3 py-2 border-b">
+                        <p className="text-sm font-medium truncate">{user.fullName}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors"
+                      >
+                        <UserIcon className="w-3.5 h-3.5" /> My Account
+                      </button>
+                      {!isUserPro && (
+                        <button
+                          onClick={() => { setUserMenuOpen(false); setActiveModal('pricing'); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors text-amber-600 dark:text-amber-400"
+                        >
+                          <Crown className="w-3.5 h-3.5" /> Upgrade to Pro
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setUserMenuOpen(false); setActiveModal('pricing'); }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5" /> Submit Payment Proof
+                      </button>
+                      <div className="border-t" />
+                      <button
+                        onClick={() => { authLogout(); setUserMenuOpen(false); setShowAuthModal(false); }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors text-red-600 dark:text-red-400"
+                      >
+                        <LogOut className="w-3.5 h-3.5" /> Logout
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => setShowAuthModal(true)} className="gap-1.5 text-xs">
+                <LogIn className="w-3.5 h-3.5" /> Login / Sign Up
+              </Button>
+            )}
             <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
               {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <Skeleton className="h-4 w-4 rounded" />}
             </Button>
@@ -1224,8 +1318,8 @@ export default function HomePage() {
                   <h3 className="font-bold text-lg">Get the Full Experience</h3>
                   <p className="text-sm text-muted-foreground mt-1">Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</p>
                 </div>
-                <Button onClick={() => setActiveModal('pricing')} className="gap-1.5">
-                  View Premium Plans
+                <Button onClick={() => setActiveModal('pricing')} className="gap-1.5" disabled={isUserPro}>
+                  {isUserPro ? "You're a Pro Member ✓" : 'View Premium Plans'}
                 </Button>
               </div>
             </Card>
@@ -1255,7 +1349,25 @@ export default function HomePage() {
         {/* ==================== SECTION 15: CONTACT US ==================== */}
         <section className="px-4 pb-10">
           <div className="max-w-xl mx-auto">
-            <ContactForm />
+            <div
+              className="flex items-center justify-between rounded-xl border bg-card p-4 cursor-pointer hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
+              onClick={() => setActiveModal('contact')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveModal('contact'); }}
+              aria-label="Open contact form"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <Mail className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Contact Us</p>
+                  <p className="text-xs text-muted-foreground">Have a question? Click to send us a message.</p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            </div>
           </div>
         </section>
       </main>
@@ -1330,6 +1442,7 @@ export default function HomePage() {
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
 
       {/* Admin Dashboard */}
       <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />

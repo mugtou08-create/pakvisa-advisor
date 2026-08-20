@@ -1,10 +1,14 @@
 'use client';
-import React from 'react';
-import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList, Send, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export function PricingModal({ onClose }: { onClose: () => void }) {
   React.useEffect(() => {
@@ -719,67 +723,99 @@ export function TermsModal({ onClose }: { onClose: () => void }) {
 }
 
 // ============================================================
+// Embedded Contact Form (used inside ContactModal)
+// ============================================================
+function ContactFormEmbedded() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      toast.error('Please fill in name, email, and message');
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, subject, message }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setSent(true);
+        setName(''); setEmail(''); setSubject(''); setMessage('');
+        setTimeout(() => setSent(false), 5000);
+      } else {
+        toast.error(data.message || 'Failed to send message');
+      }
+    } catch {
+      toast.error('Connection error. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+          <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+        </div>
+        <h4 className="font-semibold text-lg">Message Sent!</h4>
+        <p className="text-sm text-muted-foreground mt-1">Thank you for reaching out. We will respond shortly.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-sm text-muted-foreground">Have a question? We will get back to you within 24 hours.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="modal-contact-name" className="text-sm font-medium">
+            <User className="w-3.5 h-3.5 inline mr-1" /> Name <span className="text-red-500">*</span>
+          </Label>
+          <Input id="modal-contact-name" placeholder="Your full name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="modal-contact-email" className="text-sm font-medium">
+            <Mail className="w-3.5 h-3.5 inline mr-1" /> Email <span className="text-red-500">*</span>
+          </Label>
+          <Input id="modal-contact-email" type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modal-contact-subject" className="text-sm font-medium">
+          <MessageCircle className="w-3.5 h-3.5 inline mr-1" /> Subject <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Input id="modal-contact-subject" placeholder="e.g. Visa question about Turkey" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="modal-contact-message" className="text-sm font-medium">Message <span className="text-red-500">*</span></Label>
+        <Textarea id="modal-contact-message" placeholder="Tell us how we can help you..." value={message} onChange={(e) => setMessage(e.target.value)} rows={4} maxLength={2000} className="resize-none" />
+        <p className="text-xs text-muted-foreground text-right">{message.length}/2000</p>
+      </div>
+      <Button type="submit" disabled={sending} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+        {sending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>) : (<><Send className="w-4 h-4 mr-2" /> Send Message</>)}
+      </Button>
+    </form>
+  );
+}
+
+// ============================================================
 // Contact Modal
 // ============================================================
 export function ContactModal({ onClose }: { onClose: () => void }) {
   return (
     <ModalShell title="Contact Us" icon={<Mail className="h-5 w-5" />} onClose={onClose}>
-      <div className="space-y-5 text-sm leading-relaxed text-muted-foreground">
-        <p>
-          We&apos;d love to hear from you! Whether you have a question, feedback, or found an issue
-          with our visa data, please reach out.
-        </p>
-
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50 border">
-            <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <p className="text-foreground font-medium text-sm">Email</p>
-              <p className="text-sm">contact@pakvisaadvisor.com</p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50 border">
-            <MessageCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <p className="text-foreground font-medium text-sm">AI Chat Support</p>
-              <p className="text-sm">
-                Use our built-in AI Visa Consultant for instant answers to common visa questions.
-                Available 24/7.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="text-foreground font-semibold text-sm">Common Topics</h3>
-          <ul className="space-y-2">
-            <li className="flex items-start gap-2">
-              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-              <span>Report incorrect visa data for a specific country</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-              <span>Request a new country or feature to be added</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-              <span>Report a bug or technical issue</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-              <span>Partnership or advertising inquiries</span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="rounded-lg bg-muted/50 p-3">
-          <p className="text-xs text-muted-foreground text-center">
-            We typically respond within 24–48 hours. For urgent visa questions,
-            use our AI Consultant for instant help.
-          </p>
-        </div>
-      </div>
+      <ContactFormEmbedded />
     </ModalShell>
   );
 }

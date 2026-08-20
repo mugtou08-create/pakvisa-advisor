@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
+import { getUserFromRequest } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,6 +9,13 @@ export async function POST(req: NextRequest) {
     const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
     if (!rateLimit(ip, 10, 60000)) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
+    }
+
+    // Pro check
+    const authUser = await getUserFromRequest(req);
+    const isPro = authUser?.role === 'pro';
+    if (!isPro) {
+      return NextResponse.json({ success: false, error: 'PDF export is a Pro feature. Upgrade to access this feature.', code: 'PRO_REQUIRED' }, { status: 403 });
     }
 
     const body = await req.json();

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/lib/store';
+import { useAuthStore } from '@/lib/auth-store';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -77,11 +78,12 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [globalFreshness, setGlobalFreshness] = useState('');
-  const [remainingFree, setRemainingFree] = useState(5);
+  const [remainingFree, setRemainingFree] = useState(2);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isProUser = useAppStore((s) => s.isProUser);
+  const { user, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -148,7 +150,7 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
           ...prev,
           {
             role: 'assistant',
-            content: '⚠️ You\'ve reached the free daily limit of 5 queries. Upgrade to Pro for unlimited AI access with verified data.',
+            content: '⚠️ You\'ve reached the free daily limit of 2 queries. Upgrade to Pro for unlimited AI access with verified data.',
             meta: { dataVerified: false },
           },
         ]);
@@ -200,7 +202,7 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
             </Badge>
           ) : (
             <Badge variant="secondary" className="text-xs font-normal">
-              Free · {remainingFree}/5 queries left
+              Free · {remainingFree}/2 queries left
             </Badge>
           )}
         </div>
