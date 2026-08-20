@@ -532,3 +532,28 @@ Stage Summary:
 - Single extra `</div>` removed — div nesting now balanced
 - No logic, state, callbacks, or tab content changed
 - Lint clean
+
+---
+Task ID: 3-d
+Agent: Main Agent
+Task: Find root cause of invisible fixes, apply to remote code, and push to Vercel
+
+Work Log:
+- Discovered git had 13 unpushed commits — user was seeing old code on live Vercel site
+- Found remote had 17 new commits from cron job agent (full-screen admin, messages, newsletter features)
+- My previous fixes were on an old Dialog-based version, remote had a new full-screen version
+- Reset local to origin/main, then applied targeted fixes to the current code:
+  1. Fixed analytics API: wrapped contactMessage queries in try/catch (table might not exist in some DBs)
+  2. Fixed token expiry: all 4 admin API routes changed from 86400000 (24h) to 604800000 (7 days)
+  3. Fixed admin dialog: added VisaBreakdownChart using recharts donut chart
+  4. Fixed admin dialog: added AbortController, 15s timeout, 401 auto-logout
+  5. Fixed admin dialog: added analyticsError state with descriptive messages
+  6. Fixed admin dialog: removed hardcoded WhatsApp default 923001234567
+  7. Fixed admin dialog: added client-side token expiry check on page load
+- Pushed 2 commits to GitHub (ae3d280, 520f2ef)
+
+Stage Summary:
+- ROOT CAUSE: Previous fixes were never pushed to GitHub, so Vercel was serving old code
+- All fixes now deployed to live site via GitHub push
+- 7-day admin session confirmed across all 4 admin API routes
+
