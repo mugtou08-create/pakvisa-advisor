@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AdminDialogProps {
   open: boolean;
@@ -92,6 +93,8 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [togglingAi, setTogglingAi] = useState(false);
   const [togglingMaintenance, setTogglingMaintenance] = useState(false);
@@ -120,14 +123,25 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [subscribersLoading, setSubscribersLoading] = useState(false);
 
   // WhatsApp number settings
-  const [whatsappNumber, setWhatsappNumber] = useState('923001234567');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('pakvisa-admin-token');
     if (savedToken) {
-      setToken(savedToken);
-      setIsLoggedIn(true);
+      try {
+        const decoded = Buffer.from(savedToken, 'base64').toString('utf-8');
+        const parts = decoded.split(':');
+        const timestamp = parseInt(parts[parts.length - 1]);
+        if (timestamp && Date.now() - timestamp <= 604800000) {
+          setToken(savedToken);
+          setIsLoggedIn(true);
+        } else {
+          localStorage.removeItem('pakvisa-admin-token');
+        }
+      } catch {
+        localStorage.removeItem('pakvisa-admin-token');
+      }
     }
   }, []);
 
@@ -173,19 +187,35 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
 
   const fetchAnalytics = useCallback(async (showLoading = true) => {
     if (!token) return;
-    if (showLoading) setAnalyticsLoading(true);
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    if (showLoading) { setAnalyticsLoading(true); setAnalyticsError(null); }
     setRefreshingAnalytics(true);
     try {
-      const res = await fetch('/api/admin/analytics', { headers: { 'Authorization': `Bearer ${token}` } });
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch('/api/admin/analytics', { headers: { 'Authorization': `Bearer ${token}` }, signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.status === 401) { setAnalyticsError('Session expired. Please log in again.'); handleLogout(); return; }
       const data = await res.json();
       if (data.success) {
         setAnalytics(data.data);
         setMaintenanceMode(data.data.settings?.maintenance_mode === 'true');
-        setWhatsappNumber(data.data.settings?.whatsapp_number || '923001234567');
+        setWhatsappNumber(data.data.settings?.whatsapp_number || '');
+        setAnalyticsError(null);
+      } else {
+        setAnalyticsError(data.error || 'Failed to load analytics');
+        toast.error(data.error || 'Failed to load analytics');
       }
-    } catch { toast.error('Failed to fetch analytics'); }
-    finally { setAnalyticsLoading(false); setRefreshingAnalytics(false); }
-  }, [token]);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setAnalyticsError('Request timed out. Please try again.');
+      } else {
+        setAnalyticsError('Network error. Please try again.');
+        toast.error('Failed to fetch analytics');
+      }
+    } finally { setAnalyticsLoading(false); setRefreshingAnalytics(false); abortRef.current = null; }
+  }, [token, handleLogout]);
 
   const fetchMessages = useCallback(async (page = 1, filter?: MessageFilter, search?: string) => {
     if (!token) return;
@@ -545,6 +575,9 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
               <div className="p-5 space-y-5">
                 {/* ====== OVERVIEW TAB ====== */}
                 {activeSection === 'overview' && (
+                  analyticsLoading && !analytics ? (
+                    <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+                  ) : (
                   <>
                     {/* Quick Stats Row - 6 cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -557,7 +590,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                     </div>
 
                     {/* Daily Messages Sparkline */}
-                    {analytics?.messageStats && (
+                    {analytics?.messageStats && sparklineData.length > 0 && (
                       <Card>
                         <CardHeader className="pb-2">
                           <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -634,13 +667,8 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           </CardHeader>
                           <CardContent>
                             {analytics ? (
-                              <div className="grid grid-cols-2 gap-3">
-                                <MiniStat label="Visa Free" value={analytics.countries.visaFree} color="text-green-600" />
-                                <MiniStat label="On Arrival" value={analytics.countries.visaOnArrival} color="text-orange-600" />
-                                <MiniStat label="e-Visa/ETA" value={analytics.countries.etaAvailable} color="text-blue-600" />
-                                <MiniStat label="Regular Visa" value={analytics.visaCategories.regularVisa} color="text-red-600" />
-                              </div>
-                            ) : <div className="flex justify-center py-4"><div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>}
+                              <VisaBreakdownChart visaCategories={analytics.visaCategories} total={analytics.countries.total} />
+                            ) : null}
                           </CardContent>
                         </Card>
 
@@ -674,6 +702,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                       </div>
                     </div>
                   </>
+                  )
                 )}
 
                 {/* ====== MESSAGES TAB ====== */}
@@ -1151,6 +1180,56 @@ function MiniStat({ label, value, color }: { label: string; value: string | numb
     <div className="p-3 rounded-lg bg-muted/50 text-center">
       <div className={`text-xl font-bold ${color || ''}`}>{value}</div>
       <div className="text-[10px] text-muted-foreground mt-1">{label}</div>
+    </div>
+  );
+}
+
+const VISA_COLORS = ['#059669', '#f97316', '#3b82f6', '#ef4444'];
+const VISA_LABELS: Record<string, string> = { visaFree: 'Visa Free', visaOnArrival: 'On Arrival', etaAvailable: 'e-Visa/ETA', regularVisa: 'Regular Visa' };
+
+function VisaBreakdownChart({ visaCategories, total }: { visaCategories: { visaFree: number; visaOnArrival: number; etaAvailable: number; regularVisa: number }; total: number }) {
+  const data = [
+    { name: 'Visa Free', value: visaCategories.visaFree },
+    { name: 'On Arrival', value: visaCategories.visaOnArrival },
+    { name: 'e-Visa/ETA', value: visaCategories.etaAvailable },
+    { name: 'Regular Visa', value: visaCategories.regularVisa },
+  ].filter(d => d.value > 0);
+
+  return (
+    <div>
+      <div className="h-40">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={35}
+              outerRadius={60}
+              paddingAngle={2}
+              dataKey="value"
+              stroke="none"
+            >
+              {data.map((_entry, index) => (
+                <Cell key={`cell-${index}`} fill={VISA_COLORS[index % VISA_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value: number, name: string) => [`${value} countries`, name]}
+              contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', fontSize: '12px' }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 mt-2">
+        {['visaFree', 'visaOnArrival', 'etaAvailable', 'regularVisa'].map((key, i) => (
+          <div key={key} className="flex items-center gap-1.5 text-xs">
+            <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: VISA_COLORS[i] }} />
+            <span className="text-muted-foreground">{VISA_LABELS[key]}</span>
+            <span className="ml-auto font-medium">{visaCategories[key as keyof typeof visaCategories]}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

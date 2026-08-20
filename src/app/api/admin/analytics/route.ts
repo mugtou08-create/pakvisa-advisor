@@ -8,7 +8,7 @@ function validateToken(token: string): { valid: boolean; username?: string } {
     const [id, username] = decoded.split(':');
     if (!id || !username) return { valid: false };
     const timestamp = parseInt(decoded.split(':')[3]);
-    if (!timestamp || Date.now() - timestamp > 86400000) return { valid: false };
+    if (!timestamp || Date.now() - timestamp > 604800000) return { valid: false };
     return { valid: true, username };
   } catch {
     return { valid: false };
@@ -87,15 +87,24 @@ export async function GET(request: NextRequest) {
       settingsMap[s.key] = s.value;
     }
 
-    // Message stats for overview
+    // Message stats for overview (gracefully handle missing ContactMessage table)
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const totalMessages = await db.contactMessage.count();
-    const messagesThisWeek = await db.contactMessage.count({
-      where: { createdAt: { gte: weekAgo } },
-    });
-    const unreadCount = await db.contactMessage.count({ where: { isRead: false } });
-    const repliedCount = await db.contactMessage.count({ where: { isReplied: true } });
+    let totalMessages = 0;
+    let messagesThisWeek = 0;
+    let unreadCount = 0;
+    let repliedCount = 0;
+    let dailyMessages: Array<{ date: string; count: number }> = [];
+    try {
+      totalMessages = await db.contactMessage.count();
+      messagesThisWeek = await db.contactMessage.count({
+        where: { createdAt: { gte: weekAgo } },
+      });
+      unreadCount = await db.contactMessage.count({ where: { isRead: false } });
+      repliedCount = await db.contactMessage.count({ where: { isReplied: true } });
+    } catch {
+      // ContactMessage table may not exist yet
+    }
     const responseRate = totalMessages > 0 ? Math.round((repliedCount / totalMessages) * 100) : 0;
     const totalSubscribers = await db.newsletterSubscriber.count();
     const activeSubscribers = await db.newsletterSubscriber.count({ where: { isActive: true } });
@@ -104,18 +113,21 @@ export async function GET(request: NextRequest) {
     });
 
     // Daily messages for last 7 days (for sparkline)
-    const dailyMessages: Array<{ date: string; count: number }> = [];
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-      const count = await db.contactMessage.count({
-        where: { createdAt: { gte: dayStart, lt: dayEnd } },
-      });
-      dailyMessages.push({
-        date: dayStart.toISOString().split('T')[0],
-        count,
-      });
+    try {
+      for (let i = 6; i >= 0; i--) {
+        const dayStart = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+        const count = await db.contactMessage.count({
+          where: { createdAt: { gte: dayStart, lt: dayEnd } },
+        });
+        dailyMessages.push({
+          date: dayStart.toISOString().split('T')[0],
+          count,
+        });
+      }
+    } catch {
+      // ContactMessage table may not exist yet
     }
 
     return NextResponse.json({

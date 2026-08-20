@@ -8,9 +8,9 @@ function validateToken(token: string): { valid: boolean; username?: string } {
     const decoded = Buffer.from(token, 'base64').toString('utf-8');
     const [id, username] = decoded.split(':');
     if (!id || !username) return { valid: false };
-    // Check if token is not too old (24 hours)
+    // Check if token is not too old (7 days)
     const timestamp = parseInt(decoded.split(':')[3]);
-    if (!timestamp || Date.now() - timestamp > 86400000) return { valid: false };
+    if (!timestamp || Date.now() - timestamp > 604800000) return { valid: false };
     return { valid: true, username };
   } catch {
     return { valid: false };

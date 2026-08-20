@@ -1,0 +1,1175 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→import {
+     5→  Settings, Lock, Eye, EyeOff, Shield, Globe, Users, Activity,
+     6→  ToggleLeft, ToggleRight, BarChart3, LogOut, Database, Zap, AlertTriangle,
+     7→  RefreshCw, Server, FileCheck, MessageSquare, Mail, Send, Trash2,
+     8→  ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
+     9→  Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
+    10→  Filter, X, ChevronDown, MessageCircle, Hash, XIcon,
+    11→} from 'lucide-react';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Input } from '@/components/ui/input';
+    14→import { Textarea } from '@/components/ui/textarea';
+    15→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+    16→import { Badge } from '@/components/ui/badge';
+    17→import { ScrollArea } from '@/components/ui/scroll-area';
+    18→import { Separator } from '@/components/ui/separator';
+    19→import { Switch } from '@/components/ui/switch';
+    20→import { toast } from 'sonner';
+    21→
+    22→interface AdminDialogProps {
+    23→  open: boolean;
+    24→  onClose: () => void;
+    25→  aiEnabled: boolean;
+    26→  setAiEnabled: (enabled: boolean) => void;
+    27→}
+    28→
+    29→interface AnalyticsData {
+    30→  countries: { total: number; visaFree: number; visaOnArrival: number; etaAvailable: number };
+    31→  visaCategories: { visaFree: number; visaOnArrival: number; etaAvailable: number; regularVisa: number };
+    32→  continents: Array<{ continent: string; count: number }>;
+    33→  dataFreshness: string | null;
+    34→  requirements: number;
+    35→  costProfiles: number;
+    36→  users: number;
+    37→  sessions: number;
+    38→  adminUsers: Array<{ username: string; lastLogin: string | null; isOnline: boolean; createdAt: string }>;
+    39→  settings: Record<string, string>;
+    40→  messageStats: {
+    41→    total: number;
+    42→    thisWeek: number;
+    43→    unread: number;
+    44→    replied: number;
+    45→    responseRate: number;
+    46→    dailyMessages: Array<{ date: string; count: number }>;
+    47→  };
+    48→  subscriberStats: {
+    49→    total: number;
+    50→    active: number;
+    51→    thisWeek: number;
+    52→  };
+    53→}
+    54→
+    55→interface ContactMessage {
+    56→  id: string;
+    57→  name: string;
+    58→  email: string;
+    59→  subject: string;
+    60→  message: string;
+    61→  isRead: boolean;
+    62→  isReplied: boolean;
+    63→  reply: string;
+    64→  ip: string;
+    65→  createdAt: string;
+    66→}
+    67→
+    68→interface NewsletterSubscriber {
+    69→  id: string;
+    70→  email: string;
+    71→  subscribedAt: string;
+    72→  isActive: boolean;
+    73→}
+    74→
+    75→type AdminSection = 'overview' | 'messages' | 'newsletter' | 'analytics' | 'settings';
+    76→type MessageFilter = 'all' | 'unread' | 'replied';
+    77→
+    78→const QUICK_REPLIES = [
+    79→  'Thank you for reaching out! We will review your query and get back to you within 24 hours.',
+    80→  'For the most up-to-date visa information, please check our website or use the AI Visa Consultant chat.',
+    81→  'We recommend checking the official embassy/consulate website for the latest requirements and appointment availability.',
+    82→  'Your question has been noted. For urgent visa matters, please contact the relevant embassy directly.',
+    83→];
+    84→
+    85→export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDialogProps) {
+    86→  const [isLoggedIn, setIsLoggedIn] = useState(false);
+    87→  const [token, setToken] = useState<string | null>(null);
+    88→  const [username, setUsername] = useState('');
+    89→  const [password, setPassword] = useState('');
+    90→  const [showPassword, setShowPassword] = useState(false);
+    91→  const [loginLoading, setLoginLoading] = useState(false);
+    92→  const [activeSection, setActiveSection] = useState<AdminSection>('overview');
+    93→  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+    94→  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    95→  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+    96→  const abortRef = useRef<AbortController | null>(null);
+    97→  const [maintenanceMode, setMaintenanceMode] = useState(false);
+    98→  const [togglingAi, setTogglingAi] = useState(false);
+    99→  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+   100→  const [refreshingAnalytics, setRefreshingAnalytics] = useState(false);
+   101→
+   102→  // Messages state
+   103→  const [messages, setMessages] = useState<ContactMessage[]>([]);
+   104→  const [messagesTotal, setMessagesTotal] = useState(0);
+   105→  const [messagesUnread, setMessagesUnread] = useState(0);
+   106→  const [messagesPage, setMessagesPage] = useState(1);
+   107→  const [messagesLoading, setMessagesLoading] = useState(false);
+   108→  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+   109→  const [replyText, setReplyText] = useState('');
+   110→  const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
+   111→  const [messageFilter, setMessageFilter] = useState<MessageFilter>('all');
+   112→  const [messageSearch, setMessageSearch] = useState('');
+   113→  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+   114→  const [markingAllRead, setMarkingAllRead] = useState(false);
+   115→  const searchInputRef = useRef<HTMLInputElement>(null);
+   116→
+   117→  // Newsletter state
+   118→  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
+   119→  const [subscribersTotal, setSubscribersTotal] = useState(0);
+   120→  const [subscribersActive, setSubscribersActive] = useState(0);
+   121→  const [subscribersPage, setSubscribersPage] = useState(1);
+   122→  const [subscribersLoading, setSubscribersLoading] = useState(false);
+   123→
+   124→  // WhatsApp number settings
+   125→  const [whatsappNumber, setWhatsappNumber] = useState('');
+   126→  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+   127→
+   128→  useEffect(() => {
+   129→    const savedToken = localStorage.getItem('pakvisa-admin-token');
+   130→    if (savedToken) {
+   131→      setToken(savedToken);
+   132→      setIsLoggedIn(true);
+   133→    }
+   134→  }, []);
+   135→
+   136→  const handleLogin = useCallback(async () => {
+   137→    if (!username.trim() || !password.trim()) {
+   138→      toast.error('Please enter username and password');
+   139→      return;
+   140→    }
+   141→    setLoginLoading(true);
+   142→    try {
+   143→      const res = await fetch('/api/admin', {
+   144→        method: 'POST',
+   145→        headers: { 'Content-Type': 'application/json' },
+   146→        body: JSON.stringify({ username: username.trim(), password }),
+   147→      });
+   148→      const data = await res.json();
+   149→      if (data.success) {
+   150→        localStorage.setItem('pakvisa-admin-token', data.data.token);
+   151→        setToken(data.data.token);
+   152→        setIsLoggedIn(true);
+   153→        toast.success('Logged in successfully');
+   154→      } else {
+   155→        toast.error(data.error || 'Login failed');
+   156→      }
+   157→    } catch {
+   158→      toast.error('Connection error');
+   159→    } finally {
+   160→      setLoginLoading(false);
+   161→    }
+   162→  }, [username, password]);
+   163→
+   164→  const handleLogout = useCallback(() => {
+   165→    localStorage.removeItem('pakvisa-admin-token');
+   166→    setToken(null);
+   167→    setIsLoggedIn(false);
+   168→    setUsername(''); setPassword('');
+   169→    setAnalytics(null);
+   170→    setMessages([]);
+   171→    setSubscribers([]);
+   172→    setActiveSection('overview');
+   173→    toast.success('Logged out');
+   174→  }, []);
+   175→
+   176→  const fetchAnalytics = useCallback(async (showLoading = true) => {
+   177→    if (!token) return;
+   178→    if (abortRef.current) abortRef.current.abort();
+   179→    const controller = new AbortController();
+   180→    abortRef.current = controller;
+   181→    if (showLoading) { setAnalyticsLoading(true); setAnalyticsError(null); }
+   182→    setRefreshingAnalytics(true);
+   183→    try {
+   184→      const timeoutId = setTimeout(() => controller.abort(), 15000);
+   185→      const res = await fetch('/api/admin/analytics', { headers: { 'Authorization': `Bearer ${token}` }, signal: controller.signal });
+   186→      clearTimeout(timeoutId);
+   187→      if (res.status === 401) { setAnalyticsError('Session expired. Please log in again.'); handleLogout(); return; }
+   188→      const data = await res.json();
+   189→      if (data.success) {
+   190→        setAnalytics(data.data);
+   191→        setMaintenanceMode(data.data.settings?.maintenance_mode === 'true');
+   192→        setWhatsappNumber(data.data.settings?.whatsapp_number || '');
+   193→        setAnalyticsError(null);
+   194→      } else {
+   195→        setAnalyticsError(data.error || 'Failed to load analytics');
+   196→        toast.error(data.error || 'Failed to load analytics');
+   197→      }
+   198→    } catch (err) {
+   199→      if (err instanceof DOMException && err.name === 'AbortError') {
+   200→        setAnalyticsError('Request timed out. Please try again.');
+   201→      } else {
+   202→        setAnalyticsError('Network error. Please try again.');
+   203→        toast.error('Failed to fetch analytics');
+   204→      }
+   205→    } finally { setAnalyticsLoading(false); setRefreshingAnalytics(false); abortRef.current = null; }
+   206→  }, [token, handleLogout]);
+   207→
+   208→  const fetchMessages = useCallback(async (page = 1, filter?: MessageFilter, search?: string) => {
+   209→    if (!token) return;
+   210→    setMessagesLoading(true);
+   211→    try {
+   212→      const params = new URLSearchParams({ page: String(page), limit: '20' });
+   213→      if (filter === 'unread') params.set('unread', 'true');
+   214→      if (filter === 'replied') params.set('replied', 'true');
+   215→      if (search) params.set('search', search);
+   216→      const res = await fetch(`/api/admin/messages?${params}`, {
+   217→        headers: { 'Authorization': `Bearer ${token}` },
+   218→      });
+   219→      const data = await res.json();
+   220→      if (data.success) {
+   221→        setMessages(data.data.messages);
+   222→        setMessagesTotal(data.data.total);
+   223→        setMessagesUnread(data.data.unreadCount);
+   224→        setMessagesPage(data.data.page);
+   225→      }
+   226→    } catch { toast.error('Failed to fetch messages'); }
+   227→    finally { setMessagesLoading(false); }
+   228→  }, [token]);
+   229→
+   230→  const fetchSubscribers = useCallback(async (page = 1) => {
+   231→    if (!token) return;
+   232→    setSubscribersLoading(true);
+   233→    try {
+   234→      const res = await fetch(`/api/admin/newsletter?page=${page}&limit=15`, {
+   235→        headers: { 'Authorization': `Bearer ${token}` },
+   236→      });
+   237→      const data = await res.json();
+   238→      if (data.success) {
+   239→        setSubscribers(data.data.subscribers);
+   240→        setSubscribersTotal(data.data.total);
+   241→        setSubscribersActive(data.data.activeCount);
+   242→        setSubscribersPage(data.data.page);
+   243→      }
+   244→    } catch { toast.error('Failed to fetch subscribers'); }
+   245→    finally { setSubscribersLoading(false); }
+   246→  }, [token]);
+   247→
+   248→  // Fetch data on section change
+   249→  useEffect(() => {
+   250→    if (!isLoggedIn || !token) return;
+   251→    if (activeSection === 'overview' || activeSection === 'analytics') {
+   252→      if (!analytics) fetchAnalytics();
+   253→    }
+   254→    if (activeSection === 'overview') {
+   255→      fetchMessages(1);
+   256→      fetchSubscribers();
+   257→    }
+   258→    if (activeSection === 'messages') fetchMessages(1, messageFilter, messageSearch);
+   259→    if (activeSection === 'newsletter') fetchSubscribers();
+   260→    }, [isLoggedIn, token, activeSection]);
+   261→
+   262→  const toggleAiFeature = useCallback(async (enabled: boolean) => {
+   263→    if (!token) return;
+   264→    setTogglingAi(true);
+   265→    try {
+   266→      const res = await fetch('/api/admin/settings', {
+   267→        method: 'PUT',
+   268→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   269→        body: JSON.stringify({ key: 'ai_enabled', value: String(enabled) }),
+   270→      });
+   271→      const data = await res.json();
+   272→      if (data.success) { setAiEnabled(enabled); toast.success(`AI features ${enabled ? 'enabled' : 'disabled'}`); }
+   273→      else toast.error('Failed to update setting');
+   274→    } catch { toast.error('Connection error'); }
+   275→    finally { setTogglingAi(false); }
+   276→  }, [token, setAiEnabled]);
+   277→
+   278→  const toggleMaintenance = useCallback(async (enabled: boolean) => {
+   279→    if (!token) return;
+   280→    setTogglingMaintenance(true);
+   281→    try {
+   282→      const res = await fetch('/api/admin/settings', {
+   283→        method: 'PUT',
+   284→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   285→        body: JSON.stringify({ key: 'maintenance_mode', value: String(enabled) }),
+   286→      });
+   287→      const data = await res.json();
+   288→      if (data.success) { setMaintenanceMode(enabled); toast.success(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`); }
+   289→      else toast.error('Failed to update setting');
+   290→    } catch { toast.error('Connection error'); }
+   291→    finally { setTogglingMaintenance(false); }
+   292→  }, [token]);
+   293→
+   294→  const saveWhatsappNumber = useCallback(async () => {
+   295→    if (!token) return;
+   296→    setSavingWhatsapp(true);
+   297→    try {
+   298→      const res = await fetch('/api/admin/settings', {
+   299→        method: 'PUT',
+   300→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   301→        body: JSON.stringify({ key: 'whatsapp_number', value: whatsappNumber.replace(/[^\d]/g, '') }),
+   302→      });
+   303→      const data = await res.json();
+   304→      if (data.success) toast.success('WhatsApp number saved');
+   305→      else toast.error('Failed to save');
+   306→    } catch { toast.error('Connection error'); }
+   307→    finally { setSavingWhatsapp(false); }
+   308→  }, [token, whatsappNumber]);
+   309→
+   310→  const markMessageRead = async (id: string) => {
+   311→    if (!token) return;
+   312→    try {
+   313→      await fetch('/api/admin/messages', {
+   314→        method: 'PUT',
+   315→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   316→        body: JSON.stringify({ id, action: 'mark_read' }),
+   317→      });
+   318→      setMessages(prev => prev.map(m => m.id === id ? { ...m, isRead: true } : m));
+   319→      setMessagesUnread(prev => Math.max(0, prev - 1));
+   320→    } catch { toast.error('Failed to mark as read'); }
+   321→  };
+   322→
+   323→  const markAllAsRead = async () => {
+   324→    if (!token) return;
+   325→    setMarkingAllRead(true);
+   326→    try {
+   327→      const res = await fetch('/api/admin/messages', {
+   328→        method: 'PUT',
+   329→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   330→        body: JSON.stringify({ action: 'mark_all_read' }),
+   331→      });
+   332→      const data = await res.json();
+   333→      if (data.success) {
+   334→        setMessages(prev => prev.map(m => ({ ...m, isRead: true })));
+   335→        setMessagesUnread(0);
+   336→        toast.success(`${data.data?.updated || 'All'} messages marked as read`);
+   337→      }
+   338→    } catch { toast.error('Failed to mark all as read'); }
+   339→    finally { setMarkingAllRead(false); }
+   340→  };
+   341→
+   342→  const sendMessageReply = async (id: string) => {
+   343→    if (!token || !replyText.trim()) return;
+   344→    try {
+   345→      const res = await fetch('/api/admin/messages', {
+   346→        method: 'PUT',
+   347→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   348→        body: JSON.stringify({ id, action: 'reply', reply: replyText }),
+   349→      });
+   350→      const data = await res.json();
+   351→      if (data.success) {
+   352→        setMessages(prev => prev.map(m => m.id === id ? { ...m, isReplied: true, reply: replyText.trim(), isRead: true } : m));
+   353→        setReplyingTo(null); setReplyText('');
+   354→        toast.success('Reply saved');
+   355→      }
+   356→    } catch { toast.error('Failed to send reply'); }
+   357→  };
+   358→
+   359→  const deleteMessage = async (id: string) => {
+   360→    if (!token) return;
+   361→    try {
+   362→      await fetch('/api/admin/messages', {
+   363→        method: 'PUT',
+   364→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   365→        body: JSON.stringify({ id, action: 'delete' }),
+   366→      });
+   367→      setMessages(prev => prev.filter(m => m.id !== id));
+   368→      setMessagesTotal(prev => prev - 1);
+   369→      setDeleteConfirmId(null);
+   370→      toast.success('Message deleted');
+   371→    } catch { toast.error('Failed to delete'); }
+   372→  };
+   373→
+   374→  const deleteSubscriber = async (id: string) => {
+   375→    if (!token) return;
+   376→    try {
+   377→      await fetch(`/api/admin/newsletter?id=${id}`, {
+   378→        method: 'DELETE',
+   379→        headers: { 'Authorization': `Bearer ${token}` },
+   380→      });
+   381→      setSubscribers(prev => prev.filter(s => s.id !== id));
+   382→      setSubscribersTotal(prev => prev - 1);
+   383→      setSubscribersActive(prev => Math.max(0, prev - 1));
+   384→      toast.success('Subscriber removed');
+   385→    } catch { toast.error('Failed to remove'); }
+   386→  };
+   387→
+   388→  // Export functions
+   389→  const exportMessagesCSV = () => {
+   390→    if (messages.length === 0) { toast.error('No messages to export'); return; }
+   391→    const header = 'Name,Email,Subject,Message,Status,Reply,Date\n';
+   392→    const rows = messages.map(m =>
+   393→      `"${m.name.replace(/"/g, '""')}","${m.email.replace(/"/g, '""')}","${m.subject.replace(/"/g, '""')}","${m.message.replace(/"/g, '""')}","${m.isRead ? (m.isReplied ? 'Replied' : 'Read') : 'Unread'}","${m.reply.replace(/"/g, '""')}","${m.createdAt}"`
+   394→    ).join('\n');
+   395→    downloadCSV(header + rows, 'pakvisa-messages.csv');
+   396→  };
+   397→
+   398→  const exportSubscribersCSV = () => {
+   399→    if (subscribers.length === 0) { toast.error('No subscribers to export'); return; }
+   400→    const header = 'Email,Status,Subscribed Date\n';
+   401→    const rows = subscribers.map(s =>
+   402→      `"${s.email}","${s.isActive ? 'Active' : 'Inactive'}","${s.subscribedAt}"`
+   403→    ).join('\n');
+   404→    downloadCSV(header + rows, 'pakvisa-subscribers.csv');
+   405→  };
+   406→
+   407→  const copySubscriberEmails = () => {
+   408→    if (subscribers.length === 0) { toast.error('No emails to copy'); return; }
+   409→    const emails = subscribers.map(s => s.email).join(', ');
+   410→    navigator.clipboard.writeText(emails);
+   411→    toast.success(`${subscribers.length} emails copied to clipboard`);
+   412→  };
+   413→
+   414→  const downloadCSV = (content: string, filename: string) => {
+   415→    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+   416→    const link = document.createElement('a');
+   417→    link.href = URL.createObjectURL(blob);
+   418→    link.download = filename;
+   419→    link.click();
+   420→    URL.revokeObjectURL(link.href);
+   421→    toast.success(`Exported ${filename}`);
+   422→  };
+   423→
+   424→  const handleMessageFilterChange = (filter: MessageFilter) => {
+   425→    setMessageFilter(filter);
+   426→    setMessagesPage(1);
+   427→    fetchMessages(1, filter, messageSearch);
+   428→  };
+   429→
+   430→  const handleMessageSearch = (search: string) => {
+   431→    setMessageSearch(search);
+   432→    setMessagesPage(1);
+   433→    // Debounce - fetch immediately for simplicity
+   434→    if (search.length > 0 && search.length < 2) return;
+   435→    fetchMessages(1, messageFilter, search);
+   436→  };
+   437→
+   438→  const navItems: { key: AdminSection; label: string; icon: React.ReactNode; badge?: number }[] = [
+   439→    { key: 'overview', label: 'Overview', icon: <TrendingUp className="w-4 h-4" /> },
+   440→    { key: 'messages', label: 'Messages', icon: <Inbox className="w-4 h-4" />, badge: messagesUnread || undefined },
+   441→    { key: 'newsletter', label: 'Newsletter', icon: <Mail className="w-4 h-4" /> },
+   442→    { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+   443→    { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
+   444→  ];
+   445→
+   446→  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+   447→  const timeAgo = (d: string) => {
+   448→    const diff = Date.now() - new Date(d).getTime();
+   449→    const mins = Math.floor(diff / 60000);
+   450→    if (mins < 1) return 'Just now';
+   451→    if (mins < 60) return `${mins}m ago`;
+   452→    const hours = Math.floor(mins / 60);
+   453→    if (hours < 24) return `${hours}h ago`;
+   454→    return `${Math.floor(hours / 24)}d ago`;
+   455→  };
+   456→
+   457→  // Daily sparkline data for overview
+   458→  const sparklineData = useMemo(() => analytics?.messageStats?.dailyMessages || [], [analytics]);
+   459→  const sparklineMax = useMemo(() => Math.max(1, ...sparklineData.map(d => d.count)), [sparklineData]);
+   460→
+   461→  // ===== RENDER =====
+   462→  if (!open) return null;
+   463→
+   464→  return (
+   465→    <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+   466→      {/* Header */}
+   467→      <div className="flex items-center justify-between p-4 sm:p-5 border-b shrink-0">
+   468→        <div className="flex items-center gap-3">
+   469→          <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
+   470→            <Shield className="w-4.5 h-4.5 text-white" />
+   471→          </div>
+   472→          <div>
+   473→            <h2 className="text-base sm:text-lg font-semibold leading-none">Admin Dashboard</h2>
+   474→            <p className="text-xs text-muted-foreground hidden sm:block mt-1">Manage your PakVisa Advisor</p>
+   475→          </div>
+   476→        </div>
+   477→        <div className="flex items-center gap-2">
+   478→          {isLoggedIn && (
+   479→            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
+   480→              <LogOut className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Logout</span>
+   481→            </Button>
+   482→          )}
+   483→          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+   484→            <XIcon className="w-5 h-5" />
+   485→          </Button>
+   486→        </div>
+   487→      </div>
+   488→
+   489→      {!isLoggedIn ? (
+   490→        <div className="p-8 flex-1 flex items-center justify-center">
+   491→            <Card className="w-full max-w-sm border-emerald-200 dark:border-emerald-800">
+   492→              <CardHeader className="text-center">
+   493→                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-3">
+   494→                  <Lock className="w-8 h-8 text-emerald-600" />
+   495→                </div>
+   496→                <CardTitle className="text-lg">Admin Login</CardTitle>
+   497→                <CardDescription>Enter credentials to access dashboard</CardDescription>
+   498→              </CardHeader>
+   499→              <CardContent className="space-y-4">
+   500→                <div className="space-y-2">
+   501→                  <label className="text-sm font-medium" htmlFor="admin-username">Username</label>
+   502→                  <Input id="admin-username" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} autoComplete="username" />
+   503→                </div>
+   504→                <div className="space-y-2">
+   505→                  <label className="text-sm font-medium" htmlFor="admin-password">Password</label>
+   506→                  <div className="relative">
+   507→                    <Input id="admin-password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} autoComplete="current-password" />
+   508→                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+   509→                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   510→                    </Button>
+   511→                  </div>
+   512→                </div>
+   513→                <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={handleLogin} disabled={loginLoading}>
+   514→                  {loginLoading ? (<><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Logging in...</>) : (<><Lock className="w-4 h-4 mr-2" />Sign In</>)}
+   515→                </Button>
+   516→              </CardContent>
+   517→            </Card>
+   518→          </div>
+   519→        ) : (
+   520→          <div className="flex flex-1 overflow-hidden">
+   521→            {/* Sidebar Navigation */}
+   522→            <div className="w-48 lg:w-56 border-r bg-muted/20 p-3 space-y-1 hidden md:flex flex-col shrink-0">
+   523→              {navItems.map((item) => (
+   524→                <button
+   525→                  key={item.key}
+   526→                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors relative ${
+   527→                    activeSection === item.key
+   528→                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium'
+   529→                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+   530→                  }`}
+   531→                  onClick={() => setActiveSection(item.key)}
+   532→                >
+   533→                  {item.icon}
+   534→                  <span>{item.label}</span>
+   535→                  {item.badge ? (
+   536→                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1">
+   537→                      {item.badge > 99 ? '99+' : item.badge}
+   538→                    </span>
+   539→                  ) : null}
+   540→                </button>
+   541→              ))}
+   542→            </div>
+   543→
+   544→            {/* Mobile Nav */}
+   545→            <div className="md:hidden p-3 border-b flex gap-1.5 overflow-x-auto">
+   546→              {navItems.map((item) => (
+   547→                <Button
+   548→                  key={item.key}
+   549→                  variant={activeSection === item.key ? 'default' : 'outline'}
+   550→                  size="sm"
+   551→                  className={`shrink-0 gap-1.5 text-xs ${activeSection === item.key ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+   552→                  onClick={() => setActiveSection(item.key)}
+   553→                >
+   554→                  {item.icon}
+   555→                  {item.label}
+   556→                  {item.badge ? <span className="bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{item.badge}</span> : null}
+   557→                </Button>
+   558→              ))}
+   559→            </div>
+   560→
+   561→            {/* Content Area */}
+   562→            <ScrollArea className="flex-1">
+   563→              <div className="p-5 space-y-5">
+   564→                {/* ====== OVERVIEW TAB ====== */}
+   565→                {activeSection === 'overview' && (
+   566→                  <>
+   567→                    {/* Quick Stats Row - 6 cards */}
+   568→                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+   569→                      <StatCard icon={<Inbox className="w-4 h-4" />} label="Unread" value={analytics?.messageStats.unread ?? '—'} color="red" />
+   570→                      <StatCard icon={<MessageSquare className="w-4 h-4" />} label="This Week" value={analytics?.messageStats.thisWeek ?? '—'} color="orange" />
+   571→                      <StatCard icon={<CheckCheck className="w-4 h-4" />} label="Response Rate" value={analytics?.messageStats.responseRate != null ? `${analytics.messageStats.responseRate}%` : '—'} color="blue" />
+   572→                      <StatCard icon={<Mail className="w-4 h-4" />} label="Subscribers" value={analytics?.subscriberStats.active ?? '—'} color="violet" />
+   573→                      <StatCard icon={<Globe className="w-4 h-4" />} label="Countries" value={analytics?.countries.total ?? '—'} color="emerald" />
+   574→                      <StatCard icon={<Zap className="w-4 h-4" />} label="AI" value={aiEnabled ? 'Online' : 'Off'} color={aiEnabled ? 'green' : 'amber'} />
+   575→                    </div>
+   576→
+   577→                    {/* Daily Messages Sparkline */}
+   578→                    {analytics?.messageStats && (
+   579→                      <Card>
+   580→                        <CardHeader className="pb-2">
+   581→                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   582→                            <Activity className="w-4 h-4 text-emerald-500" /> Messages — Last 7 Days
+   583→                          </CardTitle>
+   584→                        </CardHeader>
+   585→                        <CardContent>
+   586→                          <div className="flex items-end gap-2 h-20">
+   587→                            {sparklineData.map((d, i) => {
+   588→                              const height = sparklineMax > 0 ? (d.count / sparklineMax) * 100 : 0;
+   589→                              const dayLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+   590→                              return (
+   591→                                <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+   592→                                  <span className="text-[10px] font-medium text-muted-foreground">{d.count}</span>
+   593→                                  <div className="w-full max-w-8 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max(4, height)}%`, backgroundColor: i === sparklineData.length - 1 ? '#059669' : '#a7f3d0' }} />
+   594→                                  <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
+   595→                                </div>
+   596→                              );
+   597→                            })}
+   598→                          </div>
+   599→                        </CardContent>
+   600→                      </Card>
+   601→                    )}
+   602→
+   603→                    {/* Two Column */}
+   604→                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+   605→                      {/* Recent Messages */}
+   606→                      <Card>
+   607→                        <CardHeader className="pb-3">
+   608→                          <div className="flex items-center justify-between">
+   609→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   610→                              <MessageSquare className="w-4 h-4 text-emerald-500" /> Recent Messages
+   611→                            </CardTitle>
+   612→                            <Button variant="ghost" size="sm" className="text-xs text-emerald-600" onClick={() => setActiveSection('messages')}>
+   613→                              View All →
+   614→                            </Button>
+   615→                          </div>
+   616→                        </CardHeader>
+   617→                        <CardContent>
+   618→                          {messagesLoading ? (
+   619→                            <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   620→                          ) : messages.length === 0 ? (
+   621→                            <p className="text-sm text-muted-foreground text-center py-6">No messages yet</p>
+   622→                          ) : (
+   623→                            <div className="space-y-2">
+   624→                              {messages.slice(0, 5).map((m) => (
+   625→                                <div key={m.id} className={`flex items-start gap-3 p-2.5 rounded-lg transition-colors ${!m.isRead ? 'bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30' : 'hover:bg-muted/50'}`}>
+   626→                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${!m.isRead ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+   627→                                    {m.name.charAt(0).toUpperCase()}
+   628→                                  </div>
+   629→                                  <div className="min-w-0 flex-1">
+   630→                                    <div className="flex items-center gap-2">
+   631→                                      <span className={`text-sm ${!m.isRead ? 'font-semibold' : 'font-medium'}`}>{m.name}</span>
+   632→                                      {!m.isRead && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+   633→                                      {m.isReplied && <Check className="w-3 h-3 text-blue-500" />}
+   634→                                      <span className="text-xs text-muted-foreground ml-auto shrink-0">{timeAgo(m.createdAt)}</span>
+   635→                                    </div>
+   636→                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{m.subject || m.message}</p>
+   637→                                  </div>
+   638→                                </div>
+   639→                              ))}
+   640→                            </div>
+   641→                          )}
+   642→                        </CardContent>
+   643→                      </Card>
+   644→
+   645→                      {/* Visa Breakdown + System Health */}
+   646→                      <div className="space-y-5">
+   647→                        <Card>
+   648→                          <CardHeader className="pb-3">
+   649→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   650→                              <FileCheck className="w-4 h-4 text-emerald-500" /> Visa Breakdown
+   651→                            </CardTitle>
+   652→                          </CardHeader>
+   653→                          <CardContent>
+   654→                            {analytics ? (
+   655→                              <div className="grid grid-cols-2 gap-3">
+   656→                                <MiniStat label="Visa Free" value={analytics.countries.visaFree} color="text-green-600" />
+   657→                                <MiniStat label="On Arrival" value={analytics.countries.visaOnArrival} color="text-orange-600" />
+   658→                                <MiniStat label="e-Visa/ETA" value={analytics.countries.etaAvailable} color="text-blue-600" />
+   659→                                <MiniStat label="Regular Visa" value={analytics.visaCategories.regularVisa} color="text-red-600" />
+   660→                              </div>
+   661→                            ) : <div className="flex justify-center py-4"><div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>}
+   662→                          </CardContent>
+   663→                        </Card>
+   664→
+   665→                        <Card>
+   666→                          <CardHeader className="pb-3">
+   667→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   668→                              <Activity className="w-4 h-4 text-emerald-500" /> System Health
+   669→                            </CardTitle>
+   670→                          </CardHeader>
+   671→                          <CardContent className="space-y-3">
+   672→                            <div className="flex items-center justify-between text-sm">
+   673→                              <span className="text-muted-foreground">AI Engine</span>
+   674→                              <Badge variant={aiEnabled ? 'default' : 'secondary'} className={aiEnabled ? 'bg-green-600' : ''}>{aiEnabled ? 'Online' : 'Offline'}</Badge>
+   675→                            </div>
+   676→                            <div className="flex items-center justify-between text-sm">
+   677→                              <span className="text-muted-foreground">Maintenance</span>
+   678→                              <Badge variant={maintenanceMode ? 'destructive' : 'secondary'}>{maintenanceMode ? 'Active' : 'Normal'}</Badge>
+   679→                            </div>
+   680→                            <div className="flex items-center justify-between text-sm">
+   681→                              <span className="text-muted-foreground">Data Records</span>
+   682→                              <span className="font-medium">{analytics?.requirements ?? '—'} reqs, {analytics?.costProfiles ?? '—'} costs</span>
+   683→                            </div>
+   684→                            {analytics?.dataFreshness && (
+   685→                              <div className="flex items-center justify-between text-sm">
+   686→                                <span className="text-muted-foreground">Last Updated</span>
+   687→                                <span className="text-xs">{timeAgo(analytics.dataFreshness)}</span>
+   688→                              </div>
+   689→                            )}
+   690→                          </CardContent>
+   691→                        </Card>
+   692→                      </div>
+   693→                    </div>
+   694→                  </>
+   695→                )}
+   696→
+   697→                {/* ====== MESSAGES TAB ====== */}
+   698→                {activeSection === 'messages' && (
+   699→                  <>
+   700→                    {/* Header with actions */}
+   701→                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+   702→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   703→                        <Inbox className="w-5 h-5 text-emerald-500" />
+   704→                        Messages
+   705→                        {messagesUnread > 0 && <Badge className="bg-red-500">{messagesUnread} unread</Badge>}
+   706→                        <Badge variant="secondary" className="text-xs">{messagesTotal} total</Badge>
+   707→                      </h3>
+   708→                      <div className="flex gap-2 flex-wrap">
+   709→                        {messagesUnread > 0 && (
+   710→                          <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={markingAllRead}>
+   711→                            <CheckCheck className={`w-3.5 h-3.5 mr-1 ${markingAllRead ? 'animate-pulse' : ''}`} /> Mark All Read
+   712→                          </Button>
+   713→                        )}
+   714→                        <Button variant="outline" size="sm" onClick={exportMessagesCSV} disabled={messages.length === 0}>
+   715→                          <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+   716→                        </Button>
+   717→                        <Button variant="outline" size="sm" onClick={() => fetchMessages(messagesPage, messageFilter, messageSearch)} disabled={messagesLoading}>
+   718→                          <RefreshCw className={`w-3.5 h-3.5 mr-1 ${messagesLoading ? 'animate-spin' : ''}`} /> Refresh
+   719→                        </Button>
+   720→                      </div>
+   721→                    </div>
+   722→
+   723→                    {/* Filter Tabs + Search */}
+   724→                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+   725→                      <div className="flex gap-1 bg-muted p-1 rounded-lg">
+   726→                        {(['all', 'unread', 'replied'] as MessageFilter[]).map((f) => (
+   727→                          <button
+   728→                            key={f}
+   729→                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+   730→                              messageFilter === f ? 'bg-white dark:bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+   731→                            }`}
+   732→                            onClick={() => handleMessageFilterChange(f)}
+   733→                          >
+   734→                            {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Replied'}
+   735→                          </button>
+   736→                        ))}
+   737→                      </div>
+   738→                      <div className="relative flex-1 w-full sm:max-w-xs">
+   739→                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+   740→                        <Input
+   741→                          ref={searchInputRef}
+   742→                          placeholder="Search name, email, message..."
+   743→                          value={messageSearch}
+   744→                          onChange={(e) => handleMessageSearch(e.target.value)}
+   745→                          className="pl-8 h-8 text-sm"
+   746→                        />
+   747→                        {messageSearch && (
+   748→                          <button
+   749→                            className="absolute right-2 top-1/2 -translate-y-1/2"
+   750→                            onClick={() => { setMessageSearch(''); fetchMessages(1, messageFilter, ''); }}
+   751→                          >
+   752→                            <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+   753→                          </button>
+   754→                        )}
+   755→                      </div>
+   756→                    </div>
+   757→
+   758→                    {messagesLoading && messages.length === 0 ? (
+   759→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   760→                    ) : messages.length === 0 ? (
+   761→                      <div className="text-center py-16 text-muted-foreground">
+   762→                        <Inbox className="w-12 h-12 mx-auto mb-3 opacity-30" />
+   763→                        <p className="font-medium">{messageSearch ? 'No messages match your search' : messageFilter !== 'all' ? `No ${messageFilter} messages` : 'No messages yet'}</p>
+   764→                        <p className="text-sm">{messageSearch ? 'Try a different search term' : 'Messages from the Contact Us form will appear here.'}</p>
+   765→                      </div>
+   766→                    ) : (
+   767→                      <div className="space-y-3">
+   768→                        {messages.map((m) => (
+   769→                          <Card key={m.id} className={`transition-colors ${!m.isRead ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-900/10' : ''}`}>
+   770→                            <CardContent className="p-4">
+   771→                              <div className="flex items-start justify-between gap-3">
+   772→                                <div className="flex items-start gap-3 min-w-0 flex-1">
+   773→                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${!m.isRead ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+   774→                                    {m.name.charAt(0).toUpperCase()}
+   775→                                  </div>
+   776→                                  <div className="min-w-0 flex-1">
+   777→                                    <div className="flex items-center gap-2 flex-wrap">
+   778→                                      <span className={`font-semibold ${!m.isRead ? '' : 'text-muted-foreground'}`}>{m.name}</span>
+   779→                                      <a href={`mailto:${m.email}`} className="text-xs text-emerald-600 hover:underline flex items-center gap-0.5">
+   780→                                        <Mail className="w-3 h-3" />{m.email}
+   781→                                      </a>
+   782→                                      {!m.isRead && <Badge variant="default" className="bg-emerald-600 text-[10px] px-1.5 py-0">New</Badge>}
+   783→                                      {m.isReplied && <Badge variant="secondary" className="text-[10px] px-1.5 py-0"><Check className="w-3 h-3 mr-0.5" />Replied</Badge>}
+   784→                                    </div>
+   785→                                    {m.subject && <p className="text-sm font-medium mt-1">{m.subject}</p>}
+   786→                                    <p className={`text-sm text-muted-foreground mt-1 whitespace-pre-wrap ${expandedMessage === m.id ? '' : 'line-clamp-2'}`}>{m.message}</p>
+   787→                                    {m.message.length > 150 && (
+   788→                                      <button onClick={() => setExpandedMessage(expandedMessage === m.id ? null : m.id)} className="text-xs text-emerald-600 mt-1 hover:underline">
+   789→                                        {expandedMessage === m.id ? 'Show less' : 'Read more'}
+   790→                                      </button>
+   791→                                    )}
+   792→                                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+   793→                                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(m.createdAt)}</span>
+   794→                                    </div>
+   795→
+   796→                                    {/* Reply saved display */}
+   797→                                    {m.reply && (
+   798→                                      <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+   799→                                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1"><Reply className="w-3 h-3" /> Your Reply:</p>
+   800→                                        <p className="text-sm text-blue-800 dark:text-blue-300">{m.reply}</p>
+   801→                                      </div>
+   802→                                    )}
+   803→
+   804→                                    {/* Reply box */}
+   805→                                    {replyingTo === m.id && (
+   806→                                      <div className="mt-3 space-y-2">
+   807→                                        {/* Quick reply suggestions */}
+   808→                                        <div className="flex flex-wrap gap-1.5">
+   809→                                          <span className="text-[10px] text-muted-foreground leading-7">Quick:</span>
+   810→                                          {QUICK_REPLIES.slice(0, 3).map((qr, i) => (
+   811→                                            <button
+   812→                                              key={i}
+   813→                                              className="text-[10px] px-2 py-0.5 rounded-full border hover:bg-muted transition-colors truncate max-w-[200px]"
+   814→                                              onClick={() => setReplyText(qr)}
+   815→                                              title={qr}
+   816→                                            >
+   817→                                              {qr.slice(0, 40)}...
+   818→                                            </button>
+   819→                                          ))}
+   820→                                        </div>
+   821→                                        <Textarea placeholder="Write your reply... (saved for reference)" value={replyText} onChange={(e) => setReplyText(e.target.value)} rows={2} className="text-sm" />
+   822→                                        <div className="flex gap-2">
+   823→                                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => sendMessageReply(m.id)} disabled={!replyText.trim()}>
+   824→                                            <Send className="w-3.5 h-3.5 mr-1" /> Save Reply
+   825→                                          </Button>
+   826→                                          <Button size="sm" variant="ghost" onClick={() => { setReplyingTo(null); setReplyText(''); }}>Cancel</Button>
+   827→                                        </div>
+   828→                                      </div>
+   829→                                    )}
+   830→                                  </div>
+   831→                                </div>
+   832→                                <div className="flex flex-col gap-1 shrink-0">
+   833→                                  {!m.isRead && (
+   834→                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => markMessageRead(m.id)} title="Mark as read">
+   835→                                      <Eye className="w-4 h-4" />
+   836→                                    </Button>
+   837→                                  )}
+   838→                                  {!m.isReplied && (
+   839→                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReplyingTo(replyingTo === m.id ? null : m.id)} title="Reply">
+   840→                                      <Reply className="w-4 h-4" />
+   841→                                    </Button>
+   842→                                  )}
+   843→                                  {deleteConfirmId === m.id ? (
+   844→                                    <div className="flex flex-col gap-0.5">
+   845→                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 bg-red-50 dark:bg-red-900/20" onClick={() => deleteMessage(m.id)} title="Confirm delete">
+   846→                                        <Check className="w-4 h-4" />
+   847→                                      </Button>
+   848→                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDeleteConfirmId(null)} title="Cancel">
+   849→                                        <X className="w-3 h-3" />
+   850→                                      </Button>
+   851→                                    </div>
+   852→                                  ) : (
+   853→                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirmId(m.id)} title="Delete">
+   854→                                      <Trash2 className="w-4 h-4" />
+   855→                                    </Button>
+   856→                                  )}
+   857→                                </div>
+   858→                              </div>
+   859→                            </CardContent>
+   860→                          </Card>
+   861→                        ))}
+   862→                        {messagesTotal > 20 && (
+   863→                          <div className="flex items-center justify-center gap-2 pt-2">
+   864→                            <Button variant="outline" size="sm" disabled={messagesPage <= 1} onClick={() => fetchMessages(messagesPage - 1, messageFilter, messageSearch)}><ChevronLeft className="w-4 h-4" /></Button>
+   865→                            <span className="text-sm text-muted-foreground">Page {messagesPage} of {Math.ceil(messagesTotal / 20)}</span>
+   866→                            <Button variant="outline" size="sm" disabled={messagesPage >= Math.ceil(messagesTotal / 20)} onClick={() => fetchMessages(messagesPage + 1, messageFilter, messageSearch)}><ChevronRight className="w-4 h-4" /></Button>
+   867→                          </div>
+   868→                        )}
+   869→                      </div>
+   870→                    )}
+   871→                  </>
+   872→                )}
+   873→
+   874→                {/* ====== NEWSLETTER TAB ====== */}
+   875→                {activeSection === 'newsletter' && (
+   876→                  <>
+   877→                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+   878→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   879→                        <Mail className="w-5 h-5 text-emerald-500" />
+   880→                        Newsletter Subscribers
+   881→                      </h3>
+   882→                      <div className="flex items-center gap-2 flex-wrap">
+   883→                        <Button variant="outline" size="sm" onClick={copySubscriberEmails} disabled={subscribers.length === 0}>
+   884→                          <Copy className="w-3.5 h-3.5 mr-1" /> Copy Emails
+   885→                        </Button>
+   886→                        <Button variant="outline" size="sm" onClick={exportSubscribersCSV} disabled={subscribers.length === 0}>
+   887→                          <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+   888→                        </Button>
+   889→                        <Button variant="outline" size="sm" onClick={() => fetchSubscribers(subscribersPage)} disabled={subscribersLoading}>
+   890→                          <RefreshCw className={`w-3.5 h-3.5 mr-1 ${subscribersLoading ? 'animate-spin' : ''}`} /> Refresh
+   891→                        </Button>
+   892→                      </div>
+   893→                    </div>
+   894→
+   895→                    {/* Stats Row */}
+   896→                    <div className="grid grid-cols-3 gap-3">
+   897→                      <Card className="p-4 text-center">
+   898→                        <div className="text-2xl font-bold text-emerald-600">{analytics?.subscriberStats.total ?? subscribersTotal}</div>
+   899→                        <div className="text-xs text-muted-foreground mt-1">Total</div>
+   900→                      </Card>
+   901→                      <Card className="p-4 text-center">
+   902→                        <div className="text-2xl font-bold text-green-600">{analytics?.subscriberStats.active ?? subscribersActive}</div>
+   903→                        <div className="text-xs text-muted-foreground mt-1">Active</div>
+   904→                      </Card>
+   905→                      <Card className="p-4 text-center">
+   906→                        <div className="text-2xl font-bold text-orange-500">{analytics?.subscriberStats.thisWeek ?? 0}</div>
+   907→                        <div className="text-xs text-muted-foreground mt-1">This Week</div>
+   908→                      </Card>
+   909→                    </div>
+   910→
+   911→                    {subscribersLoading && subscribers.length === 0 ? (
+   912→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   913→                    ) : subscribers.length === 0 ? (
+   914→                      <div className="text-center py-16 text-muted-foreground">
+   915→                        <Mail className="w-12 h-12 mx-auto mb-3 opacity-30" />
+   916→                        <p className="font-medium">No subscribers yet</p>
+   917→                        <p className="text-sm">Newsletter signups will appear here.</p>
+   918→                      </div>
+   919→                    ) : (
+   920→                      <Card>
+   921→                        <CardContent className="p-0">
+   922→                          <div className="overflow-x-auto">
+   923→                            <table className="w-full text-sm">
+   924→                              <thead>
+   925→                                <tr className="border-b bg-muted/30">
+   926→                                  <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
+   927→                                  <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Subscribed</th>
+   928→                                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+   929→                                  <th className="p-3 w-10"></th>
+   930→                                </tr>
+   931→                              </thead>
+   932→                              <tbody>
+   933→                                {subscribers.map((s) => (
+   934→                                  <tr key={s.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+   935→                                    <td className="p-3 font-medium">{s.email}</td>
+   936→                                    <td className="p-3 text-muted-foreground hidden sm:table-cell">{formatDate(s.subscribedAt)}</td>
+   937→                                    <td className="p-3">
+   938→                                      <Badge variant={s.isActive ? 'default' : 'secondary'} className={s.isActive ? 'bg-green-600' : ''}>{s.isActive ? 'Active' : 'Inactive'}</Badge>
+   939→                                    </td>
+   940→                                    <td className="p-3">
+   941→                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => deleteSubscriber(s.id)}>
+   942→                                        <Trash2 className="w-3.5 h-3.5" />
+   943→                                      </Button>
+   944→                                    </td>
+   945→                                  </tr>
+   946→                                ))}
+   947→                              </tbody>
+   948→                            </table>
+   949→                          </div>
+   950→                        </CardContent>
+   951→                      </Card>
+   952→                    )}
+   953→                    {subscribersTotal > 15 && (
+   954→                      <div className="flex items-center justify-center gap-2">
+   955→                        <Button variant="outline" size="sm" disabled={subscribersPage <= 1} onClick={() => fetchSubscribers(subscribersPage - 1)}><ChevronLeft className="w-4 h-4" /></Button>
+   956→                        <span className="text-sm text-muted-foreground">Page {subscribersPage} of {Math.ceil(subscribersTotal / 15)}</span>
+   957→                        <Button variant="outline" size="sm" disabled={subscribersPage >= Math.ceil(subscribersTotal / 15)} onClick={() => fetchSubscribers(subscribersPage + 1)}><ChevronRight className="w-4 h-4" /></Button>
+   958→                      </div>
+   959→                    )}
+   960→                  </>
+   961→                )}
+   962→
+   963→                {/* ====== ANALYTICS TAB ====== */}
+   964→                {activeSection === 'analytics' && (
+   965→                  <>
+   966→                    <div className="flex items-center justify-between">
+   967→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   968→                        <BarChart3 className="w-5 h-5 text-emerald-500" /> Detailed Analytics
+   969→                      </h3>
+   970→                      <Button variant="outline" size="sm" onClick={() => fetchAnalytics(true)} disabled={refreshingAnalytics}>
+   971→                        <RefreshCw className={`w-3.5 h-3.5 mr-1 ${refreshingAnalytics ? 'animate-spin' : ''}`} /> Refresh
+   972→                      </Button>
+   973→                    </div>
+   974→
+   975→                    {analyticsLoading && !analytics ? (
+   976→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   977→                    ) : analytics ? (
+   978→                      <div className="space-y-5">
+   979→                        <Card>
+   980→                          <CardHeader className="pb-3">
+   981→                            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Country Database</CardTitle>
+   982→                          </CardHeader>
+   983→                          <CardContent>
+   984→                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   985→                              <MiniStat label="Total Countries" value={analytics.countries.total} />
+   986→                              <MiniStat label="Visa Free" value={analytics.countries.visaFree} color="text-green-600" />
+   987→                              <MiniStat label="Visa on Arrival" value={analytics.countries.visaOnArrival} color="text-orange-600" />
+   988→                              <MiniStat label="ETA Available" value={analytics.countries.etaAvailable} color="text-blue-600" />
+   989→                            </div>
+   990→                          </CardContent>
+   991→                        </Card>
+   992→
+   993→                        <Card>
+   994→                          <CardHeader className="pb-3">
+   995→                            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Continent Distribution</CardTitle>
+   996→                          </CardHeader>
+   997→                          <CardContent>
+   998→                            <div className="space-y-2.5">
+   999→                              {analytics.continents.map((c) => {
+  1000→                                const pct = analytics.countries.total > 0 ? (c.count / analytics.countries.total) * 100 : 0;
+  1001→                                return (
+  1002→                                  <div key={c.continent} className="flex items-center gap-3">
+  1003→                                    <span className="text-sm text-muted-foreground w-28 truncate">{c.continent}</span>
+  1004→                                    <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+  1005→                                      <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+  1006→                                    </div>
+  1007→                                    <span className="text-sm font-medium w-16 text-right">{c.count} <span className="text-xs text-muted-foreground">({Math.round(pct)}%)</span></span>
+  1008→                                  </div>
+  1009→                                );
+  1010→                              })}
+  1011→                            </div>
+  1012→                          </CardContent>
+  1013→                        </Card>
+  1014→
+  1015→                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1016→                          <Card>
+  1017→                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Database className="w-4 h-4 text-emerald-500" /> Data Records</CardTitle></CardHeader>
+  1018→                            <CardContent className="space-y-2">
+  1019→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Requirements</span><span className="font-medium">{analytics.requirements}</span></div>
+  1020→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Cost Profiles</span><span className="font-medium">{analytics.costProfiles}</span></div>
+  1021→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">User Profiles</span><span className="font-medium">{analytics.users}</span></div>
+  1022→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sessions</span><span className="font-medium">{analytics.sessions}</span></div>
+  1023→                            </CardContent>
+  1024→                          </Card>
+  1025→                          <Card>
+  1026→                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-500" /> Contact Stats</CardTitle></CardHeader>
+  1027→                            <CardContent className="space-y-2">
+  1028→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total Messages</span><span className="font-medium">{analytics.messageStats.total}</span></div>
+  1029→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">This Week</span><span className="font-medium">{analytics.messageStats.thisWeek}</span></div>
+  1030→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Response Rate</span><span className="font-medium">{analytics.messageStats.responseRate}%</span></div>
+  1031→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Unread</span><span className="font-medium text-red-500">{analytics.messageStats.unread}</span></div>
+  1032→                            </CardContent>
+  1033→                          </Card>
+  1034→                        </div>
+  1035→
+  1036→                        <Card>
+  1037→                          <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-500" /> Data Freshness</CardTitle></CardHeader>
+  1038→                          <CardContent>
+  1039→                            {analytics.dataFreshness ? (
+  1040→                              <div className="space-y-2">
+  1041→                                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-sm">Last updated:</span></div>
+  1042→                                <p className="text-sm font-medium">{new Date(analytics.dataFreshness).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+  1043→                                <p className="text-xs text-muted-foreground">{Math.round((Date.now() - new Date(analytics.dataFreshness).getTime()) / (1000 * 60 * 60 * 24))} days ago</p>
+  1044→                              </div>
+  1045→                            ) : <p className="text-sm text-muted-foreground">No data fetch recorded</p>}
+  1046→                          </CardContent>
+  1047→                        </Card>
+  1048→                      </div>
+  1049→                    ) : (
+  1050→                      <div className="text-center py-8 text-muted-foreground">
+  1051→                        <p>Failed to load analytics</p>
+  1052→                        <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchAnalytics(true)}>Try Again</Button>
+  1053→                      </div>
+  1054→                    )}
+  1055→                  </>
+  1056→                )}
+  1057→
+  1058→                {/* ====== SETTINGS TAB ====== */}
+  1059→                {activeSection === 'settings' && (
+  1060→                  <div className="space-y-5">
+  1061→                    <h3 className="text-lg font-semibold flex items-center gap-2"><Settings className="w-5 h-5 text-emerald-500" /> Feature Toggles</h3>
+  1062→
+  1063→                    <Card className="hover:shadow-md transition-shadow">
+  1064→                      <CardHeader className="pb-3">
+  1065→                        <div className="flex items-center justify-between">
+  1066→                          <div className="flex items-center gap-3">
+  1067→                            <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><Zap className="w-5 h-5 text-emerald-600" /></div>
+  1068→                            <div><CardTitle className="text-base">AI Features</CardTitle><CardDescription>Enable or disable AI Chat and Document Analysis</CardDescription></div>
+  1069→                          </div>
+  1070→                          <Switch checked={aiEnabled} onCheckedChange={toggleAiFeature} disabled={togglingAi} className="data-[state=checked]:bg-emerald-600" />
+  1071→                        </div>
+  1072→                      </CardHeader>
+  1073→                      <CardContent>
+  1074→                        <div className="flex items-center gap-2"><Badge variant={aiEnabled ? 'default' : 'secondary'} className={aiEnabled ? 'bg-emerald-600' : ''}>{aiEnabled ? 'Enabled' : 'Disabled'}</Badge>{togglingAi && <span className="text-xs text-muted-foreground">Updating...</span>}</div>
+  1075→                      </CardContent>
+  1076→                    </Card>
+  1077→
+  1078→                    <Card className="hover:shadow-md transition-shadow">
+  1079→                      <CardHeader className="pb-3">
+  1080→                        <div className="flex items-center justify-between">
+  1081→                          <div className="flex items-center gap-3">
+  1082→                            <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center"><Server className="w-5 h-5 text-orange-600" /></div>
+  1083→                            <div><CardTitle className="text-base">Maintenance Mode</CardTitle><CardDescription>Show maintenance banner to all users</CardDescription></div>
+  1084→                          </div>
+  1085→                          <Switch checked={maintenanceMode} onCheckedChange={toggleMaintenance} disabled={togglingMaintenance} className="data-[state=checked]:bg-orange-600" />
+  1086→                        </div>
+  1087→                      </CardHeader>
+  1088→                      <CardContent>
+  1089→                        <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+  1090→                          <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+  1091→                          <p className="text-xs text-muted-foreground">When enabled, a maintenance banner will be shown to all users. Use during updates or data refreshes.</p>
+  1092→                        </div>
+  1093→                        <div className="flex items-center gap-2 mt-2"><Badge variant={maintenanceMode ? 'destructive' : 'secondary'}>{maintenanceMode ? 'Active' : 'Normal'}</Badge>{togglingMaintenance && <span className="text-xs text-muted-foreground">Updating...</span>}</div>
+  1094→                      </CardContent>
+  1095→                    </Card>
+  1096→
+  1097→                    {/* WhatsApp Number - Inline Editor */}
+  1098→                    <Card className="hover:shadow-md transition-shadow">
+  1099→                      <CardHeader className="pb-3">
+  1100→                        <div className="flex items-center gap-3">
+  1101→                          <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center"><MessageCircle className="w-5 h-5 text-green-600" /></div>
+  1102→                          <div><CardTitle className="text-base">WhatsApp Number</CardTitle><CardDescription>Messages only — no calls allowed</CardDescription></div>
+  1103→                        </div>
+  1104→                      </CardHeader>
+  1105→                      <CardContent>
+  1106→                        <div className="flex gap-2">
+  1107→                          <div className="relative flex-1">
+  1108→                            <Hash className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+  1109→                            <Input
+  1110→                              value={whatsappNumber}
+  1111→                              onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^\d]/g, ''))}
+  1112→                              placeholder="923001234567"
+  1113→                              className="pl-9"
+  1114→                            />
+  1115→                          </div>
+  1116→                          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={saveWhatsappNumber} disabled={savingWhatsapp || whatsappNumber.length < 8}>
+  1117→                            {savingWhatsapp ? 'Saving...' : 'Save'}
+  1118→                          </Button>
+  1119→                        </div>
+  1120→                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+  1121→                          <AlertTriangle className="w-3 h-3" />
+  1122→                          Include country code (no + sign). E.g. 923001234567 for Pakistan.
+  1123→                        </p>
+  1124→                      </CardContent>
+  1125→                    </Card>
+  1126→                  </div>
+  1127→                )}
+  1128→              </div>
+  1129→            </ScrollArea>
+  1130→          </div>
+  1131→        )}
+  1132→    </div>
+  1133→  );
+  1134→}
+  1135→
+  1136→// Helper Components
+  1137→function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) {
+  1138→  const colorMap: Record<string, string> = {
+  1139→    red: 'bg-red-50 dark:bg-red-900/20 border-red-200/50 dark:border-red-800/30',
+  1140→    blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200/50 dark:border-blue-800/30',
+  1141→    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-800/30',
+  1142→    green: 'bg-green-50 dark:bg-green-900/20 border-green-200/50 dark:border-green-800/30',
+  1143→    amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200/50 dark:border-amber-800/30',
+  1144→    orange: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200/50 dark:border-orange-800/30',
+  1145→    violet: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200/50 dark:border-violet-800/30',
+  1146→  };
+  1147→  const textColorMap: Record<string, string> = {
+  1148→    red: 'text-red-600 dark:text-red-400',
+  1149→    blue: 'text-blue-600 dark:text-blue-400',
+  1150→    emerald: 'text-emerald-600 dark:text-emerald-400',
+  1151→    green: 'text-green-600 dark:text-green-400',
+  1152→    amber: 'text-amber-600 dark:text-amber-400',
+  1153→    orange: 'text-orange-600 dark:text-orange-400',
+  1154→    violet: 'text-violet-600 dark:text-violet-400',
+  1155→  };
+  1156→  return (
+  1157→    <div className={`p-3 rounded-xl border ${colorMap[color] || colorMap.emerald}`}>
+  1158→      <div className="flex items-center gap-2 mb-2">
+  1159→        <div className={textColorMap[color] || textColorMap.emerald}>{icon}</div>
+  1160→        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+  1161→      </div>
+  1162→      <div className={`text-xl font-bold ${textColorMap[color] || textColorMap.emerald}`}>{value}</div>
+  1163→    </div>
+  1164→  );
+  1165→}
+  1166→
+  1167→function MiniStat({ label, value, color }: { label: string; value: string | number; color?: string }) {
+  1168→  return (
+  1169→    <div className="p-3 rounded-lg bg-muted/50 text-center">
+  1170→      <div className={`text-xl font-bold ${color || ''}`}>{value}</div>
+  1171→      <div className="text-[10px] text-muted-foreground mt-1">{label}</div>
+  1172→    </div>
+  1173→  );
+  1174→}
+  1175→
