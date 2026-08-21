@@ -889,7 +889,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ==================== TRAVEL ESSENTIALS BAR ==================== */
+        {/* ==================== TRAVEL ESSENTIALS BAR ==================== */}
         <section className="px-4 pb-10">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-xl font-bold mb-4">Travel Essentials</h2>
