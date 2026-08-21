@@ -24,6 +24,7 @@ import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
 import { ComparePanel } from '@/components/visa/compare-panel';
 import { CountryDetailPanel } from '@/components/visa/country-detail';
 import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
+import { PaymentProofModal } from '@/components/visa/payment-proof-modal';
 import { AdminDialog } from '@/components/app/admin-dialog';
 import { WhatsAppButton } from '@/components/app/whatsapp-button';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
@@ -293,6 +294,7 @@ export default function HomePage() {
   // Auth
   const { user, isAuthenticated, checkAuth, logout: authLogout } = useAuthStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showPaymentProof, setShowPaymentProof] = useState(false);
 
   // Check auth on mount
   useEffect(() => { checkAuth(); }, [checkAuth]);
@@ -595,6 +597,7 @@ export default function HomePage() {
         {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+        {showPaymentProof && <PaymentProofModal onClose={() => setShowPaymentProof(false)} />}
         <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />
         <WhatsAppButton />
       </div>
@@ -649,7 +652,7 @@ export default function HomePage() {
                         </button>
                       )}
                       <button
-                        onClick={() => { setUserMenuOpen(false); setActiveModal('pricing'); }}
+                        onClick={() => { setUserMenuOpen(false); setShowPaymentProof(true); }}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors"
                       >
                         <Upload className="w-3.5 h-3.5" /> Submit Payment Proof
@@ -1443,6 +1446,7 @@ export default function HomePage() {
       {activeModal === 'terms' && <TermsModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'contact' && <ContactModal onClose={() => setActiveModal(null)} />}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showPaymentProof && <PaymentProofModal onClose={() => setShowPaymentProof(false)} />}
 
       {/* Admin Dashboard */}
       <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />

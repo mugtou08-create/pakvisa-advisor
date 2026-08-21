@@ -675,149 +675,150 @@
    675→          <div className="flex flex-wrap gap-1.5">
    676→            {MONTH_NAMES.map((m, i) => {
    677→              const isActive = travelMonths.some((tm: string) => tm.toLowerCase().startsWith(m.toLowerCase()));
-   678→              return (
-   679→                <span key={m} className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{m}</span>
-   680→              );
-   681→            })}
-   682→          </div>
-   683→        </div>
-   684→      )}
-   685→
-   686→      {/* Visa Types */}
-   687→      {visaTypes.length > 0 && (
-   688→        <div>
-   689→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Available Visa Types</h5>
-   690→          <div className="flex flex-wrap gap-1.5">
-   691→            {visaTypes.map((vt2) => (
-   692→              <Badge key={vt2.id} variant="outline" className="text-xs font-normal">
-   693→                {vt2.type}{vt2.maxDuration ? ` (${vt2.maxDuration})` : ''}
-   694→              </Badge>
-   695→            ))}
-   696→          </div>
-   697→        </div>
-   698→      )}
-   699→
-   700→      {/* Safety Info */}
-   701→      {(country.safetyRating > 0 || country.safetySummary) && (
-   702→        <SafetyInfo rating={country.safetyRating} summary={country.safetySummary} />
-   703→      )}
-   704→
-   705→      {/* Weather/Climate */}
-   706→      <WeatherInfo avgTemp={country.avgTempC} monthlyTemps={parsedMonthlyTemps} />
-   707→
-   708→      {/* Travel Essentials Grid */}
-   709→      <TravelEssentials info={travel} countryName={country.name} />
-   710→
-   711→      {/* Emergency & Health (collapsible) */}
-   712→      <EmergencyHealth info={travel} />
-   713→
-   714→      {/* Embassy Contact (only for embassy-required countries) */}
-   715→      {isEmbassyRequired && <EmbassyContact countryCode={country.code} />}
-   716→
-   717→      {/* Affiliate: Prepare Your Trip (always last) */}
-   718→      <AffiliateResources country={country} />
-   719→    </div>
-   720→  );
-   721→}
-   722→
-   723→// ============================================================
-   724→// Full Document Checklist (Pro Feature)
-   725→// ============================================================
-   726→function FullDocumentChecklist({
-   727→  requirements,
-   728→  countryName,
-   729→}: {
-   730→  requirements: { id: string; category: string; requirement: string; mandatory: boolean; description?: string }[];
-   731→  countryName: string;
-   732→}) {
-   733→  const { user, isAuthenticated } = useAuthStore();
-   734→  const [expanded, setExpanded] = useState(false);
-   735→  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
-   736→
-   737→  // Group requirements by category
-   738→  const grouped = useMemo(() => {
-   739→    const map = new Map<string, typeof requirements>();
-   740→    for (const r of requirements) {
-   741→      const cat = r.category || 'Other';
-   742→      if (!map.has(cat)) map.set(cat, []);
-   743→      map.get(cat)!.push(r);
-   744→    }
-   745→    return Array.from(map.entries());
-   746→  }, [requirements]);
-   747→
-   748→  const mandatoryCount = requirements.filter(r => r.mandatory).length;
-   749→  const optionalCount = requirements.length - mandatoryCount;
-   750→
-   751→  return (
-   752→    <div className="mt-3 border rounded-lg overflow-hidden">
-   753→      <button
-   754→        onClick={() => setExpanded(!expanded)}
-   755→        className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 transition-colors"
-   756→      >
-   757→        <div className="flex items-center gap-2">
-   758→          {isPro ? (
-   759→            <ClipboardList className="w-4 h-4 text-amber-600" />
-   760→          ) : (
-   761→            <Lock className="w-4 h-4 text-amber-600" />
-   762→          )}
-   763→          <div className="text-left">
-   764→            <span className="text-sm font-semibold">Full Document Checklist</span>
-   765→            <span className="text-[11px] text-muted-foreground ml-2">
-   766→              ({mandatoryCount} required{optionalCount > 0 ? `, ${optionalCount} optional` : ''} items)
-   767→            </span>
-   768→          </div>
-   769→        </div>
-   770→        {isPro ? (
-   771→          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
-   772→        ) : (
-   773→          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
-   774→            <Crown className="w-3 h-3" /> Pro
-   775→          </span>
-   776→        )}
-   777→      </button>
-   778→
-   779→      {expanded && isPro && (
-   780→        <div className="p-3 space-y-4 max-h-80 overflow-y-auto">
-   781→          {grouped.map(([category, items]) => (
-   782→            <div key={category}>
-   783→              <h6 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-   784→                <FileText className="w-3 h-3" /> {category}
-   785→              </h6>
-   786→              <ul className="space-y-1">
-   787→                {items.map((item) => (
-   788→                  <li key={item.id} className="flex items-start gap-2 text-sm">
-   789→                    {item.mandatory ? (
-   790→                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
-   791→                    ) : (
-   792→                      <span className="mt-1.5 w-2 h-2 rounded-full border border-amber-400 shrink-0" />
-   793→                    )}
-   794→                    <div>
-   795→                      <span className={item.mandatory ? 'text-foreground' : 'text-muted-foreground'}>{item.requirement}</span>
-   796→                      {item.description && (
-   797→                        <p className="text-[11px] text-muted-foreground mt-0.5">{item.description}</p>
-   798→                      )}
-   799→                    </div>
-   800→                  </li>
-   801→                ))}
-   802→              </ul>
-   803→            </div>
-   804→          ))}
-   805→        </div>
-   806→      )}
-   807→
-   808→      {expanded && !isPro && (
-   809→        <div className="p-4 text-center">
-   810→          <Crown className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-   811→          <p className="text-sm font-medium mb-1">Pro Feature</p>
-   812→          <p className="text-xs text-muted-foreground mb-3">
-   813→            Get the complete document checklist with {mandatoryCount} required items organized by category, with descriptions.
-   814→          </p>
-   815→          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5" onClick={() => window.dispatchEvent(new CustomEvent('open-pricing'))}>
-   816→            <Crown className="w-3.5 h-3.5" /> Upgrade to Pro
-   817→          </Button>
-   818→        </div>
-   819→      )}
-   820→    </div>
-   821→  );
-   822→}
-   823→
+   678→              const monthCls = isActive ? 'text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground';
+   679→              return (
+   680→                <span key={m} className={monthCls}>{m}</span>
+   681→              );
+   682→            })}
+   683→          </div>
+   684→        </div>
+   685→      )}
+   686→
+   687→      {/* Visa Types */}
+   688→      {visaTypes.length > 0 && (
+   689→        <div>
+   690→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Available Visa Types</h5>
+   691→          <div className="flex flex-wrap gap-1.5">
+   692→            {visaTypes.map((vt2) => (
+   693→              <Badge key={vt2.id} variant="outline" className="text-xs font-normal">
+   694→                {vt2.type}{vt2.maxDuration ? ` (${vt2.maxDuration})` : ''}
+   695→              </Badge>
+   696→            ))}
+   697→          </div>
+   698→        </div>
+   699→      )}
+   700→
+   701→      {/* Safety Info */}
+   702→      {(country.safetyRating > 0 || country.safetySummary) && (
+   703→        <SafetyInfo rating={country.safetyRating} summary={country.safetySummary} />
+   704→      )}
+   705→
+   706→      {/* Weather/Climate */}
+   707→      <WeatherInfo avgTemp={country.avgTempC} monthlyTemps={parsedMonthlyTemps} />
+   708→
+   709→      {/* Travel Essentials Grid */}
+   710→      <TravelEssentials info={travel} countryName={country.name} />
+   711→
+   712→      {/* Emergency & Health (collapsible) */}
+   713→      <EmergencyHealth info={travel} />
+   714→
+   715→      {/* Embassy Contact (only for embassy-required countries) */}
+   716→      {isEmbassyRequired && <EmbassyContact countryCode={country.code} />}
+   717→
+   718→      {/* Affiliate: Prepare Your Trip (always last) */}
+   719→      <AffiliateResources country={country} />
+   720→    </div>
+   721→  );
+   722→}
+   723→
+   724→// ============================================================
+   725→// Full Document Checklist (Pro Feature)
+   726→// ============================================================
+   727→function FullDocumentChecklist({
+   728→  requirements,
+   729→  countryName,
+   730→}: {
+   731→  requirements: { id: string; category: string; requirement: string; mandatory: boolean; description?: string }[];
+   732→  countryName: string;
+   733→}) {
+   734→  const { user, isAuthenticated } = useAuthStore();
+   735→  const [expanded, setExpanded] = useState(false);
+   736→  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+   737→
+   738→  // Group requirements by category
+   739→  const grouped = useMemo(() => {
+   740→    const map = new Map<string, typeof requirements>();
+   741→    for (const r of requirements) {
+   742→      const cat = r.category || 'Other';
+   743→      if (!map.has(cat)) map.set(cat, []);
+   744→      map.get(cat)!.push(r);
+   745→    }
+   746→    return Array.from(map.entries());
+   747→  }, [requirements]);
+   748→
+   749→  const mandatoryCount = requirements.filter(r => r.mandatory).length;
+   750→  const optionalCount = requirements.length - mandatoryCount;
+   751→
+   752→  return (
+   753→    <div className="mt-3 border rounded-lg overflow-hidden">
+   754→      <button
+   755→        onClick={() => setExpanded(!expanded)}
+   756→        className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 transition-colors"
+   757→      >
+   758→        <div className="flex items-center gap-2">
+   759→          {isPro ? (
+   760→            <ClipboardList className="w-4 h-4 text-amber-600" />
+   761→          ) : (
+   762→            <Lock className="w-4 h-4 text-amber-600" />
+   763→          )}
+   764→          <div className="text-left">
+   765→            <span className="text-sm font-semibold">Full Document Checklist</span>
+   766→            <span className="text-[11px] text-muted-foreground ml-2">
+   767→              ({mandatoryCount} required{optionalCount > 0 ? `, ${optionalCount} optional` : ''} items)
+   768→            </span>
+   769→          </div>
+   770→        </div>
+   771→        {isPro ? (
+   772→          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
+   773→        ) : (
+   774→          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
+   775→            <Crown className="w-3 h-3" /> Pro
+   776→          </span>
+   777→        )}
+   778→      </button>
+   779→
+   780→      {expanded && isPro && (
+   781→        <div className="p-3 space-y-4 max-h-80 overflow-y-auto">
+   782→          {grouped.map(([category, items]) => (
+   783→            <div key={category}>
+   784→              <h6 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
+   785→                <FileText className="w-3 h-3" /> {category}
+   786→              </h6>
+   787→              <ul className="space-y-1">
+   788→                {items.map((item) => (
+   789→                  <li key={item.id} className="flex items-start gap-2 text-sm">
+   790→                    {item.mandatory ? (
+   791→                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+   792→                    ) : (
+   793→                      <span className="mt-1.5 w-2 h-2 rounded-full border border-amber-400 shrink-0" />
+   794→                    )}
+   795→                    <div>
+   796→                      <span className={item.mandatory ? 'text-foreground' : 'text-muted-foreground'}>{item.requirement}</span>
+   797→                      {item.description && (
+   798→                        <p className="text-[11px] text-muted-foreground mt-0.5">{item.description}</p>
+   799→                      )}
+   800→                    </div>
+   801→                  </li>
+   802→                ))}
+   803→              </ul>
+   804→            </div>
+   805→          ))}
+   806→        </div>
+   807→      )}
+   808→
+   809→      {expanded && !isPro && (
+   810→        <div className="p-4 text-center">
+   811→          <Crown className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+   812→          <p className="text-sm font-medium mb-1">Pro Feature</p>
+   813→          <p className="text-xs text-muted-foreground mb-3">
+   814→            Get the complete document checklist with {mandatoryCount} required items organized by category, with descriptions.
+   815→          </p>
+   816→          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5" onClick={() => window.dispatchEvent(new CustomEvent('open-pricing'))}>
+   817→            <Crown className="w-3.5 h-3.5" /> Upgrade to Pro
+   818→          </Button>
+   819→        </div>
+   820→      )}
+   821→    </div>
+   822→  );
+   823→}
+   824→

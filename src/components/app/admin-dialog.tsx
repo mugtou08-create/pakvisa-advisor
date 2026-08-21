@@ -7,7 +7,7 @@ import {
   RefreshCw, Server, FileCheck, MessageSquare, Mail, Send, Trash2,
   ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
   Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
-  Filter, X, ChevronDown, MessageCircle, Hash, XIcon,
+  Filter, X, ChevronDown, MessageCircle, Hash, XIcon, CreditCard, FileImage,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +73,28 @@ interface NewsletterSubscriber {
   isActive: boolean;
 }
 
-type AdminSection = 'overview' | 'messages' | 'newsletter' | 'analytics' | 'settings';
+interface PaymentProofWithUser {
+  id: string;
+  userId: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  status: string;
+  userNote: string;
+  adminNote: string;
+  reviewedAt: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    phone: string;
+    role: string;
+    proExpiresAt: string | null;
+  };
+}
+
+type AdminSection = 'overview' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings';
 type MessageFilter = 'all' | 'unread' | 'replied';
 
 const QUICK_REPLIES = [
@@ -121,6 +142,14 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [subscribersActive, setSubscribersActive] = useState(0);
   const [subscribersPage, setSubscribersPage] = useState(1);
   const [subscribersLoading, setSubscribersLoading] = useState(false);
+
+  // Payment proofs state
+  const [paymentProofs, setPaymentProofs] = useState<PaymentProofWithUser[]>([]);
+  const [paymentProofsPending, setPaymentProofsPending] = useState(0);
+  const [paymentProofsLoading, setPaymentProofsLoading] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectNote, setRejectNote] = useState('');
 
   // WhatsApp number settings
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -181,6 +210,8 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     setAnalytics(null);
     setMessages([]);
     setSubscribers([]);
+    setPaymentProofs([]);
+    setPaymentProofsPending(0);
     setActiveSection('overview');
     toast.success('Logged out');
   }, []);
@@ -257,6 +288,67 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     finally { setSubscribersLoading(false); }
   }, [token]);
 
+  const fetchPaymentProofs = useCallback(async () => {
+    if (!token) return;
+    setPaymentProofsLoading(true);
+    try {
+      const res = await fetch('/api/admin/payment-proofs?limit=50', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentProofs(data.data.proofs);
+        setPaymentProofsPending(data.data.pendingCount);
+      }
+    } catch { toast.error('Failed to fetch payment proofs'); }
+    finally { setPaymentProofsLoading(false); }
+  }, [token]);
+
+  const approveProof = useCallback(async (id: string, durationDays: number) => {
+    if (!token) return;
+    setApprovingId(id);
+    try {
+      const res = await fetch('/api/admin/payment-proofs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ id, action: 'approve', durationDays }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentProofs(prev => prev.map(p => p.id === id ? { ...p, status: 'approved', reviewedAt: new Date().toISOString() } : p));
+        setPaymentProofsPending(prev => Math.max(0, prev - 1));
+        setApprovingId(null);
+        toast.success('Proof approved — user upgraded to Pro');
+      } else {
+        toast.error(data.error || 'Failed to approve');
+        setApprovingId(null);
+      }
+    } catch { toast.error('Connection error'); setApprovingId(null); }
+  }, [token]);
+
+  const rejectProof = useCallback(async (id: string, adminNote: string) => {
+    if (!token) return;
+    setRejectingId(id);
+    try {
+      const res = await fetch('/api/admin/payment-proofs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ id, action: 'reject', adminNote }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentProofs(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected', reviewedAt: new Date().toISOString(), adminNote } : p));
+        setPaymentProofsPending(prev => Math.max(0, prev - 1));
+        setRejectingId(null);
+        setRejectNote('');
+        toast.success('Proof rejected');
+      } else {
+        toast.error(data.error || 'Failed to reject');
+        setRejectingId(null);
+      }
+    } catch { toast.error('Connection error'); setRejectingId(null); }
+  }, [token]);
+
   // Fetch data on section change
   useEffect(() => {
     if (!isLoggedIn || !token) return;
@@ -269,6 +361,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     }
     if (activeSection === 'messages') fetchMessages(1, messageFilter, messageSearch);
     if (activeSection === 'newsletter') fetchSubscribers();
+    if (activeSection === 'payment-proofs') fetchPaymentProofs();
     }, [isLoggedIn, token, activeSection]);
 
   const toggleAiFeature = useCallback(async (enabled: boolean) => {
@@ -450,6 +543,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const navItems: { key: AdminSection; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: 'overview', label: 'Overview', icon: <TrendingUp className="w-4 h-4" /> },
     { key: 'messages', label: 'Messages', icon: <Inbox className="w-4 h-4" />, badge: messagesUnread || undefined },
+    { key: 'payment-proofs', label: 'Payment Proofs', icon: <CreditCard className="w-4 h-4" />, badge: paymentProofsPending || undefined },
     { key: 'newsletter', label: 'Newsletter', icon: <Mail className="w-4 h-4" /> },
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
@@ -877,6 +971,143 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                             <Button variant="outline" size="sm" disabled={messagesPage >= Math.ceil(messagesTotal / 20)} onClick={() => fetchMessages(messagesPage + 1, messageFilter, messageSearch)}><ChevronRight className="w-4 h-4" /></Button>
                           </div>
                         )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* ====== PAYMENT PROOFS TAB ====== */}
+                {activeSection === 'payment-proofs' && (
+                  <>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-emerald-500" />
+                        Payment Proofs
+                        {paymentProofsPending > 0 && <Badge className="bg-amber-500">{paymentProofsPending} pending</Badge>}
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={() => fetchPaymentProofs()} disabled={paymentProofsLoading}>
+                        <RefreshCw className={`w-3.5 h-3.5 mr-1 ${paymentProofsLoading ? 'animate-spin' : ''}`} /> Refresh
+                      </Button>
+                    </div>
+
+                    {paymentProofsLoading && paymentProofs.length === 0 ? (
+                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+                    ) : paymentProofs.length === 0 ? (
+                      <div className="text-center py-16 text-muted-foreground">
+                        <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="font-medium">No payment proofs yet</p>
+                        <p className="text-sm">Proofs submitted by users will appear here.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                        {paymentProofs.map((p) => (
+                          <Card key={p.id} className={p.status === 'pending' ? 'border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-900/10' : ''}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3 min-w-0 flex-1">
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
+                                    p.status === 'pending' ? 'bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300' :
+                                    p.status === 'approved' ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' :
+                                    'bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300'
+                                  }`}>
+                                    {p.user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold">{p.user?.fullName || 'Unknown'}</span>
+                                      <a href={`mailto:${p.user?.email}`} className="text-xs text-emerald-600 hover:underline flex items-center gap-0.5">
+                                        <Mail className="w-3 h-3" />{p.user?.email}
+                                      </a>
+                                      {p.user?.phone && (
+                                        <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                          <Phone className="w-3 h-3" />{p.user.phone}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                      <Badge className={`text-[10px] px-1.5 py-0 ${
+                                        p.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' :
+                                        p.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' :
+                                        'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
+                                      }`}>
+                                        {p.status === 'pending' ? 'Pending' : p.status === 'approved' ? 'Approved' : 'Rejected'}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo(p.createdAt)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      <a
+                                        href={p.filePath}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-emerald-600 hover:underline flex items-center gap-1"
+                                      >
+                                        <FileImage className="w-3 h-3" />{p.fileName}
+                                      </a>
+                                      <span className="text-[10px] text-muted-foreground">({(p.fileSize / 1024).toFixed(0)} KB)</span>
+                                    </div>
+                                    {p.userNote && (
+                                      <p className="text-xs text-muted-foreground mt-1 bg-muted/50 px-2 py-1 rounded inline-block max-w-full truncate" title={p.userNote}>
+                                        Note: {p.userNote}
+                                      </p>
+                                    )}
+                                    {p.adminNote && (
+                                      <div className="mt-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                                        <p className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 mb-0.5">Admin Note:</p>
+                                        <p className="text-xs text-blue-800 dark:text-blue-300">{p.adminNote}</p>
+                                      </div>
+                                    )}
+
+                                    {/* Approve / Reject actions for pending */}
+                                    {p.status === 'pending' && (
+                                      <div className="mt-3 space-y-2">
+                                        {approvingId === p.id ? (
+                                          <div className="flex items-center gap-2">
+                                            <select
+                                              id={`duration-${p.id}`}
+                                              defaultValue="30"
+                                              className="h-8 text-xs rounded-md border bg-background px-2"
+                                            >
+                                              <option value="30">1 month</option>
+                                              <option value="90">3 months</option>
+                                              <option value="180">6 months</option>
+                                              <option value="365">1 year</option>
+                                            </select>
+                                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8" onClick={() => {
+                                              const sel = document.getElementById(`duration-${p.id}`) as HTMLSelectElement;
+                                              approveProof(p.id, parseInt(sel.value));
+                                            }}>
+                                              Confirm
+                                            </Button>
+                                            <Button size="sm" variant="ghost" className="h-8" onClick={() => setApprovingId(null)}>Cancel</Button>
+                                          </div>
+                                        ) : rejectingId === p.id ? (
+                                          <div className="space-y-2">
+                                            <Textarea placeholder="Reason for rejection (optional)..." value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} rows={2} className="text-xs" />
+                                            <div className="flex gap-2">
+                                              <Button size="sm" className="bg-red-600 hover:bg-red-700 h-8" onClick={() => { rejectProof(p.id, rejectNote); }}>
+                                                Reject
+                                              </Button>
+                                              <Button size="sm" variant="ghost" className="h-8" onClick={() => { setRejectingId(null); setRejectNote(''); }}>Cancel</Button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="flex gap-2">
+                                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8 gap-1" onClick={() => setApprovingId(p.id)}>
+                                              <Check className="w-3.5 h-3.5" /> Approve
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => { setRejectingId(p.id); setRejectNote(''); }}>
+                                              <X className="w-3.5 h-3.5" /> Reject
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
                     )}
                   </>

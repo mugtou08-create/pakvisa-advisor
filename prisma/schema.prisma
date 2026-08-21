@@ -44,6 +44,7 @@ model PaymentProof {
   filePath    String   @default("")
   fileSize    Int      @default(0)
   status      String   @default("pending")  // "pending", "approved", "rejected"
+  userNote    String   @default("")
   adminNote   String   @default("")
   reviewedAt  DateTime?
   createdAt   DateTime @default(now())

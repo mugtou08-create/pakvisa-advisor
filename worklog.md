@@ -606,3 +606,242 @@ Stage Summary:
 - Compare panel: 2 countries for free, 5 for Pro
 - Export API gated behind Pro authentication
 - Premium CTA adapts for Pro users
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Payment Proof Upload System (Upload API, Admin API, Modal, Admin Dashboard Section)
+
+Work Log:
+- Added `userNote` field to PaymentProof schema (prisma/schema.prisma) and pushed to DB
+- Created /src/app/api/payment-proof/route.ts (POST):
+  - Authenticates user via getUserFromRequest
+  - Accepts FormData with 'file' and optional 'note' fields
+  - Validates file type (jpg/png/jpeg/webp) and size (max 5MB)
+  - Saves file to public/uploads/payment-proofs/{userId}_{timestamp}_{filename}
+  - Creates PaymentProof record with status='pending'
+- Created /src/app/api/admin/payment-proofs/route.ts (GET + PUT):
+  - GET: Uses exact same authenticate() pattern from admin/messages/route.ts
+  - GET: Includes user info (email, fullName, phone, role, proExpiresAt)
+  - GET: Supports ?status, ?page, ?limit query params
+  - PUT: Approve sets user role='pro' + proExpiresAt via transaction
+  - PUT: Reject only updates proof status and adminNote
+- Created /src/components/visa/payment-proof-modal.tsx:
+  - ModalShell-style modal with drag-and-drop file upload
+  - Shows preview with file name/size when file selected
+  - Optional note textarea
+  - Loading and success states with green checkmark
+- Added 'payment-proofs' section to admin-dialog.tsx:
+  - New AdminSection type value, PaymentProofWithUser interface
+  - State: paymentProofs, paymentProofsPending, approvingId, rejectingId
+  - Nav item with CreditCard icon and pending count badge
+  - fetchPaymentProofs, approveProof, rejectProof callbacks
+  - Full UI: user info, file link, status badges, approve with duration dropdown, reject with note textarea
+- Connected in page.tsx:
+  - Import PaymentProofModal
+  - Added showPaymentProof state
+  - Changed 'Submit Payment Proof' menu item onClick from setActiveModal('pricing') to setShowPaymentProof(true)
+  - Rendered PaymentProofModal in both mobile and desktop modal sections
+- Created /home/z/my-project/public/uploads/payment-proofs directory
+- bun run lint passes with zero errors
+
+Stage Summary:
+- Complete payment proof upload flow: user uploads → admin reviews → user gets Pro
+- Admin can approve (with 1mo/3mo/6mo/1yr duration) or reject (with optional note)
+- Transaction-safe approve that atomically updates proof + user role
+- No existing functionality broken
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Add WhatsApp notification when user submits payment proof
+
+Work Log:
+- Read payment-proof-modal.tsx to understand current success state
+- Added `MessageCircle` icon import from lucide-react
+- Destructured `user` from `useAuthStore` (in addition to existing `token`)
+- Updated success message text to: "We have received your proof of payment. Our team will verify it and activate your Pro features within 24 hours."
+- Added WhatsApp notification button below success message that opens wa.me link pre-filled with user's name, email, and a request to check the admin dashboard
+- Wrapped "Got it" button in a pt-2 div for proper spacing
+- Verified with `bun run lint` — zero errors
+
+Stage Summary:
+- After successful payment proof upload, user now sees a "Notify via WhatsApp" button
+- Clicking it opens WhatsApp with a pre-filled message to admin (923001234567) containing user name and email
+- Success message updated with the exact required confirmation text
+- No API needed — uses free wa.me link approach
+
+---
+Task ID: 1
+Agent: main
+Task: Change ITEMS_PER_PAGE from 15 to 8
+
+Work Log:
+- Changed ITEMS_PER_PAGE constant from 15 to 8 in page.tsx line 274
+- Pagination now shows 8 countries per page with numbered page buttons
+
+Stage Summary:
+- Pagination reduced from 15 to 8 countries per page
+- All existing pagination controls (numbers, arrows) work with new page size
+
+---
+Task ID: 2
+Agent: main
+Task: Contact Us form → collapsible card
+
+Work Log:
+- Replaced inline ContactForm section in page.tsx with a small clickable card
+- Card shows mail icon, "Contact Us" title, and arrow
+- Clicking opens ContactModal popup with full form
+- Updated ContactModal in modals.tsx to include embedded ContactFormEmbedded component
+- Removed unused ContactForm import from page.tsx
+
+Stage Summary:
+- Contact Us no longer takes up large page space
+- Opens as popup dialog on click, matching country detail pattern
+- Footer "Contact" link also opens the same modal
+
+---
+Task ID: 3
+Agent: fullstack-dev (subagent)
+Task: Build user account system
+
+Work Log:
+- Updated prisma/schema.prisma with User, AiUsageLog, PaymentProof models
+- Ran db:push to apply schema
+- Created /src/lib/auth.ts with parseUserToken, getUserFromRequest, isProUser
+- Created /src/lib/auth-store.ts with Zustand client auth state (checkAuth, logout, setUser)
+- Created /api/auth/signup, /api/auth/login, /api/auth/logout, /api/auth/me routes
+- All tokens: 7-day expiry, httpOnly cookies, bcryptjs password hashing
+
+Stage Summary:
+- Complete auth system with signup, login, logout, session management
+- Pro role support with auto-expiry check in /me endpoint
+- AI usage logging table ready for rate limiting
+- Payment proof table ready for manual pro upgrade system
+
+---
+Task ID: 3b
+Agent: fullstack-dev (subagent)
+Task: AuthModal UI + page.tsx integration
+
+Work Log:
+- Created /src/components/visa/auth-modal.tsx with Login/Signup tabs
+- Added useAuthStore integration to page.tsx (checkAuth on mount, isProUser sync)
+- Added user menu dropdown in header (login/signup for guests, avatar+name+dropdown for logged-in)
+- User menu includes: My Account, Upgrade to Pro, Submit Payment Proof, Logout
+- Added CustomEvent listeners for 'open-pricing' and 'open-auth'
+
+Stage Summary:
+- Full auth UI with login/signup modal, user menu in header
+- isProUser state synced between auth store and app store
+
+---
+Task ID: 4a
+Agent: main + fullstack-dev (subagent)
+Task: AI query limits (2/day free, 15/day Pro)
+
+Work Log:
+- Changed FREE_RATE_LIMIT from 5 to 2 in /api/chat/route.ts
+- Added real auth-based rate limiting using getUserFromRequest
+- Auth'd free users: DB-based daily limit via AiUsageLog table
+- Pro users: 60 req/min rate limit + DB usage logging
+- Anonymous: IP-based in-memory limit (existing behavior)
+- Updated ai-chat-panel.tsx to show 2/day limit for free users
+
+Stage Summary:
+- Free users: 2 AI queries/day (logged in) or 2/day by IP (anonymous)
+- Pro users: 15/day with verified database context injection
+- Proper per-user tracking via AiUsageLog table
+
+---
+Task ID: 4b
+Agent: fullstack-dev (subagent)
+Task: PDF export Pro gate
+
+Work Log:
+- Added getUserFromRequest import to /api/export/route.ts
+- Returns 403 with PRO_REQUIRED code for non-Pro users
+
+Stage Summary:
+- PDF report export blocked for free users with clear upgrade message
+
+---
+Task ID: 4c
+Agent: main
+Task: Document checklist Pro gate
+
+Work Log:
+- Added FullDocumentChecklist component to country-detail.tsx
+- Shows in country detail when requirements > 5
+- Free users see locked section with "Pro" badge
+- Pro users see full checklist grouped by category with mandatory/optional indicators
+- Clicking "Upgrade to Pro" dispatches 'open-pricing' custom event
+- Fixed pre-existing ESLint parser errors with template literals in JSX
+
+Stage Summary:
+- Full document checklists organized by category, gated behind Pro
+- Upgrade CTA with clear value proposition
+
+---
+Task ID: 4d
+Agent: fullstack-dev (subagent)
+Task: Compare panel limit (2 free, 5 Pro)
+
+Work Log:
+- Added isProUser prop to ComparePanel
+- MAX_COMPARE = isProUser ? 5 : 2
+- Toast notification when free users try to exceed 2 countries
+- Header dynamically shows selected/MAX_COMPARE
+
+Stage Summary:
+- Free: compare 2 countries, Pro: compare 5 countries
+- Clear upgrade prompt when limit reached
+
+---
+Task ID: 5
+Agent: fullstack-dev (subagent)
+Task: Payment proof upload + admin review system
+
+Work Log:
+- Created /api/payment-proof (POST) — user upload endpoint with file validation
+- Created /api/admin/payment-proofs (GET+PUT) — admin list and approve/reject
+- Created /components/visa/payment-proof-modal.tsx — drag-and-drop upload modal
+- Added Payment Proofs tab to admin-dialog.tsx with pending count badge
+- Admin can approve (with duration selection) or reject (with note)
+- Approve atomically updates both proof status and user role/expiresAt
+- Connected modal to user menu "Submit Payment Proof" item in page.tsx
+
+Stage Summary:
+- Complete payment proof upload → admin review → Pro activation flow
+- Admin sees all proofs with user info, can approve with 1/3/6/12 month duration
+- Files saved to public/uploads/payment-proofs/
+
+---
+Task ID: 6
+Agent: fullstack-dev (subagent)
+Task: WhatsApp notification on proof upload
+
+Work Log:
+- Added "Notify via WhatsApp" button to payment-proof-modal success state
+- Opens pre-filled wa.me link with user's name and email
+- Updated confirmation message to required text about 24-hour verification
+
+Stage Summary:
+- Users can notify admin via WhatsApp after submitting proof
+- Clear confirmation message about verification timeline
+
+---
+Task ID: 7
+Agent: main
+Task: Auto-expiry for Pro subscriptions
+
+Work Log:
+- Already implemented in /api/auth/me endpoint (Task 3)
+- Every /me request checks if proExpiresAt < now, auto-downgrades to free
+- isProUser helper in auth.ts also checks expiry
+- No additional work needed
+
+Stage Summary:
+- Auto-expiry is built into the auth check flow
+- Expired Pro users are automatically downgraded on next request

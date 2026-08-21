@@ -557,4 +557,53 @@
    557→   557→- All fixes now deployed to live site via GitHub push
    558→   558→- 7-day admin session confirmed across all 4 admin API routes
    559→   559→
-   560→   560→
+   560→   560→---
+   561→   561→Task ID: 3
+   562→   562→Agent: fullstack-dev
+   563→   563→Task: Build user account system (signup, login, logout, auth utilities, database models)
+   564→   564→
+   565→   565→Work Log:
+   566→   566→- Updated prisma/schema.prisma with User, AiUsageLog, PaymentProof models
+   567→   567→- Ran db:push to apply schema
+   568→   568→- Created /src/lib/auth.ts with token parsing, getUserFromRequest, isProUser
+   569→   569→- Created /src/lib/auth-store.ts with Zustand client auth state
+   570→   570→- Created /api/auth/signup, /api/auth/login, /api/auth/logout, /api/auth/me routes
+   571→   571→
+   572→   572→Stage Summary:
+   573→   573→- Complete user auth system with signup, login, logout, session management
+   574→   574→- Pro role support with auto-expiry check
+   575→   575→- AI usage logging table ready for rate limiting
+   576→   576→- Payment proof table ready for manual pro upgrade system
+   577→   577→
+   578→   578→---
+   579→   579→Task ID: 3c
+   580→   580→Agent: Main Agent
+   581→   581→Task: Integrate auth system into main page and API routes
+   582→   582→
+   583→   583→Work Log:
+   584→   584→- Added useAuthStore and AuthModal imports to page.tsx
+   585→   585→- Added LogIn, LogOut, User (aliased as UserIcon), Upload icons to lucide-react imports
+   586→   586→- Added auth state declarations (user, isAuthenticated, checkAuth, logout) and showAuthModal state
+   587→   587→- Added useEffect for checkAuth on mount
+   588→   588→- Added isProUser sync from auth store to app store (useEffect watching isAuthenticated, user)
+   589→   589→- Added isUserPro computed boolean for Pro status
+   590→   590→- Added user menu dropdown in header: shows user name + Crown badge if Pro, with dropdown containing My Account, Upgrade to Pro (if not Pro), Submit Payment Proof, Logout
+   591→   591→- Added Login/Sign Up button for unauthenticated users
+   592→   592→- Added AuthModal to both tool panel view and main page modals
+   593→   593→- Updated ComparePanel call to pass isProUser prop
+   594→   594→- Updated Premium CTA button: disabled + shows "You're a Pro Member ✓" for Pro users
+   595→   595→- Updated ai-chat-panel.tsx: added useAuthStore import, changed free limit from 5 to 2, updated all messages
+   596→   596→- Rewrote chat route.ts: auth-based rate limiting with DB tracking for authenticated users, IP-based for anonymous, FREE_RATE_LIMIT changed from 5 to 2, Pro users get 60/min with DB logging
+   597→   597→- Updated compare-panel.tsx: added isProUser prop, dynamic MAX_COMPARE (2 free, 5 pro), toast notification when limit reached
+   598→   598→- Updated export route.ts: added Pro check using getUserFromRequest, returns 403 with PRO_REQUIRED code for non-Pro users
+   599→   599→- Cleaned up unused imports (CreditCard, ArrowRight, useCallback)
+   600→   600→- All linting passes cleanly
+   601→   601→
+   602→   602→Stage Summary:
+   603→   603→- Full auth integration into main page with user menu, login/signup flow
+   604→   604→- Auth-based rate limiting in chat API (DB-backed for authenticated, IP-based for anonymous)
+   605→   605→- Free limit reduced from 5 to 2 queries/day
+   606→   606→- Compare panel: 2 countries for free, 5 for Pro
+   607→   607→- Export API gated behind Pro authentication
+   608→   608→- Premium CTA adapts for Pro users
+   609→   609→
