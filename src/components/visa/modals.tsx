@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList, Send, User, Loader2 } from 'lucide-react';
+import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList, Send, User, Loader2, Upload, LogIn } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -10,12 +11,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-export function PricingModal({ onClose }: { onClose: () => void }) {
+export function PricingModal({ onClose, onOpenPaymentProof }: { onClose: () => void; onOpenPaymentProof?: () => void }) {
+  const { isAuthenticated, user } = useAuthStore();
+  const isAlreadyPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  const handleGetPro = () => {
+    if (!isAuthenticated) {
+      onClose();
+      window.dispatchEvent(new CustomEvent('open-auth'));
+      return;
+    }
+    if (onOpenPaymentProof) {
+      onOpenPaymentProof();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -102,14 +117,33 @@ export function PricingModal({ onClose }: { onClose: () => void }) {
           </ul>
 
           {/* CTA Button */}
-          <Button className="w-full" size="lg" onClick={onClose}>
-            <Crown className="h-4 w-4 mr-2" />
-            Start Free Trial (7 days)
-          </Button>
-
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            Cancel anytime. No questions asked.
-          </p>
+          {isAlreadyPro ? (
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">You are already a Pro member!</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your Pro access expires on {user?.proExpiresAt ? new Date(user.proExpiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+              </p>
+              <Button className="mt-3" variant="outline" onClick={onClose}>Close</Button>
+            </div>
+          ) : (
+            <>
+              <Button className="w-full" size="lg" onClick={handleGetPro}>
+                {isAuthenticated ? (
+                  <><Upload className="h-4 w-4 mr-2" /> Upload Payment Proof</>
+                ) : (
+                  <><LogIn className="h-4 w-4 mr-2" /> Login to Get Pro</>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                {isAuthenticated
+                  ? 'Upload your bank transfer screenshot. We\'ll verify and activate Pro within 24 hours.'
+                  : 'Create a free account first, then upload your payment proof to get Pro.'}
+              </p>
+            </>
+          )}
 
           {/* Free plan link */}
           <button

@@ -54,6 +54,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create admin notification
+    await db.adminNotification.create({
+      data: {
+        type: 'payment_proof',
+        title: 'New Payment Proof Uploaded',
+        message: `${user.fullName || user.email} (${user.email}) uploaded a payment proof.`,
+        data: JSON.stringify({ proofId: proof.id, userId: user.id }),
+      },
+    });
+
     return NextResponse.json({
       success: true,
       data: { id: proof.id, message: 'Payment proof submitted successfully' },

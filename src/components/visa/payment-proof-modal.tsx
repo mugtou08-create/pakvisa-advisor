@@ -15,7 +15,7 @@ function formatFileSize(bytes: number): string {
 }
 
 export function PaymentProofModal({ onClose }: { onClose: () => void }) {
-  const { token, user } = useAuthStore();
+  const { token, user, latestProof, checkAuth } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -92,6 +92,7 @@ export function PaymentProofModal({ onClose }: { onClose: () => void }) {
       }
 
       setSuccess(true);
+      checkAuth(); // Refresh to get updated latestProof status
     } catch {
       toast.error('Network error. Please try again.');
     } finally {
@@ -143,6 +144,21 @@ export function PaymentProofModal({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="space-y-5">
+              {/* Existing proof status */}
+              {latestProof?.status === 'pending' && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">You already have a proof under review</p>
+                  <p className="text-xs text-muted-foreground mt-1">Submitted on {new Date(latestProof.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. We'll activate your Pro access within 24 hours.</p>
+                </div>
+              )}
+              {latestProof?.status === 'rejected' && (
+                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
+                  <p className="text-sm font-medium text-red-700 dark:text-red-400">Previous proof was rejected</p>
+                  {latestProof.adminNote && <p className="text-xs text-muted-foreground mt-1">Reason: {latestProof.adminNote}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">Please upload a new, clearer screenshot below.</p>
+                </div>
+              )}
+
               {/* File Upload Area */}
               <div className="space-y-2">
                 <Label>Payment Screenshot</Label>

@@ -51,15 +51,22 @@ export async function GET(request: NextRequest) {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const dailyAiUsage = await db.aiUsageLog.count({
-      where: {
-        userId: user.id,
-        createdAt: {
-          gte: todayStart,
-          lte: todayEnd,
+    const [dailyAiUsage, latestProof] = await Promise.all([
+      db.aiUsageLog.count({
+        where: {
+          userId: user.id,
+          createdAt: {
+            gte: todayStart,
+            lte: todayEnd,
+          },
         },
-      },
-    });
+      }),
+      db.paymentProof.findFirst({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, status: true, createdAt: true, adminNote: true },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -73,6 +80,7 @@ export async function GET(request: NextRequest) {
         createdAt: user.createdAt,
       },
       dailyAiUsage,
+      latestProof: latestProof || null,
     });
   } catch (error) {
     console.error('Me error:', error);

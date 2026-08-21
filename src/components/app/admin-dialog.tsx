@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
   Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
   Filter, X, ChevronDown, MessageCircle, Hash, XIcon, CreditCard, FileImage,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,7 +95,7 @@ interface PaymentProofWithUser {
   };
 }
 
-type AdminSection = 'overview' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings';
+type AdminSection = 'overview' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'notifications';
 type MessageFilter = 'all' | 'unread' | 'replied';
 
 const QUICK_REPLIES = [
@@ -150,6 +151,11 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<Array<{ id: string; type: string; title: string; message: string; isRead: boolean; data: string; createdAt: string }>>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
 
   // WhatsApp number settings
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -288,6 +294,46 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     finally { setSubscribersLoading(false); }
   }, [token]);
 
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/admin/notifications', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(data.data.notifications);
+        setUnreadCount(data.data.unreadCount);
+      }
+    } catch { /* silent */ }
+  }, [token]);
+
+  const markNotificationRead = useCallback(async (id: string) => {
+    if (!token) return;
+    try {
+      await fetch('/api/admin/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ id }),
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch { /* silent */ }
+  }, [token]);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    if (!token) return;
+    try {
+      await fetch('/api/admin/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ markAll: true }),
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch { /* silent */ }
+  }, [token]);
+
   const fetchPaymentProofs = useCallback(async () => {
     if (!token) return;
     setPaymentProofsLoading(true);
@@ -362,6 +408,9 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     if (activeSection === 'messages') fetchMessages(1, messageFilter, messageSearch);
     if (activeSection === 'newsletter') fetchSubscribers();
     if (activeSection === 'payment-proofs') fetchPaymentProofs();
+    if (activeSection === 'notifications') fetchNotifications();
+    // Always fetch notifications for the bell badge
+    if (isLoggedIn && token) fetchNotifications();
     }, [isLoggedIn, token, activeSection]);
 
   const toggleAiFeature = useCallback(async (enabled: boolean) => {
@@ -582,9 +631,54 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
         </div>
         <div className="flex items-center gap-2">
           {isLoggedIn && (
-            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Logout</span>
-            </Button>
+            <>
+              <div className="relative">
+                <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={() => { setShowNotifPanel(!showNotifPanel); }}>
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-4 h-4 flex items-center justify-center px-1">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+                {showNotifPanel && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowNotifPanel(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 w-80 rounded-lg border bg-card shadow-lg py-2 max-h-96 flex flex-col">
+                      <div className="flex items-center justify-between px-3 py-2 border-b">
+                        <span className="text-sm font-semibold">Notifications</span>
+                        {unreadCount > 0 && (
+                          <button onClick={() => markAllNotificationsRead()} className="text-xs text-emerald-600 hover:underline">Mark all read</button>
+                        )}
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-6">No notifications</p>
+                        ) : (
+                          notifications.map((n) => (
+                            <div key={n.id} className={`flex items-start gap-2.5 px-3 py-2.5 hover:bg-muted/50 transition-colors ${!n.isRead ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${!n.isRead ? 'font-medium' : 'text-muted-foreground'}`}>{n.title}</p>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{n.message}</p>
+                                <p className="text-[10px] text-muted-foreground mt-1">{timeAgo(n.createdAt)}</p>
+                              </div>
+                              {!n.isRead && (
+                                <button onClick={() => markNotificationRead(n.id)} className="shrink-0 p-1 hover:bg-muted rounded" title="Mark as read">
+                                  <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" />
+                                </button>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </>
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
             <XIcon className="w-5 h-5" />

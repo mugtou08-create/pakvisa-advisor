@@ -845,3 +845,73 @@ Work Log:
 Stage Summary:
 - Auto-expiry is built into the auth check flow
 - Expired Pro users are automatically downgraded on next request
+
+---
+Task ID: 4-5
+Agent: Sub Agent
+Task: Notification System & Auto-Expiry/Renewal Flow
+
+Work Log:
+- Added AdminNotification model to Prisma schema with indexes on isRead and createdAt
+- Created notification on payment proof upload in /api/payment-proof/route.ts — includes user name, email, proof ID
+- Created /api/admin/notifications/route.ts (GET: list latest 10 + unread count, PUT: mark single/all as read) using same admin auth pattern (base64 token)
+- Added Bell + CheckCheck2 imports to admin-dialog.tsx lucide-react import
+- Added 'notifications' to AdminSection type union
+- Added notifications state (notifications[], unreadCount, showNotifPanel)
+- Added fetchNotifications, markNotificationRead, markAllNotificationsRead callbacks
+- Added fetchNotifications call in useEffect on activeSection change (always fetches for bell badge)
+- Added bell icon button in admin header with unread count badge (red, 9+ cap)
+- Added notification dropdown panel with mark-as-read per notification and mark-all-read
+- Added pro expiry warning in user dropdown (page.tsx) — red AlertTriangle when ≤3 days left
+- Added “Renew Pro” button in user dropdown when ≤7 days left, opens payment proof modal
+- AlertTriangle and Crown were already imported in page.tsx
+- Ran db:push successfully — AdminNotification table created
+- Ran lint — zero errors
+
+Stage Summary:
+- Admin notification system: model → creation on upload → API → bell UI with dropdown
+- Auto-expiry UI: 3-day warning + 7-day renew button in user dropdown menu
+
+---
+Task ID: 3-a
+Agent: Main Agent (continued from previous session)
+Task: Complete all remaining tasks - Fix lint error, verify site, payment proof flow, notifications, auto-expiry
+
+Work Log:
+- Verified country-detail.tsx lint error is resolved (was stale from previous session)
+- Cleared .next cache and restarted dev server cleanly
+- Verified all 7 implemented features work in browser via agent-browser
+- Updated PricingModal (modals.tsx) to connect to PaymentProofModal:
+  - Added onOpenPaymentProof callback prop
+  - Shows "Login to Get Pro" when not authenticated (dispatches open-auth event)
+  - Shows "Upload Payment Proof" when authenticated
+  - Shows "You are already a Pro member!" with expiry date when Pro
+- Updated page.tsx to pass onOpenPaymentProof callback to both PricingModal instances
+- Enhanced /api/auth/me to return latestProof (pending/approved/rejected status)
+- Updated auth-store.ts to track latestProof state
+- Enhanced user dropdown menu:
+  - Shows Pro expiry date when Pro
+  - Shows "Payment proof under review" when pending
+  - Shows rejection reason when rejected
+  - "Submit Payment Proof" only shows when not Pro or proof was rejected
+- Enhanced PaymentProofModal:
+  - Shows pending/rejected proof status banners
+  - Calls checkAuth() after upload to refresh proof status
+- Delegated Task 6 + 7 to subagent:
+  - Added AdminNotification model to Prisma schema
+  - Created /api/admin/notifications route (GET list, PUT mark read)
+  - Added notification creation on payment proof upload
+  - Added Bell icon with unread badge in admin dashboard
+  - Added notification dropdown panel in admin dialog
+  - Added Pro expiry warning (<=3 days) in user dropdown
+  - Added "Renew Pro" button (<=7 days) in user dropdown
+- Fixed CheckCheck2 import error (doesn't exist in lucide-react → CheckCheck)
+- Fixed duplicate CheckCheck import in admin-dialog.tsx
+
+Stage Summary:
+- All 7 tasks from user's original request are COMPLETE
+- Full payment proof flow: Pricing → Auth → Upload → Admin Review → Pro Activation
+- Admin notification system with bell badge and dropdown
+- Auto-expiry warnings at 3 days, renewal prompt at 7 days
+- All features verified working in browser (agent-browser)
+- Zero lint errors, 200 status on main page

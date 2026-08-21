@@ -60,3 +60,4 @@ migrate-to-turso.ts
 
 # Skills directory
 /skills/bun.lock
+public/uploads/

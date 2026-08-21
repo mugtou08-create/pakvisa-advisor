@@ -1,0 +1,822 @@
+     1→'use client';
+     2→import React, { useState } from 'react';
+     3→import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList, Send, User, Loader2 } from 'lucide-react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+     6→import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Input } from '@/components/ui/input';
+     9→import { Textarea } from '@/components/ui/textarea';
+    10→import { Label } from '@/components/ui/label';
+    11→import { toast } from 'sonner';
+    12→
+    13→export function PricingModal({ onClose }: { onClose: () => void }) {
+    14→  React.useEffect(() => {
+    15→    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    16→    window.addEventListener('keydown', handler);
+    17→    return () => window.removeEventListener('keydown', handler);
+    18→  }, [onClose]);
+    19→
+    20→  return (
+    21→    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    22→      {/* Backdrop */}
+    23→      <div
+    24→        className="absolute inset-0 bg-black/50"
+    25→        onClick={onClose}
+    26→        aria-hidden="true"
+    27→      />
+    28→
+    29→      {/* Card */}
+    30→      <div className="relative w-full max-w-lg bg-card rounded-2xl border flex flex-col max-h-[85vh]">
+    31→        {/* Header with close button */}
+    32→        <div className="flex items-center justify-between p-5 pb-3 shrink-0 border-b">
+    33→          <div className="flex items-center gap-2">
+    34→            <div className="flex items-center justify-center h-9 w-9 rounded-full bg-amber-500/10">
+    35→              <Crown className="h-5 w-5 text-amber-500" />
+    36→            </div>
+    37→            <h2 className="text-lg font-bold">PakVisa Pro</h2>
+    38→          </div>
+    39→          <button
+    40→            onClick={onClose}
+    41→            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+    42→            aria-label="Close"
+    43→          >
+    44→            <X className="h-5 w-5" />
+    45→          </button>
+    46→        </div>
+    47→
+    48→        {/* Scrollable content */}
+    49→        <div className="overflow-y-auto p-5 pt-4">
+    50→          <p className="text-sm text-muted-foreground text-center mb-6">
+    51→            Everything you need for stress-free visa applications
+    52→          </p>
+    53→
+    54→          {/* Price section */}
+    55→          <div className="rounded-xl border p-4 text-center mb-6">
+    56→            <span className="text-4xl font-bold">$14.90</span>
+    57→            <span className="text-muted-foreground">/month</span>
+    58→            <p className="text-sm text-muted-foreground mt-1">
+    59→              or $99/year <span className="text-emerald-600 dark:text-emerald-400 font-semibold">(save 45%)</span>
+    60→            </p>
+    61→            <p className="text-xs text-muted-foreground mt-2">
+    62→              ≈ PKR 4,150/month · Cancel anytime
+    63→            </p>
+    64→          </div>
+    65→
+    66→          {/* Feature list */}
+    67→          <ul className="space-y-3 mb-6">
+    68→            <li className="flex items-start gap-3">
+    69→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    70→              <span className="text-sm">Document checklist for every country</span>
+    71→            </li>
+    72→            <li className="flex items-start gap-3">
+    73→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    74→              <span className="text-sm">Step-by-step application guides</span>
+    75→            </li>
+    76→            <li className="flex items-start gap-3">
+    77→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    78→              <span className="text-sm">Total cost calculator with hidden fees</span>
+    79→            </li>
+    80→            <li className="flex items-start gap-3">
+    81→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    82→              <span className="text-sm">Visa policy change alerts via email</span>
+    83→            </li>
+    84→            <li className="flex items-start gap-3">
+    85→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    86→              <span className="text-sm">Unlimited AI consultant queries</span>
+    87→            </li>
+    88→            <li className="flex items-start gap-3">
+    89→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    90→              <span className="text-sm">PDF export of visa reports</span>
+    91→            </li>
+    92→            <li className="flex items-start gap-3">
+    93→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    94→              <span className="text-sm">Application deadline tracker</span>
+    95→            </li>
+    96→            <li className="flex items-start gap-3">
+    97→              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+    98→              <span className="text-sm">
+    99→                Save unlimited favorites &amp; compare up to 5 countries
+   100→              </span>
+   101→            </li>
+   102→          </ul>
+   103→
+   104→          {/* CTA Button */}
+   105→          <Button className="w-full" size="lg" onClick={onClose}>
+   106→            <Crown className="h-4 w-4 mr-2" />
+   107→            Start Free Trial (7 days)
+   108→          </Button>
+   109→
+   110→          <p className="text-xs text-muted-foreground text-center mt-3">
+   111→            Cancel anytime. No questions asked.
+   112→          </p>
+   113→
+   114→          {/* Free plan link */}
+   115→          <button
+   116→            onClick={onClose}
+   117→            className="block mx-auto mt-4 text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+   118→          >
+   119→            Continue with Free Plan
+   120→          </button>
+   121→        </div>
+   122→      </div>
+   123→    </div>
+   124→  );
+   125→}
+   126→
+   127→// ============================================================
+   128→// Help Modal — Expanded with Glossary + Use Cases
+   129→// ============================================================
+   130→export function HelpModal({ onClose }: { onClose: () => void }) {
+   131→  // ---- Getting Started steps ----
+   132→  const quickStart = [
+   133→    { num: 1, title: 'Search or Browse Countries', desc: 'Use the search bar at the top to type any country name, or scroll down to browse all 70+ destinations in the country list.', icon: Search },
+   134→    { num: 2, title: 'Apply Filters', desc: 'Use the Region filter (Asia, Middle East, Europe, etc.) and the Access Type filter (Visa Free, Visa on Arrival, e-Visa, Embassy) to narrow results. Use Sort to order by name, cost, speed, or safety.', icon: BarChart3 },
+   135→    { num: 3, title: 'Expand a Country Card', desc: 'Click any country row to reveal detailed info: visa types available, document requirements, processing time, visa fee, monthly living cost, embassy contact, and best travel months.', icon: Globe },
+   136→    { num: 4, title: 'Use Quick Tools', desc: 'Open AI Visa Consultant for personalized Q&A, the Visa Quiz for tailored recommendations, or Compare Countries to see up to 3 destinations side by side.', icon: Zap },
+   137→    { num: 5, title: 'Save Favorites', desc: 'Click the heart icon on any country card to save it to your favorites. Use the Favorites filter to see your saved list anytime.', icon: Heart },
+   138→  ];
+   139→
+   140→  // ---- Glossary terms ----
+   141→  const glossary = [
+   142→    { term: 'Visa Free', icon: CheckCircle2, color: 'text-emerald-500', definition: 'You do NOT need any visa to enter the country. Simply present your valid Pakistani passport at immigration. Some Visa Free countries may still require a return ticket, proof of accommodation, or travel insurance.' },
+   143→    { term: 'Visa on Arrival (VoA)', icon: Plane, color: 'text-amber-500', definition: 'You receive your visa at the airport or border crossing of the destination country when you arrive. No prior application is needed, but you must have a valid passport (6+ months), return ticket, hotel booking, and sometimes travel insurance.' },
+   144→    { term: 'e-Visa / Electronic Visa', icon: FileText, color: 'text-sky-500', definition: 'A visa you apply for online through the official government portal of the destination country before you travel. Typically approved within 1–5 business days. You print the approval and carry it with you to present at immigration.' },
+   145→    { term: 'Embassy Required', icon: Building, color: 'text-red-500', definition: 'You must apply in person or by mail at the embassy or consulate of the destination country. This usually involves submitting a paper application, biometrics, and supporting documents. Processing can take 2–8 weeks.' },
+   146→    { term: 'Primary Access Type', icon: Star, color: 'text-purple-500', definition: 'Each country is assigned ONE main visa category for Pakistani passport holders. Priority order: Visa Free > Visa on Arrival > e-Visa > Embassy Required. This determines which badge and color you see on each country card.' },
+   147→    { term: 'Visa Fee (USD)', icon: DollarSign, color: 'text-emerald-500', definition: 'The official government fee to obtain the visa, shown in US dollars. This does NOT include service fees, courier charges, or agent fees that may apply. Free visas or Visa on Arrival may show $0.' },
+   148→    { term: 'Processing Time', icon: Clock, color: 'text-blue-500', definition: 'The typical number of business days it takes for the visa to be approved, shown as a range (e.g., "5–15 days"). For Visa Free and VoA, processing is instant. For e-Visa it is usually 1–5 days. For embassy visas it can be 2–8 weeks.' },
+   149→    { term: 'Safety Rating', icon: Shield, color: 'text-orange-500', definition: 'A 1-to-5 score indicating the general safety level for travelers in that country. 5/5 means very safe, 1/5 means high caution advised. Ratings are based on global peace indices and travel advisories.' },
+   150→    { term: 'Best Travel Months', icon: Globe, color: 'text-teal-500', definition: 'The recommended months to visit based on weather conditions. Shown as month abbreviations (e.g., "Oct, Nov, Dec"). Consider these when planning your trip for the most comfortable experience.' },
+   151→    { term: 'Monthly Living Cost', icon: DollarSign, color: 'text-pink-500', definition: 'An estimated total monthly expense including rent, food, transport, and health insurance in the local currency converted to USD. Useful for budgeting longer stays.' },
+   152→    { term: 'Region Filter', icon: MapPin, color: 'text-indigo-500', definition: 'Groups countries by geographic area: Asia, Middle East, Africa, Europe, Americas, and Oceania. Select a region to see only countries in that area.' },
+   153→    { term: 'Favorites', icon: Heart, color: 'text-rose-500', definition: 'A personal bookmark system. Click the heart icon on any country to add/remove it from your favorites list. Favorites are saved in your browser and persist across sessions.' },
+   154→    { term: 'Compare Tool', icon: BarChart3, color: 'text-cyan-500', definition: 'A feature that lets you select up to 3 countries and view their visa requirements, fees, processing times, safety ratings, and costs side by side in a comparison table.' },
+   155→    { term: 'AI Visa Consultant', icon: MessageCircle, color: 'text-violet-500', definition: 'An AI-powered chat assistant that can answer your specific visa questions, explain requirements, suggest countries based on your preferences, and guide you through the application process.' },
+   156→    { term: 'Visa Quiz', icon: ClipboardList, color: 'text-lime-500', definition: 'A short questionnaire that asks about your travel purpose, budget, timeline, and preferences, then recommends the best countries and visa options for your specific situation.' },
+   157→    { term: 'Schengen Area', icon: Globe, color: 'text-blue-500', definition: 'A zone of 27 European countries with a single visa policy. One Schengen visa allows travel across all member states. Pakistani citizens must apply for a Schengen visa at the embassy of their main destination.' },
+   158→    { term: 'Passport Power Ranking', icon: Award, color: 'text-amber-500', definition: 'A global ranking (Henley Passport Index) that scores passports based on the number of destinations their holders can visit without a visa. Pakistan is currently ranked around #106 globally.' },
+   159→    { term: 'Pagination', icon: ArrowRight, color: 'text-gray-500', definition: 'Countries are displayed 15 per page. Use the page numbers, Previous/Next buttons, or First/Last buttons at the bottom of the list to navigate through all destinations.' },
+   160→  ];
+   161→
+   162→  // ---- 5 Use Case Scenarios ----
+   163→  const useCases = [
+   164→    {
+   165→      title: 'Quick Visa-Free Vacation',
+   166→      persona: 'Family holiday planner',
+   167→      emoji: '🏖️',
+   168→      difficulty: 'Beginner',
+   169→      steps: [
+   170→        'Click the <b>"Visa Free"</b> filter button under "All Destinations". This instantly shows only countries where you need NO visa.',
+   171→        'Optionally click a <b>Region</b> filter (e.g., "Asia") to narrow destinations by geography.',
+   172→        'Sort by <b>"Safest"</b> to prioritize family-friendly destinations with high safety ratings.',
+   173→        'Click on a country card (e.g., Malaysia) to see best travel months, monthly living costs, and safety details.',
+   174→        'Click the heart icon to save your top choices, then use the <b>Compare</b> tool to compare 2–3 options side by side.',
+   175→      ],
+   176→      tip: 'Visa Free means zero visa paperwork — just pack your bags and go!'
+   177→    },
+   178→    {
+   179→      title: 'Umrah or Hajj Pilgrimage',
+   180→      persona: 'Religious traveler',
+   181→      emoji: '🕌',
+   182→      difficulty: 'Beginner',
+   183→      steps: [
+   184→        'Type <b>"Saudi Arabia"</b> in the search bar or find it in the country list under the "Middle East" region.',
+   185→        'Click the Saudi Arabia card to expand details. You\'ll see it offers an <b>e-Visa</b> for tourism/Umrah.',
+   186→        'Review the document requirements listed (passport photos, bank statements, travel itinerary).',
+   187→        'Check the <b>visa fee</b> (shown in USD with PKR conversion) and <b>processing time</b> (typically 3–7 days).',
+   188→        'For personalized guidance, open the <b>AI Visa Consultant</b> and ask "What documents do I need for Saudi e-Visa as a Pakistani?"',
+   189→      ],
+   190→      tip: 'Apply for the Saudi e-Visa at least 2 weeks before your planned travel date. The e-Visa portal is official and straightforward.'
+   191→    },
+   192→    {
+   193→      title: 'European Schengen Visa Application',
+   194→      persona: 'Tourist or business traveler',
+   195→      emoji: '🏰',
+   196→      difficulty: 'Advanced',
+   197→      steps: [
+   198→        'Click the <b>"Embassy"</b> filter to see all countries requiring an embassy visa. This includes most of Europe.',
+   199→        'Click any European country card (e.g., Germany, France, Spain) to see <b>embassy contact details</b>, processing times, and requirements.',
+   200→        'Note the <b>processing time</b> (usually 15–30 days) and plan to apply at least 6 weeks in advance.',
+   201→        'Review the full requirements list including bank statements, employment letter, travel insurance, and hotel bookings.',
+   202→        'Use the <b>AI Visa Consultant</b> to ask specific questions like "What is the Schengen visa process for Pakistanis?"',
+   203→      ],
+   204→      tip: 'A single Schengen visa lets you visit 27 European countries. Apply at the embassy of the country where you\'ll spend the most time.'
+   205→    },
+   206→    {
+   207→      title: 'Budget-Friendly Travel Planning',
+   208→      persona: 'Student or budget traveler',
+   209→      emoji: '💰',
+   210→      difficulty: 'Beginner',
+   211→      steps: [
+   212→        'In the Sort dropdown (next to filters), select <b>"Cheapest"</b> to rank all countries from lowest to highest visa fee.',
+   213→        'Filter by <b>"Visa Free"</b> or <b>"Visa on Arrival"</b> to eliminate visa application costs entirely.',
+   214→        'Click country cards to check <b>monthly living costs</b> — shown as a breakdown of rent, food, transport, and insurance.',
+   215→        'Use the <b>Compare</b> tool to compare 2–3 affordable destinations side by side, looking at both visa fees AND living costs.',
+   216→        'Sort by <b>"Safest"</b> to make sure you\'re choosing a destination that\'s both affordable AND secure.',
+   217→      ],
+   218→      tip: 'Some of the cheapest destinations (e.g., Azerbaijan Visa Free, Nepal Visa on Arrival) also offer great cultural experiences!'
+   219→    },
+   220→    {
+   221→      title: 'Study or Work Abroad Research',
+   222→      persona: 'Student or professional',
+   223→      emoji: '🎓',
+   224→      difficulty: 'Intermediate',
+   225→      steps: [
+   226→        'Start with the <b>Visa Quiz</b> — answer questions about your travel purpose, budget, and timeline to get personalized country recommendations.',
+   227→        'Search for specific countries (e.g., UK, Australia, Germany) and review their embassy requirements for student/work visas.',
+   228→        'Check <b>processing times</b> carefully — student visas for countries like Australia or Canada can take 30–60 days.',
+   229→        'Click expanded country cards to find <b>embassy addresses in Islamabad</b>, phone numbers, and official websites for applications.',
+   230→        'Ask the <b>AI Visa Consultant</b> specific questions like "What are the requirements for a UK student visa as a Pakistani?" for detailed guidance.',
+   231→      ],
+   232→      tip: 'For study visas, always verify requirements directly with the embassy website — requirements change frequently and vary by program.',
+   233→    },
+   234→    {
+   235→      title: 'Medical Tourism Research',
+   236→      persona: 'Health-conscious traveler',
+   237→      emoji: '🏥',
+   238→      difficulty: 'Intermediate',
+   239→      steps: [
+   240→        'Start by searching for countries known for medical tourism (e.g., Turkey, India, Thailand) in the search bar.',
+   241→        'Click each country card and check <b>visa type</b>, <b>processing time</b>, and <b>visa fee</b> to estimate how quickly you can get there.',
+   242→        'Review <b>monthly living costs</b> to estimate accommodation and food expenses during your recovery period.',
+   243→        'Check the <b>best travel months</b> for each destination to plan your trip during comfortable weather.',
+   244→        'Use the <b>Compare</b> tool to compare Turkey vs India vs Thailand side by side — look at visa ease, cost, safety, and processing speed.',
+   245→      ],
+   246→      tip: 'Turkey (e-Visa, ~$50) and India (e-Visa) are popular for Pakistani medical tourists due to fast visa processing and affordable healthcare.'
+   247→    },
+   248→    {
+   249→      title: 'Last-Minute Emergency Travel',
+   250→      persona: 'Traveler with urgent plans',
+   251→      emoji: '✈️',
+   252→      difficulty: 'Beginner',
+   253→      steps: [
+   254→        'Filter by <b>"Visa Free"</b> — these countries require ZERO visa processing time, so you can travel immediately.',
+   255→        'If no visa-free country fits your needs, filter by <b>"Visa on Arrival"</b> — visas are issued at the airport in minutes.',
+   256→        'Sort by <b>"Fastest"</b> to see all countries ranked by minimum processing time.',
+   257→        'For e-Visa countries, sort by <b>"Cheapest"</b> — e-Visas can be approved in 1–3 days for countries like Armenia, Kenya, or Cambodia.',
+   258→        'Verify the <b>requirements</b> by clicking the country card — even Visa on Arrival may need return ticket and hotel booking proof.',
+   259→      ],
+   260→      tip: 'The fastest options for Pakistani passport holders: Azerbaijan (Visa Free), Malaysia (Visa Free), UAE/Thailand (Visa on Arrival at airport).'
+   261→    },
+   262→    {
+   263→      title: 'Family Visit — Reuniting Abroad',
+   264→      persona: 'Traveler visiting family',
+   265→      emoji: '👨‍👩‍👧‍👦',
+   266→      difficulty: 'Intermediate',
+   267→      steps: [
+   268→        'Search for the country where your family lives (e.g., UK, USA, Saudi Arabia, Canada).',
+   269→        'Click the country card and review the <b>embassy details</b> — address in Islamabad, phone, and official appointment link.',
+   270→        'Check <b>processing time</b> carefully — countries like USA/UK can take 4–8 weeks. Plan well in advance.',
+   271→        'Review the <b>document requirements</b> — family visits typically need an invitation letter, sponsor documents, and proof of relationship.',
+   272→        'Use the <b>AI Visa Consultant</b> and ask: "What documents do I need for a family visit visa to [country] as a Pakistani?"',
+   273→      ],
+   274→      tip: 'For family visit visas, a formal invitation letter from your host and proof of their legal status in the destination country are usually mandatory.',
+   275→    },
+   276→  ];
+   277→
+   278→  React.useEffect(() => {
+   279→    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+   280→    window.addEventListener('keydown', handler);
+   281→    return () => window.removeEventListener('keydown', handler);
+   282→  }, [onClose]);
+   283→
+   284→  return (
+   285→    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+   286→      {/* Backdrop */}
+   287→      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+   288→
+   289→      {/* Card */}
+   290→      <div className="relative w-full max-w-2xl bg-card rounded-2xl border flex flex-col max-h-[90vh]">
+   291→        {/* Header */}
+   292→        <div className="flex items-center gap-3 p-5 pb-3 shrink-0 border-b">
+   293→          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-primary/10 text-primary shrink-0">
+   294→            <HelpCircle className="h-5 w-5" />
+   295→          </div>
+   296→          <h2 className="text-lg font-bold flex-1">Help Center</h2>
+   297→          <button
+   298→            onClick={onClose}
+   299→            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+   300→            aria-label="Close"
+   301→          >
+   302→            <X className="h-5 w-5" />
+   303→          </button>
+   304→        </div>
+   305→
+   306→        {/* Tabs */}
+   307→        <Tabs defaultValue="start" className="flex flex-col flex-1 min-h-0">
+   308→          <div className="px-5 pt-3 shrink-0">
+   309→            <TabsList className="w-full">
+   310→              <TabsTrigger value="start" className="flex-1 text-xs"><BookOpen className="h-3.5 w-3.5 mr-1 hidden sm:inline" />Get Started</TabsTrigger>
+   311→              <TabsTrigger value="glossary" className="flex-1 text-xs"><Search className="h-3.5 w-3.5 mr-1 hidden sm:inline" />Glossary</TabsTrigger>
+   312→              <TabsTrigger value="usecases" className="flex-1 text-xs"><Compass className="h-3.5 w-3.5 mr-1 hidden sm:inline" />Use Cases</TabsTrigger>
+   313→              <TabsTrigger value="tips" className="flex-1 text-xs"><Lightbulb className="h-3.5 w-3.5 mr-1 hidden sm:inline" />Tips</TabsTrigger>
+   314→            </TabsList>
+   315→          </div>
+   316→
+   317→          {/* Scrollable Content */}
+   318→          <div className="px-5 pb-5 overflow-y-auto flex-1 min-h-0">
+   319→
+   320→            {/* ====== TAB 1: Getting Started ====== */}
+   321→            <TabsContent value="start" className="mt-4 space-y-4">
+   322→              <p className="text-sm text-muted-foreground leading-relaxed">
+   323→                Welcome to PakVisa Advisor! Follow these steps to get the most out of the tool:
+   324→              </p>
+   325→              <div className="space-y-4">
+   326→                {quickStart.map((step) => (
+   327→                  <div key={step.num} className="flex items-start gap-3">
+   328→                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
+   329→                      {step.num}
+   330→                    </div>
+   331→                    <div className="flex-1 min-w-0">
+   332→                      <div className="flex items-center gap-2">
+   333→                        <p className="font-medium text-sm">{step.title}</p>
+   334→                      </div>
+   335→                      <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{step.desc}</p>
+   336→                    </div>
+   337→                  </div>
+   338→                ))}
+   339→              </div>
+   340→
+   341→              <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 mt-4">
+   342→                <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+   343→                  <span className="font-semibold">100% Free</span> — Visa search, requirements viewing, and basic AI queries are completely free.
+   344→                  Upgrade to PakVisa Pro for document checklists, step-by-step guides, and unlimited AI access.
+   345→                </p>
+   346→              </div>
+   347→            </TabsContent>
+   348→
+   349→            {/* ====== TAB 2: Glossary ====== */}
+   350→            <TabsContent value="glossary" className="mt-4">
+   351→              <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+   352→                Key terms used throughout PakVisa Advisor. Click any term to expand its definition.
+   353→              </p>
+   354→              <Accordion type="multiple" className="space-y-1">
+   355→                {glossary.map((item) => (
+   356→                  <AccordionItem key={item.term} value={item.term} className="border rounded-lg px-3">
+   357→                    <AccordionTrigger className="text-sm py-3 hover:no-underline">
+   358→                      <div className="flex items-center gap-2.5">
+   359→                        <item.icon className={`h-4 w-4 ${item.color} shrink-0`} />
+   360→                        <span className="font-medium">{item.term}</span>
+   361→                      </div>
+   362→                    </AccordionTrigger>
+   363→                    <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-3">
+   364→                      {item.definition}
+   365→                    </AccordionContent>
+   366→                  </AccordionItem>
+   367→                ))}
+   368→              </Accordion>
+   369→            </TabsContent>
+   370→
+   371→            {/* ====== TAB 3: Use Cases ====== */}
+   372→            <TabsContent value="usecases" className="mt-4 space-y-5">
+   373→              <p className="text-sm text-muted-foreground leading-relaxed">
+   374→                Step-by-step walkthroughs for common travel scenarios. Follow along to get results fast!
+   375→              </p>
+   376→              {useCases.map((uc, idx) => (
+   377→                <div key={idx} className="rounded-xl border p-4 space-y-3">
+   378→                  {/* Header */}
+   379→                  <div className="flex items-start justify-between gap-2">
+   380→                    <div className="flex items-center gap-2.5">
+   381→                      <span className="text-2xl">{uc.emoji}</span>
+   382→                      <div>
+   383→                        <p className="font-semibold text-sm">{uc.title}</p>
+   384→                        <p className="text-xs text-muted-foreground">{uc.persona}</p>
+   385→                      </div>
+   386→                    </div>
+   387→                    <Badge variant="secondary" className="text-[10px] shrink-0">
+   388→                      {uc.difficulty}
+   389→                    </Badge>
+   390→                  </div>
+   391→
+   392→                  {/* Steps */}
+   393→                  <ol className="space-y-2">
+   394→                    {uc.steps.map((step, sIdx) => (
+   395→                      <li key={sIdx} className="flex items-start gap-2.5">
+   396→                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground mt-0.5">
+   397→                          {sIdx + 1}
+   398→                        </span>
+   399→                        <p className="text-sm text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: step }} />
+   400→                      </li>
+   401→                    ))}
+   402→                  </ol>
+   403→
+   404→                  {/* Tip */}
+   405→                  <div className="rounded-lg bg-amber-500/5 border border-amber-500/15 p-2.5">
+   406→                    <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+   407→                      <span className="font-semibold">💡 Pro Tip:</span> {uc.tip}
+   408→                    </p>
+   409→                  </div>
+   410→                </div>
+   411→              ))}
+   412→            </TabsContent>
+   413→
+   414→            {/* ====== TAB 4: Tips & Shortcuts ====== */}
+   415→            <TabsContent value="tips" className="mt-4 space-y-5">
+   416→              {/* Keyboard Shortcuts */}
+   417→              <div>
+   418→                <div className="flex items-center gap-2 mb-3">
+   419→                  <Keyboard className="h-4 w-4 text-primary" />
+   420→                  <h3 className="font-semibold text-sm">Keyboard Shortcuts</h3>
+   421→                </div>
+   422→                <div className="rounded-lg border overflow-hidden divide-y">
+   423→                  {[
+   424→                    { keys: 'Ctrl + K', action: 'Focus the search bar instantly' },
+   425→                    { keys: 'Esc', action: 'Close any open modal or dialog' },
+   426→                  ].map((sc, i) => (
+   427→                    <div key={i} className="flex items-center justify-between px-4 py-2.5 text-sm">
+   428→                      <span className="text-muted-foreground">{sc.action}</span>
+   429→                      <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-mono">{sc.keys}</kbd>
+   430→                    </div>
+   431→                  ))}
+   432→                </div>
+   433→              </div>
+   434→
+   435→              {/* Pro Tips */}
+   436→              <div>
+   437→                <div className="flex items-center gap-2 mb-3">
+   438→                  <Lightbulb className="h-4 w-4 text-amber-500" />
+   439→                  <h3 className="font-semibold text-sm">Pro Tips</h3>
+   440→                </div>
+   441→                <div className="space-y-3">
+   442→                  {[
+   443→                    { title: 'Combine filters for precise results', desc: 'Use Region + Access Type + Sort together. For example: filter "Middle East" + "Visa on Arrival" + Sort by "Cheapest" to find the cheapest VoA countries in the Middle East.' },
+   444→                    { title: 'Start broad, then narrow down', desc: 'Begin with "All Regions" and "All Types" to see everything, then apply filters one at a time. This way you won\'t accidentally miss a destination.' },
+   445→                    { title: 'Use the AI Consultant for edge cases', desc: 'Visa rules can be complex. If you have a unique situation (previous rejection, dual nationality, traveling with minors), ask the AI for specific guidance.' },
+   446→                    { title: 'Check embassy info before applying', desc: 'Click on any Embassy Required country to find the embassy address in Islamabad, phone numbers, working hours, and a direct link to book appointments.' },
+   447→                    { title: 'Trust but verify', desc: 'Our data is sourced from official government websites and updated regularly. However, visa policies can change with little notice. Always double-check with the embassy before making final travel plans.' },
+   448→                    { title: 'Save your favorites', desc: 'Planning multiple trips? Use the heart icon to bookmark countries. Your favorites are saved locally in your browser for easy access next time.' },
+   449→                  ].map((tip, i) => (
+   450→                    <div key={i} className="rounded-lg border p-3">
+   451→                      <p className="font-medium text-sm mb-1">{tip.title}</p>
+   452→                      <p className="text-sm text-muted-foreground leading-relaxed">{tip.desc}</p>
+   453→                    </div>
+   454→                  ))}
+   455→                </div>
+   456→              </div>
+   457→
+   458→              {/* Understanding the Country Card */}
+   459→              <div>
+   460→                <div className="flex items-center gap-2 mb-3">
+   461→                  <Globe className="h-4 w-4 text-primary" />
+   462→                  <h3 className="font-semibold text-sm">Understanding a Country Card</h3>
+   463→                </div>
+   464→                <div className="rounded-lg border p-3 space-y-2">
+   465→                  {[
+   466→                    { label: 'Badge (Visa Free / VoA / e-Visa / Embassy)', desc: 'The colored badge shows the primary access type — this is the easiest/most common way for Pakistanis to get a visa for that country.' },
+   467→                    { label: 'Fee ($XX)', desc: 'Official government visa fee in USD. $0 means free or fee not applicable (Visa Free / VoA).' },
+   468→                    { label: 'Processing (X–Xd)', desc: 'Business days from submission to approval. Instant for Visa Free/VoA.' },
+   469→                    { label: 'Safety (X/5)', desc: 'General safety rating for travelers. Higher is safer.' },
+   470→                    { label: 'Expanded details', desc: 'Click the card to see: document requirements, embassy address, monthly cost breakdown, best travel months, and all available visa types.' },
+   471→                  ].map((item, i) => (
+   472→                    <div key={i} className="flex items-start gap-2">
+   473→                      <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+   474→                      <div>
+   475→                        <p className="text-sm font-medium">{item.label}</p>
+   476→                        <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+   477→                      </div>
+   478→                    </div>
+   479→                  ))}
+   480→                </div>
+   481→              </div>
+   482→            </TabsContent>
+   483→          </div>
+   484→        </Tabs>
+   485→      </div>
+   486→    </div>
+   487→  );
+   488→}
+   489→
+   490→// ============================================================
+   491→// Shared Modal Shell (scrollable content for longer modals)
+   492→// ============================================================
+   493→function ModalShell({ title, icon, onClose, children }: {
+   494→  title: string;
+   495→  icon: React.ReactNode;
+   496→  onClose: () => void;
+   497→  children: React.ReactNode;
+   498→}) {
+   499→  return (
+   500→    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+   501→      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+   502→      <div className="relative w-full max-w-lg bg-card rounded-2xl border flex flex-col max-h-[85vh]">
+   503→        {/* Header */}
+   504→        <div className="flex items-center gap-3 p-6 pb-4 shrink-0">
+   505→          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-primary/10 text-primary shrink-0">
+   506→            {icon}
+   507→          </div>
+   508→          <h2 className="text-lg font-bold flex-1">{title}</h2>
+   509→          <button
+   510→            onClick={onClose}
+   511→            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+   512→            aria-label="Close"
+   513→          >
+   514→            <X className="h-5 w-5" />
+   515→          </button>
+   516→        </div>
+   517→        {/* Scrollable Content */}
+   518→        <div className="px-6 pb-6 overflow-y-auto">{children}</div>
+   519→      </div>
+   520→    </div>
+   521→  );
+   522→}
+   523→
+   524→// ============================================================
+   525→// About Modal
+   526→// ============================================================
+   527→export function AboutModal({ onClose }: { onClose: () => void }) {
+   528→  return (
+   529→    <ModalShell title="About PakVisa Advisor" icon={<Globe className="h-5 w-5" />} onClose={onClose}>
+   530→      <div className="space-y-5 text-sm leading-relaxed text-muted-foreground">
+   531→        <p>
+   532→          <span className="text-foreground font-semibold">PakVisa Advisor</span> is a free, AI-powered visa checking tool
+   533→          designed specifically for Pakistani passport holders. We cover <span className="text-foreground font-medium">70+ countries</span> and
+   534→          <span className="text-foreground font-medium"> 440+ visa types</span> to help you quickly find visa requirements,
+   535→          fees, processing times, and more.
+   536→        </p>
+   537→
+   538→        <div className="space-y-3">
+   539→          <h3 className="text-foreground font-semibold text-sm">What We Offer</h3>
+   540→          <ul className="space-y-2">
+   541→            <li className="flex items-start gap-2">
+   542→              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+   543→              <span>Instant visa search for 70+ countries with detailed requirements</span>
+   544→            </li>
+   545→            <li className="flex items-start gap-2">
+   546→              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+   547→              <span>Visa type classification: Visa Free, Visa on Arrival, e-Visa, Embassy Required</span>
+   548→            </li>
+   549→            <li className="flex items-start gap-2">
+   550→              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+   551→              <span>Cost breakdowns including fees, service charges, and monthly living costs</span>
+   552→            </li>
+   553→            <li className="flex items-start gap-2">
+   554→              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+   555→              <span>AI-powered visa consultant to answer your specific questions</span>
+   556→            </li>
+   557→            <li className="flex items-start gap-2">
+   558→              <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+   559→              <span>Best travel months and safety ratings for every destination</span>
+   560→            </li>
+   561→          </ul>
+   562→        </div>
+   563→
+   564→        <div className="space-y-3">
+   565→          <h3 className="text-foreground font-semibold text-sm">Our Mission</h3>
+   566→          <p>
+   567→            We believe visa information should be accessible, accurate, and free. Pakistani travelers
+   568→            deserve a reliable tool that saves them time and money when planning international trips.
+   569→          </p>
+   570→        </div>
+   571→
+   572→        <div className="rounded-lg bg-muted/50 p-3">
+   573→          <p className="text-xs text-muted-foreground text-center">
+   574→            Data is sourced from official government websites and updated regularly.
+   575→            Last updated: <span className="text-foreground font-medium">2025</span>.
+   576→          </p>
+   577→        </div>
+   578→      </div>
+   579→    </ModalShell>
+   580→  );
+   581→}
+   582→
+   583→// ============================================================
+   584→// Privacy Policy Modal
+   585→// ============================================================
+   586→export function PrivacyModal({ onClose }: { onClose: () => void }) {
+   587→  return (
+   588→    <ModalShell title="Privacy Policy" icon={<Shield className="h-5 w-5" />} onClose={onClose}>
+   589→      <div className="space-y-5 text-sm leading-relaxed text-muted-foreground">
+   590→        <p className="text-xs">Last updated: January 2025</p>
+   591→
+   592→        <div className="space-y-2">
+   593→          <h3 className="text-foreground font-semibold text-sm">Information We Collect</h3>
+   594→          <p>
+   595→            PakVisa Advisor collects minimal data to provide our service. We do not require
+   596→            account registration for basic features.
+   597→          </p>
+   598→          <ul className="list-disc list-inside space-y-1 ml-2">
+   599→            <li><span className="text-foreground font-medium">Usage Data:</span> Search queries and country views are anonymized and used only to improve our service.</li>
+   600→            <li><span className="text-foreground font-medium">AI Queries:</span> When using the AI consultant, your questions are processed to generate responses. Questions are not stored permanently.</li>
+   601→            <li><span className="text-foreground font-medium">Premium Users:</span> Email address and payment info are handled securely by our payment processor. We never store credit card details.</li>
+   602→          </ul>
+   603→        </div>
+   604→
+   605→        <div className="space-y-2">
+   606→          <h3 className="text-foreground font-semibold text-sm">How We Use Your Data</h3>
+   607→          <ul className="list-disc list-inside space-y-1 ml-2">
+   608→            <li>To provide visa information and AI responses</li>
+   609→            <li>To improve our service and user experience</li>
+   610→            <li>To send policy change alerts (premium feature, opt-in only)</li>
+   611→          </ul>
+   612→        </div>
+   613→
+   614→        <div className="space-y-2">
+   615→          <h3 className="text-foreground font-semibold text-sm">Cookies & Local Storage</h3>
+   616→          <p>
+   617→            We use browser local storage to save your preferences (theme, favorites).
+   618→            No tracking cookies from third parties are used on the free tier.
+   619→          </p>
+   620→        </div>
+   621→
+   622→        <div className="space-y-2">
+   623→          <h3 className="text-foreground font-semibold text-sm">Data Sharing</h3>
+   624→          <p>
+   625→            We do not sell, share, or distribute your personal information to any third parties
+   626→            except as required by law or to our payment processor for subscription billing.
+   627→          </p>
+   628→        </div>
+   629→
+   630→        <div className="space-y-2">
+   631→          <h3 className="text-foreground font-semibold text-sm">Your Rights</h3>
+   632→          <p>
+   633→            You may request deletion of your account and all associated data at any time by
+   634→            contacting us. Premium subscriptions can be cancelled instantly from your account settings.
+   635→          </p>
+   636→        </div>
+   637→
+   638→        <div className="space-y-2">
+   639→          <h3 className="text-foreground font-semibold text-sm">Contact</h3>
+   640→          <p>
+   641→            For privacy-related inquiries, please reach out to us at
+   642→            <span className="text-foreground font-medium"> privacy@pakvisaadvisor.com</span>.
+   643→          </p>
+   644→        </div>
+   645→      </div>
+   646→    </ModalShell>
+   647→  );
+   648→}
+   649→
+   650→// ============================================================
+   651→// Terms of Service Modal
+   652→// ============================================================
+   653→export function TermsModal({ onClose }: { onClose: () => void }) {
+   654→  return (
+   655→    <ModalShell title="Terms of Service" icon={<Shield className="h-5 w-5" />} onClose={onClose}>
+   656→      <div className="space-y-5 text-sm leading-relaxed text-muted-foreground">
+   657→        <p className="text-xs">Last updated: January 2025</p>
+   658→
+   659→        <div className="space-y-2">
+   660→          <h3 className="text-foreground font-semibold text-sm">1. Acceptance of Terms</h3>
+   661→          <p>
+   662→            By using PakVisa Advisor, you agree to these Terms of Service. If you do not agree,
+   663→            please do not use the service.
+   664→          </p>
+   665→        </div>
+   666→
+   667→        <div className="space-y-2">
+   668→          <h3 className="text-foreground font-semibold text-sm">2. Service Description</h3>
+   669→          <p>
+   670→            PakVisa Advisor provides visa requirement information for educational and planning
+   671→            purposes. We are not a government agency, embassy, or visa processing service.
+   672→          </p>
+   673→        </div>
+   674→
+   675→        <div className="space-y-2">
+   676→          <h3 className="text-foreground font-semibold text-sm">3. Accuracy Disclaimer</h3>
+   677→          <p>
+   678→            While we strive to keep our data accurate and up-to-date, visa policies change frequently.
+   679→            Always verify requirements with the official embassy or consulate website before making
+   680→            travel plans. PakVisa Advisor is not responsible for decisions made based on outdated or
+   681→            incorrect information.
+   682→          </p>
+   683→        </div>
+   684→
+   685→        <div className="space-y-2">
+   686→          <h3 className="text-foreground font-semibold text-sm">4. Free vs. Premium Features</h3>
+   687→          <ul className="list-disc list-inside space-y-1 ml-2">
+   688→            <li><span className="text-foreground font-medium">Free:</span> Visa search, basic requirements, and limited AI queries.</li>
+   689→            <li><span className="text-foreground font-medium">Premium:</span> Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</li>
+   690→          </ul>
+   691→          <p>Premium subscriptions auto-renew unless cancelled. Refunds are handled on a case-by-case basis.</p>
+   692→        </div>
+   693→
+   694→        <div className="space-y-2">
+   695→          <h3 className="text-foreground font-semibold text-sm">5. User Conduct</h3>
+   696→          <p>Users agree not to:</p>
+   697→          <ul className="list-disc list-inside space-y-1 ml-2">
+   698→            <li>Use the service for illegal purposes</li>
+   699→            <li>Attempt to scrape, hack, or disrupt the service</li>
+   700→            <li>Redistribute our data without permission</li>
+   701→            <li>Misuse the AI consultant feature</li>
+   702→          </ul>
+   703→        </div>
+   704→
+   705→        <div className="space-y-2">
+   706→          <h3 className="text-foreground font-semibold text-sm">6. Limitation of Liability</h3>
+   707→          <p>
+   708→            PakVisa Advisor is provided &ldquo;as is&rdquo; without warranties of any kind. We are not liable
+   709→            for any losses, delays, or issues arising from the use of our service.
+   710→          </p>
+   711→        </div>
+   712→
+   713→        <div className="space-y-2">
+   714→          <h3 className="text-foreground font-semibold text-sm">7. Changes to Terms</h3>
+   715→          <p>
+   716→            We may update these terms periodically. Continued use of the service after changes
+   717→            constitutes acceptance of the updated terms.
+   718→          </p>
+   719→        </div>
+   720→      </div>
+   721→    </ModalShell>
+   722→  );
+   723→}
+   724→
+   725→// ============================================================
+   726→// Embedded Contact Form (used inside ContactModal)
+   727→// ============================================================
+   728→function ContactFormEmbedded() {
+   729→  const [name, setName] = useState('');
+   730→  const [email, setEmail] = useState('');
+   731→  const [subject, setSubject] = useState('');
+   732→  const [message, setMessage] = useState('');
+   733→  const [sending, setSending] = useState(false);
+   734→  const [sent, setSent] = useState(false);
+   735→
+   736→  const handleSubmit = async (e: React.FormEvent) => {
+   737→    e.preventDefault();
+   738→    if (!name.trim() || !email.trim() || !message.trim()) {
+   739→      toast.error('Please fill in name, email, and message');
+   740→      return;
+   741→    }
+   742→    setSending(true);
+   743→    try {
+   744→      const res = await fetch('/api/contact', {
+   745→        method: 'POST',
+   746→        headers: { 'Content-Type': 'application/json' },
+   747→        body: JSON.stringify({ name, email, subject, message }),
+   748→      });
+   749→      const data = await res.json();
+   750→      if (data.success) {
+   751→        toast.success(data.message);
+   752→        setSent(true);
+   753→        setName(''); setEmail(''); setSubject(''); setMessage('');
+   754→        setTimeout(() => setSent(false), 5000);
+   755→      } else {
+   756→        toast.error(data.message || 'Failed to send message');
+   757→      }
+   758→    } catch {
+   759→      toast.error('Connection error. Please try again.');
+   760→    } finally {
+   761→      setSending(false);
+   762→    }
+   763→  };
+   764→
+   765→  if (sent) {
+   766→    return (
+   767→      <div className="flex flex-col items-center justify-center py-8 text-center">
+   768→        <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+   769→          <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+   770→        </div>
+   771→        <h4 className="font-semibold text-lg">Message Sent!</h4>
+   772→        <p className="text-sm text-muted-foreground mt-1">Thank you for reaching out. We will respond shortly.</p>
+   773→      </div>
+   774→    );
+   775→  }
+   776→
+   777→  return (
+   778→    <form onSubmit={handleSubmit} className="space-y-4">
+   779→      <p className="text-sm text-muted-foreground">Have a question? We will get back to you within 24 hours.</p>
+   780→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   781→        <div className="space-y-2">
+   782→          <Label htmlFor="modal-contact-name" className="text-sm font-medium">
+   783→            <User className="w-3.5 h-3.5 inline mr-1" /> Name <span className="text-red-500">*</span>
+   784→          </Label>
+   785→          <Input id="modal-contact-name" placeholder="Your full name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+   786→        </div>
+   787→        <div className="space-y-2">
+   788→          <Label htmlFor="modal-contact-email" className="text-sm font-medium">
+   789→            <Mail className="w-3.5 h-3.5 inline mr-1" /> Email <span className="text-red-500">*</span>
+   790→          </Label>
+   791→          <Input id="modal-contact-email" type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} />
+   792→        </div>
+   793→      </div>
+   794→      <div className="space-y-2">
+   795→        <Label htmlFor="modal-contact-subject" className="text-sm font-medium">
+   796→          <MessageCircle className="w-3.5 h-3.5 inline mr-1" /> Subject <span className="text-muted-foreground font-normal">(optional)</span>
+   797→        </Label>
+   798→        <Input id="modal-contact-subject" placeholder="e.g. Visa question about Turkey" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
+   799→      </div>
+   800→      <div className="space-y-2">
+   801→        <Label htmlFor="modal-contact-message" className="text-sm font-medium">Message <span className="text-red-500">*</span></Label>
+   802→        <Textarea id="modal-contact-message" placeholder="Tell us how we can help you..." value={message} onChange={(e) => setMessage(e.target.value)} rows={4} maxLength={2000} className="resize-none" />
+   803→        <p className="text-xs text-muted-foreground text-right">{message.length}/2000</p>
+   804→      </div>
+   805→      <Button type="submit" disabled={sending} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+   806→        {sending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>) : (<><Send className="w-4 h-4 mr-2" /> Send Message</>)}
+   807→      </Button>
+   808→    </form>
+   809→  );
+   810→}
+   811→
+   812→// ============================================================
+   813→// Contact Modal
+   814→// ============================================================
+   815→export function ContactModal({ onClose }: { onClose: () => void }) {
+   816→  return (
+   817→    <ModalShell title="Contact Us" icon={<Mail className="h-5 w-5" />} onClose={onClose}>
+   818→      <ContactFormEmbedded />
+   819→    </ModalShell>
+   820→  );
+   821→}
+   822→

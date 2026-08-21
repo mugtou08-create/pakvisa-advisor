@@ -262,6 +262,19 @@ model AnalyticsEvent {
   @@index([event])
 }
 
+model AdminNotification {
+  id        String   @id @default(cuid())
+  type      String   @default("info")  // "payment_proof", "user_signup", "info"
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  data      String   @default("{}")  // JSON for extra data
+  createdAt DateTime @default(now())
+
+  @@index([isRead])
+  @@index([createdAt])
+}
+
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String

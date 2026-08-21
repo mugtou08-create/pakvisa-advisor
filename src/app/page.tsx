@@ -292,7 +292,7 @@ export default function HomePage() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Auth
-  const { user, isAuthenticated, checkAuth, logout: authLogout } = useAuthStore();
+  const { user, isAuthenticated, checkAuth, logout: authLogout, latestProof } = useAuthStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentProof, setShowPaymentProof] = useState(false);
 
@@ -590,7 +590,7 @@ export default function HomePage() {
         </footer>
 
         {/* Modals */}
-        {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} onOpenPaymentProof={() => { setActiveModal(null); setShowPaymentProof(true); }} />}
         {activeModal === 'help' && <HelpModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'about' && <AboutModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}
@@ -636,6 +636,28 @@ export default function HomePage() {
                       <div className="px-3 py-2 border-b">
                         <p className="text-sm font-medium truncate">{user.fullName}</p>
                         <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                        {isUserPro && user.proExpiresAt && (
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            Pro until {new Date(user.proExpiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        )}
+                        {isUserPro && user.proExpiresAt && (() => {
+                          const daysLeft = Math.ceil((new Date(user.proExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                          if (daysLeft <= 3 && daysLeft > 0) return (
+                            <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Pro expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}!
+                            </p>
+                          );
+                          return null;
+                        })()}
+                        {latestProof?.status === 'pending' && (
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" /> Payment proof under review
+                          </p>
+                        )}
+                        {latestProof?.status === 'rejected' && (
+                          <p className="text-[10px] text-red-500 mt-0.5">Proof rejected{latestProof.adminNote ? ': ' + latestProof.adminNote : ''}</p>
+                        )}
                       </div>
                       <button
                         onClick={() => { setUserMenuOpen(false); }}
@@ -643,6 +665,18 @@ export default function HomePage() {
                       >
                         <UserIcon className="w-3.5 h-3.5" /> My Account
                       </button>
+                      {isUserPro && user.proExpiresAt && (() => {
+                        const daysLeft = Math.ceil((new Date(user.proExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                        if (daysLeft <= 7 && daysLeft > 0) return (
+                          <button onClick={() => {
+                            setUserMenuOpen(false);
+                            setShowPaymentProof(true);
+                          }} className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors text-amber-600 dark:text-amber-400">
+                            <Crown className="w-3.5 h-3.5" /> Renew Pro ({daysLeft}d left)
+                          </button>
+                        );
+                        return null;
+                      })()}
                       {!isUserPro && (
                         <button
                           onClick={() => { setUserMenuOpen(false); setActiveModal('pricing'); }}
@@ -651,12 +685,14 @@ export default function HomePage() {
                           <Crown className="w-3.5 h-3.5" /> Upgrade to Pro
                         </button>
                       )}
-                      <button
-                        onClick={() => { setUserMenuOpen(false); setShowPaymentProof(true); }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors"
-                      >
-                        <Upload className="w-3.5 h-3.5" /> Submit Payment Proof
-                      </button>
+                      {(!isUserPro || latestProof?.status === 'rejected') && (
+                        <button
+                          onClick={() => { setUserMenuOpen(false); setShowPaymentProof(true); }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 transition-colors"
+                        >
+                          <Upload className="w-3.5 h-3.5" /> Submit Payment Proof
+                        </button>
+                      )}
                       <div className="border-t" />
                       <button
                         onClick={() => { authLogout(); setUserMenuOpen(false); setShowAuthModal(false); }}
@@ -1439,7 +1475,7 @@ export default function HomePage() {
       </footer>
 
       {/* ==================== MODALS ==================== */}
-      {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} />}
+      {activeModal === 'pricing' && <PricingModal onClose={() => setActiveModal(null)} onOpenPaymentProof={() => { setActiveModal(null); setShowPaymentProof(true); }} />}
       {activeModal === 'help' && <HelpModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'about' && <AboutModal onClose={() => setActiveModal(null)} />}
       {activeModal === 'privacy' && <PrivacyModal onClose={() => setActiveModal(null)} />}

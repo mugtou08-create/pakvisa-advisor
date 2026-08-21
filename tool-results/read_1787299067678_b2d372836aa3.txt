@@ -1,0 +1,1467 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→import {
+     5→  Settings, Lock, Eye, EyeOff, Shield, Globe, Users, Activity,
+     6→  ToggleLeft, ToggleRight, BarChart3, LogOut, Database, Zap, AlertTriangle,
+     7→  RefreshCw, Server, FileCheck, MessageSquare, Mail, Send, Trash2,
+     8→  ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
+     9→  Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
+    10→  Filter, X, ChevronDown, MessageCircle, Hash, XIcon, CreditCard, FileImage,
+    11→} from 'lucide-react';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Input } from '@/components/ui/input';
+    14→import { Textarea } from '@/components/ui/textarea';
+    15→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+    16→import { Badge } from '@/components/ui/badge';
+    17→import { ScrollArea } from '@/components/ui/scroll-area';
+    18→import { Separator } from '@/components/ui/separator';
+    19→import { Switch } from '@/components/ui/switch';
+    20→import { toast } from 'sonner';
+    21→import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+    22→
+    23→interface AdminDialogProps {
+    24→  open: boolean;
+    25→  onClose: () => void;
+    26→  aiEnabled: boolean;
+    27→  setAiEnabled: (enabled: boolean) => void;
+    28→}
+    29→
+    30→interface AnalyticsData {
+    31→  countries: { total: number; visaFree: number; visaOnArrival: number; etaAvailable: number };
+    32→  visaCategories: { visaFree: number; visaOnArrival: number; etaAvailable: number; regularVisa: number };
+    33→  continents: Array<{ continent: string; count: number }>;
+    34→  dataFreshness: string | null;
+    35→  requirements: number;
+    36→  costProfiles: number;
+    37→  users: number;
+    38→  sessions: number;
+    39→  adminUsers: Array<{ username: string; lastLogin: string | null; isOnline: boolean; createdAt: string }>;
+    40→  settings: Record<string, string>;
+    41→  messageStats: {
+    42→    total: number;
+    43→    thisWeek: number;
+    44→    unread: number;
+    45→    replied: number;
+    46→    responseRate: number;
+    47→    dailyMessages: Array<{ date: string; count: number }>;
+    48→  };
+    49→  subscriberStats: {
+    50→    total: number;
+    51→    active: number;
+    52→    thisWeek: number;
+    53→  };
+    54→}
+    55→
+    56→interface ContactMessage {
+    57→  id: string;
+    58→  name: string;
+    59→  email: string;
+    60→  subject: string;
+    61→  message: string;
+    62→  isRead: boolean;
+    63→  isReplied: boolean;
+    64→  reply: string;
+    65→  ip: string;
+    66→  createdAt: string;
+    67→}
+    68→
+    69→interface NewsletterSubscriber {
+    70→  id: string;
+    71→  email: string;
+    72→  subscribedAt: string;
+    73→  isActive: boolean;
+    74→}
+    75→
+    76→interface PaymentProofWithUser {
+    77→  id: string;
+    78→  userId: string;
+    79→  fileName: string;
+    80→  filePath: string;
+    81→  fileSize: number;
+    82→  status: string;
+    83→  userNote: string;
+    84→  adminNote: string;
+    85→  reviewedAt: string | null;
+    86→  createdAt: string;
+    87→  user: {
+    88→    id: string;
+    89→    email: string;
+    90→    fullName: string;
+    91→    phone: string;
+    92→    role: string;
+    93→    proExpiresAt: string | null;
+    94→  };
+    95→}
+    96→
+    97→type AdminSection = 'overview' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings';
+    98→type MessageFilter = 'all' | 'unread' | 'replied';
+    99→
+   100→const QUICK_REPLIES = [
+   101→  'Thank you for reaching out! We will review your query and get back to you within 24 hours.',
+   102→  'For the most up-to-date visa information, please check our website or use the AI Visa Consultant chat.',
+   103→  'We recommend checking the official embassy/consulate website for the latest requirements and appointment availability.',
+   104→  'Your question has been noted. For urgent visa matters, please contact the relevant embassy directly.',
+   105→];
+   106→
+   107→export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDialogProps) {
+   108→  const [isLoggedIn, setIsLoggedIn] = useState(false);
+   109→  const [token, setToken] = useState<string | null>(null);
+   110→  const [username, setUsername] = useState('');
+   111→  const [password, setPassword] = useState('');
+   112→  const [showPassword, setShowPassword] = useState(false);
+   113→  const [loginLoading, setLoginLoading] = useState(false);
+   114→  const [activeSection, setActiveSection] = useState<AdminSection>('overview');
+   115→  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+   116→  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+   117→  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+   118→  const abortRef = useRef<AbortController | null>(null);
+   119→  const [maintenanceMode, setMaintenanceMode] = useState(false);
+   120→  const [togglingAi, setTogglingAi] = useState(false);
+   121→  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+   122→  const [refreshingAnalytics, setRefreshingAnalytics] = useState(false);
+   123→
+   124→  // Messages state
+   125→  const [messages, setMessages] = useState<ContactMessage[]>([]);
+   126→  const [messagesTotal, setMessagesTotal] = useState(0);
+   127→  const [messagesUnread, setMessagesUnread] = useState(0);
+   128→  const [messagesPage, setMessagesPage] = useState(1);
+   129→  const [messagesLoading, setMessagesLoading] = useState(false);
+   130→  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+   131→  const [replyText, setReplyText] = useState('');
+   132→  const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
+   133→  const [messageFilter, setMessageFilter] = useState<MessageFilter>('all');
+   134→  const [messageSearch, setMessageSearch] = useState('');
+   135→  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+   136→  const [markingAllRead, setMarkingAllRead] = useState(false);
+   137→  const searchInputRef = useRef<HTMLInputElement>(null);
+   138→
+   139→  // Newsletter state
+   140→  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
+   141→  const [subscribersTotal, setSubscribersTotal] = useState(0);
+   142→  const [subscribersActive, setSubscribersActive] = useState(0);
+   143→  const [subscribersPage, setSubscribersPage] = useState(1);
+   144→  const [subscribersLoading, setSubscribersLoading] = useState(false);
+   145→
+   146→  // Payment proofs state
+   147→  const [paymentProofs, setPaymentProofs] = useState<PaymentProofWithUser[]>([]);
+   148→  const [paymentProofsPending, setPaymentProofsPending] = useState(0);
+   149→  const [paymentProofsLoading, setPaymentProofsLoading] = useState(false);
+   150→  const [approvingId, setApprovingId] = useState<string | null>(null);
+   151→  const [rejectingId, setRejectingId] = useState<string | null>(null);
+   152→  const [rejectNote, setRejectNote] = useState('');
+   153→
+   154→  // WhatsApp number settings
+   155→  const [whatsappNumber, setWhatsappNumber] = useState('');
+   156→  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+   157→
+   158→  useEffect(() => {
+   159→    const savedToken = localStorage.getItem('pakvisa-admin-token');
+   160→    if (savedToken) {
+   161→      try {
+   162→        const decoded = Buffer.from(savedToken, 'base64').toString('utf-8');
+   163→        const parts = decoded.split(':');
+   164→        const timestamp = parseInt(parts[parts.length - 1]);
+   165→        if (timestamp && Date.now() - timestamp <= 604800000) {
+   166→          setToken(savedToken);
+   167→          setIsLoggedIn(true);
+   168→        } else {
+   169→          localStorage.removeItem('pakvisa-admin-token');
+   170→        }
+   171→      } catch {
+   172→        localStorage.removeItem('pakvisa-admin-token');
+   173→      }
+   174→    }
+   175→  }, []);
+   176→
+   177→  const handleLogin = useCallback(async () => {
+   178→    if (!username.trim() || !password.trim()) {
+   179→      toast.error('Please enter username and password');
+   180→      return;
+   181→    }
+   182→    setLoginLoading(true);
+   183→    try {
+   184→      const res = await fetch('/api/admin', {
+   185→        method: 'POST',
+   186→        headers: { 'Content-Type': 'application/json' },
+   187→        body: JSON.stringify({ username: username.trim(), password }),
+   188→      });
+   189→      const data = await res.json();
+   190→      if (data.success) {
+   191→        localStorage.setItem('pakvisa-admin-token', data.data.token);
+   192→        setToken(data.data.token);
+   193→        setIsLoggedIn(true);
+   194→        toast.success('Logged in successfully');
+   195→      } else {
+   196→        toast.error(data.error || 'Login failed');
+   197→      }
+   198→    } catch {
+   199→      toast.error('Connection error');
+   200→    } finally {
+   201→      setLoginLoading(false);
+   202→    }
+   203→  }, [username, password]);
+   204→
+   205→  const handleLogout = useCallback(() => {
+   206→    localStorage.removeItem('pakvisa-admin-token');
+   207→    setToken(null);
+   208→    setIsLoggedIn(false);
+   209→    setUsername(''); setPassword('');
+   210→    setAnalytics(null);
+   211→    setMessages([]);
+   212→    setSubscribers([]);
+   213→    setPaymentProofs([]);
+   214→    setPaymentProofsPending(0);
+   215→    setActiveSection('overview');
+   216→    toast.success('Logged out');
+   217→  }, []);
+   218→
+   219→  const fetchAnalytics = useCallback(async (showLoading = true) => {
+   220→    if (!token) return;
+   221→    if (abortRef.current) abortRef.current.abort();
+   222→    const controller = new AbortController();
+   223→    abortRef.current = controller;
+   224→    if (showLoading) { setAnalyticsLoading(true); setAnalyticsError(null); }
+   225→    setRefreshingAnalytics(true);
+   226→    try {
+   227→      const timeoutId = setTimeout(() => controller.abort(), 15000);
+   228→      const res = await fetch('/api/admin/analytics', { headers: { 'Authorization': `Bearer ${token}` }, signal: controller.signal });
+   229→      clearTimeout(timeoutId);
+   230→      if (res.status === 401) { setAnalyticsError('Session expired. Please log in again.'); handleLogout(); return; }
+   231→      const data = await res.json();
+   232→      if (data.success) {
+   233→        setAnalytics(data.data);
+   234→        setMaintenanceMode(data.data.settings?.maintenance_mode === 'true');
+   235→        setWhatsappNumber(data.data.settings?.whatsapp_number || '');
+   236→        setAnalyticsError(null);
+   237→      } else {
+   238→        setAnalyticsError(data.error || 'Failed to load analytics');
+   239→        toast.error(data.error || 'Failed to load analytics');
+   240→      }
+   241→    } catch (err) {
+   242→      if (err instanceof DOMException && err.name === 'AbortError') {
+   243→        setAnalyticsError('Request timed out. Please try again.');
+   244→      } else {
+   245→        setAnalyticsError('Network error. Please try again.');
+   246→        toast.error('Failed to fetch analytics');
+   247→      }
+   248→    } finally { setAnalyticsLoading(false); setRefreshingAnalytics(false); abortRef.current = null; }
+   249→  }, [token, handleLogout]);
+   250→
+   251→  const fetchMessages = useCallback(async (page = 1, filter?: MessageFilter, search?: string) => {
+   252→    if (!token) return;
+   253→    setMessagesLoading(true);
+   254→    try {
+   255→      const params = new URLSearchParams({ page: String(page), limit: '20' });
+   256→      if (filter === 'unread') params.set('unread', 'true');
+   257→      if (filter === 'replied') params.set('replied', 'true');
+   258→      if (search) params.set('search', search);
+   259→      const res = await fetch(`/api/admin/messages?${params}`, {
+   260→        headers: { 'Authorization': `Bearer ${token}` },
+   261→      });
+   262→      const data = await res.json();
+   263→      if (data.success) {
+   264→        setMessages(data.data.messages);
+   265→        setMessagesTotal(data.data.total);
+   266→        setMessagesUnread(data.data.unreadCount);
+   267→        setMessagesPage(data.data.page);
+   268→      }
+   269→    } catch { toast.error('Failed to fetch messages'); }
+   270→    finally { setMessagesLoading(false); }
+   271→  }, [token]);
+   272→
+   273→  const fetchSubscribers = useCallback(async (page = 1) => {
+   274→    if (!token) return;
+   275→    setSubscribersLoading(true);
+   276→    try {
+   277→      const res = await fetch(`/api/admin/newsletter?page=${page}&limit=15`, {
+   278→        headers: { 'Authorization': `Bearer ${token}` },
+   279→      });
+   280→      const data = await res.json();
+   281→      if (data.success) {
+   282→        setSubscribers(data.data.subscribers);
+   283→        setSubscribersTotal(data.data.total);
+   284→        setSubscribersActive(data.data.activeCount);
+   285→        setSubscribersPage(data.data.page);
+   286→      }
+   287→    } catch { toast.error('Failed to fetch subscribers'); }
+   288→    finally { setSubscribersLoading(false); }
+   289→  }, [token]);
+   290→
+   291→  const fetchPaymentProofs = useCallback(async () => {
+   292→    if (!token) return;
+   293→    setPaymentProofsLoading(true);
+   294→    try {
+   295→      const res = await fetch('/api/admin/payment-proofs?limit=50', {
+   296→        headers: { 'Authorization': `Bearer ${token}` },
+   297→      });
+   298→      const data = await res.json();
+   299→      if (data.success) {
+   300→        setPaymentProofs(data.data.proofs);
+   301→        setPaymentProofsPending(data.data.pendingCount);
+   302→      }
+   303→    } catch { toast.error('Failed to fetch payment proofs'); }
+   304→    finally { setPaymentProofsLoading(false); }
+   305→  }, [token]);
+   306→
+   307→  const approveProof = useCallback(async (id: string, durationDays: number) => {
+   308→    if (!token) return;
+   309→    setApprovingId(id);
+   310→    try {
+   311→      const res = await fetch('/api/admin/payment-proofs', {
+   312→        method: 'PUT',
+   313→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   314→        body: JSON.stringify({ id, action: 'approve', durationDays }),
+   315→      });
+   316→      const data = await res.json();
+   317→      if (data.success) {
+   318→        setPaymentProofs(prev => prev.map(p => p.id === id ? { ...p, status: 'approved', reviewedAt: new Date().toISOString() } : p));
+   319→        setPaymentProofsPending(prev => Math.max(0, prev - 1));
+   320→        setApprovingId(null);
+   321→        toast.success('Proof approved — user upgraded to Pro');
+   322→      } else {
+   323→        toast.error(data.error || 'Failed to approve');
+   324→        setApprovingId(null);
+   325→      }
+   326→    } catch { toast.error('Connection error'); setApprovingId(null); }
+   327→  }, [token]);
+   328→
+   329→  const rejectProof = useCallback(async (id: string, adminNote: string) => {
+   330→    if (!token) return;
+   331→    setRejectingId(id);
+   332→    try {
+   333→      const res = await fetch('/api/admin/payment-proofs', {
+   334→        method: 'PUT',
+   335→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   336→        body: JSON.stringify({ id, action: 'reject', adminNote }),
+   337→      });
+   338→      const data = await res.json();
+   339→      if (data.success) {
+   340→        setPaymentProofs(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected', reviewedAt: new Date().toISOString(), adminNote } : p));
+   341→        setPaymentProofsPending(prev => Math.max(0, prev - 1));
+   342→        setRejectingId(null);
+   343→        setRejectNote('');
+   344→        toast.success('Proof rejected');
+   345→      } else {
+   346→        toast.error(data.error || 'Failed to reject');
+   347→        setRejectingId(null);
+   348→      }
+   349→    } catch { toast.error('Connection error'); setRejectingId(null); }
+   350→  }, [token]);
+   351→
+   352→  // Fetch data on section change
+   353→  useEffect(() => {
+   354→    if (!isLoggedIn || !token) return;
+   355→    if (activeSection === 'overview' || activeSection === 'analytics') {
+   356→      if (!analytics) fetchAnalytics();
+   357→    }
+   358→    if (activeSection === 'overview') {
+   359→      fetchMessages(1);
+   360→      fetchSubscribers();
+   361→    }
+   362→    if (activeSection === 'messages') fetchMessages(1, messageFilter, messageSearch);
+   363→    if (activeSection === 'newsletter') fetchSubscribers();
+   364→    if (activeSection === 'payment-proofs') fetchPaymentProofs();
+   365→    }, [isLoggedIn, token, activeSection]);
+   366→
+   367→  const toggleAiFeature = useCallback(async (enabled: boolean) => {
+   368→    if (!token) return;
+   369→    setTogglingAi(true);
+   370→    try {
+   371→      const res = await fetch('/api/admin/settings', {
+   372→        method: 'PUT',
+   373→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   374→        body: JSON.stringify({ key: 'ai_enabled', value: String(enabled) }),
+   375→      });
+   376→      const data = await res.json();
+   377→      if (data.success) { setAiEnabled(enabled); toast.success(`AI features ${enabled ? 'enabled' : 'disabled'}`); }
+   378→      else toast.error('Failed to update setting');
+   379→    } catch { toast.error('Connection error'); }
+   380→    finally { setTogglingAi(false); }
+   381→  }, [token, setAiEnabled]);
+   382→
+   383→  const toggleMaintenance = useCallback(async (enabled: boolean) => {
+   384→    if (!token) return;
+   385→    setTogglingMaintenance(true);
+   386→    try {
+   387→      const res = await fetch('/api/admin/settings', {
+   388→        method: 'PUT',
+   389→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   390→        body: JSON.stringify({ key: 'maintenance_mode', value: String(enabled) }),
+   391→      });
+   392→      const data = await res.json();
+   393→      if (data.success) { setMaintenanceMode(enabled); toast.success(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`); }
+   394→      else toast.error('Failed to update setting');
+   395→    } catch { toast.error('Connection error'); }
+   396→    finally { setTogglingMaintenance(false); }
+   397→  }, [token]);
+   398→
+   399→  const saveWhatsappNumber = useCallback(async () => {
+   400→    if (!token) return;
+   401→    setSavingWhatsapp(true);
+   402→    try {
+   403→      const res = await fetch('/api/admin/settings', {
+   404→        method: 'PUT',
+   405→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   406→        body: JSON.stringify({ key: 'whatsapp_number', value: whatsappNumber.replace(/[^\d]/g, '') }),
+   407→      });
+   408→      const data = await res.json();
+   409→      if (data.success) toast.success('WhatsApp number saved');
+   410→      else toast.error('Failed to save');
+   411→    } catch { toast.error('Connection error'); }
+   412→    finally { setSavingWhatsapp(false); }
+   413→  }, [token, whatsappNumber]);
+   414→
+   415→  const markMessageRead = async (id: string) => {
+   416→    if (!token) return;
+   417→    try {
+   418→      await fetch('/api/admin/messages', {
+   419→        method: 'PUT',
+   420→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   421→        body: JSON.stringify({ id, action: 'mark_read' }),
+   422→      });
+   423→      setMessages(prev => prev.map(m => m.id === id ? { ...m, isRead: true } : m));
+   424→      setMessagesUnread(prev => Math.max(0, prev - 1));
+   425→    } catch { toast.error('Failed to mark as read'); }
+   426→  };
+   427→
+   428→  const markAllAsRead = async () => {
+   429→    if (!token) return;
+   430→    setMarkingAllRead(true);
+   431→    try {
+   432→      const res = await fetch('/api/admin/messages', {
+   433→        method: 'PUT',
+   434→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   435→        body: JSON.stringify({ action: 'mark_all_read' }),
+   436→      });
+   437→      const data = await res.json();
+   438→      if (data.success) {
+   439→        setMessages(prev => prev.map(m => ({ ...m, isRead: true })));
+   440→        setMessagesUnread(0);
+   441→        toast.success(`${data.data?.updated || 'All'} messages marked as read`);
+   442→      }
+   443→    } catch { toast.error('Failed to mark all as read'); }
+   444→    finally { setMarkingAllRead(false); }
+   445→  };
+   446→
+   447→  const sendMessageReply = async (id: string) => {
+   448→    if (!token || !replyText.trim()) return;
+   449→    try {
+   450→      const res = await fetch('/api/admin/messages', {
+   451→        method: 'PUT',
+   452→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   453→        body: JSON.stringify({ id, action: 'reply', reply: replyText }),
+   454→      });
+   455→      const data = await res.json();
+   456→      if (data.success) {
+   457→        setMessages(prev => prev.map(m => m.id === id ? { ...m, isReplied: true, reply: replyText.trim(), isRead: true } : m));
+   458→        setReplyingTo(null); setReplyText('');
+   459→        toast.success('Reply saved');
+   460→      }
+   461→    } catch { toast.error('Failed to send reply'); }
+   462→  };
+   463→
+   464→  const deleteMessage = async (id: string) => {
+   465→    if (!token) return;
+   466→    try {
+   467→      await fetch('/api/admin/messages', {
+   468→        method: 'PUT',
+   469→        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+   470→        body: JSON.stringify({ id, action: 'delete' }),
+   471→      });
+   472→      setMessages(prev => prev.filter(m => m.id !== id));
+   473→      setMessagesTotal(prev => prev - 1);
+   474→      setDeleteConfirmId(null);
+   475→      toast.success('Message deleted');
+   476→    } catch { toast.error('Failed to delete'); }
+   477→  };
+   478→
+   479→  const deleteSubscriber = async (id: string) => {
+   480→    if (!token) return;
+   481→    try {
+   482→      await fetch(`/api/admin/newsletter?id=${id}`, {
+   483→        method: 'DELETE',
+   484→        headers: { 'Authorization': `Bearer ${token}` },
+   485→      });
+   486→      setSubscribers(prev => prev.filter(s => s.id !== id));
+   487→      setSubscribersTotal(prev => prev - 1);
+   488→      setSubscribersActive(prev => Math.max(0, prev - 1));
+   489→      toast.success('Subscriber removed');
+   490→    } catch { toast.error('Failed to remove'); }
+   491→  };
+   492→
+   493→  // Export functions
+   494→  const exportMessagesCSV = () => {
+   495→    if (messages.length === 0) { toast.error('No messages to export'); return; }
+   496→    const header = 'Name,Email,Subject,Message,Status,Reply,Date\n';
+   497→    const rows = messages.map(m =>
+   498→      `"${m.name.replace(/"/g, '""')}","${m.email.replace(/"/g, '""')}","${m.subject.replace(/"/g, '""')}","${m.message.replace(/"/g, '""')}","${m.isRead ? (m.isReplied ? 'Replied' : 'Read') : 'Unread'}","${m.reply.replace(/"/g, '""')}","${m.createdAt}"`
+   499→    ).join('\n');
+   500→    downloadCSV(header + rows, 'pakvisa-messages.csv');
+   501→  };
+   502→
+   503→  const exportSubscribersCSV = () => {
+   504→    if (subscribers.length === 0) { toast.error('No subscribers to export'); return; }
+   505→    const header = 'Email,Status,Subscribed Date\n';
+   506→    const rows = subscribers.map(s =>
+   507→      `"${s.email}","${s.isActive ? 'Active' : 'Inactive'}","${s.subscribedAt}"`
+   508→    ).join('\n');
+   509→    downloadCSV(header + rows, 'pakvisa-subscribers.csv');
+   510→  };
+   511→
+   512→  const copySubscriberEmails = () => {
+   513→    if (subscribers.length === 0) { toast.error('No emails to copy'); return; }
+   514→    const emails = subscribers.map(s => s.email).join(', ');
+   515→    navigator.clipboard.writeText(emails);
+   516→    toast.success(`${subscribers.length} emails copied to clipboard`);
+   517→  };
+   518→
+   519→  const downloadCSV = (content: string, filename: string) => {
+   520→    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+   521→    const link = document.createElement('a');
+   522→    link.href = URL.createObjectURL(blob);
+   523→    link.download = filename;
+   524→    link.click();
+   525→    URL.revokeObjectURL(link.href);
+   526→    toast.success(`Exported ${filename}`);
+   527→  };
+   528→
+   529→  const handleMessageFilterChange = (filter: MessageFilter) => {
+   530→    setMessageFilter(filter);
+   531→    setMessagesPage(1);
+   532→    fetchMessages(1, filter, messageSearch);
+   533→  };
+   534→
+   535→  const handleMessageSearch = (search: string) => {
+   536→    setMessageSearch(search);
+   537→    setMessagesPage(1);
+   538→    // Debounce - fetch immediately for simplicity
+   539→    if (search.length > 0 && search.length < 2) return;
+   540→    fetchMessages(1, messageFilter, search);
+   541→  };
+   542→
+   543→  const navItems: { key: AdminSection; label: string; icon: React.ReactNode; badge?: number }[] = [
+   544→    { key: 'overview', label: 'Overview', icon: <TrendingUp className="w-4 h-4" /> },
+   545→    { key: 'messages', label: 'Messages', icon: <Inbox className="w-4 h-4" />, badge: messagesUnread || undefined },
+   546→    { key: 'payment-proofs', label: 'Payment Proofs', icon: <CreditCard className="w-4 h-4" />, badge: paymentProofsPending || undefined },
+   547→    { key: 'newsletter', label: 'Newsletter', icon: <Mail className="w-4 h-4" /> },
+   548→    { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+   549→    { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
+   550→  ];
+   551→
+   552→  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+   553→  const timeAgo = (d: string) => {
+   554→    const diff = Date.now() - new Date(d).getTime();
+   555→    const mins = Math.floor(diff / 60000);
+   556→    if (mins < 1) return 'Just now';
+   557→    if (mins < 60) return `${mins}m ago`;
+   558→    const hours = Math.floor(mins / 60);
+   559→    if (hours < 24) return `${hours}h ago`;
+   560→    return `${Math.floor(hours / 24)}d ago`;
+   561→  };
+   562→
+   563→  // Daily sparkline data for overview
+   564→  const sparklineData = useMemo(() => analytics?.messageStats?.dailyMessages || [], [analytics]);
+   565→  const sparklineMax = useMemo(() => Math.max(1, ...sparklineData.map(d => d.count)), [sparklineData]);
+   566→
+   567→  // ===== RENDER =====
+   568→  if (!open) return null;
+   569→
+   570→  return (
+   571→    <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+   572→      {/* Header */}
+   573→      <div className="flex items-center justify-between p-4 sm:p-5 border-b shrink-0">
+   574→        <div className="flex items-center gap-3">
+   575→          <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
+   576→            <Shield className="w-4.5 h-4.5 text-white" />
+   577→          </div>
+   578→          <div>
+   579→            <h2 className="text-base sm:text-lg font-semibold leading-none">Admin Dashboard</h2>
+   580→            <p className="text-xs text-muted-foreground hidden sm:block mt-1">Manage your PakVisa Advisor</p>
+   581→          </div>
+   582→        </div>
+   583→        <div className="flex items-center gap-2">
+   584→          {isLoggedIn && (
+   585→            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
+   586→              <LogOut className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Logout</span>
+   587→            </Button>
+   588→          )}
+   589→          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+   590→            <XIcon className="w-5 h-5" />
+   591→          </Button>
+   592→        </div>
+   593→      </div>
+   594→
+   595→      {!isLoggedIn ? (
+   596→        <div className="p-8 flex-1 flex items-center justify-center">
+   597→            <Card className="w-full max-w-sm border-emerald-200 dark:border-emerald-800">
+   598→              <CardHeader className="text-center">
+   599→                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-3">
+   600→                  <Lock className="w-8 h-8 text-emerald-600" />
+   601→                </div>
+   602→                <CardTitle className="text-lg">Admin Login</CardTitle>
+   603→                <CardDescription>Enter credentials to access dashboard</CardDescription>
+   604→              </CardHeader>
+   605→              <CardContent className="space-y-4">
+   606→                <div className="space-y-2">
+   607→                  <label className="text-sm font-medium" htmlFor="admin-username">Username</label>
+   608→                  <Input id="admin-username" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} autoComplete="username" />
+   609→                </div>
+   610→                <div className="space-y-2">
+   611→                  <label className="text-sm font-medium" htmlFor="admin-password">Password</label>
+   612→                  <div className="relative">
+   613→                    <Input id="admin-password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} autoComplete="current-password" />
+   614→                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+   615→                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   616→                    </Button>
+   617→                  </div>
+   618→                </div>
+   619→                <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={handleLogin} disabled={loginLoading}>
+   620→                  {loginLoading ? (<><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Logging in...</>) : (<><Lock className="w-4 h-4 mr-2" />Sign In</>)}
+   621→                </Button>
+   622→              </CardContent>
+   623→            </Card>
+   624→          </div>
+   625→        ) : (
+   626→          <div className="flex flex-1 overflow-hidden">
+   627→            {/* Sidebar Navigation */}
+   628→            <div className="w-48 lg:w-56 border-r bg-muted/20 p-3 space-y-1 hidden md:flex flex-col shrink-0">
+   629→              {navItems.map((item) => (
+   630→                <button
+   631→                  key={item.key}
+   632→                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors relative ${
+   633→                    activeSection === item.key
+   634→                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium'
+   635→                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+   636→                  }`}
+   637→                  onClick={() => setActiveSection(item.key)}
+   638→                >
+   639→                  {item.icon}
+   640→                  <span>{item.label}</span>
+   641→                  {item.badge ? (
+   642→                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1">
+   643→                      {item.badge > 99 ? '99+' : item.badge}
+   644→                    </span>
+   645→                  ) : null}
+   646→                </button>
+   647→              ))}
+   648→            </div>
+   649→
+   650→            {/* Mobile Nav */}
+   651→            <div className="md:hidden p-3 border-b flex gap-1.5 overflow-x-auto">
+   652→              {navItems.map((item) => (
+   653→                <Button
+   654→                  key={item.key}
+   655→                  variant={activeSection === item.key ? 'default' : 'outline'}
+   656→                  size="sm"
+   657→                  className={`shrink-0 gap-1.5 text-xs ${activeSection === item.key ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+   658→                  onClick={() => setActiveSection(item.key)}
+   659→                >
+   660→                  {item.icon}
+   661→                  {item.label}
+   662→                  {item.badge ? <span className="bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{item.badge}</span> : null}
+   663→                </Button>
+   664→              ))}
+   665→            </div>
+   666→
+   667→            {/* Content Area */}
+   668→            <ScrollArea className="flex-1">
+   669→              <div className="p-5 space-y-5">
+   670→                {/* ====== OVERVIEW TAB ====== */}
+   671→                {activeSection === 'overview' && (
+   672→                  analyticsLoading && !analytics ? (
+   673→                    <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   674→                  ) : (
+   675→                  <>
+   676→                    {/* Quick Stats Row - 6 cards */}
+   677→                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+   678→                      <StatCard icon={<Inbox className="w-4 h-4" />} label="Unread" value={analytics?.messageStats.unread ?? '—'} color="red" />
+   679→                      <StatCard icon={<MessageSquare className="w-4 h-4" />} label="This Week" value={analytics?.messageStats.thisWeek ?? '—'} color="orange" />
+   680→                      <StatCard icon={<CheckCheck className="w-4 h-4" />} label="Response Rate" value={analytics?.messageStats.responseRate != null ? `${analytics.messageStats.responseRate}%` : '—'} color="blue" />
+   681→                      <StatCard icon={<Mail className="w-4 h-4" />} label="Subscribers" value={analytics?.subscriberStats.active ?? '—'} color="violet" />
+   682→                      <StatCard icon={<Globe className="w-4 h-4" />} label="Countries" value={analytics?.countries.total ?? '—'} color="emerald" />
+   683→                      <StatCard icon={<Zap className="w-4 h-4" />} label="AI" value={aiEnabled ? 'Online' : 'Off'} color={aiEnabled ? 'green' : 'amber'} />
+   684→                    </div>
+   685→
+   686→                    {/* Daily Messages Sparkline */}
+   687→                    {analytics?.messageStats && sparklineData.length > 0 && (
+   688→                      <Card>
+   689→                        <CardHeader className="pb-2">
+   690→                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   691→                            <Activity className="w-4 h-4 text-emerald-500" /> Messages — Last 7 Days
+   692→                          </CardTitle>
+   693→                        </CardHeader>
+   694→                        <CardContent>
+   695→                          <div className="flex items-end gap-2 h-20">
+   696→                            {sparklineData.map((d, i) => {
+   697→                              const height = sparklineMax > 0 ? (d.count / sparklineMax) * 100 : 0;
+   698→                              const dayLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+   699→                              return (
+   700→                                <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+   701→                                  <span className="text-[10px] font-medium text-muted-foreground">{d.count}</span>
+   702→                                  <div className="w-full max-w-8 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max(4, height)}%`, backgroundColor: i === sparklineData.length - 1 ? '#059669' : '#a7f3d0' }} />
+   703→                                  <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
+   704→                                </div>
+   705→                              );
+   706→                            })}
+   707→                          </div>
+   708→                        </CardContent>
+   709→                      </Card>
+   710→                    )}
+   711→
+   712→                    {/* Two Column */}
+   713→                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+   714→                      {/* Recent Messages */}
+   715→                      <Card>
+   716→                        <CardHeader className="pb-3">
+   717→                          <div className="flex items-center justify-between">
+   718→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   719→                              <MessageSquare className="w-4 h-4 text-emerald-500" /> Recent Messages
+   720→                            </CardTitle>
+   721→                            <Button variant="ghost" size="sm" className="text-xs text-emerald-600" onClick={() => setActiveSection('messages')}>
+   722→                              View All →
+   723→                            </Button>
+   724→                          </div>
+   725→                        </CardHeader>
+   726→                        <CardContent>
+   727→                          {messagesLoading ? (
+   728→                            <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   729→                          ) : messages.length === 0 ? (
+   730→                            <p className="text-sm text-muted-foreground text-center py-6">No messages yet</p>
+   731→                          ) : (
+   732→                            <div className="space-y-2">
+   733→                              {messages.slice(0, 5).map((m) => (
+   734→                                <div key={m.id} className={`flex items-start gap-3 p-2.5 rounded-lg transition-colors ${!m.isRead ? 'bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30' : 'hover:bg-muted/50'}`}>
+   735→                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${!m.isRead ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+   736→                                    {m.name.charAt(0).toUpperCase()}
+   737→                                  </div>
+   738→                                  <div className="min-w-0 flex-1">
+   739→                                    <div className="flex items-center gap-2">
+   740→                                      <span className={`text-sm ${!m.isRead ? 'font-semibold' : 'font-medium'}`}>{m.name}</span>
+   741→                                      {!m.isRead && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+   742→                                      {m.isReplied && <Check className="w-3 h-3 text-blue-500" />}
+   743→                                      <span className="text-xs text-muted-foreground ml-auto shrink-0">{timeAgo(m.createdAt)}</span>
+   744→                                    </div>
+   745→                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{m.subject || m.message}</p>
+   746→                                  </div>
+   747→                                </div>
+   748→                              ))}
+   749→                            </div>
+   750→                          )}
+   751→                        </CardContent>
+   752→                      </Card>
+   753→
+   754→                      {/* Visa Breakdown + System Health */}
+   755→                      <div className="space-y-5">
+   756→                        <Card>
+   757→                          <CardHeader className="pb-3">
+   758→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   759→                              <FileCheck className="w-4 h-4 text-emerald-500" /> Visa Breakdown
+   760→                            </CardTitle>
+   761→                          </CardHeader>
+   762→                          <CardContent>
+   763→                            {analytics ? (
+   764→                              <VisaBreakdownChart visaCategories={analytics.visaCategories} total={analytics.countries.total} />
+   765→                            ) : null}
+   766→                          </CardContent>
+   767→                        </Card>
+   768→
+   769→                        <Card>
+   770→                          <CardHeader className="pb-3">
+   771→                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   772→                              <Activity className="w-4 h-4 text-emerald-500" /> System Health
+   773→                            </CardTitle>
+   774→                          </CardHeader>
+   775→                          <CardContent className="space-y-3">
+   776→                            <div className="flex items-center justify-between text-sm">
+   777→                              <span className="text-muted-foreground">AI Engine</span>
+   778→                              <Badge variant={aiEnabled ? 'default' : 'secondary'} className={aiEnabled ? 'bg-green-600' : ''}>{aiEnabled ? 'Online' : 'Offline'}</Badge>
+   779→                            </div>
+   780→                            <div className="flex items-center justify-between text-sm">
+   781→                              <span className="text-muted-foreground">Maintenance</span>
+   782→                              <Badge variant={maintenanceMode ? 'destructive' : 'secondary'}>{maintenanceMode ? 'Active' : 'Normal'}</Badge>
+   783→                            </div>
+   784→                            <div className="flex items-center justify-between text-sm">
+   785→                              <span className="text-muted-foreground">Data Records</span>
+   786→                              <span className="font-medium">{analytics?.requirements ?? '—'} reqs, {analytics?.costProfiles ?? '—'} costs</span>
+   787→                            </div>
+   788→                            {analytics?.dataFreshness && (
+   789→                              <div className="flex items-center justify-between text-sm">
+   790→                                <span className="text-muted-foreground">Last Updated</span>
+   791→                                <span className="text-xs">{timeAgo(analytics.dataFreshness)}</span>
+   792→                              </div>
+   793→                            )}
+   794→                          </CardContent>
+   795→                        </Card>
+   796→                      </div>
+   797→                    </div>
+   798→                  </>
+   799→                  )
+   800→                )}
+   801→
+   802→                {/* ====== MESSAGES TAB ====== */}
+   803→                {activeSection === 'messages' && (
+   804→                  <>
+   805→                    {/* Header with actions */}
+   806→                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+   807→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   808→                        <Inbox className="w-5 h-5 text-emerald-500" />
+   809→                        Messages
+   810→                        {messagesUnread > 0 && <Badge className="bg-red-500">{messagesUnread} unread</Badge>}
+   811→                        <Badge variant="secondary" className="text-xs">{messagesTotal} total</Badge>
+   812→                      </h3>
+   813→                      <div className="flex gap-2 flex-wrap">
+   814→                        {messagesUnread > 0 && (
+   815→                          <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={markingAllRead}>
+   816→                            <CheckCheck className={`w-3.5 h-3.5 mr-1 ${markingAllRead ? 'animate-pulse' : ''}`} /> Mark All Read
+   817→                          </Button>
+   818→                        )}
+   819→                        <Button variant="outline" size="sm" onClick={exportMessagesCSV} disabled={messages.length === 0}>
+   820→                          <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+   821→                        </Button>
+   822→                        <Button variant="outline" size="sm" onClick={() => fetchMessages(messagesPage, messageFilter, messageSearch)} disabled={messagesLoading}>
+   823→                          <RefreshCw className={`w-3.5 h-3.5 mr-1 ${messagesLoading ? 'animate-spin' : ''}`} /> Refresh
+   824→                        </Button>
+   825→                      </div>
+   826→                    </div>
+   827→
+   828→                    {/* Filter Tabs + Search */}
+   829→                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+   830→                      <div className="flex gap-1 bg-muted p-1 rounded-lg">
+   831→                        {(['all', 'unread', 'replied'] as MessageFilter[]).map((f) => (
+   832→                          <button
+   833→                            key={f}
+   834→                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+   835→                              messageFilter === f ? 'bg-white dark:bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+   836→                            }`}
+   837→                            onClick={() => handleMessageFilterChange(f)}
+   838→                          >
+   839→                            {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Replied'}
+   840→                          </button>
+   841→                        ))}
+   842→                      </div>
+   843→                      <div className="relative flex-1 w-full sm:max-w-xs">
+   844→                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+   845→                        <Input
+   846→                          ref={searchInputRef}
+   847→                          placeholder="Search name, email, message..."
+   848→                          value={messageSearch}
+   849→                          onChange={(e) => handleMessageSearch(e.target.value)}
+   850→                          className="pl-8 h-8 text-sm"
+   851→                        />
+   852→                        {messageSearch && (
+   853→                          <button
+   854→                            className="absolute right-2 top-1/2 -translate-y-1/2"
+   855→                            onClick={() => { setMessageSearch(''); fetchMessages(1, messageFilter, ''); }}
+   856→                          >
+   857→                            <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+   858→                          </button>
+   859→                        )}
+   860→                      </div>
+   861→                    </div>
+   862→
+   863→                    {messagesLoading && messages.length === 0 ? (
+   864→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   865→                    ) : messages.length === 0 ? (
+   866→                      <div className="text-center py-16 text-muted-foreground">
+   867→                        <Inbox className="w-12 h-12 mx-auto mb-3 opacity-30" />
+   868→                        <p className="font-medium">{messageSearch ? 'No messages match your search' : messageFilter !== 'all' ? `No ${messageFilter} messages` : 'No messages yet'}</p>
+   869→                        <p className="text-sm">{messageSearch ? 'Try a different search term' : 'Messages from the Contact Us form will appear here.'}</p>
+   870→                      </div>
+   871→                    ) : (
+   872→                      <div className="space-y-3">
+   873→                        {messages.map((m) => (
+   874→                          <Card key={m.id} className={`transition-colors ${!m.isRead ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-900/10' : ''}`}>
+   875→                            <CardContent className="p-4">
+   876→                              <div className="flex items-start justify-between gap-3">
+   877→                                <div className="flex items-start gap-3 min-w-0 flex-1">
+   878→                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${!m.isRead ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}`}>
+   879→                                    {m.name.charAt(0).toUpperCase()}
+   880→                                  </div>
+   881→                                  <div className="min-w-0 flex-1">
+   882→                                    <div className="flex items-center gap-2 flex-wrap">
+   883→                                      <span className={`font-semibold ${!m.isRead ? '' : 'text-muted-foreground'}`}>{m.name}</span>
+   884→                                      <a href={`mailto:${m.email}`} className="text-xs text-emerald-600 hover:underline flex items-center gap-0.5">
+   885→                                        <Mail className="w-3 h-3" />{m.email}
+   886→                                      </a>
+   887→                                      {!m.isRead && <Badge variant="default" className="bg-emerald-600 text-[10px] px-1.5 py-0">New</Badge>}
+   888→                                      {m.isReplied && <Badge variant="secondary" className="text-[10px] px-1.5 py-0"><Check className="w-3 h-3 mr-0.5" />Replied</Badge>}
+   889→                                    </div>
+   890→                                    {m.subject && <p className="text-sm font-medium mt-1">{m.subject}</p>}
+   891→                                    <p className={`text-sm text-muted-foreground mt-1 whitespace-pre-wrap ${expandedMessage === m.id ? '' : 'line-clamp-2'}`}>{m.message}</p>
+   892→                                    {m.message.length > 150 && (
+   893→                                      <button onClick={() => setExpandedMessage(expandedMessage === m.id ? null : m.id)} className="text-xs text-emerald-600 mt-1 hover:underline">
+   894→                                        {expandedMessage === m.id ? 'Show less' : 'Read more'}
+   895→                                      </button>
+   896→                                    )}
+   897→                                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+   898→                                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(m.createdAt)}</span>
+   899→                                    </div>
+   900→
+   901→                                    {/* Reply saved display */}
+   902→                                    {m.reply && (
+   903→                                      <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+   904→                                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1"><Reply className="w-3 h-3" /> Your Reply:</p>
+   905→                                        <p className="text-sm text-blue-800 dark:text-blue-300">{m.reply}</p>
+   906→                                      </div>
+   907→                                    )}
+   908→
+   909→                                    {/* Reply box */}
+   910→                                    {replyingTo === m.id && (
+   911→                                      <div className="mt-3 space-y-2">
+   912→                                        {/* Quick reply suggestions */}
+   913→                                        <div className="flex flex-wrap gap-1.5">
+   914→                                          <span className="text-[10px] text-muted-foreground leading-7">Quick:</span>
+   915→                                          {QUICK_REPLIES.slice(0, 3).map((qr, i) => (
+   916→                                            <button
+   917→                                              key={i}
+   918→                                              className="text-[10px] px-2 py-0.5 rounded-full border hover:bg-muted transition-colors truncate max-w-[200px]"
+   919→                                              onClick={() => setReplyText(qr)}
+   920→                                              title={qr}
+   921→                                            >
+   922→                                              {qr.slice(0, 40)}...
+   923→                                            </button>
+   924→                                          ))}
+   925→                                        </div>
+   926→                                        <Textarea placeholder="Write your reply... (saved for reference)" value={replyText} onChange={(e) => setReplyText(e.target.value)} rows={2} className="text-sm" />
+   927→                                        <div className="flex gap-2">
+   928→                                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => sendMessageReply(m.id)} disabled={!replyText.trim()}>
+   929→                                            <Send className="w-3.5 h-3.5 mr-1" /> Save Reply
+   930→                                          </Button>
+   931→                                          <Button size="sm" variant="ghost" onClick={() => { setReplyingTo(null); setReplyText(''); }}>Cancel</Button>
+   932→                                        </div>
+   933→                                      </div>
+   934→                                    )}
+   935→                                  </div>
+   936→                                </div>
+   937→                                <div className="flex flex-col gap-1 shrink-0">
+   938→                                  {!m.isRead && (
+   939→                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => markMessageRead(m.id)} title="Mark as read">
+   940→                                      <Eye className="w-4 h-4" />
+   941→                                    </Button>
+   942→                                  )}
+   943→                                  {!m.isReplied && (
+   944→                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReplyingTo(replyingTo === m.id ? null : m.id)} title="Reply">
+   945→                                      <Reply className="w-4 h-4" />
+   946→                                    </Button>
+   947→                                  )}
+   948→                                  {deleteConfirmId === m.id ? (
+   949→                                    <div className="flex flex-col gap-0.5">
+   950→                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 bg-red-50 dark:bg-red-900/20" onClick={() => deleteMessage(m.id)} title="Confirm delete">
+   951→                                        <Check className="w-4 h-4" />
+   952→                                      </Button>
+   953→                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDeleteConfirmId(null)} title="Cancel">
+   954→                                        <X className="w-3 h-3" />
+   955→                                      </Button>
+   956→                                    </div>
+   957→                                  ) : (
+   958→                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirmId(m.id)} title="Delete">
+   959→                                      <Trash2 className="w-4 h-4" />
+   960→                                    </Button>
+   961→                                  )}
+   962→                                </div>
+   963→                              </div>
+   964→                            </CardContent>
+   965→                          </Card>
+   966→                        ))}
+   967→                        {messagesTotal > 20 && (
+   968→                          <div className="flex items-center justify-center gap-2 pt-2">
+   969→                            <Button variant="outline" size="sm" disabled={messagesPage <= 1} onClick={() => fetchMessages(messagesPage - 1, messageFilter, messageSearch)}><ChevronLeft className="w-4 h-4" /></Button>
+   970→                            <span className="text-sm text-muted-foreground">Page {messagesPage} of {Math.ceil(messagesTotal / 20)}</span>
+   971→                            <Button variant="outline" size="sm" disabled={messagesPage >= Math.ceil(messagesTotal / 20)} onClick={() => fetchMessages(messagesPage + 1, messageFilter, messageSearch)}><ChevronRight className="w-4 h-4" /></Button>
+   972→                          </div>
+   973→                        )}
+   974→                      </div>
+   975→                    )}
+   976→                  </>
+   977→                )}
+   978→
+   979→                {/* ====== PAYMENT PROOFS TAB ====== */}
+   980→                {activeSection === 'payment-proofs' && (
+   981→                  <>
+   982→                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+   983→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+   984→                        <CreditCard className="w-5 h-5 text-emerald-500" />
+   985→                        Payment Proofs
+   986→                        {paymentProofsPending > 0 && <Badge className="bg-amber-500">{paymentProofsPending} pending</Badge>}
+   987→                      </h3>
+   988→                      <Button variant="outline" size="sm" onClick={() => fetchPaymentProofs()} disabled={paymentProofsLoading}>
+   989→                        <RefreshCw className={`w-3.5 h-3.5 mr-1 ${paymentProofsLoading ? 'animate-spin' : ''}`} /> Refresh
+   990→                      </Button>
+   991→                    </div>
+   992→
+   993→                    {paymentProofsLoading && paymentProofs.length === 0 ? (
+   994→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+   995→                    ) : paymentProofs.length === 0 ? (
+   996→                      <div className="text-center py-16 text-muted-foreground">
+   997→                        <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
+   998→                        <p className="font-medium">No payment proofs yet</p>
+   999→                        <p className="text-sm">Proofs submitted by users will appear here.</p>
+  1000→                      </div>
+  1001→                    ) : (
+  1002→                      <div className="space-y-3 max-h-[600px] overflow-y-auto">
+  1003→                        {paymentProofs.map((p) => (
+  1004→                          <Card key={p.id} className={p.status === 'pending' ? 'border-amber-300 dark:border-amber-700 bg-amber-50/30 dark:bg-amber-900/10' : ''}>
+  1005→                            <CardContent className="p-4">
+  1006→                              <div className="flex items-start justify-between gap-3">
+  1007→                                <div className="flex items-start gap-3 min-w-0 flex-1">
+  1008→                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
+  1009→                                    p.status === 'pending' ? 'bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300' :
+  1010→                                    p.status === 'approved' ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300' :
+  1011→                                    'bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300'
+  1012→                                  }`}>
+  1013→                                    {p.user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+  1014→                                  </div>
+  1015→                                  <div className="min-w-0 flex-1">
+  1016→                                    <div className="flex items-center gap-2 flex-wrap">
+  1017→                                      <span className="font-semibold">{p.user?.fullName || 'Unknown'}</span>
+  1018→                                      <a href={`mailto:${p.user?.email}`} className="text-xs text-emerald-600 hover:underline flex items-center gap-0.5">
+  1019→                                        <Mail className="w-3 h-3" />{p.user?.email}
+  1020→                                      </a>
+  1021→                                      {p.user?.phone && (
+  1022→                                        <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+  1023→                                          <Phone className="w-3 h-3" />{p.user.phone}
+  1024→                                        </span>
+  1025→                                      )}
+  1026→                                    </div>
+  1027→                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+  1028→                                      <Badge className={`text-[10px] px-1.5 py-0 ${
+  1029→                                        p.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' :
+  1030→                                        p.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' :
+  1031→                                        'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
+  1032→                                      }`}>
+  1033→                                        {p.status === 'pending' ? 'Pending' : p.status === 'approved' ? 'Approved' : 'Rejected'}
+  1034→                                      </Badge>
+  1035→                                      <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo(p.createdAt)}</span>
+  1036→                                    </div>
+  1037→                                    <div className="flex items-center gap-2 mt-1.5">
+  1038→                                      <a
+  1039→                                        href={p.filePath}
+  1040→                                        target="_blank"
+  1041→                                        rel="noopener noreferrer"
+  1042→                                        className="text-xs text-emerald-600 hover:underline flex items-center gap-1"
+  1043→                                      >
+  1044→                                        <FileImage className="w-3 h-3" />{p.fileName}
+  1045→                                      </a>
+  1046→                                      <span className="text-[10px] text-muted-foreground">({(p.fileSize / 1024).toFixed(0)} KB)</span>
+  1047→                                    </div>
+  1048→                                    {p.userNote && (
+  1049→                                      <p className="text-xs text-muted-foreground mt-1 bg-muted/50 px-2 py-1 rounded inline-block max-w-full truncate" title={p.userNote}>
+  1050→                                        Note: {p.userNote}
+  1051→                                      </p>
+  1052→                                    )}
+  1053→                                    {p.adminNote && (
+  1054→                                      <div className="mt-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+  1055→                                        <p className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 mb-0.5">Admin Note:</p>
+  1056→                                        <p className="text-xs text-blue-800 dark:text-blue-300">{p.adminNote}</p>
+  1057→                                      </div>
+  1058→                                    )}
+  1059→
+  1060→                                    {/* Approve / Reject actions for pending */}
+  1061→                                    {p.status === 'pending' && (
+  1062→                                      <div className="mt-3 space-y-2">
+  1063→                                        {approvingId === p.id ? (
+  1064→                                          <div className="flex items-center gap-2">
+  1065→                                            <select
+  1066→                                              id={`duration-${p.id}`}
+  1067→                                              defaultValue="30"
+  1068→                                              className="h-8 text-xs rounded-md border bg-background px-2"
+  1069→                                            >
+  1070→                                              <option value="30">1 month</option>
+  1071→                                              <option value="90">3 months</option>
+  1072→                                              <option value="180">6 months</option>
+  1073→                                              <option value="365">1 year</option>
+  1074→                                            </select>
+  1075→                                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8" onClick={() => {
+  1076→                                              const sel = document.getElementById(`duration-${p.id}`) as HTMLSelectElement;
+  1077→                                              approveProof(p.id, parseInt(sel.value));
+  1078→                                            }}>
+  1079→                                              Confirm
+  1080→                                            </Button>
+  1081→                                            <Button size="sm" variant="ghost" className="h-8" onClick={() => setApprovingId(null)}>Cancel</Button>
+  1082→                                          </div>
+  1083→                                        ) : rejectingId === p.id ? (
+  1084→                                          <div className="space-y-2">
+  1085→                                            <Textarea placeholder="Reason for rejection (optional)..." value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} rows={2} className="text-xs" />
+  1086→                                            <div className="flex gap-2">
+  1087→                                              <Button size="sm" className="bg-red-600 hover:bg-red-700 h-8" onClick={() => { rejectProof(p.id, rejectNote); }}>
+  1088→                                                Reject
+  1089→                                              </Button>
+  1090→                                              <Button size="sm" variant="ghost" className="h-8" onClick={() => { setRejectingId(null); setRejectNote(''); }}>Cancel</Button>
+  1091→                                            </div>
+  1092→                                          </div>
+  1093→                                        ) : (
+  1094→                                          <div className="flex gap-2">
+  1095→                                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8 gap-1" onClick={() => setApprovingId(p.id)}>
+  1096→                                              <Check className="w-3.5 h-3.5" /> Approve
+  1097→                                            </Button>
+  1098→                                            <Button size="sm" variant="outline" className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => { setRejectingId(p.id); setRejectNote(''); }}>
+  1099→                                              <X className="w-3.5 h-3.5" /> Reject
+  1100→                                            </Button>
+  1101→                                          </div>
+  1102→                                        )}
+  1103→                                      </div>
+  1104→                                    )}
+  1105→                                  </div>
+  1106→                                </div>
+  1107→                              </div>
+  1108→                            </CardContent>
+  1109→                          </Card>
+  1110→                        ))}
+  1111→                      </div>
+  1112→                    )}
+  1113→                  </>
+  1114→                )}
+  1115→
+  1116→                {/* ====== NEWSLETTER TAB ====== */}
+  1117→                {activeSection === 'newsletter' && (
+  1118→                  <>
+  1119→                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+  1120→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+  1121→                        <Mail className="w-5 h-5 text-emerald-500" />
+  1122→                        Newsletter Subscribers
+  1123→                      </h3>
+  1124→                      <div className="flex items-center gap-2 flex-wrap">
+  1125→                        <Button variant="outline" size="sm" onClick={copySubscriberEmails} disabled={subscribers.length === 0}>
+  1126→                          <Copy className="w-3.5 h-3.5 mr-1" /> Copy Emails
+  1127→                        </Button>
+  1128→                        <Button variant="outline" size="sm" onClick={exportSubscribersCSV} disabled={subscribers.length === 0}>
+  1129→                          <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+  1130→                        </Button>
+  1131→                        <Button variant="outline" size="sm" onClick={() => fetchSubscribers(subscribersPage)} disabled={subscribersLoading}>
+  1132→                          <RefreshCw className={`w-3.5 h-3.5 mr-1 ${subscribersLoading ? 'animate-spin' : ''}`} /> Refresh
+  1133→                        </Button>
+  1134→                      </div>
+  1135→                    </div>
+  1136→
+  1137→                    {/* Stats Row */}
+  1138→                    <div className="grid grid-cols-3 gap-3">
+  1139→                      <Card className="p-4 text-center">
+  1140→                        <div className="text-2xl font-bold text-emerald-600">{analytics?.subscriberStats.total ?? subscribersTotal}</div>
+  1141→                        <div className="text-xs text-muted-foreground mt-1">Total</div>
+  1142→                      </Card>
+  1143→                      <Card className="p-4 text-center">
+  1144→                        <div className="text-2xl font-bold text-green-600">{analytics?.subscriberStats.active ?? subscribersActive}</div>
+  1145→                        <div className="text-xs text-muted-foreground mt-1">Active</div>
+  1146→                      </Card>
+  1147→                      <Card className="p-4 text-center">
+  1148→                        <div className="text-2xl font-bold text-orange-500">{analytics?.subscriberStats.thisWeek ?? 0}</div>
+  1149→                        <div className="text-xs text-muted-foreground mt-1">This Week</div>
+  1150→                      </Card>
+  1151→                    </div>
+  1152→
+  1153→                    {subscribersLoading && subscribers.length === 0 ? (
+  1154→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+  1155→                    ) : subscribers.length === 0 ? (
+  1156→                      <div className="text-center py-16 text-muted-foreground">
+  1157→                        <Mail className="w-12 h-12 mx-auto mb-3 opacity-30" />
+  1158→                        <p className="font-medium">No subscribers yet</p>
+  1159→                        <p className="text-sm">Newsletter signups will appear here.</p>
+  1160→                      </div>
+  1161→                    ) : (
+  1162→                      <Card>
+  1163→                        <CardContent className="p-0">
+  1164→                          <div className="overflow-x-auto">
+  1165→                            <table className="w-full text-sm">
+  1166→                              <thead>
+  1167→                                <tr className="border-b bg-muted/30">
+  1168→                                  <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
+  1169→                                  <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Subscribed</th>
+  1170→                                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+  1171→                                  <th className="p-3 w-10"></th>
+  1172→                                </tr>
+  1173→                              </thead>
+  1174→                              <tbody>
+  1175→                                {subscribers.map((s) => (
+  1176→                                  <tr key={s.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+  1177→                                    <td className="p-3 font-medium">{s.email}</td>
+  1178→                                    <td className="p-3 text-muted-foreground hidden sm:table-cell">{formatDate(s.subscribedAt)}</td>
+  1179→                                    <td className="p-3">
+  1180→                                      <Badge variant={s.isActive ? 'default' : 'secondary'} className={s.isActive ? 'bg-green-600' : ''}>{s.isActive ? 'Active' : 'Inactive'}</Badge>
+  1181→                                    </td>
+  1182→                                    <td className="p-3">
+  1183→                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => deleteSubscriber(s.id)}>
+  1184→                                        <Trash2 className="w-3.5 h-3.5" />
+  1185→                                      </Button>
+  1186→                                    </td>
+  1187→                                  </tr>
+  1188→                                ))}
+  1189→                              </tbody>
+  1190→                            </table>
+  1191→                          </div>
+  1192→                        </CardContent>
+  1193→                      </Card>
+  1194→                    )}
+  1195→                    {subscribersTotal > 15 && (
+  1196→                      <div className="flex items-center justify-center gap-2">
+  1197→                        <Button variant="outline" size="sm" disabled={subscribersPage <= 1} onClick={() => fetchSubscribers(subscribersPage - 1)}><ChevronLeft className="w-4 h-4" /></Button>
+  1198→                        <span className="text-sm text-muted-foreground">Page {subscribersPage} of {Math.ceil(subscribersTotal / 15)}</span>
+  1199→                        <Button variant="outline" size="sm" disabled={subscribersPage >= Math.ceil(subscribersTotal / 15)} onClick={() => fetchSubscribers(subscribersPage + 1)}><ChevronRight className="w-4 h-4" /></Button>
+  1200→                      </div>
+  1201→                    )}
+  1202→                  </>
+  1203→                )}
+  1204→
+  1205→                {/* ====== ANALYTICS TAB ====== */}
+  1206→                {activeSection === 'analytics' && (
+  1207→                  <>
+  1208→                    <div className="flex items-center justify-between">
+  1209→                      <h3 className="text-lg font-semibold flex items-center gap-2">
+  1210→                        <BarChart3 className="w-5 h-5 text-emerald-500" /> Detailed Analytics
+  1211→                      </h3>
+  1212→                      <Button variant="outline" size="sm" onClick={() => fetchAnalytics(true)} disabled={refreshingAnalytics}>
+  1213→                        <RefreshCw className={`w-3.5 h-3.5 mr-1 ${refreshingAnalytics ? 'animate-spin' : ''}`} /> Refresh
+  1214→                      </Button>
+  1215→                    </div>
+  1216→
+  1217→                    {analyticsLoading && !analytics ? (
+  1218→                      <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+  1219→                    ) : analytics ? (
+  1220→                      <div className="space-y-5">
+  1221→                        <Card>
+  1222→                          <CardHeader className="pb-3">
+  1223→                            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Country Database</CardTitle>
+  1224→                          </CardHeader>
+  1225→                          <CardContent>
+  1226→                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  1227→                              <MiniStat label="Total Countries" value={analytics.countries.total} />
+  1228→                              <MiniStat label="Visa Free" value={analytics.countries.visaFree} color="text-green-600" />
+  1229→                              <MiniStat label="Visa on Arrival" value={analytics.countries.visaOnArrival} color="text-orange-600" />
+  1230→                              <MiniStat label="ETA Available" value={analytics.countries.etaAvailable} color="text-blue-600" />
+  1231→                            </div>
+  1232→                          </CardContent>
+  1233→                        </Card>
+  1234→
+  1235→                        <Card>
+  1236→                          <CardHeader className="pb-3">
+  1237→                            <CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-emerald-500" /> Continent Distribution</CardTitle>
+  1238→                          </CardHeader>
+  1239→                          <CardContent>
+  1240→                            <div className="space-y-2.5">
+  1241→                              {analytics.continents.map((c) => {
+  1242→                                const pct = analytics.countries.total > 0 ? (c.count / analytics.countries.total) * 100 : 0;
+  1243→                                return (
+  1244→                                  <div key={c.continent} className="flex items-center gap-3">
+  1245→                                    <span className="text-sm text-muted-foreground w-28 truncate">{c.continent}</span>
+  1246→                                    <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+  1247→                                      <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+  1248→                                    </div>
+  1249→                                    <span className="text-sm font-medium w-16 text-right">{c.count} <span className="text-xs text-muted-foreground">({Math.round(pct)}%)</span></span>
+  1250→                                  </div>
+  1251→                                );
+  1252→                              })}
+  1253→                            </div>
+  1254→                          </CardContent>
+  1255→                        </Card>
+  1256→
+  1257→                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1258→                          <Card>
+  1259→                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Database className="w-4 h-4 text-emerald-500" /> Data Records</CardTitle></CardHeader>
+  1260→                            <CardContent className="space-y-2">
+  1261→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Requirements</span><span className="font-medium">{analytics.requirements}</span></div>
+  1262→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Cost Profiles</span><span className="font-medium">{analytics.costProfiles}</span></div>
+  1263→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">User Profiles</span><span className="font-medium">{analytics.users}</span></div>
+  1264→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sessions</span><span className="font-medium">{analytics.sessions}</span></div>
+  1265→                            </CardContent>
+  1266→                          </Card>
+  1267→                          <Card>
+  1268→                            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-500" /> Contact Stats</CardTitle></CardHeader>
+  1269→                            <CardContent className="space-y-2">
+  1270→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total Messages</span><span className="font-medium">{analytics.messageStats.total}</span></div>
+  1271→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">This Week</span><span className="font-medium">{analytics.messageStats.thisWeek}</span></div>
+  1272→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Response Rate</span><span className="font-medium">{analytics.messageStats.responseRate}%</span></div>
+  1273→                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Unread</span><span className="font-medium text-red-500">{analytics.messageStats.unread}</span></div>
+  1274→                            </CardContent>
+  1275→                          </Card>
+  1276→                        </div>
+  1277→
+  1278→                        <Card>
+  1279→                          <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Shield className="w-4 h-4 text-emerald-500" /> Data Freshness</CardTitle></CardHeader>
+  1280→                          <CardContent>
+  1281→                            {analytics.dataFreshness ? (
+  1282→                              <div className="space-y-2">
+  1283→                                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-sm">Last updated:</span></div>
+  1284→                                <p className="text-sm font-medium">{new Date(analytics.dataFreshness).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+  1285→                                <p className="text-xs text-muted-foreground">{Math.round((Date.now() - new Date(analytics.dataFreshness).getTime()) / (1000 * 60 * 60 * 24))} days ago</p>
+  1286→                              </div>
+  1287→                            ) : <p className="text-sm text-muted-foreground">No data fetch recorded</p>}
+  1288→                          </CardContent>
+  1289→                        </Card>
+  1290→                      </div>
+  1291→                    ) : (
+  1292→                      <div className="text-center py-8 text-muted-foreground">
+  1293→                        <p>Failed to load analytics</p>
+  1294→                        <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchAnalytics(true)}>Try Again</Button>
+  1295→                      </div>
+  1296→                    )}
+  1297→                  </>
+  1298→                )}
+  1299→
+  1300→                {/* ====== SETTINGS TAB ====== */}
+  1301→                {activeSection === 'settings' && (
+  1302→                  <div className="space-y-5">
+  1303→                    <h3 className="text-lg font-semibold flex items-center gap-2"><Settings className="w-5 h-5 text-emerald-500" /> Feature Toggles</h3>
+  1304→
+  1305→                    <Card className="hover:shadow-md transition-shadow">
+  1306→                      <CardHeader className="pb-3">
+  1307→                        <div className="flex items-center justify-between">
+  1308→                          <div className="flex items-center gap-3">
+  1309→                            <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><Zap className="w-5 h-5 text-emerald-600" /></div>
+  1310→                            <div><CardTitle className="text-base">AI Features</CardTitle><CardDescription>Enable or disable AI Chat and Document Analysis</CardDescription></div>
+  1311→                          </div>
+  1312→                          <Switch checked={aiEnabled} onCheckedChange={toggleAiFeature} disabled={togglingAi} className="data-[state=checked]:bg-emerald-600" />
+  1313→                        </div>
+  1314→                      </CardHeader>
+  1315→                      <CardContent>
+  1316→                        <div className="flex items-center gap-2"><Badge variant={aiEnabled ? 'default' : 'secondary'} className={aiEnabled ? 'bg-emerald-600' : ''}>{aiEnabled ? 'Enabled' : 'Disabled'}</Badge>{togglingAi && <span className="text-xs text-muted-foreground">Updating...</span>}</div>
+  1317→                      </CardContent>
+  1318→                    </Card>
+  1319→
+  1320→                    <Card className="hover:shadow-md transition-shadow">
+  1321→                      <CardHeader className="pb-3">
+  1322→                        <div className="flex items-center justify-between">
+  1323→                          <div className="flex items-center gap-3">
+  1324→                            <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center"><Server className="w-5 h-5 text-orange-600" /></div>
+  1325→                            <div><CardTitle className="text-base">Maintenance Mode</CardTitle><CardDescription>Show maintenance banner to all users</CardDescription></div>
+  1326→                          </div>
+  1327→                          <Switch checked={maintenanceMode} onCheckedChange={toggleMaintenance} disabled={togglingMaintenance} className="data-[state=checked]:bg-orange-600" />
+  1328→                        </div>
+  1329→                      </CardHeader>
+  1330→                      <CardContent>
+  1331→                        <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+  1332→                          <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+  1333→                          <p className="text-xs text-muted-foreground">When enabled, a maintenance banner will be shown to all users. Use during updates or data refreshes.</p>
+  1334→                        </div>
+  1335→                        <div className="flex items-center gap-2 mt-2"><Badge variant={maintenanceMode ? 'destructive' : 'secondary'}>{maintenanceMode ? 'Active' : 'Normal'}</Badge>{togglingMaintenance && <span className="text-xs text-muted-foreground">Updating...</span>}</div>
+  1336→                      </CardContent>
+  1337→                    </Card>
+  1338→
+  1339→                    {/* WhatsApp Number - Inline Editor */}
+  1340→                    <Card className="hover:shadow-md transition-shadow">
+  1341→                      <CardHeader className="pb-3">
+  1342→                        <div className="flex items-center gap-3">
+  1343→                          <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center"><MessageCircle className="w-5 h-5 text-green-600" /></div>
+  1344→                          <div><CardTitle className="text-base">WhatsApp Number</CardTitle><CardDescription>Messages only — no calls allowed</CardDescription></div>
+  1345→                        </div>
+  1346→                      </CardHeader>
+  1347→                      <CardContent>
+  1348→                        <div className="flex gap-2">
+  1349→                          <div className="relative flex-1">
+  1350→                            <Hash className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+  1351→                            <Input
+  1352→                              value={whatsappNumber}
+  1353→                              onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^\d]/g, ''))}
+  1354→                              placeholder="923001234567"
+  1355→                              className="pl-9"
+  1356→                            />
+  1357→                          </div>
+  1358→                          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={saveWhatsappNumber} disabled={savingWhatsapp || whatsappNumber.length < 8}>
+  1359→                            {savingWhatsapp ? 'Saving...' : 'Save'}
+  1360→                          </Button>
+  1361→                        </div>
+  1362→                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+  1363→                          <AlertTriangle className="w-3 h-3" />
+  1364→                          Include country code (no + sign). E.g. 923001234567 for Pakistan.
+  1365→                        </p>
+  1366→                      </CardContent>
+  1367→                    </Card>
+  1368→                  </div>
+  1369→                )}
+  1370→              </div>
+  1371→            </ScrollArea>
+  1372→          </div>
+  1373→        )}
+  1374→    </div>
+  1375→  );
+  1376→}
+  1377→
+  1378→// Helper Components
+  1379→function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) {
+  1380→  const colorMap: Record<string, string> = {
+  1381→    red: 'bg-red-50 dark:bg-red-900/20 border-red-200/50 dark:border-red-800/30',
+  1382→    blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200/50 dark:border-blue-800/30',
+  1383→    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-800/30',
+  1384→    green: 'bg-green-50 dark:bg-green-900/20 border-green-200/50 dark:border-green-800/30',
+  1385→    amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200/50 dark:border-amber-800/30',
+  1386→    orange: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200/50 dark:border-orange-800/30',
+  1387→    violet: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200/50 dark:border-violet-800/30',
+  1388→  };
+  1389→  const textColorMap: Record<string, string> = {
+  1390→    red: 'text-red-600 dark:text-red-400',
+  1391→    blue: 'text-blue-600 dark:text-blue-400',
+  1392→    emerald: 'text-emerald-600 dark:text-emerald-400',
+  1393→    green: 'text-green-600 dark:text-green-400',
+  1394→    amber: 'text-amber-600 dark:text-amber-400',
+  1395→    orange: 'text-orange-600 dark:text-orange-400',
+  1396→    violet: 'text-violet-600 dark:text-violet-400',
+  1397→  };
+  1398→  return (
+  1399→    <div className={`p-3 rounded-xl border ${colorMap[color] || colorMap.emerald}`}>
+  1400→      <div className="flex items-center gap-2 mb-2">
+  1401→        <div className={textColorMap[color] || textColorMap.emerald}>{icon}</div>
+  1402→        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+  1403→      </div>
+  1404→      <div className={`text-xl font-bold ${textColorMap[color] || textColorMap.emerald}`}>{value}</div>
+  1405→    </div>
+  1406→  );
+  1407→}
+  1408→
+  1409→function MiniStat({ label, value, color }: { label: string; value: string | number; color?: string }) {
+  1410→  return (
+  1411→    <div className="p-3 rounded-lg bg-muted/50 text-center">
+  1412→      <div className={`text-xl font-bold ${color || ''}`}>{value}</div>
+  1413→      <div className="text-[10px] text-muted-foreground mt-1">{label}</div>
+  1414→    </div>
+  1415→  );
+  1416→}
+  1417→
+  1418→const VISA_COLORS = ['#059669', '#f97316', '#3b82f6', '#ef4444'];
+  1419→const VISA_LABELS: Record<string, string> = { visaFree: 'Visa Free', visaOnArrival: 'On Arrival', etaAvailable: 'e-Visa/ETA', regularVisa: 'Regular Visa' };
+  1420→
+  1421→function VisaBreakdownChart({ visaCategories, total }: { visaCategories: { visaFree: number; visaOnArrival: number; etaAvailable: number; regularVisa: number }; total: number }) {
+  1422→  const data = [
+  1423→    { name: 'Visa Free', value: visaCategories.visaFree },
+  1424→    { name: 'On Arrival', value: visaCategories.visaOnArrival },
+  1425→    { name: 'e-Visa/ETA', value: visaCategories.etaAvailable },
+  1426→    { name: 'Regular Visa', value: visaCategories.regularVisa },
+  1427→  ].filter(d => d.value > 0);
+  1428→
+  1429→  return (
+  1430→    <div>
+  1431→      <div className="h-40">
+  1432→        <ResponsiveContainer width="100%" height="100%">
+  1433→          <PieChart>
+  1434→            <Pie
+  1435→              data={data}
+  1436→              cx="50%"
+  1437→              cy="50%"
+  1438→              innerRadius={35}
+  1439→              outerRadius={60}
+  1440→              paddingAngle={2}
+  1441→              dataKey="value"
+  1442→              stroke="none"
+  1443→            >
+  1444→              {data.map((_entry, index) => (
+  1445→                <Cell key={`cell-${index}`} fill={VISA_COLORS[index % VISA_COLORS.length]} />
+  1446→              ))}
+  1447→            </Pie>
+  1448→            <Tooltip
+  1449→              formatter={(value: number, name: string) => [`${value} countries`, name]}
+  1450→              contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', fontSize: '12px' }}
+  1451→            />
+  1452→          </PieChart>
+  1453→        </ResponsiveContainer>
+  1454→      </div>
+  1455→      <div className="grid grid-cols-2 gap-1.5 mt-2">
+  1456→        {['visaFree', 'visaOnArrival', 'etaAvailable', 'regularVisa'].map((key, i) => (
+  1457→          <div key={key} className="flex items-center gap-1.5 text-xs">
+  1458→            <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: VISA_COLORS[i] }} />
+  1459→            <span className="text-muted-foreground">{VISA_LABELS[key]}</span>
+  1460→            <span className="ml-auto font-medium">{visaCategories[key as keyof typeof visaCategories]}</span>
+  1461→          </div>
+  1462→        ))}
+  1463→      </div>
+  1464→    </div>
+  1465→  );
+  1466→}
+  1467→
