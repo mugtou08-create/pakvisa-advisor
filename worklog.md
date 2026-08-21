@@ -915,3 +915,90 @@ Stage Summary:
 - Auto-expiry warnings at 3 days, renewal prompt at 7 days
 - All features verified working in browser (agent-browser)
 - Zero lint errors, 200 status on main page
+
+---
+Task ID: 7-8
+Agent: Main Agent
+Task: Create Schengen Visa Wizard and Umrah & Hajj Planner interactive tool components
+
+Work Log:
+- Created `/src/components/visa/schengen-wizard.tsx` — 3-step interactive wizard
+  - Step 1: Travel purpose (Tourism/Business/Study/Family Visit), duration, previous Schengen travel
+  - Step 2: Employment status, income range, insurance & booking status
+  - Step 3: Personalized results with recommended country, document checklist (checkboxes), PKR cost breakdown, Pakistani applicant tips, disclaimer, iVisa CTA
+  - Progress indicator, back/next navigation, emerald/green theme, mobile-responsive
+- Created `/src/components/visa/umrah-hajj-tool.tsx` — tabbed planning tool
+  - Two tabs: Umrah and Hajj with distinct content
+  - Visa requirement cards (e-Visa for Umrah, special Hajj visa via MoRA)
+  - 5-step expandable timeline per tab (Preparation → Documents → Application → Travel → During Visit)
+  - Interactive packing checklist grouped by category (Documents, Clothing, Health, Prayer, Electronics)
+  - PKR cost calculator with sliders (visa, flights, accommodation, transport, food, misc)
+  - Vaccination requirements reminder (meningitis, COVID, flu)
+  - Quick tips for Pakistani travelers (8 per tab)
+  - Important contacts (Saudi Embassy Islamabad, Pakistan Embassy Riyadh, Pakistan Consulate Jeddah, MoRA helpline)
+  - CTA links to visitsaudi.com, nusuk.sa, hajj.gov.pk
+- Integrated both components into `page.tsx` before the Quick Tools section
+- Fixed lint errors: React Compiler memoization dependency, missing JSX expression closing brace, missing Lightbulb import
+
+Stage Summary:
+- Two new interactive tool components added to the main page
+- Schengen Wizard: 3-step wizard with country recommendation, document checklist, cost breakdown
+- Umrah & Hajj Planner: tabbed tool with timeline, packing list, cost calculator, contacts
+- Zero lint errors, page compiles successfully
+
+---
+Task ID: 6-and-10
+Agent: SEO Country Pages Agent
+Task: Create SEO country pages, sitemap, and update main page with country links
+
+Work Log:
+- Created `/src/app/country/[code]/page.tsx` — full server component (no 'use client') for SEO/SSG
+  - `generateStaticParams` queries all 70 countries from DB for pre-generation
+  - `generateMetadata` creates dynamic title, description, OG/Twitter cards, keywords, canonical URL
+  - Complete standalone page with: header, breadcrumb, hero with flag + visa badge, key info cards (processing time, visa fee, safety, travel months), visa types section, requirements grouped by category (mandatory/optional), cost breakdown table with USD + PKR, embassy info with note/alerts for embassy-required countries, safety overview with star rating, climate/temperature chart by month, 5 dynamic FAQs generated from country data, CTA section (iVisa for e-Visa, PakVisa Advisor link), footer
+  - JSON-LD structured data: WebPage + FAQPage schemas
+  - Inlined FLAG_ISO_MAP, EXCHANGE_RATES, EMBASSY_DATA (server-safe, no 'use client' dependency)
+  - Mobile-responsive Tailwind CSS styling throughout
+- Created `/src/app/sitemap.ts` — dynamic sitemap generator
+  - Home page (priority 1.0, daily frequency)
+  - 70 country pages (priority 0.8, weekly frequency, using DB updatedAt)
+  - URLs: `https://pakvisaadvisor.com/country/{code}`
+- Updated `/src/app/page.tsx` CountryResultCard:
+  - Country name in collapsed card view → link to `/country/{code}` opening in new tab (with stopPropagation)
+  - Expanded detail area → added 'View Full Country Guide →' link opening in new tab
+- Ran `bun run lint` — zero errors
+
+Stage Summary:
+- 3 files created/modified: country/[code]/page.tsx (new), sitemap.ts (new), page.tsx (updated)
+- 70 SEO-optimized country pages generated via SSG with full meta tags and structured data
+- Dynamic sitemap with 71 entries (home + 70 countries)
+- Country cards on main page now link to dedicated country pages
+
+---
+Task ID: 5-12
+Agent: Main Agent
+Task: Full audit + 5 feature implementations
+
+Work Log:
+- Performed comprehensive audit via agent-browser: page loads clean, no JS errors, all 70 flags render, all affiliate links correct
+- Fixed bug: 'Malaysia Visa-Free Extended through 2025' → 'through 2026' in page.tsx line 81
+- Added Data Backup card to Admin Dashboard (admin-dialog.tsx) with download button using existing /api/download-backup endpoint
+- Feature 1 (subagent): Created /app/country/[code]/page.tsx — auto-generated SEO country pages with generateStaticParams, generateMetadata, full standalone layout (header, breadcrumb, hero, key info cards, visa types, requirements, cost breakdown, embassy info, safety overview, climate chart, FAQ, CTA, footer), JSON-LD structured data
+- Feature 1 (subagent): Created /app/sitemap.ts — dynamic sitemap with 71 URLs (home + 70 country pages)
+- Feature 1 (subagent): Updated page.tsx to add 'View Full Country Guide' links in country cards
+- Feature 1 (subagent): Removed conflicting public/sitemap.xml that was blocking app/sitemap.ts
+- Feature 2 (subagent): Created /components/visa/schengen-wizard.tsx — 3-step interactive wizard (Travel Details → Personal Info → Results) with purpose selection, duration, Schengen history, employment, income, insurance/bookings status, recommended country, document checklist with checkboxes, PKR cost breakdown, 10 Pakistani-specific tips, disclaimer, iVisa CTA
+- Feature 3 (subagent): Created /components/visa/umrah-hajj-tool.tsx — Two-tab (Umrah/Hajj) tool with visa info cards, 5-step expandable timelines, interactive packing checklists, PKR cost calculators, vaccination reminders, 8 tips per tab, important contacts
+- Feature 3 (subagent): Integrated both components into page.tsx as new sections (Schengen Visa Wizard + Umrah & Hajj Planner)
+- Feature 4: Added DownloadCountryGuide component to country-detail.tsx — Pro-gated 'Download Country Guide (PDF)' button. Free users see 'Pro Only' CTA that opens pricing modal. Pro users get a printable country page opened in new tab + text file fallback.
+- Feature 5: Technical SEO implemented via subagent — dynamic metadata on country pages, sitemap.xml with 71 URLs, JSON-LD structured data (WebPage + FAQPage) on each country page
+- Verified all features via agent-browser: Schengen Wizard completes all 3 steps (Tourism → France recommendation), Umrah/Hajj tabs switch correctly, country pages load with proper titles and structured content, PDF download button shows 'Pro Only' for free users, sitemap.xml returns valid XML with 71 URLs
+
+Stage Summary:
+- 0 lint errors, 0 runtime errors
+- 5 features fully implemented and verified
+- 71 SEO-optimized pages generated (1 home + 70 country pages)
+- 2 new interactive tools (Schengen Wizard + Umrah/Hajj Planner)
+- 1 new revenue driver (Pro-gated PDF download)
+- Backup download available in Admin Dashboard
+- All existing functionality preserved and working

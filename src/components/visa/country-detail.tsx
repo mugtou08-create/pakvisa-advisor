@@ -5,7 +5,7 @@ import {
   Clock, Globe, DollarSign, Languages, Plug, Phone, Droplets, UtensilsCrossed,
   Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
   Calculator, ChevronDown, ChevronUp, AlertTriangle, Banknote, ArrowRightLeft,
-  FileText, Plane, Lock, Crown, CheckCircle2, ClipboardList,
+  FileText, Plane, Lock, Crown, CheckCircle2, ClipboardList, Download,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
@@ -724,6 +724,9 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
       {/* Embassy Contact (only for embassy-required countries) */}
       {isEmbassyRequired && <EmbassyContact countryCode={country.code} />}
 
+      {/* Download Country Guide (Pro Feature) */}
+      <DownloadCountryGuide country={country} />
+
       {/* Affiliate: Prepare Your Trip (always last) */}
       <AffiliateResources country={country} />
     </div>
@@ -827,6 +830,91 @@ function FullDocumentChecklist({
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// Download Country Guide (Pro Feature)
+// ============================================================
+function DownloadCountryGuide({ country }: { country: CountryData }) {
+  const { user, isAuthenticated } = useAuthStore();
+  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const [generating, setGenerating] = useState(false);
+
+  const handleDownload = async () => {
+    if (!isPro) {
+      window.dispatchEvent(new CustomEvent('open-pricing'));
+      return;
+    }
+    setGenerating(true);
+    try {
+      // Open the country page in a new tab for Print > Save as PDF
+      const url = `/country/${country.code}`;
+      window.open(url, '_blank');
+    } catch {
+      // fallback: download text guide
+      const lines = [
+        `PakVisa Advisor — ${country.name} Visa Guide`,
+        `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+        '',
+        `Visa Status: ${country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'Visa on Arrival' : country.etaAvailable ? 'e-Visa' : 'Embassy Required'}`,
+        `Processing Time: ${country.processingDaysMin}-${country.processingDaysMax} days`,
+        `Safety Rating: ${country.safetyRating}/5`,
+        `Best Travel Months: ${country.bestTravelMonths || 'N/A'}`,
+        '',
+        '--- Visa Types ---',
+        ...(country.visaTypes?.map(v => `${v.type}: ${v.description} (${v.maxDuration})`) || []),
+        '',
+        '--- Key Requirements ---',
+        ...(country.requirements?.map(r => `[${r.mandatory ? 'Required' : 'Optional'}] ${r.requirement}: ${r.description || ''}`) || []),
+        '',
+        '--- Cost Breakdown ---',
+        country.costProfile ? `Visa Fee: $${country.costProfile.visaFeeUSD} (≈ PKR ${Math.round(country.costProfile.visaFeeUSD * 278.5).toLocaleString()})` : 'N/A',
+        country.costProfile ? `Monthly Living: $${country.costProfile.monthlyLivingUSD}` : '',
+        '',
+        'Disclaimer: This guide is for informational purposes only. Always verify with the official embassy.',
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `pakvisa-${country.name.replace(/\s+/g, '-').toLowerCase()}-guide.txt`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+    setGenerating(false);
+  };
+
+  return (
+    <div className="rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/10 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isPro ? (
+            <FileText className="w-4 h-4 text-emerald-600" />
+          ) : (
+            <Lock className="w-4 h-4 text-emerald-600" />
+          )}
+          <div className="text-left">
+            <span className="text-sm font-semibold">Download Country Guide (PDF)</span>
+            <p className="text-[11px] text-muted-foreground">Get a printable visa guide for {country.name}</p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant={isPro ? 'default' : 'outline'}
+          className={isPro ? 'bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5' : 'gap-1.5 border-amber-300 dark:border-amber-700'}
+          onClick={handleDownload}
+          disabled={generating}
+        >
+          {generating ? (
+            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : isPro ? (
+            <><Download className="w-3.5 h-3.5" /> Download</>
+          ) : (
+            <><Crown className="w-3.5 h-3.5 text-amber-500" /> Pro Only</>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

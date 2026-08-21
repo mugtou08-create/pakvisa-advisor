@@ -1,0 +1,629 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useMemo } from 'react';
+     4→import {
+     5→  Plane,
+     6→  Briefcase,
+     7→  GraduationCap,
+     8→  Users,
+     9→  ChevronRight,
+    10→  ChevronLeft,
+    11→  Check,
+    12→  FileText,
+    13→  Shield,
+    14→  DollarSign,
+    15→  Lightbulb,
+    16→  AlertTriangle,
+    17→  ExternalLink,
+    18→  Camera,
+    19→  CreditCard,
+    20→  Hotel,
+    21→  Mail,
+    22→  Heart,
+    23→  UserCheck,
+    24→  Clock,
+    25→  MapPin,
+    26→  CheckCircle2,
+    27→} from 'lucide-react';
+    28→import { Button } from '@/components/ui/button';
+    29→import { Badge } from '@/components/ui/badge';
+    30→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    31→import { Checkbox } from '@/components/ui/checkbox';
+    32→import {
+    33→  Select,
+    34→  SelectContent,
+    35→  SelectItem,
+    36→  SelectTrigger,
+    37→  SelectValue,
+    38→} from '@/components/ui/select';
+    39→
+    40→// ============================================================
+    41→// Types & Data
+    42→// ============================================================
+    43→
+    44→type TravelPurpose = 'Tourism' | 'Business' | 'Study' | 'Family Visit';
+    45→type Duration = '<15 days' | '15-30 days' | '>30 days';
+    46→type EmploymentStatus = 'Employed' | 'Self-Employed' | 'Student' | 'Retired';
+    47→type IncomeRange = 'Under PKR 50K' | 'PKR 50K-100K' | 'PKR 100K-300K' | 'PKR 300K-500K' | 'Over PKR 500K';
+    48→
+    49→type WizardData = {
+    50→  purpose: TravelPurpose | null;
+    51→  duration: Duration | null;
+    52→  visitedBefore: boolean | null;
+    53→  employment: EmploymentStatus | null;
+    54→  income: IncomeRange | null;
+    55→  hasInsurance: boolean | null;
+    56→  hasBookings: boolean | null;
+    57→};
+    58→
+    59→const PURPOSE_OPTIONS: { value: TravelPurpose; label: string; icon: React.ReactNode; desc: string }[] = [
+    60→  { value: 'Tourism', label: 'Tourism', icon: <Plane className="w-5 h-5" />, desc: 'Sightseeing, vacation, leisure travel' },
+    61→  { value: 'Business', label: 'Business', icon: <Briefcase className="w-5 h-5" />, desc: 'Meetings, conferences, trade fairs' },
+    62→  { value: 'Study', label: 'Study', icon: <GraduationCap className="w-5 h-5" />, desc: 'University, courses, research programs' },
+    63→  { value: 'Family Visit', label: 'Family Visit', icon: <Users className="w-5 h-5" />, desc: 'Visiting relatives or friends' },
+    64→];
+    65→
+    66→const DURATION_OPTIONS: Duration[] = ['<15 days', '15-30 days', '>30 days'];
+    67→const EMPLOYMENT_OPTIONS: EmploymentStatus[] = ['Employed', 'Self-Employed', 'Student', 'Retired'];
+    68→const INCOME_OPTIONS: IncomeRange[] = ['Under PKR 50K', 'PKR 50K-100K', 'PKR 100K-300K', 'PKR 300K-500K', 'Over PKR 500K'];
+    69→
+    70→// Recommended country by purpose
+    71→function getRecommendedCountry(purpose: TravelPurpose): { country: string; reason: string } {
+    72→  switch (purpose) {
+    73→    case 'Tourism':
+    74→      return { country: 'France', reason: 'France is the top tourism destination in the Schengen area. The French embassy in Islamabad processes a high volume of tourist visas and has established procedures for Pakistani applicants.' };
+    75→    case 'Business':
+    76→      return { country: 'Germany', reason: 'Germany is the largest economy in the EU with extensive business ties to Pakistan. The German embassy has well-defined business visa procedures and faster processing for legitimate business travelers.' };
+    77→    case 'Study':
+    78→      return { country: 'Germany', reason: 'Germany offers tuition-free or low-cost education at public universities and has the most student-friendly visa process among Schengen countries for Pakistani applicants.' };
+    79→    case 'Family Visit':
+    80→      return { country: 'Italy', reason: 'Italy has a significant Pakistani diaspora and the Italian embassy processes family visit visas with relatively straightforward documentation requirements for visiting family members.' };
+    81→  }
+    82→}
+    83→
+    84→// Document checklist based on purpose
+    85→function getDocumentChecklist(data: WizardData): { id: string; label: string; required: boolean; note?: string }[] {
+    86→  const docs = [
+    87→    { id: 'passport', label: 'Valid passport (6+ months validity, 2+ blank pages)', required: true },
+    88→    { id: 'photos', label: '2 passport-sized photos (35x45mm, white background)', required: true },
+    89→    { id: 'form', label: 'Completed Schengen visa application form', required: true },
+    90→    { id: 'bank', label: 'Bank statements (last 6 months)', required: true },
+    91→    { id: 'insurance', label: 'Travel insurance (€30,000+ coverage, Schengen-wide)', required: true, note: data.hasInsurance ? 'You confirmed having insurance — great!' : 'Mandatory! You cannot get a visa without this.' },
+    92→    { id: 'flight', label: 'Round-trip flight booking / itinerary', required: true, note: data.hasBookings ? 'You confirmed having bookings — great!' : 'Book refundable flights or get a flight itinerary.' },
+    93→    { id: 'hotel', label: 'Hotel reservation for entire stay', required: true, note: data.hasBookings ? 'You confirmed having bookings — great!' : 'Book refundable hotels or get an invitation letter.' },
+    94→    { id: 'cover', label: 'Cover letter explaining purpose of visit', required: true },
+    95→    { id: 'employment', label: 'Employment letter / NOC from employer', required: data.employment === 'Employed' || data.employment === 'Self-Employed' },
+    96→    { id: 'business', label: 'Business registration documents (SECP)', required: data.employment === 'Self-Employed' },
+    97→    { id: 'student', label: 'Admission letter / enrollment proof', required: data.purpose === 'Study' || data.employment === 'Student' },
+    98→    { id: 'invitation', label: 'Invitation letter from host / family member', required: data.purpose === 'Family Visit' || data.purpose === 'Business' },
+    99→    { id: 'tax', label: 'Tax returns (last 2 years)', required: data.employment === 'Employed' || data.employment === 'Self-Employed' },
+   100→    { id: 'medical', label: 'Medical fitness certificate', required: false, note: 'Sometimes requested by certain embassies' },
+   101→    { id: 'police', label: 'Police clearance certificate', required: false, note: 'May be requested for long-stay visas' },
+   102→    { id: 'salary', label: 'Salary slips (last 3 months)', required: data.employment === 'Employed' },
+   103→    { id: 'retirement', label: 'Pension / retirement proof', required: data.employment === 'Retired' },
+   104→  ];
+   105→  return docs;
+   106→}
+   107→
+   108→// Cost breakdown in PKR (approximate)
+   109→function getCostBreakdown(data: WizardData) {
+   110→  const EUR_TO_PKR = 305;
+   111→  const visaFeeEur = 80;
+   112→  const visaServiceCharge = 3500; // VFS Global service fee
+   113→  const insuranceCost = data.duration === '<15 days' ? 2500 : data.duration === '15-30 days' ? 4000 : 6000;
+   114→  const photos = 800;
+   115→  const travelToEmbassy = 3000; // avg transport cost to Islamabad
+   116→  const courier = 1500;
+   117→  const translation = 2000;
+   118→  const total = visaFeeEur * EUR_TO_PKR + visaServiceCharge + insuranceCost + photos + travelToEmbassy + courier + translation;
+   119→  return [
+   120→    { item: 'Visa Application Fee', detail: `€${visaFeeEur}`, amount: visaFeeEur * EUR_TO_PKR },
+   121→    { item: 'VFS Service Charge', detail: 'Standard processing', amount: visaServiceCharge },
+   122→    { item: 'Travel Insurance', detail: data.duration || '15-30 days', amount: insuranceCost },
+   123→    { item: 'Passport Photos', detail: '4 copies', amount: photos },
+   124→    { item: 'Transport to Embassy', detail: 'Round trip', amount: travelToEmbassy },
+   125→    { item: 'Courier / Courier return', detail: 'TCS / DHL', amount: courier },
+   126→    { item: 'Document Translation', detail: 'If needed', amount: translation },
+   127→    { item: 'ESTIMATED TOTAL', detail: '', amount: total },
+   128→  ];
+   129→}
+   130→
+   131→// Tips for Pakistani applicants
+   132→const PAK_TIPS = [
+   133→  'Apply at least 4-6 weeks before your planned travel date.',
+   134→  'Schedule your VFS Global appointment well in advance — slots fill up quickly during peak seasons (June-August, December).',
+   135→  'Ensure your bank statement shows consistent deposits, not just a sudden lump sum.',
+   136→  'If self-employed, bring your NTN certificate, SECP registration, and business bank statements.',
+   137→  'Dress professionally for your biometrics appointment at VFS.',
+   138→  'Bring original + 2 photocopies of every document.',
+   139→  'For family visit visas, the invitation letter should include the host\'s residence permit copy.',
+   140→  'Mobile phones are not allowed inside VFS Global — leave them at home or in a locker.',
+   141→  'Students should bring a No Objection Certificate (NOC) from their educational institution.',
+   142→  'Previous Schengen visa stamps in your passport significantly improve approval chances.',
+   143→];
+   144→
+   145→// ============================================================
+   146→// Component
+   147→// ============================================================
+   148→
+   149→export function SchengenWizard() {
+   150→  const [step, setStep] = useState(1);
+   151→  const [data, setData] = useState<WizardData>({
+   152→    purpose: null,
+   153→    duration: null,
+   154→    visitedBefore: null,
+   155→    employment: null,
+   156→    income: null,
+   157→    hasInsurance: null,
+   158→    hasBookings: null,
+   159→  });
+   160→  const [checkedDocs, setCheckedDocs] = useState<Record<string, boolean>>({});
+   161→
+   162→  const updateData = (partial: Partial<WizardData>) => setData((prev) => ({ ...prev, ...partial }));
+   163→
+   164→  const canProceedStep1 = data.purpose && data.duration && data.visitedBefore !== null;
+   165→  const canProceedStep2 = data.employment && data.income && data.hasInsurance !== null && data.hasBookings !== null;
+   166→
+   167→  const recommendation = useMemo(() => (data.purpose ? getRecommendedCountry(data.purpose) : null), [data.purpose]);
+   168→  const checklist = useMemo(() => getDocumentChecklist(data), [data]);
+   169→  const costs = useMemo(() => getCostBreakdown(data), [data]);
+   170→
+   171→  const toggleDoc = (id: string) => setCheckedDocs((prev) => ({ ...prev, [id]: !prev[id] }));
+   172→  const checkedCount = Object.values(checkedDocs).filter(Boolean).length;
+   173→
+   174→  const STEPS = [
+   175→    { num: 1, label: 'Travel Details' },
+   176→    { num: 2, label: 'Personal Info' },
+   177→    { num: 3, label: 'Results' },
+   178→  ];
+   179→
+   180→  return (
+   181→    <div className="space-y-4">
+   182→      {/* Progress Indicator */}
+   183→      <div className="flex items-center justify-center gap-2 sm:gap-4">
+   184→        {STEPS.map((s, i) => (
+   185→          <React.Fragment key={s.num}>
+   186→            <button
+   187→              onClick={() => {
+   188→                if (s.num < step) setStep(s.num);
+   189→              }}
+   190→              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+   191→                s.num === step
+   192→                  ? 'bg-emerald-600 text-white'
+   193→                  : s.num < step
+   194→                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+   195→                    : 'bg-muted text-muted-foreground'
+   196→              }`}
+   197→            >
+   198→              <span
+   199→                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+   200→                  s.num === step
+   201→                    ? 'bg-white/20 text-white'
+   202→                    : s.num < step
+   203→                      ? 'bg-emerald-600 text-white'
+   204→                      : 'bg-muted-foreground/20 text-muted-foreground'
+   205→                }`}
+   206→              >
+   207→                {s.num < step ? <Check className="w-3.5 h-3.5" /> : s.num}
+   208→              </span>
+   209→              <span className="hidden sm:inline">{s.label}</span>
+   210→            </button>
+   211→            {i < STEPS.length - 1 && (
+   212→              <div className={`h-0.5 w-6 sm:w-12 rounded ${s.num < step ? 'bg-emerald-500' : 'bg-muted'}`} />
+   213→            )}
+   214→          </React.Fragment>
+   215→        ))}
+   216→      </div>
+   217→
+   218→      {/* Step 1: Travel Details */}
+   219→      {step === 1 && (
+   220→        <div className="space-y-4">
+   221→          <Card>
+   222→            <CardHeader>
+   223→              <CardTitle className="text-base">Travel Purpose</CardTitle>
+   224→            </CardHeader>
+   225→            <CardContent>
+   226→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   227→                {PURPOSE_OPTIONS.map((opt) => (
+   228→                  <button
+   229→                    key={opt.value}
+   230→                    onClick={() => updateData({ purpose: opt.value })}
+   231→                    className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-all hover:border-emerald-400 ${
+   232→                      data.purpose === opt.value
+   233→                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 ring-1 ring-emerald-500'
+   234→                        : 'border-border hover:bg-muted/50'
+   235→                    }`}
+   236→                  >
+   237→                    <div
+   238→                      className={`mt-0.5 rounded-md p-2 ${
+   239→                        data.purpose === opt.value ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' : 'bg-muted text-muted-foreground'
+   240→                      }`}
+   241→                    >
+   242→                      {opt.icon}
+   243→                    </div>
+   244→                    <div>
+   245→                      <div className="font-medium text-sm">{opt.label}</div>
+   246→                      <div className="text-xs text-muted-foreground mt-0.5">{opt.desc}</div>
+   247→                    </div>
+   248→                  </button>
+   249→                ))}
+   250→              </div>
+   251→            </CardContent>
+   252→          </Card>
+   253→
+   254→          <Card>
+   255→            <CardHeader>
+   256→              <CardTitle className="text-base">Planned Duration</CardTitle>
+   257→            </CardHeader>
+   258→            <CardContent>
+   259→              <div className="flex flex-wrap gap-2">
+   260→                {DURATION_OPTIONS.map((d) => (
+   261→                  <button
+   262→                    key={d}
+   263→                    onClick={() => updateData({ duration: d })}
+   264→                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+   265→                      data.duration === d
+   266→                        ? 'bg-emerald-600 text-white'
+   267→                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   268→                    }`}
+   269→                  >
+   270→                    {d}
+   271→                  </button>
+   272→                ))}
+   273→              </div>
+   274→            </CardContent>
+   275→          </Card>
+   276→
+   277→          <Card>
+   278→            <CardHeader>
+   279→              <CardTitle className="text-base">Previous Schengen Travel</CardTitle>
+   280→            </CardHeader>
+   281→            <CardContent>
+   282→              <p className="text-sm text-muted-foreground mb-3">Have you visited any Schengen country before?</p>
+   283→              <div className="flex gap-3">
+   284→                <button
+   285→                  onClick={() => updateData({ visitedBefore: true })}
+   286→                  className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-colors ${
+   287→                    data.visitedBefore === true
+   288→                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+   289→                      : 'border-border hover:bg-muted/50'
+   290→                  }`}
+   291→                >
+   292→                  <CheckCircle2 className="w-5 h-5 mx-auto mb-1" />
+   293→                  Yes
+   294→                </button>
+   295→                <button
+   296→                  onClick={() => updateData({ visitedBefore: false })}
+   297→                  className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-colors ${
+   298→                    data.visitedBefore === false
+   299→                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+   300→                      : 'border-border hover:bg-muted/50'
+   301→                  }`}
+   302→                >
+   303→                  <Plane className="w-5 h-5 mx-auto mb-1" />
+   304→                  No, First Time
+   305→                </button>
+   306→              </div>
+   307→            </CardContent>
+   308→          </Card>
+   309→
+   310→          <div className="flex justify-end">
+   311→            <Button
+   312→              onClick={() => setStep(2)}
+   313→              disabled={!canProceedStep1}
+   314→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+   315→            >
+   316→              Continue <ChevronRight className="w-4 h-4" />
+   317→            </Button>
+   318→          </div>
+   319→        </div>
+   320→      )}
+   321→
+   322→      {/* Step 2: Personal & Financial Info */}
+   323→      {step === 2 && (
+   324→        <div className="space-y-4">
+   325→          <Card>
+   326→            <CardHeader>
+   327→              <CardTitle className="text-base">Employment Status</CardTitle>
+   328→            </CardHeader>
+   329→            <CardContent>
+   330→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   331→                {EMPLOYMENT_OPTIONS.map((e) => (
+   332→                  <button
+   333→                    key={e}
+   334→                    onClick={() => updateData({ employment: e })}
+   335→                    className={`rounded-lg border p-3 text-center text-sm font-medium transition-colors ${
+   336→                      data.employment === e
+   337→                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+   338→                        : 'border-border hover:bg-muted/50'
+   339→                    }`}
+   340→                  >
+   341→                    {e}
+   342→                  </button>
+   343→                ))}
+   344→              </div>
+   345→            </CardContent>
+   346→          </Card>
+   347→
+   348→          <Card>
+   349→            <CardHeader>
+   350→              <CardTitle className="text-base">Monthly Income Range</CardTitle>
+   351→            </CardHeader>
+   352→            <CardContent>
+   353→              <Select value={data.income || ''} onValueChange={(v) => updateData({ income: v as IncomeRange })}>
+   354→                <SelectTrigger className="w-full">
+   355→                  <SelectValue placeholder="Select your monthly income range" />
+   356→                </SelectTrigger>
+   357→                <SelectContent>
+   358→                  {INCOME_OPTIONS.map((inc) => (
+   359→                    <SelectItem key={inc} value={inc}>{inc}</SelectItem>
+   360→                  ))}
+   361→                </SelectContent>
+   362→              </Select>
+   363→              <p className="text-xs text-muted-foreground mt-2">
+   364→                This helps determine financial document requirements for your visa application.
+   365→              </p>
+   366→            </CardContent>
+   367→          </Card>
+   368→
+   369→          <Card>
+   370→            <CardHeader>
+   371→              <CardTitle className="text-base">Travel Preparation Status</CardTitle>
+   372→            </CardHeader>
+   373→            <CardContent className="space-y-4">
+   374→              <div className="flex items-center justify-between rounded-lg border p-3">
+   375→                <div className="flex items-center gap-3">
+   376→                  <Shield className="w-5 h-5 text-emerald-600" />
+   377→                  <div>
+   378→                    <div className="text-sm font-medium">Travel Insurance</div>
+   379→                    <div className="text-xs text-muted-foreground">€30,000+ coverage required</div>
+   380→                  </div>
+   381→                </div>
+   382→                <div className="flex gap-2">
+   383→                  <button
+   384→                    onClick={() => updateData({ hasInsurance: true })}
+   385→                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+   386→                      data.hasInsurance === true
+   387→                        ? 'bg-emerald-600 text-white'
+   388→                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   389→                    }`}
+   390→                  >
+   391→                    Yes
+   392→                  </button>
+   393→                  <button
+   394→                    onClick={() => updateData({ hasInsurance: false })}
+   395→                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+   396→                      data.hasInsurance === false
+   397→                        ? 'bg-amber-600 text-white'
+   398→                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   399→                    }`}
+   400→                  >
+   401→                    No
+   402→                  </button>
+   403→                </div>
+   404→              </div>
+   405→
+   406→              <div className="flex items-center justify-between rounded-lg border p-3">
+   407→                <div className="flex items-center gap-3">
+   408→                  <Plane className="w-5 h-5 text-emerald-600" />
+   409→                  <div>
+   410→                    <div className="text-sm font-medium">Hotel & Flight Bookings</div>
+   411→                    <div className="text-xs text-muted-foreground">Confirmed or tentative reservations</div>
+   412→                  </div>
+   413→                </div>
+   414→                <div className="flex gap-2">
+   415→                  <button
+   416→                    onClick={() => updateData({ hasBookings: true })}
+   417→                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+   418→                      data.hasBookings === true
+   419→                        ? 'bg-emerald-600 text-white'
+   420→                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   421→                    }`}
+   422→                  >
+   423→                    Yes
+   424→                  </button>
+   425→                  <button
+   426→                    onClick={() => updateData({ hasBookings: false })}
+   427→                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+   428→                      data.hasBookings === false
+   429→                        ? 'bg-amber-600 text-white'
+   430→                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   431→                    }`}
+   432→                  >
+   433→                    No
+   434→                  </button>
+   435→                </div>
+   436→              </div>
+   437→            </CardContent>
+   438→          </Card>
+   439→
+   440→          <div className="flex justify-between">
+   441→            <Button variant="outline" onClick={() => setStep(1)} className="gap-2">
+   442→              <ChevronLeft className="w-4 h-4" /> Back
+   443→            </Button>
+   444→            <Button
+   445→              onClick={() => setStep(3)}
+   446→              disabled={!canProceedStep2}
+   447→              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+   448→            >
+   449→              View Results <ChevronRight className="w-4 h-4" />
+   450→            </Button>
+   451→          </div>
+   452→        </div>
+   453→      )}
+   454→
+   455→      {/* Step 3: Results */}
+   456→      {step === 3 && recommendation && (
+   457→        <div className="space-y-4">
+   458→          {/* Recommended Country */}
+   459→          <Card className="border-emerald-200 dark:border-emerald-900">
+   460→            <CardHeader>
+   461→              <div className="flex items-center gap-2">
+   462→                <MapPin className="w-5 h-5 text-emerald-600" />
+   463→                <CardTitle className="text-base">Recommended Country to Apply</CardTitle>
+   464→              </div>
+   465→            </CardHeader>
+   466→            <CardContent>
+   467→              <div className="flex items-center gap-3 mb-3">
+   468→                <Badge className="bg-emerald-600 text-white text-base px-4 py-1.5">{recommendation.country}</Badge>
+   469→                <Badge variant="outline" className="text-xs">for {data.purpose}</Badge>
+   470→              </div>
+   471→              <p className="text-sm text-muted-foreground">{recommendation.reason}</p>
+   472→              {data.visitedBefore && (
+   473→                <div className="mt-2 flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+   474→                  <CheckCircle2 className="w-4 h-4" />
+   475→                  Previous Schengen travel strengthens your application
+   476→                </div>
+   477→              )}
+   478→            </CardContent>
+   479→          </Card>
+   480→
+   481→          {/* Document Checklist */}
+   482→          <Card>
+   483→            <CardHeader>
+   484→              <div className="flex items-center justify-between">
+   485→                <div className="flex items-center gap-2">
+   486→                  <FileText className="w-5 h-5 text-emerald-600" />
+   487→                  <CardTitle className="text-base">Document Checklist</CardTitle>
+   488→                </div>
+   489→                <Badge variant="outline" className="text-xs">
+   490→                  {checkedCount}/{checklist.filter((d) => d.required).length} required
+   491→                </Badge>
+   492→              </div>
+   493→            </CardHeader>
+   494→            <CardContent>
+   495→              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+   496→                {checklist.map((doc) => (
+   497→                  <label
+   498→                    key={doc.id}
+   499→                    className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+   500→                      checkedDocs[doc.id]
+   501→                        ? 'border-emerald-300 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/30'
+   502→                        : 'border-border hover:bg-muted/30'
+   503→                    }`}
+   504→                  >
+   505→                    <Checkbox
+   506→                      checked={checkedDocs[doc.id] || false}
+   507→                      onCheckedChange={() => toggleDoc(doc.id)}
+   508→                      className="mt-0.5"
+   509→                    />
+   510→                    <div className="flex-1 min-w-0">
+   511→                      <div className="text-sm font-medium flex items-center gap-2">
+   512→                        {doc.label}
+   513→                        {doc.required ? (
+   514→                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-red-500 border-red-300 dark:border-red-800">
+   515→                            Required
+   516→                          </Badge>
+   517→                        ) : (
+   518→                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300 dark:border-amber-800">
+   519→                            Optional
+   520→                          </Badge>
+   521→                        )}
+   522→                      </div>
+   523→                      {doc.note && (
+   524→                        <p className="text-xs text-muted-foreground mt-0.5">{doc.note}</p>
+   525→                      )}
+   526→                    </div>
+   527→                  </label>
+   528→                ))}
+   529→              </div>
+   530→            </CardContent>
+   531→          </Card>
+   532→
+   533→          {/* Cost Breakdown */}
+   534→          <Card>
+   535→            <CardHeader>
+   536→              <div className="flex items-center gap-2">
+   537→                <DollarSign className="w-5 h-5 text-emerald-600" />
+   538→                <CardTitle className="text-base">Estimated Cost Breakdown (PKR)</CardTitle>
+   539→              </div>
+   540→            </CardHeader>
+   541→            <CardContent>
+   542→              <div className="space-y-2">
+   543→                {costs.map((c, i) => (
+   544→                  <div
+   545→                    key={i}
+   546→                    className={`flex items-center justify-between py-2 ${
+   547→                      i === costs.length - 1 ? 'border-t pt-3 font-bold text-emerald-700 dark:text-emerald-400' : 'text-sm'
+   548→                    }`}
+   549→                  >
+   550→                    <div>
+   551→                      <span>{c.item}</span>
+   552→                      {c.detail && <span className="text-xs text-muted-foreground ml-2">({c.detail})</span>}
+   553→                    </div>
+   554→                    <span className={i === costs.length - 1 ? 'text-base' : 'text-muted-foreground'}>
+   555→                      PKR {c.amount.toLocaleString()}
+   556→                    </span>
+   557→                  </div>
+   558→                ))}
+   559→              </div>
+   560→              <p className="text-xs text-muted-foreground mt-3">
+   561→                * Costs are approximate and may vary. Exchange rate used: €1 = PKR 305
+   562→              </p>
+   563→            </CardContent>
+   564→          </Card>
+   565→
+   566→          {/* Tips for Pakistani Applicants */}
+   567→          <Card>
+   568→            <CardHeader>
+   569→              <div className="flex items-center gap-2">
+   570→                <Lightbulb className="w-5 h-5 text-amber-500" />
+   571→                <CardTitle className="text-base">Tips for Pakistani Applicants</CardTitle>
+   572→              </div>
+   573→            </CardHeader>
+   574→            <CardContent>
+   575→              <ul className="space-y-2">
+   576→                {PAK_TIPS.map((tip, i) => (
+   577→                  <li key={i} className="flex items-start gap-2 text-sm">
+   578→                    <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+   579→                    <span className="text-muted-foreground">{tip}</span>
+   580→                  </li>
+   581→                ))}
+   582→              </ul>
+   583→            </CardContent>
+   584→          </Card>
+   585→
+   586→          {/* Disclaimer */}
+   587→          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-3">
+   588→            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+   589→            <p className="text-xs text-amber-800 dark:text-amber-300">
+   590→              <strong>Disclaimer:</strong> This tool provides general guidance only and does not guarantee visa approval.
+   591→              Visa requirements and fees are subject to change. Always verify with the official embassy or VFS Global
+   592→              before submitting your application. PakVisa Advisor is not responsible for any decisions made based on this information.
+   593→            </p>
+   594→          </div>
+   595→
+   596→          {/* CTA */}
+   597→          <a
+   598→            href="https://www.ivisa.com/?promotion=SHARE20"
+   599→            target="_blank"
+   600→            rel="noopener noreferrer"
+   601→            className="block"
+   602→          >
+   603→            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-12 text-base">
+   604→              Apply for e-Visa <ExternalLink className="w-4 h-4" />
+   605→            </Button>
+   606→          </a>
+   607→
+   608→          <div className="flex justify-between">
+   609→            <Button variant="outline" onClick={() => setStep(2)} className="gap-2">
+   610→              <ChevronLeft className="w-4 h-4" /> Back
+   611→            </Button>
+   612→            <Button
+   613→              variant="outline"
+   614→              onClick={() => {
+   615→                setStep(1);
+   616→                setData({ purpose: null, duration: null, visitedBefore: null, employment: null, income: null, hasInsurance: null, hasBookings: null });
+   617→                setCheckedDocs({});
+   618→              }}
+   619→              className="gap-2"
+   620→            >
+   621→              Start Over
+   622→            </Button>
+   623→          </div>
+   624→        </div>
+   625→      )}
+   626→    </div>
+   627→  );
+   628→}
+   629→

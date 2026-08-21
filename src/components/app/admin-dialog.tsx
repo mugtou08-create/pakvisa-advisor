@@ -887,6 +887,28 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                             )}
                           </CardContent>
                         </Card>
+
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                              <Database className="w-4 h-4 text-emerald-500" /> Data Backup
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <p className="text-xs text-muted-foreground">Download a complete JSON backup of all country data, settings, and site configuration.</p>
+                            <Button
+                              size="sm"
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => {
+                                const key = 'pakvisa-admin-backup-2026';
+                                window.open(`/api/download-backup?key=${key}`, '_blank');
+                                toast.success('Backup download started');
+                              }}
+                            >
+                              <Download className="w-3.5 h-3.5 mr-1.5" /> Download Full Backup (.json)
+                            </Button>
+                          </CardContent>
+                        </Card>
                       </div>
                     </div>
                   </>

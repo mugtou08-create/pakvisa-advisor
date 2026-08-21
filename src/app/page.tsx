@@ -28,6 +28,8 @@ import { PaymentProofModal } from '@/components/visa/payment-proof-modal';
 import { AdminDialog } from '@/components/app/admin-dialog';
 import { WhatsAppButton } from '@/components/app/whatsapp-button';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
+import { SchengenWizard } from '@/components/visa/schengen-wizard';
+import { UmrahHajjTool } from '@/components/visa/umrah-hajj-tool';
 
 // ============================================================
 // Animated Counter Hook
@@ -78,7 +80,7 @@ const POPULAR_COUNTRIES = [
 // ============================================================
 const VISA_ALERTS = [
   { id: 1, icon: CheckCircle2, color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can now apply for a Turkish e-Visa online in minutes.', source: 'evisa.gov.tr' },
-  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Malaysia has extended visa-free entry for Pakistani passport holders through 2025.', source: 'imi.gov.my' },
+  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Malaysia has extended visa-free entry for Pakistani passport holders through 2026.', source: 'imi.gov.my' },
   { id: 3, icon: Info, color: 'text-sky-600', title: 'Saudi e-Visa for Tourism', desc: 'Saudi Arabia now offers e-Visa for Pakistani tourists including Umrah travelers.', source: 'visa.visitsaudi.com' },
   { id: 4, icon: AlertTriangle, color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.', source: 'uaevisaonline.com' },
   { id: 5, icon: CheckCircle2, color: 'text-emerald-600', title: 'Azerbaijan Visa-Free Access', desc: 'Pakistani passport holders enjoy visa-free entry to Azerbaijan for up to 90 days.', source: 'mfa.gov.az' },
@@ -222,7 +224,15 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm truncate">{country.name}</span>
+            <a
+              href={`/country/${country.code}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="font-semibold text-sm truncate hover:text-emerald-600 transition-colors"
+            >
+              {country.name}
+            </a>
             <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${vt.color}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${vt.dot}`} />
               {vt.label}
@@ -266,6 +276,18 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
 
       {/* Expanded Details - Full Info Panel */}
       {expanded && <CountryDetailPanel country={country} />}
+      {expanded && (
+        <div className="px-4 pb-3">
+          <a
+            href={`/country/${country.code}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+          >
+            View Full Country Guide <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
     </Card>
   );
 }
@@ -1162,6 +1184,24 @@ export default function HomePage() {
                 )}
               </>
             )}
+          </div>
+        </section>
+
+        {/* ==================== SCHENGEN VISA WIZARD ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-2">Schengen Visa Wizard</h2>
+            <p className="text-sm text-muted-foreground mb-4">Plan your Schengen visa application step by step</p>
+            <SchengenWizard />
+          </div>
+        </section>
+
+        {/* ==================== UMRAH & HAJJ PLANNER ==================== */}
+        <section className="px-4 pb-10">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold mb-2">Umrah & Hajj Planner</h2>
+            <p className="text-sm text-muted-foreground mb-4">Everything you need for your spiritual journey</p>
+            <UmrahHajjTool />
           </div>
         </section>
 

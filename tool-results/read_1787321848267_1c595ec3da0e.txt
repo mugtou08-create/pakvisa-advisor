@@ -1,0 +1,904 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useMemo } from 'react';
+     4→import {
+     5→  Plane, Calendar, FileText, CreditCard, Heart, Shield, Phone,
+     6→  MapPin, ChevronDown, ChevronUp, Check, ExternalLink, Syringe,
+     7→  Building, Mail, Clock, Luggage, Shirt, Pill, BookOpen, Smartphone,
+     8→  Sun, Umbrella, Info, AlertTriangle, DollarSign, CheckCircle2, UserCheck,
+     9→  Package, Hotel, Utensils, Car, Lightbulb,
+    10→} from 'lucide-react';
+    11→import { Button } from '@/components/ui/button';
+    12→import { Badge } from '@/components/ui/badge';
+    13→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    14→import { Checkbox } from '@/components/ui/checkbox';
+    15→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    16→import { Slider } from '@/components/ui/slider';
+    17→
+    18→// ============================================================
+    19→// Timeline Data
+    20→// ============================================================
+    21→
+    22→type TimelineStep = {
+    23→  id: string;
+    24→  title: string;
+    25→  icon: React.ReactNode;
+    26→  details: string[];
+    27→};
+    28→
+    29→const UMRAH_TIMELINE: TimelineStep[] = [
+    30→  {
+    31→    id: 'prep',
+    32→    title: 'Preparation (4-8 weeks before)',
+    33→    icon: <Calendar className="w-5 h-5" />,
+    34→    details: [
+    35→      'Apply for Saudi e-Visa online via visitsaudi.com',
+    36→      'Ensure passport has 6+ months validity',
+    37→      'Book round-trip flights (PIA, Saudi Airlines, AirSial)',
+    38→      'Book accommodation near Haram (walkable distance recommended)',
+    39→      'Get mandatory travel insurance with COVID/medical coverage',
+    40→      'Get meningitis vaccination certificate (required)',
+    41→      'Learn Ihram rules and dua guidelines',
+    42→      'Download the Nusuk app for itinerary and guidance',
+    43→    ],
+    44→  },
+    45→  {
+    46→    id: 'docs',
+    47→    title: 'Documents (2-4 weeks before)',
+    48→    icon: <FileText className="w-5 h-5" />,
+    49→    details: [
+    50→      'Valid Pakistani passport (original + 2 photocopies)',
+    51→      'Passport-sized photos (white background, 4x6cm)',
+    52→      'Meningitis vaccination certificate (yellow card)',
+    53→      'Flight booking confirmation (print + digital)',
+    54→      'Hotel reservation confirmation',
+    55→      'Travel insurance policy document',
+    56→      'Bank statement showing sufficient funds (PKR 300K+ recommended)',
+    57→      'CNIC copy for identity verification',
+    58→    ],
+    59→  },
+    60→  {
+    61→    id: 'apply',
+    62→    title: 'Application (1-2 weeks before)',
+    63→    icon: <CreditCard className="w-5 h-5" />,
+    64→    details: [
+    65→      'Apply for Saudi e-Visa at visa.visitsaudi.com',
+    66→      'Upload documents and passport photo',
+    67→      'Pay visa fee online (approximately SAR 300 / PKR 22,000)',
+    68→      'Receive e-Visa approval via email (typically 1-5 business days)',
+    69→      'Print e-Visa and carry with passport during travel',
+    70→      'Complete registration on the Muqeem portal after arrival',
+    71→    ],
+    72→  },
+    73→  {
+    74→    id: 'travel',
+    75→    title: 'Travel Day',
+    76→    icon: <Plane className="w-5 h-5" />,
+    77→    details: [
+    78→      'Arrive at airport 4 hours before departure',
+    79→      'Carry all printed documents and vaccination card',
+    80→      'Wear comfortable clothing (Ihram can be worn at airport or in plane)',
+    81→      'Keep important items in carry-on (medicines, phone charger, documents)',
+    82→      'Upon arrival in Jeddah/Madinah: immigration, baggage, currency exchange',
+    83→      'Pre-booked transport to hotel (taxi/Uber/Careem)',
+    84→    ],
+    85→  },
+    86→  {
+    87→    id: 'visit',
+    88→    title: 'During Your Visit',
+    89→    icon: <Heart className="w-5 h-5" />,
+    90→    details: [
+    91→      'Perform Umrah following the Nusuk app guidance',
+    92→      'Maintain Ihram rules during the pilgrimage',
+    93→      'Stay hydrated — Makkah and Madinah can be very hot',
+    94→      'Keep emergency numbers saved (Pakistan Embassy, local police)',
+    95→      'Respect local customs and Saudi laws',
+    96→      'Use the Saudi Ministry of Hajj & Umrah helpline if needed: 920020811',
+    97→    ],
+    98→  },
+    99→];
+   100→
+   101→const HAJJ_TIMELINE: TimelineStep[] = [
+   102→  {
+   103→    id: 'prep',
+   104→    title: 'Preparation (3-6 months before)',
+   105→    icon: <Calendar className="w-5 h-5" />,
+   106→    details: [
+   107→      'Apply through the Pakistan Ministry of Religious Affairs Hajj scheme OR a licensed private Hajj operator',
+   108→      'Government Hajj scheme: Apply at hajj.gov.pk or designated bank branches (HBL, UBL, MCB)',
+   109→      'Private Hajj operators must be MoRA-approved — verify license at hajj.gov.pk',
+   110→      'Ensure passport has 12+ months validity (longer than Umrah)',
+   111→      'Start physical fitness preparation — Hajj involves extensive walking',
+   112→      'Get mandatory vaccinations: meningitis, COVID booster, seasonal flu',
+   113→      'Begin learning Hajj rituals (Rami, Tawaf, Saee, Wuquf)',
+   114→    ],
+   115→  },
+   116→  {
+   117→    id: 'docs',
+   118→    title: 'Documents (2-3 months before)',
+   119→    icon: <FileText className="w-5 h-5" />,
+   120→    details: [
+   121→      'Valid Pakistani passport (original + photocopies)',
+   122→      'Hajj application form (government scheme) or contract with private operator',
+   123→      'Meningitis vaccination certificate (ACWY)',
+   124→      'COVID-19 vaccination certificate',
+   125→      'Passport-sized photos (5-6 copies)',
+   126→      'Medical fitness certificate',
+   127→      'CNIC and family registration certificate (for family packages)',
+   128→      'Payment receipt / draft for Hajj package',
+   129→    ],
+   130→  },
+   131→  {
+   132→    id: 'apply',
+   133→    title: 'Application & Payment',
+   134→    icon: <CreditCard className="w-5 h-5" />,
+   135→    details: [
+   136→      'Government scheme: Submit application + full payment (PKR 1,070,000 - 1,175,000 approx for 2025)',
+   137→      'Private operators: Packages range from PKR 800,000 to 2,500,000+',
+   138→      'Ballot/lottery for government scheme — results announced by MoRA',
+   139→      'Attend mandatory Hajj training sessions organized by MoRA',
+   140→      'Receive Hajj visa and travel documents from your operator',
+   141→      'Download Nusuk app and register your Hajj itinerary',
+   142→    ],
+   143→  },
+   144→  {
+   145→    id: 'travel',
+   146→    icon: <Plane className="w-5 h-5" />,
+   147→    title: 'Travel & Orientation',
+   148→    details: [
+   149→      'Travel in designated Hajj flight groups',
+   150→      'Upon arrival: immigration processing, meet your Hajj group guide (Muttawif)',
+   151→      'Transport to Makkah — check into your accommodation',
+   152→      'Attend orientation session by your group leader',
+   153→      'Perform initial Umrah if time permits',
+   154→      'Familiarize yourself with your camp location in Mina',
+   155→    ],
+   156→  },
+   157→  {
+   158→    id: 'visit',
+   159→    title: 'Hajj Days',
+   160→    icon: <Heart className="w-5 h-5" />,
+   161→    details: [
+   162→      '8th Dhul Hijjah: Travel to Mina, prepare for Wuquf',
+   163→      '9th Dhul Hijjah: Day of Arafat (Wuquf) — most important day of Hajj',
+   164→      '9th-10th night: Travel to Muzdalifah, collect pebbles',
+   165→      '10th Dhul Hijjah: Rami al-Jamarat (stoning), Qurbani (sacrifice), Tawaf al-Ifadah',
+   166→      '11th-12th Dhul Hijjah: Continue Rami, Tawaf al-Wada (farewell)',
+   167→      'Keep emergency contacts: Pakistan Embassy +966-12-665-1600',
+   168→    ],
+   169→  },
+   170→];
+   171→
+   172→// ============================================================
+   173→// Packing Checklist
+   174→// ============================================================
+   175→
+   176→const UMRAH_PACKING = [
+   177→  { id: 'passport', label: 'Passport with e-Visa printout', category: 'Documents', icon: <FileText className="w-3.5 h-3.5" /> },
+   178→  { id: 'photos', label: 'Extra passport photos', category: 'Documents', icon: <FileText className="w-3.5 h-3.5" /> },
+   179→  { id: 'vaccine-card', label: 'Vaccination certificate (meningitis)', category: 'Documents', icon: <Syringe className="w-3.5 h-3.5" /> },
+   180→  { id: 'insurance', label: 'Travel insurance documents', category: 'Documents', icon: <Shield className="w-3.5 h-3.5" /> },
+   181→  { id: 'hotel-booking', label: 'Hotel booking confirmation', category: 'Documents', icon: <Hotel className="w-3.5 h-3.5" /> },
+   182→  { id: 'flight-booking', label: 'Flight booking printout', category: 'Documents', icon: <Plane className="w-3.5 h-3.5" /> },
+   183→  { id: 'cnic-copy', label: 'CNIC copy', category: 'Documents', icon: <FileText className="w-3.5 h-3.5" /> },
+   184→  { id: 'ihram-men', label: 'Ihram (2 sets recommended for men)', category: 'Clothing', icon: <Shirt className="w-3.5 h-3.5" /> },
+   185→  { id: 'ihram-women', label: 'Modest clothing / Abaya for women', category: 'Clothing', icon: <Shirt className="w-3.5 h-3.5" /> },
+   186→  { id: 'sandals', label: 'Open sandals (required for men in Ihram)', category: 'Clothing', icon: <Shirt className="w-3.5 h-3.5" /> },
+   187→  { id: 'belt-bag', label: 'Money belt / waist pouch', category: 'Clothing', icon: <Package className="w-3.5 h-3.5" /> },
+   188→  { id: 'comfortable-shoes', label: 'Comfortable walking shoes (for non-Ihram times)', category: 'Clothing', icon: <Shirt className="w-3.5 h-3.5" /> },
+   189→  { id: 'medicines', label: 'Personal medicines & first-aid kit', category: 'Health', icon: <Pill className="w-3.5 h-3.5" /> },
+   190→  { id: 'oral-rehydration', label: 'Oral rehydration salts', category: 'Health', icon: <Pill className="w-3.5 h-3.5" /> },
+   191→  { id: 'sunscreen', label: 'Sunscreen (SPF 50+)', category: 'Health', icon: <Sun className="w-3.5 h-3.5" /> },
+   192→  { id: 'umbrella', label: 'Small umbrella (for sun/rain)', category: 'Health', icon: <Umbrella className="w-3.5 h-3.5" /> },
+   193→  { id: 'masks', label: 'Face masks (N95 recommended)', category: 'Health', icon: <Shield className="w-3.5 h-3.5" /> },
+   194→  { id: 'quran', label: 'Pocket Quran / Dua book', category: 'Prayer', icon: <BookOpen className="w-3.5 h-3.5" /> },
+   195→  { id: 'tasbeeh', label: 'Tasbeeh / Prayer beads', category: 'Prayer', icon: <BookOpen className="w-3.5 h-3.5" /> },
+   196→  { id: 'prayer-mat', label: 'Travel prayer mat', category: 'Prayer', icon: <BookOpen className="w-3.5 h-3.5" /> },
+   197→  { id: 'phone-charger', label: 'Phone charger & power bank', category: 'Electronics', icon: <Smartphone className="w-3.5 h-3.5" /> },
+   198→  { id: 'phone', label: 'Mobile phone (Nusuk app installed)', category: 'Electronics', icon: <Smartphone className="w-3.5 h-3.5" /> },
+   199→  { id: 'adapter', label: 'Universal power adapter (Type A/B/G)', category: 'Electronics', icon: <Smartphone className="w-3.5 h-3.5" /> },
+   200→];
+   201→
+   202→const HAJJ_PACKING = [
+   203→  ...UMRAH_PACKING.filter((i) => i.id !== 'ihram-men' && i.id !== 'ihram-women'),
+   204→  { id: 'ihram-men-hajj', label: 'Ihram (3 sets recommended — you will need multiple)', category: 'Clothing', icon: <Shirt className="w-3.5 h-3.5" /> },
+   205→  { id: 'ihram-women-hajj', label: 'Modest clothing / Abaya + extra sets', category: 'Clothing', icon: <Shirt className="w-3.5 h-3.5" /> },
+   206→  { id: 'sleeping-bag', label: 'Light sleeping bag / bed sheet (for Mina)', category: 'Clothing', icon: <Shirt className="w-3.5 h-3.5" /> },
+   207→  { id: 'small-backpack', label: 'Small backpack for Day of Arafat', category: 'Clothing', icon: <Package className="w-3.5 h-3.5" /> },
+   208→  { id: 'pebbles-bag', label: 'Small bag for collecting pebbles (or buy in Muzdalifah)', category: 'Prayer', icon: <Package className="w-3.5 h-3.5" /> },
+   209→  { id: 'hajj-guide', label: 'Hajj step-by-step guide book', category: 'Prayer', icon: <BookOpen className="w-3.5 h-3.5" /> },
+   210→];
+   211→
+   212→// ============================================================
+   213→// Cost Calculator
+   214→// ============================================================
+   215→
+   216→type CostItem = { id: string; label: string; icon: React.ReactNode; min: number; max: number; defaultVal: number; step: number };
+   217→
+   218→const UMRAH_COSTS: CostItem[] = [
+   219→  { id: 'visa', label: 'e-Visa Fee', icon: <CreditCard className="w-4 h-4" />, min: 0, max: 30000, defaultVal: 22000, step: 1000 },
+   220→  { id: 'flights', label: 'Round-trip Flights', icon: <Plane className="w-4 h-4" />, min: 50000, max: 500000, defaultVal: 200000, step: 10000 },
+   221→  { id: 'accommodation', label: 'Accommodation (per night x stay)', icon: <Hotel className="w-4 h-4" />, min: 5000, max: 150000, defaultVal: 40000, step: 5000 },
+   222→  { id: 'transport', label: 'Local Transport (taxis, intercity)', icon: <Car className="w-4 h-4" />, min: 2000, max: 50000, defaultVal: 10000, step: 2000 },
+   223→  { id: 'food', label: 'Food & Meals', icon: <Utensils className="w-4 h-4" />, min: 5000, max: 100000, defaultVal: 25000, step: 5000 },
+   224→  { id: 'misc', label: 'Shopping, Zamzam, Gifts, Misc', icon: <Package className="w-4 h-4" />, min: 5000, max: 200000, defaultVal: 30000, step: 5000 },
+   225→];
+   226→
+   227→const HAJJ_COSTS: CostItem[] = [
+   228→  { id: 'visa', label: 'Hajj Visa + Processing', icon: <CreditCard className="w-4 h-4" />, min: 0, max: 50000, defaultVal: 15000, step: 5000 },
+   229→  { id: 'package', label: 'Hajj Package (flights + accommodation)', icon: <Plane className="w-4 h-4" />, min: 800000, max: 3000000, defaultVal: 1100000, step: 50000 },
+   230→  { id: 'transport', label: 'Local Transport (Mina, Arafat, etc.)', icon: <Car className="w-4 h-4" />, min: 5000, max: 50000, defaultVal: 15000, step: 5000 },
+   231→  { id: 'food', label: 'Food & Meals', icon: <Utensils className="w-4 h-4" />, min: 10000, max: 150000, defaultVal: 50000, step: 5000 },
+   232→  { id: 'qurbani', label: 'Qurbani / Sacrifice', icon: <Heart className="w-4 h-4" />, min: 20000, max: 100000, defaultVal: 45000, step: 5000 },
+   233→  { id: 'misc', label: 'Shopping, Zamzam, Gifts, Misc', icon: <Package className="w-4 h-4" />, min: 10000, max: 200000, defaultVal: 40000, step: 5000 },
+   234→];
+   235→
+   236→// ============================================================
+   237→// Tips
+   238→// ============================================================
+   239→
+   240→const UMRAH_TIPS = [
+   241→  'Apply for the Saudi e-Visa at least 2 weeks before travel. Processing typically takes 1-5 business days.',
+   242→  'Book hotels within walking distance of Al-Haram to save on transport costs.',
+   243→  'The best time for Umrah from Pakistan is during winter months (Nov-Feb) for cooler weather.',
+   244→  'Install the Nusuk app before traveling — it provides step-by-step guidance for rituals.',
+   245→  'Carry PKR in cash for initial expenses, then exchange to SAR at authorized counters in Saudi Arabia.',
+   246→  'Download Careem or Uber app for reliable transport in Makkah and Madinah.',
+   247→  'Pakistan International Airlines (PIA) and Saudi Airlines offer direct flights from major Pakistani cities.',
+   248→  'Keep a photocopy of your passport and visa separately from the originals.',
+   249→];
+   250→
+   251→const HAJJ_TIPS = [
+   252→  'Apply for the government Hajj scheme early — the ballot is competitive and registration opens months in advance.',
+   253→  'If using a private operator, verify their MoRA license at hajj.gov.pk before paying.',
+   254→  'Start physical walking exercise 2-3 months before Hajj to build stamina for the long walks.',
+   255→  'Pack light — you will be moving between Makkah, Mina, Arafat, and Muzdalifah.',
+   256→  'The government scheme includes meals and accommodation in Mina/Arafat — private packages vary.',
+   257→  'Keep your group leader\'s number saved and always carry your camp location details.',
+   258→  'Mobile SIM: Buy a Zain or STC SIM at the airport for local calls and data.',
+   259→  'Saudi Riyals are essential — carry small denominations for day-to-day expenses.',
+   260→];
+   261→
+   262→// ============================================================
+   263→// Component
+   264→// ============================================================
+   265→
+   266→export function UmrahHajjTool() {
+   267→  const [activeTab, setActiveTab] = useState<'umrah' | 'hajj'>('umrah');
+   268→  const [expandedStep, setExpandedStep] = useState<string | null>(null);
+   269→  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+   270→  const [costValues, setCostValues] = useState<Record<string, number>>({
+   271→    visa: UMRAH_COSTS[0].defaultVal,
+   272→    flights: UMRAH_COSTS[1].defaultVal,
+   273→    accommodation: UMRAH_COSTS[2].defaultVal,
+   274→    transport: UMRAH_COSTS[3].defaultVal,
+   275→    food: UMRAH_COSTS[4].defaultVal,
+   276→    misc: UMRAH_COSTS[5].defaultVal,
+   277→  });
+   278→
+   279→  const isUmrah = activeTab === 'umrah';
+   280→  const timeline = isUmrah ? UMRAH_TIMELINE : HAJJ_TIMELINE;
+   281→  const packingList = isUmrah ? UMRAH_PACKING : HAJJ_PACKING;
+   282→  const costItems = isUmrah ? UMRAH_COSTS : HAJJ_COSTS;
+   283→  const tips = isUmrah ? UMRAH_TIPS : HAJJ_TIPS;
+   284→
+   285→  const toggleItem = (id: string) => setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+   286→  const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+   287→
+   288→  const totalCost = useMemo(
+   289→    () => costItems.reduce((sum, item) => sum + (costValues[item.id] ?? item.defaultVal), 0),
+   290→    [costItems, costValues],
+   291→  );
+   292→
+   293→  const updateCost = (id: string, value: number) => {
+   294→    setCostValues((prev) => ({ ...prev, [id]: value }));
+   295→  };
+   296→
+   297→  const groupPackingByCategory = (items: typeof UMRAH_PACKING) => {
+   298→    const groups: Record<string, typeof UMRAH_PACKING> = {};
+   299→    items.forEach((item) => {
+   300→      if (!groups[item.category]) groups[item.category] = [];
+   301→      groups[item.category].push(item);
+   302→    });
+   303→    return groups;
+   304→  };
+   305→
+   306→  const packedGroups = useMemo(() => groupPackingByCategory(packingList), [packingList]);
+   307→
+   308→  const formatPKR = (n: number) => `PKR ${n.toLocaleString()}`;
+   309→
+   310→  return (
+   311→    <div className="space-y-4">
+   312→      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'umrah' | 'hajj')}>
+   313→        <TabsList className="grid w-full grid-cols-2 h-auto p-1">
+   314→          <TabsTrigger
+   315→            value="umrah"
+   316→            className="py-2.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+   317→          >
+   318→            <Heart className="w-4 h-4 mr-2" />
+   319→            Umrah
+   320→          </TabsTrigger>
+   321→          <TabsTrigger
+   322→            value="hajj"
+   323→            className="py-2.5 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+   324→          >
+   325→            <UserCheck className="w-4 h-4 mr-2" />
+   326→            Hajj
+   327→          </TabsTrigger>
+   328→        </TabsList>
+   329→
+   330→        {/* ========== UMRAH TAB ========== */}
+   331→        <TabsContent value="umrah" className="mt-4 space-y-4">
+   332→          {/* Visa Requirement Card */}
+   333→          <Card className="border-emerald-200 dark:border-emerald-900">
+   334→            <CardHeader>
+   335→              <div className="flex items-center gap-2">
+   336→                <Shield className="w-5 h-5 text-emerald-600" />
+   337→                <CardTitle className="text-base">Visa Requirement</CardTitle>
+   338→              </div>
+   339→            </CardHeader>
+   340→            <CardContent className="space-y-3">
+   341→              <div className="flex items-center gap-2">
+   342→                <Badge className="bg-emerald-600 text-white">Saudi e-Visa</Badge>
+   343→                <span className="text-sm text-muted-foreground">Available for Pakistani citizens</span>
+   344→              </div>
+   345→              <p className="text-sm text-muted-foreground">
+   346→                Pakistanis can apply for a Saudi e-Visa online for tourism and Umrah purposes. The visa is typically
+   347→                valid for 1 year with a stay of up to 90 days. Apply at{' '}
+   348→                <a href="https://visa.visitsaudi.com" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline inline-flex items-center gap-1">
+   349→                  visa.visitsaudi.com <ExternalLink className="w-3 h-3" />
+   350→                </a>
+   351→              </p>
+   352→              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+   353→                <div className="rounded-lg bg-muted p-2.5">
+   354→                  <div className="text-muted-foreground text-xs">Processing Time</div>
+   355→                  <div className="font-medium">1-5 business days</div>
+   356→                </div>
+   357→                <div className="rounded-lg bg-muted p-2.5">
+   358→                  <div className="text-muted-foreground text-xs">Visa Fee</div>
+   359→                  <div className="font-medium">~PKR 22,000</div>
+   360→                </div>
+   361→                <div className="rounded-lg bg-muted p-2.5">
+   362→                  <div className="text-muted-foreground text-xs">Stay Duration</div>
+   363→                  <div className="font-medium">Up to 90 days</div>
+   364→                </div>
+   365→              </div>
+   366→            </CardContent>
+   367→          </Card>
+   368→
+   369→          {/* Timeline */}
+   370→          <Card>
+   371→            <CardHeader>
+   372→              <div className="flex items-center gap-2">
+   373→                <Clock className="w-5 h-5 text-emerald-600" />
+   374→                <CardTitle className="text-base">Step-by-Step Timeline</CardTitle>
+   375→              </div>
+   376→            </CardHeader>
+   377→            <CardContent>
+   378→              <div className="space-y-2">
+   379→                {timeline.map((step, idx) => (
+   380→                  <div key={step.id} className="border rounded-lg overflow-hidden">
+   381→                    <button
+   382→                      onClick={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
+   383→                      className="flex items-center gap-3 w-full p-3 text-left hover:bg-muted/50 transition-colors"
+   384→                    >
+   385→                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold shrink-0">
+   386→                        {idx + 1}
+   387→                      </span>
+   388→                      <div className="flex-1 min-w-0">
+   389→                        <div className="text-sm font-medium flex items-center gap-2">
+   390→                          {step.icon}
+   391→                          {step.title}
+   392→                        </div>
+   393→                      </div>
+   394→                      {expandedStep === step.id ? (
+   395→                        <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+   396→                      ) : (
+   397→                        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+   398→                      )}
+   399→                    </button>
+   400→                    {expandedStep === step.id && (
+   401→                      <div className="px-3 pb-3 pl-13">
+   402→                        <ul className="space-y-1.5 ml-10">
+   403→                          {step.details.map((detail, i) => (
+   404→                            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+   405→                              <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+   406→                              {detail}
+   407→                            </li>
+   408→                          ))}
+   409→                        </ul>
+   410→                      </div>
+   411→                    )}
+   412→                  </div>
+   413→                ))}
+   414→              </div>
+   415→            </CardContent>
+   416→          </Card>
+   417→
+   418→          {/* Packing Checklist */}
+   419→          <Card>
+   420→            <CardHeader>
+   421→              <div className="flex items-center justify-between">
+   422→                <div className="flex items-center gap-2">
+   423→                  <Luggage className="w-5 h-5 text-emerald-600" />
+   424→                  <CardTitle className="text-base">Packing Checklist</CardTitle>
+   425→                </div>
+   426→                <Badge variant="outline" className="text-xs">
+   427→                  {checkedCount}/{packingList.length} packed
+   428→                </Badge>
+   429→              </div>
+   430→            </CardHeader>
+   431→            <CardContent>
+   432→              <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+   433→                {Object.entries(packedGroups).map(([category, items]) => (
+   434→                  <div key={category}>
+   435→                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{category}</div>
+   436→                    <div className="space-y-1.5">
+   437→                      {items.map((item) => (
+   438→                        <label
+   439→                          key={item.id}
+   440→                          className={`flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors ${
+   441→                            checkedItems[item.id]
+   442→                              ? 'border-emerald-300 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/30'
+   443→                              : 'border-border hover:bg-muted/30'
+   444→                          }`}
+   445→                        >
+   446→                          <Checkbox checked={checkedItems[item.id] || false} onCheckedChange={() => toggleItem(item.id)} />
+   447→                          <span className="text-muted-foreground shrink-0">{item.icon}</span>
+   448→                          <span className="text-sm">{item.label}</span>
+   449→                        </label>
+   450→                      ))}
+   451→                    </div>
+   452→                  </div>
+   453→                ))}
+   454→              </div>
+   455→            </CardContent>
+   456→          </Card>
+   457→
+   458→          {/* Cost Calculator */}
+   459→          <Card>
+   460→            <CardHeader>
+   461→              <div className="flex items-center gap-2">
+   462→                <DollarSign className="w-5 h-5 text-emerald-600" />
+   463→                <CardTitle className="text-base">Estimated Cost Calculator (PKR)</CardTitle>
+   464→              </div>
+   465→            </CardHeader>
+   466→            <CardContent className="space-y-4">
+   467→              {costItems.map((item) => (
+   468→                <div key={item.id} className="space-y-1.5">
+   469→                  <div className="flex items-center justify-between text-sm">
+   470→                    <div className="flex items-center gap-2">
+   471→                      <span className="text-muted-foreground">{item.icon}</span>
+   472→                      <span>{item.label}</span>
+   473→                    </div>
+   474→                    <span className="font-medium text-emerald-700 dark:text-emerald-400">
+   475→                      {formatPKR(costValues[item.id] ?? item.defaultVal)}
+   476→                    </span>
+   477→                  </div>
+   478→                  <Slider
+   479→                    min={item.min}
+   480→                    max={item.max}
+   481→                    step={item.step}
+   482→                    value={[costValues[item.id] ?? item.defaultVal]}
+   483→                    onValueChange={(v) => updateCost(item.id, v[0])}
+   484→                    className="[&_[role=slider]]:bg-emerald-600 [&_[role=slider]]:border-emerald-600"
+   485→                  />
+   486→                </div>
+   487→              ))
+   488→              <div className="flex items-center justify-between border-t pt-3">
+   489→                <span className="font-bold text-base">Estimated Total</span>
+   490→                <span className="font-bold text-lg text-emerald-700 dark:text-emerald-400">{formatPKR(totalCost)}</span>
+   491→              </div>
+   492→              <p className="text-xs text-muted-foreground">
+   493→                * Adjust the sliders above to estimate your total cost. Prices are approximate and may vary.
+   494→              </p>
+   495→            </CardContent>
+   496→          </Card>
+   497→
+   498→          {/* Vaccination Reminder */}
+   499→          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-4">
+   500→            <Syringe className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+   501→            <div>
+   502→              <div className="text-sm font-semibold text-amber-800 dark:text-amber-300">Vaccination Requirements</div>
+   503→              <ul className="mt-1 space-y-1 text-sm text-amber-700 dark:text-amber-400">
+   504→                <li className="flex items-start gap-1.5">
+   505→                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   506→                  <span><strong>Meningococcal Meningitis (ACWY)</strong> — Mandatory for all travelers</span>
+   507→                </li>
+   508→                <li className="flex items-start gap-1.5">
+   509→                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   510→                  <span><strong>COVID-19</strong> — Recommended (check latest requirements before travel)</span>
+   511→                </li>
+   512→                <li className="flex items-start gap-1.5">
+   513→                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   514→                  <span><strong>Seasonal Flu</strong> — Recommended, especially during Hajj season</span>
+   515→                </li>
+   516→              </ul>
+   517→              <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+   518→                Get vaccinated at any government hospital or authorized vaccination center in Pakistan. Carry your vaccination card during travel.
+   519→              </p>
+   520→            </div>
+   521→          </div>
+   522→
+   523→          {/* Tips */}
+   524→          <Card>
+   525→            <CardHeader>
+   526→              <div className="flex items-center gap-2">
+   527→                <Info className="w-5 h-5 text-emerald-600" />
+   528→                <CardTitle className="text-base">Quick Tips for Pakistani Travelers</CardTitle>
+   529→              </div>
+   530→            </CardHeader>
+   531→            <CardContent>
+   532→              <ul className="space-y-2">
+   533→                {tips.map((tip, i) => (
+   534→                  <li key={i} className="flex items-start gap-2 text-sm">
+   535→                    <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+   536→                    <span className="text-muted-foreground">{tip}</span>
+   537→                  </li>
+   538→                ))}
+   539→              </ul>
+   540→            </CardContent>
+   541→          </Card>
+   542→
+   543→          {/* Important Contacts */}
+   544→          <Card>
+   545→            <CardHeader>
+   546→              <div className="flex items-center gap-2">
+   547→                <Phone className="w-5 h-5 text-emerald-600" />
+   548→                <CardTitle className="text-base">Important Contacts</CardTitle>
+   549→              </div>
+   550→            </CardHeader>
+   551→            <CardContent className="space-y-3">
+   552→              {/* Saudi Embassy in Islamabad */}
+   553→              <div className="rounded-lg border p-3 space-y-1.5">
+   554→                <div className="text-sm font-semibold">Embassy of Saudi Arabia, Islamabad</div>
+   555→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   556→                  <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   557→                  <span>Diplomatic Enclave, G-5, Islamabad</span>
+   558→                </div>
+   559→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   560→                  <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   561→                  <span>+92-51-287-6261 / +92-51-282-8091</span>
+   562→                </div>
+   563→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   564→                  <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   565→                  <span>isbemb@mofa.gov.sa</span>
+   566→                </div>
+   567→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   568→                  <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   569→                  <span>Sun-Thu 08:00-15:00</span>
+   570→                </div>
+   571→              </div>
+   572→              {/* Pakistan Embassy in Saudi */}
+   573→              <div className="rounded-lg border p-3 space-y-1.5">
+   574→                <div className="text-sm font-semibold">Embassy of Pakistan, Riyadh</div>
+   575→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   576→                  <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   577→                  <span>Diplomatic Quarter, Riyadh, Saudi Arabia</span>
+   578→                </div>
+   579→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   580→                  <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   581→                  <span>+966-11-488-1452 / +966-11-488-1453</span>
+   582→                </div>
+   583→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   584→                  <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   585→                  <span>parembassyriyadh@mofa.gov.pk</span>
+   586→                </div>
+   587→              </div>
+   588→              {/* Consulate in Jeddah */}
+   589→              <div className="rounded-lg border p-3 space-y-1.5">
+   590→                <div className="text-sm font-semibold">Consulate General of Pakistan, Jeddah</div>
+   591→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   592→                  <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   593→                  <span>Al-Andalus District, Jeddah, Saudi Arabia</span>
+   594→                </div>
+   595→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   596→                  <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   597→                  <span>+966-12-665-1600</span>
+   598→                </div>
+   599→              </div>
+   600→            </CardContent>
+   601→          </Card>
+   602→
+   603→          {/* CTA */}
+   604→          <div className="flex flex-col sm:flex-row gap-2">
+   605→            <a href="https://visa.visitsaudi.com" target="_blank" rel="noopener noreferrer" className="flex-1">
+   606→              <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+   607→                Apply for Saudi e-Visa <ExternalLink className="w-4 h-4" />
+   608→              </Button>
+   609→            </a>
+   610→            <a href="https://www.nusuk.sa" target="_blank" rel="noopener noreferrer" className="flex-1">
+   611→              <Button variant="outline" className="w-full gap-2">
+   612→                Visit Nusuk Platform <ExternalLink className="w-4 h-4" />
+   613→              </Button>
+   614→            </a>
+   615→          </div>
+   616→        </TabsContent>
+   617→
+   618→        {/* ========== HAJJ TAB ========== */}
+   619→        <TabsContent value="hajj" className="mt-4 space-y-4">
+   620→          {/* Visa Requirement Card */}
+   621→          <Card className="border-emerald-200 dark:border-emerald-900">
+   622→            <CardHeader>
+   623→              <div className="flex items-center gap-2">
+   624→                <Shield className="w-5 h-5 text-emerald-600" />
+   625→                <CardTitle className="text-base">Visa Requirement</CardTitle>
+   626→              </div>
+   627→            </CardHeader>
+   628→            <CardContent className="space-y-3">
+   629→              <div className="flex items-center gap-2">
+   630→                <Badge className="bg-emerald-600 text-white">Special Hajj Visa</Badge>
+   631→                <span className="text-sm text-muted-foreground">Through MoRA Pakistan</span>
+   632→              </div>
+   633→              <p className="text-sm text-muted-foreground">
+   634→                Hajj visas are issued exclusively through the Saudi government in coordination with Pakistan's
+   635→                Ministry of Religious Affairs (MoRA). Pakistani citizens must apply through either the{' '}
+   636→                <strong>Government Hajj Scheme</strong> or a <strong>licensed private Hajj operator</strong>.
+   637→              </p>
+   638→              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+   639→                <div className="rounded-lg bg-muted p-2.5">
+   640→                  <div className="text-muted-foreground text-xs">Application</div>
+   641→                  <div className="font-medium">hajj.gov.pk</div>
+   642→                </div>
+   643→                <div className="rounded-lg bg-muted p-2.5">
+   644→                  <div className="text-muted-foreground text-xs">Govt. Package (2025)</div>
+   645→                  <div className="font-medium">~PKR 10.7L-11.7L</div>
+   646→                </div>
+   647→                <div className="rounded-lg bg-muted p-2.5">
+   648→                  <div className="text-muted-foreground text-xs">Private Packages</div>
+   649→                  <div className="font-medium">PKR 8L - 25L+</div>
+   650→                </div>
+   651→              </div>
+   652→              <div className="flex items-start gap-2 text-sm rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-3">
+   653→                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+   654→                <span className="text-amber-800 dark:text-amber-300">
+   655→                  Only use MoRA-licensed private operators. Verify licenses at{' '}
+   656→                  <a href="https://hajj.gov.pk" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+   657→                    hajj.gov.pk
+   658→                  </a>
+   659→                </span>
+   660→              </div>
+   661→            </CardContent>
+   662→          </Card>
+   663→
+   664→          {/* Timeline */}
+   665→          <Card>
+   666→            <CardHeader>
+   667→              <div className="flex items-center gap-2">
+   668→                <Clock className="w-5 h-5 text-emerald-600" />
+   669→                <CardTitle className="text-base">Step-by-Step Timeline</CardTitle>
+   670→              </div>
+   671→            </CardHeader>
+   672→            <CardContent>
+   673→              <div className="space-y-2">
+   674→                {HAJJ_TIMELINE.map((step, idx) => (
+   675→                  <div key={step.id} className="border rounded-lg overflow-hidden">
+   676→                    <button
+   677→                      onClick={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
+   678→                      className="flex items-center gap-3 w-full p-3 text-left hover:bg-muted/50 transition-colors"
+   679→                    >
+   680→                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold shrink-0">
+   681→                        {idx + 1}
+   682→                      </span>
+   683→                      <div className="flex-1 min-w-0">
+   684→                        <div className="text-sm font-medium flex items-center gap-2">
+   685→                          {step.icon}
+   686→                          {step.title}
+   687→                        </div>
+   688→                      </div>
+   689→                      {expandedStep === step.id ? (
+   690→                        <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+   691→                      ) : (
+   692→                        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+   693→                      )}
+   694→                    </button>
+   695→                    {expandedStep === step.id && (
+   696→                      <div className="px-3 pb-3 pl-13">
+   697→                        <ul className="space-y-1.5 ml-10">
+   698→                          {step.details.map((detail, i) => (
+   699→                            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+   700→                              <Check className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+   701→                              {detail}
+   702→                            </li>
+   703→                          ))}
+   704→                        </ul>
+   705→                      </div>
+   706→                    )}
+   707→                  </div>
+   708→                ))}
+   709→              </div>
+   710→            </CardContent>
+   711→          </Card>
+   712→
+   713→          {/* Packing Checklist */}
+   714→          <Card>
+   715→            <CardHeader>
+   716→              <div className="flex items-center justify-between">
+   717→                <div className="flex items-center gap-2">
+   718→                  <Luggage className="w-5 h-5 text-emerald-600" />
+   719→                  <CardTitle className="text-base">Packing Checklist</CardTitle>
+   720→                </div>
+   721→                <Badge variant="outline" className="text-xs">
+   722→                  {checkedCount}/{packingList.length} packed
+   723→                </Badge>
+   724→              </div>
+   725→            </CardHeader>
+   726→            <CardContent>
+   727→              <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+   728→                {Object.entries(groupPackingByCategory(HAJJ_PACKING)).map(([category, items]) => (
+   729→                  <div key={category}>
+   730→                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{category}</div>
+   731→                    <div className="space-y-1.5">
+   732→                      {items.map((item) => (
+   733→                        <label
+   734→                          key={item.id}
+   735→                          className={`flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors ${
+   736→                            checkedItems[item.id]
+   737→                              ? 'border-emerald-300 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/30'
+   738→                              : 'border-border hover:bg-muted/30'
+   739→                          }`}
+   740→                        >
+   741→                          <Checkbox checked={checkedItems[item.id] || false} onCheckedChange={() => toggleItem(item.id)} />
+   742→                          <span className="text-muted-foreground shrink-0">{item.icon}</span>
+   743→                          <span className="text-sm">{item.label}</span>
+   744→                        </label>
+   745→                      ))}
+   746→                    </div>
+   747→                  </div>
+   748→                ))}
+   749→              </div>
+   750→            </CardContent>
+   751→          </Card>
+   752→
+   753→          {/* Cost Calculator */}
+   754→          <Card>
+   755→            <CardHeader>
+   756→              <div className="flex items-center gap-2">
+   757→                <DollarSign className="w-5 h-5 text-emerald-600" />
+   758→                <CardTitle className="text-base">Estimated Cost Calculator (PKR)</CardTitle>
+   759→              </div>
+   760→            </CardHeader>
+   761→            <CardContent className="space-y-4">
+   762→              {HAJJ_COSTS.map((item) => (
+   763→                <div key={item.id} className="space-y-1.5">
+   764→                  <div className="flex items-center justify-between text-sm">
+   765→                    <div className="flex items-center gap-2">
+   766→                      <span className="text-muted-foreground">{item.icon}</span>
+   767→                      <span>{item.label}</span>
+   768→                    </div>
+   769→                    <span className="font-medium text-emerald-700 dark:text-emerald-400">
+   770→                      {formatPKR(costValues[item.id] ?? item.defaultVal)}
+   771→                    </span>
+   772→                  </div>
+   773→                  <Slider
+   774→                    min={item.min}
+   775→                    max={item.max}
+   776→                    step={item.step}
+   777→                    value={[costValues[item.id] ?? item.defaultVal]}
+   778→                    onValueChange={(v) => updateCost(item.id, v[0])}
+   779→                    className="[&_[role=slider]]:bg-emerald-600 [&_[role=slider]]:border-emerald-600"
+   780→                  />
+   781→                </div>
+   782→              ))
+   783→              <div className="flex items-center justify-between border-t pt-3">
+   784→                <span className="font-bold text-base">Estimated Total</span>
+   785→                <span className="font-bold text-lg text-emerald-700 dark:text-emerald-400">{formatPKR(totalCost)}</span>
+   786→              </div>
+   787→              <p className="text-xs text-muted-foreground">
+   788→                * Adjust the sliders above to estimate your total cost. Prices are approximate and may vary.
+   789→              </p>
+   790→            </CardContent>
+   791→          </Card>
+   792→
+   793→          {/* Vaccination Reminder */}
+   794→          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-4">
+   795→            <Syringe className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+   796→            <div>
+   797→              <div className="text-sm font-semibold text-amber-800 dark:text-amber-300">Vaccination Requirements</div>
+   798→              <ul className="mt-1 space-y-1 text-sm text-amber-700 dark:text-amber-400">
+   799→                <li className="flex items-start gap-1.5">
+   800→                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   801→                  <span><strong>Meningococcal Meningitis (ACWY)</strong> — Mandatory, must be taken at least 10 days before travel</span>
+   802→                </li>
+   803→                <li className="flex items-start gap-1.5">
+   804→                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   805→                  <span><strong>COVID-19</strong> — Recommended (check latest Saudi requirements)</span>
+   806→                </li>
+   807→                <li className="flex items-start gap-1.5">
+   808→                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   809→                  <span><strong>Seasonal Flu & Pneumococcal</strong> — Strongly recommended for Hajj</span>
+   810→                </li>
+   811→                <li className="flex items-start gap-1.5">
+   812→                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   813→                  <span><strong>Polio</strong> — Required if traveling from polio-endemic areas</span>
+   814→                </li>
+   815→              </ul>
+   816→              <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+   817→                Government Hajj scheme includes vaccination arrangements. Private operators should also facilitate vaccinations.
+   818→              </p>
+   819→            </div>
+   820→          </div>
+   821→
+   822→          {/* Tips */}
+   823→          <Card>
+   824→            <CardHeader>
+   825→              <div className="flex items-center gap-2">
+   826→                <Info className="w-5 h-5 text-emerald-600" />
+   827→                <CardTitle className="text-base">Quick Tips for Pakistani Travelers</CardTitle>
+   828→              </div>
+   829→            </CardHeader>
+   830→            <CardContent>
+   831→              <ul className="space-y-2">
+   832→                {HAJJ_TIPS.map((tip, i) => (
+   833→                  <li key={i} className="flex items-start gap-2 text-sm">
+   834→                    <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+   835→                    <span className="text-muted-foreground">{tip}</span>
+   836→                  </li>
+   837→                ))}
+   838→              </ul>
+   839→            </CardContent>
+   840→          </Card>
+   841→
+   842→          {/* Important Contacts */}
+   843→          <Card>
+   844→            <CardHeader>
+   845→              <div className="flex items-center gap-2">
+   846→                <Phone className="w-5 h-5 text-emerald-600" />
+   847→                <CardTitle className="text-base">Important Contacts</CardTitle>
+   848→              </div>
+   849→            </CardHeader>
+   850→            <CardContent className="space-y-3">
+   851→              <div className="rounded-lg border p-3 space-y-1.5">
+   852→                <div className="text-sm font-semibold">Ministry of Religious Affairs (MoRA) Pakistan</div>
+   853→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   854→                  <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   855→                  <span>UAN: 111-HAJJ (111-42554) / 051-9214975</span>
+   856→                </div>
+   857→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   858→                  <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   859→                  <span>Block No. 39, Pak Secretariat, G-5/2, Islamabad</span>
+   860→                </div>
+   861→              </div>
+   862→              <div className="rounded-lg border p-3 space-y-1.5">
+   863→                <div className="text-sm font-semibold">Embassy of Saudi Arabia, Islamabad</div>
+   864→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   865→                  <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   866→                  <span>+92-51-287-6261 / +92-51-282-8091</span>
+   867→                </div>
+   868→              </div>
+   869→              <div className="rounded-lg border p-3 space-y-1.5">
+   870→                <div className="text-sm font-semibold">Consulate General of Pakistan, Jeddah</div>
+   871→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   872→                  <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   873→                  <span>+966-12-665-1600</span>
+   874→                </div>
+   875→              </div>
+   876→              <div className="rounded-lg border p-3 space-y-1.5">
+   877→                <div className="text-sm font-semibold">Saudi MoH Hajj Helpline</div>
+   878→                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+   879→                  <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+   880→                  <span>920020811 (within Saudi Arabia)</span>
+   881→                </div>
+   882→              </div>
+   883→            </CardContent>
+   884→          </Card>
+   885→
+   886→          {/* CTA */}
+   887→          <div className="flex flex-col sm:flex-row gap-2">
+   888→            <a href="https://hajj.gov.pk" target="_blank" rel="noopener noreferrer" className="flex-1">
+   889→              <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+   890→                MoRA Hajj Portal <ExternalLink className="w-4 h-4" />
+   891→              </Button>
+   892→            </a>
+   893→            <a href="https://www.nusuk.sa" target="_blank" rel="noopener noreferrer" className="flex-1">
+   894→              <Button variant="outline" className="w-full gap-2">
+   895→                Visit Nusuk Platform <ExternalLink className="w-4 h-4" />
+   896→              </Button>
+   897→            </a>
+   898→          </div>
+   899→        </TabsContent>
+   900→      </Tabs>
+   901→    </div>
+   902→  );
+   903→}
+   904→
