@@ -17,6 +17,11 @@ import {
 import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
 
 // ============================================================
+// Helpers
+// ============================================================
+const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+// ============================================================
 // Live Clock Component
 // ============================================================
 function LiveClock({ timezone, cityName }: { timezone: string; cityName: string }) {
@@ -850,7 +855,7 @@ function DownloadCountryGuide({ country }: { country: CountryData }) {
     setGenerating(true);
     try {
       // Open the country page in a new tab for Print > Save as PDF
-      const url = `/country/${country.code}`;
+      const url = `/${toSlug(country.name)}`;
       window.open(url, '_blank');
     } catch {
       // fallback: download text guide

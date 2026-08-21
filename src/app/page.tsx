@@ -32,6 +32,11 @@ import { SchengenWizard } from '@/components/visa/schengen-wizard';
 import { UmrahHajjTool } from '@/components/visa/umrah-hajj-tool';
 
 // ============================================================
+// Helpers
+// ============================================================
+const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+// ============================================================
 // Animated Counter Hook
 // ============================================================
 function useAnimatedCounter(target: number, duration: number = 1200, enabled: boolean = true) {
@@ -225,7 +230,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <a
-              href={`/country/${country.code}`}
+              href={`/${toSlug(country.name)}`}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
@@ -279,7 +284,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
       {expanded && (
         <div className="px-4 pb-3">
           <a
-            href={`/country/${country.code}`}
+            href={`/${toSlug(country.name)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
