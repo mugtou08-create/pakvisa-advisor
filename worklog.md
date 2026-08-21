@@ -1002,3 +1002,18 @@ Stage Summary:
 - 1 new revenue driver (Pro-gated PDF download)
 - Backup download available in Admin Dashboard
 - All existing functionality preserved and working
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Commit and push all 5 features to GitHub for Vercel deployment
+
+Work Log:
+- Checked git status: 4 source files modified (country page, sitemap, schengen wizard, umrah-hajj tool)
+- Confirmed remote: github.com/mugtou08-create/pakvisa-advisor.git
+- Staged and committed all changes with descriptive message
+- Pushed to main branch (3a4285d..3ce0286)
+
+Stage Summary:
+- All 5 features now live on GitHub, Vercel auto-deploying
+- Commit: 3ce0286 - feat: country pages (70), schengen wizard, umrah/hajj planner, pro-gated PDFs, SEO sitemap & JSON-LD, Malaysia 2025→2026 fix
