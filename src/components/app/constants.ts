@@ -10,16 +10,18 @@ import {
 export const FLAG_ISO_MAP: Record<string, string> = {
   Afghanistan:'AF', Algeria:'DZ', Armenia:'AM', Australia:'AU', Austria:'AT',
   Azerbaijan:'AZ', Bahrain:'BH', Bangladesh:'BD', Belgium:'BE', Brazil:'BR',
-  Canada:'CA', China:'CN', Denmark:'DK', Egypt:'EG', France:'FR',
-  Georgia:'GE', Germany:'DE', Greece:'GR', HongKong:'HK', India:'IN',
+  Cambodia:'KH', Canada:'CA', China:'CN', Czechia:'CZ', Denmark:'DK',
+  Egypt:'EG', Ethiopia:'ET', France:'FR', Georgia:'GE', Germany:'DE',
+  Greece:'GR', HongKong:'HK', Hungary:'HU', Iceland:'IS', India:'IN',
   Indonesia:'ID', Iran:'IR', Iraq:'IQ', Ireland:'IE', Italy:'IT',
   Japan:'JP', Jordan:'JO', Kenya:'KE', Kuwait:'KW', Lebanon:'LB',
   Luxembourg:'LU', Malaysia:'MY', Maldives:'MV', Mexico:'MX', Mongolia:'MN',
-  Morocco:'MA', Nepal:'NP', Netherlands:'NL', NewZealand:'NZ', Norway:'NO',
-  Oman:'OM', Poland:'PL', Portugal:'PT', Qatar:'QA', Romania:'RO',
-  Russia:'RU', SaudiArabia:'SA', Singapore:'SG', SouthAfrica:'ZA', SouthKorea:'KR',
-  Spain:'ES', SriLanka:'LK', Sweden:'SE', Switzerland:'CH', Thailand:'TH',
-  Tunisia:'TN', Turkmenistan:'TM', Turkey:'TR', UAE:'AE', UK:'GB',
+  Morocco:'MA', Nepal:'NP', Netherlands:'NL', NewZealand:'NZ', Nigeria:'NG',
+  Norway:'NO', Oman:'OM', Philippines:'PH', Poland:'PL', Portugal:'PT',
+  Qatar:'QA', Romania:'RO', Russia:'RU', SaudiArabia:'SA', Singapore:'SG',
+  SouthAfrica:'ZA', SouthKorea:'KR', Spain:'ES', SriLanka:'LK', Sweden:'SE',
+  Switzerland:'CH', Tanzania:'TZ', Thailand:'TH', Tunisia:'TN',
+  Turkmenistan:'TM', Turkey:'TR', UAE:'AE', UK:'GB',
   USA:'US', Vietnam:'VN'
 };
 
@@ -40,7 +42,7 @@ export const TYPING_PHRASES = [
   'Visa-free Malaysia  •',
   'Schengen visa requirements  •',
   'Visa on Arrival Thailand  •',
-  'Pakistani Passport Visa Guide 2025  •',
+  'Pakistani Passport Visa Guide 2026  •',
   'AI-Powered Visa Intelligence  •',
 ];
 
@@ -167,11 +169,10 @@ export const COUNTRY_NAME_ALIASES: Record<string, string[]> = {
 
 // ============ SUCCESS STORIES ============
 export const SUCCESS_STORIES = [
-  { id: 1, name: 'Ahmed K.', avatar: '🇵🇰', destination: 'Malaysia', flag: '🇲🇾', visaType: 'Visa Free', story: 'Visited Malaysia for a 2-week holiday. No visa needed! Just showed my Pakistani passport at immigration. The process was incredibly smooth.', date: 'March 2025', rating: 5, difficulty: 'Easy' },
-  { id: 2, name: 'Fatima S.', avatar: '🇵🇰', destination: 'Turkey', flag: '🇹🇷', visaType: 'e-Visa', story: 'Got my Turkish e-Visa in 24 hours! Applied online, paid the fee, received approval via email. Highly recommend for tourism.', date: 'January 2025', rating: 4, difficulty: 'Easy' },
-  { id: 3, name: 'Omar R.', avatar: '🇵🇰', destination: 'UAE', flag: '🇦🇪', visaType: 'On Arrival', story: 'Visa on arrival at Dubai airport was instant. The process took about 5 minutes at the immigration counter. Make sure your passport has 6 months validity.', date: 'February 2025', rating: 5, difficulty: 'Easy' },
-  { id: 4, name: 'Sara M.', avatar: '🇵🇰', destination: 'UK', flag: '🇬🇧', visaType: 'Embassy', story: 'The UK visa process took 4 weeks. Be very thorough with your financial documents. I had to provide 6 months of bank statements and a letter from my employer.', date: 'December 2025', rating: 3, difficulty: 'Hard' },
-  { id: 5, name: 'Hassan A.', avatar: '🇵🇰', destination: 'Saudi Arabia', flag: '🇸🇦', visaType: 'e-Visa', story: 'Applied for Saudi e-Visa for Umrah. The online system was straightforward. Got approved in 3 days. Make sure to upload a clear passport photo.', date: 'April 2025', rating: 4, difficulty: 'Medium' },
+  { id: 1, name: 'Ahmed K.', avatar: '🇵🇰', destination: 'Malaysia', flag: '🇲🇾', visaType: 'Visa Free', story: 'Visited Malaysia for a 2-week holiday. No visa needed! Just showed my Pakistani passport at immigration. The process was incredibly smooth.', date: 'March 2026', rating: 5, difficulty: 'Easy' },
+  { id: 2, name: 'Fatima S.', avatar: '🇵🇰', destination: 'Turkey', flag: '🇹🇷', visaType: 'e-Visa', story: 'Got my Turkish e-Visa in 24 hours! Applied online, paid the fee, received approval via email. Highly recommend for tourism.', date: 'June 2026', rating: 4, difficulty: 'Easy' },
+  { id: 3, name: 'Omar R.', avatar: '🇵🇰', destination: 'UAE', flag: '🇦🇪', visaType: 'On Arrival', story: 'Visa on arrival at Dubai airport was instant. The process took about 5 minutes at the immigration counter. Make sure your passport has 6 months validity.', date: 'July 2026', rating: 5, difficulty: 'Easy' },
+  { id: 5, name: 'Hassan A.', avatar: '🇵🇰', destination: 'Saudi Arabia', flag: '🇸🇦', visaType: 'e-Visa', story: 'Applied for Saudi e-Visa for Umrah. The online system was straightforward. Got approved in 3 days. Make sure to upload a clear passport photo.', date: 'August 2026', rating: 4, difficulty: 'Medium' },
 ];
 
 // ============ KEYBOARD SHORTCUTS ============

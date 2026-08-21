@@ -889,73 +889,69 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ==================== TRAVEL ESSENTIALS BAR ==================== */}
+        {/* ==================== TRAVEL ESSENTIALS BAR ==================== */
         <section className="px-4 pb-10">
           <div className="max-w-6xl mx-auto">
-            <div className="rounded-xl border bg-card p-4">
-              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-                <a
-                  href="https://www.ivisa.com/?promotion=SHARE20"
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
-                  className="flex items-center gap-2 group"
-                >
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/50 transition-colors">
-                    <FileText className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <p className="text-xs font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">Visa Help</p>
-                    <p className="text-[10px] text-muted-foreground">iVisa</p>
-                  </div>
-                </a>
-                <div className="w-px h-8 bg-border hidden sm:block" />
-                <a
-                  href="https://www.skyscanner.net/?ref=pakvisa&utm_source=pakvisa"
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
-                  className="flex items-center gap-2 group"
-                >
-                  <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
-                    <Plane className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <p className="text-xs font-medium group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">Cheap Flights</p>
-                    <p className="text-[10px] text-muted-foreground">Skyscanner</p>
-                  </div>
-                </a>
-                <div className="w-px h-8 bg-border hidden sm:block" />
-                <a
-                  href="https://www.booking.com/?aid=304142&label=pakvisa"
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
-                  className="flex items-center gap-2 group"
-                >
-                  <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center group-hover:bg-violet-200 dark:group-hover:bg-violet-900/50 transition-colors">
-                    <Building className="w-4 h-4 text-violet-600" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <p className="text-xs font-medium group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">Best Hotels</p>
-                    <p className="text-[10px] text-muted-foreground">Booking.com</p>
-                  </div>
-                </a>
-                <div className="w-px h-8 bg-border hidden sm:block" />
-                <a
-                  href="https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador"
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
-                  className="flex items-center gap-2 group"
-                >
-                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                    <Shield className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <p className="text-xs font-medium group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">Travel Insurance</p>
-                    <p className="text-[10px] text-muted-foreground">SafetyWing</p>
-                  </div>
-                </a>
-              </div>
-              <p className="text-[9px] text-muted-foreground/50 text-center mt-3">Trusted travel partners — we may earn a commission at no extra cost to you</p>
+            <h2 className="text-xl font-bold mb-4">Travel Essentials</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <a
+                href="https://www.ivisa.com/?promotion=SHARE20"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/50 transition-colors shrink-0">
+                  <FileText className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">Visa Help</p>
+                  <p className="text-xs text-muted-foreground">iVisa</p>
+                </div>
+              </a>
+              <a
+                href="https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors shrink-0">
+                  <Shield className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">Travel Insurance</p>
+                  <p className="text-xs text-muted-foreground">SafetyWing</p>
+                </div>
+              </a>
+              <a
+                href="https://www.booking.com/?aid=304142&label=pakvisa"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-md hover:border-violet-300 dark:hover:border-violet-700 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center group-hover:bg-violet-200 dark:group-hover:bg-violet-900/50 transition-colors shrink-0">
+                  <Building className="w-5 h-5 text-violet-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">Best Hotels</p>
+                  <p className="text-xs text-muted-foreground">Booking.com</p>
+                </div>
+              </a>
+              <a
+                href="https://www.skyscanner.net/?ref=pakvisa"
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-md hover:border-orange-300 dark:hover:border-orange-700 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors shrink-0">
+                  <Plane className="w-5 h-5 text-orange-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">Cheap Flights</p>
+                  <p className="text-xs text-muted-foreground">Skyscanner</p>
+                </div>
+              </a>
             </div>
+            <p className="text-[10px] text-muted-foreground/50 text-center mt-2">Trusted travel partners — we may earn a commission at no extra cost to you</p>
           </div>
         </section>
 
@@ -1231,46 +1227,41 @@ export default function HomePage() {
         {/* ==================== SECTION 9: PASSPORT POWER RANKING ==================== */}
         <section className="px-4 pb-10">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-bold mb-4">Pakistan Passport Power Ranking</h2>
-            <Card className="p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <h2 className="text-xl font-bold mb-3">Pakistan Passport Power Ranking</h2>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center justify-around gap-2 mb-3">
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-emerald-600">#106</p>
-                  <p className="text-xs text-muted-foreground mt-1">Global Rank</p>
+                  <p className="text-2xl font-bold text-emerald-600">#106</p>
+                  <p className="text-[10px] text-muted-foreground">Global Rank</p>
                 </div>
+                <div className="w-px h-8 bg-border" />
                 <div className="text-center">
-                  <p className="text-3xl font-bold">36</p>
-                  <p className="text-xs text-muted-foreground mt-1">Visa Score</p>
+                  <p className="text-2xl font-bold">36</p>
+                  <p className="text-[10px] text-muted-foreground">Visa Score</p>
                 </div>
+                <div className="w-px h-8 bg-border" />
                 <div className="text-center">
-                  <p className="text-3xl font-bold">33</p>
-                  <p className="text-xs text-muted-foreground mt-1">Visa-Free Destinations</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-amber-600">70+</p>
-                  <p className="text-xs text-muted-foreground mt-1">Total Destinations</p>
+                  <p className="text-2xl font-bold text-amber-600">33</p>
+                  <p className="text-[10px] text-muted-foreground">Visa-Free</p>
                 </div>
               </div>
-              <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Regional Comparison</h3>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {PASSPORT_RANKINGS.map((p) => (
-                  <div key={p.country} className={`flex items-center gap-3 rounded-lg p-3 ${p.country === 'Pakistan' ? 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800' : 'bg-muted/50'}`}>
-                    <span className="text-lg">{p.flag}</span>
-                    <span className={`text-sm font-medium flex-1 ${p.country === 'Pakistan' ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>{p.country}</span>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>Rank #{p.rank}</span>
-                      <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${p.country === 'Pakistan' ? 'bg-emerald-500' : 'bg-gray-400'}`}
-                          style={{ width: `${(p.score / 70) * 100}%` }}
-                        />
-                      </div>
-                      <span className="w-8 text-right font-medium">{p.score}</span>
+                  <div key={p.country} className={`flex items-center gap-2 rounded-md px-3 py-1.5 ${p.country === 'Pakistan' ? 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800' : ''}`}>
+                    <span className="text-sm">{p.flag}</span>
+                    <span className={`text-xs font-medium flex-1 ${p.country === 'Pakistan' ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>{p.country}</span>
+                    <span className="text-[10px] text-muted-foreground">#{p.rank}</span>
+                    <div className="w-14 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${p.country === 'Pakistan' ? 'bg-emerald-500' : 'bg-gray-400'}`}
+                        style={{ width: `${(p.score / 70) * 100}%` }}
+                      />
                     </div>
+                    <span className="text-[10px] font-medium w-5 text-right">{p.score}</span>
                   </div>
                 ))}
               </div>
-            </Card>
+            </div>
           </div>
         </section>
 
@@ -1278,8 +1269,8 @@ export default function HomePage() {
         <section className="px-4 pb-10">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-xl font-bold mb-4">Community Experiences</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {SUCCESS_STORIES.slice(0, 4).map((story) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {SUCCESS_STORIES.map((story) => (
                 <Card key={story.id} className="p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <span className="text-2xl">{story.avatar}</span>
@@ -1332,7 +1323,7 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
               {[
                 'Verified from Official Embassy Sources',
-                'Data Updated August 2025',
+                'Data Updated August 2026',
                 '70+ Destinations Tracked',
                 '100% Free',
               ].map((text) => (
@@ -1422,33 +1413,33 @@ export default function HomePage() {
                 href="https://www.ivisa.com/?promotion=SHARE20"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:shadow-sm transition-all group"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:shadow-sm transition-all group"
               >
-                <FileText className="w-4 h-4 text-emerald-600" /> <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 group-hover:underline">iVisa</span>
+                <FileText className="w-4 h-4 text-emerald-600" /> <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 group-hover:underline">iVisa — Visa Help</span>
               </a>
               <a
                 href="https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:shadow-sm transition-all group"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:shadow-sm transition-all group"
               >
-                <Shield className="w-4 h-4 text-blue-600" /> <span className="text-sm font-medium text-blue-700 dark:text-blue-400 group-hover:underline">SafetyWing</span>
+                <Shield className="w-4 h-4 text-blue-600" /> <span className="text-sm font-medium text-blue-700 dark:text-blue-400 group-hover:underline">SafetyWing — Travel Insurance</span>
               </a>
               <a
                 href="https://www.booking.com/?aid=304142&label=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/50 hover:bg-violet-100 dark:hover:bg-violet-950/40 hover:shadow-sm transition-all group"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/50 hover:bg-violet-100 dark:hover:bg-violet-950/40 hover:shadow-sm transition-all group"
               >
-                <Building className="w-4 h-4 text-violet-600" /> <span className="text-sm font-medium text-violet-700 dark:text-violet-400 group-hover:underline">Booking.com</span>
+                <Building className="w-4 h-4 text-violet-600" /> <span className="text-sm font-medium text-violet-700 dark:text-violet-400 group-hover:underline">Booking.com — Hotels</span>
               </a>
               <a
                 href="https://www.skyscanner.net/?ref=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 hover:bg-orange-100 dark:hover:bg-orange-950/40 hover:shadow-sm transition-all group"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 hover:bg-orange-100 dark:hover:bg-orange-950/40 hover:shadow-sm transition-all group"
               >
-                <Plane className="w-4 h-4 text-orange-600" /> <span className="text-sm font-medium text-orange-700 dark:text-orange-400 group-hover:underline">Skyscanner</span>
+                <Plane className="w-4 h-4 text-orange-600" /> <span className="text-sm font-medium text-orange-700 dark:text-orange-400 group-hover:underline">Skyscanner — Flights</span>
               </a>
             </div>
           </div>
