@@ -1017,3 +1017,47 @@ Work Log:
 Stage Summary:
 - All 5 features now live on GitHub, Vercel auto-deploying
 - Commit: 3ce0286 - feat: country pages (70), schengen wizard, umrah/hajj planner, pro-gated PDFs, SEO sitemap & JSON-LD, Malaysia 2025→2026 fix
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Pretty URLs – replace /country/[code] with /[slug] (e.g. /malaysia)
+
+Work Log:
+- Created src/lib/country-slug.ts with SLUG_TO_CODE, CODE_TO_SLUG maps, slugifyCountryName(), getCountryNameFromCode()
+- Created src/app/[slug]/page.tsx – full copy of country/[code]/page.tsx using slug param, resolves slug→code, updated OG/canonical URLs to /{slug}
+- Converted src/app/country/[code]/page.tsx to a permanentRedirect (308) to /{slug} for SEO backward compat
+- Updated src/app/sitemap.ts to import CODE_TO_SLUG and emit /{slug} URLs
+- Updated src/app/page.tsx: added inline toSlug() helper, changed 2 hrefs from /country/${code} to /${toSlug(name)}
+- Updated src/components/visa/country-detail.tsx: added inline toSlug() helper, changed download URL from /country/${code} to /${toSlug(name)}
+- Ran bun run lint – 0 errors
+
+Stage Summary:
+- All 70 country pages now accessible via pretty URLs (e.g. /malaysia, /saudi-arabia, /united-arab-emirates)
+- Old /country/MY URLs permanently redirect to /malaysia (308)
+- Sitemap, OG tags, canonical URLs, JSON-LD all updated to new URL scheme
+- No visual/content changes to country pages
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Create pretty country URLs (e.g. /malaysia instead of /country/MY)
+
+Work Log:
+- Created /src/lib/country-slug.ts with SLUG_TO_CODE and CODE_TO_SLUG mappings
+- Created /src/app/[slug]/page.tsx as full country page using slug param
+- Discovered DB uses PascalCase names (Malaysia, SaudiArabia) NOT ISO codes (MY, SA)
+- Fixed slug→code mapping to use DB-compatible PascalCase codes
+- Converted /src/app/country/[code]/page.tsx to permanentRedirect (308) to new pretty URLs
+- Updated sitemap.ts to use slugs (e.g. /malaysia instead of /country/MY)
+- Updated links in page.tsx and country-detail.tsx to use /{slug} format
+- Verified all 8 test URLs work: malaysia, saudi-arabia, turkey, uae, south-korea, new-zealand, hong-kong, uk, usa
+- Verified 308 redirect from /country/Malaysia → /malaysia
+- Verified sitemap.xml uses pretty URLs
+- Lint: 0 errors
+
+Stage Summary:
+- 70 country pages now accessible at pretty URLs like /malaysia, /saudi-arabia
+- Old /country/* URLs 308-redirect to new pretty URLs
+- Sitemap updated with all 71 pretty URLs
+- Pushed to GitHub: commit b7405bb

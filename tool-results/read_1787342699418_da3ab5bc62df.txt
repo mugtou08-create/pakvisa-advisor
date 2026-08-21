@@ -1,0 +1,865 @@
+     1→import type { Metadata } from 'next';
+     2→import { db } from '@/lib/db';
+     3→import Link from 'next/link';
+     4→import {
+     5→  Clock, DollarSign, Shield, Calendar, Plane, FileText, Building,
+     6→  CheckCircle2, ArrowRight, Globe, Home, ChevronRight, ExternalLink,
+     7→  Thermometer, UtensilsCrossed, Phone, Mail, MapPin, AlertTriangle,
+     8→} from 'lucide-react';
+     9→
+    10→// ============================================================
+    11→// Inline slug maps (avoid cross-module import issues with Turbopack)
+    12→// ============================================================
+    13→
+    14→const COUNTRY_SLUG_ENTRIES: [string, string][] = [
+    15→  ['afghanistan','AF'],['algeria','DZ'],['armenia','AM'],['australia','AU'],['austria','AT'],
+    16→  ['azerbaijan','AZ'],['bahrain','BH'],['bangladesh','BD'],['belgium','BE'],['brazil','BR'],
+    17→  ['cambodia','KH'],['canada','CA'],['china','CN'],['czechia','CZ'],['denmark','DK'],
+    18→  ['egypt','EG'],['ethiopia','ET'],['france','FR'],['georgia','GE'],['germany','DE'],
+    19→  ['greece','GR'],['hong-kong','HK'],['hungary','HU'],['iceland','IS'],['india','IN'],
+    20→  ['indonesia','ID'],['iran','IR'],['iraq','IQ'],['ireland','IE'],['italy','IT'],
+    21→  ['japan','JP'],['jordan','JO'],['kenya','KE'],['kuwait','KW'],['lebanon','LB'],
+    22→  ['luxembourg','LU'],['malaysia','MY'],['maldives','MV'],['mexico','MX'],['mongolia','MN'],
+    23→  ['morocco','MA'],['nepal','NP'],['netherlands','NL'],['new-zealand','NZ'],['nigeria','NG'],
+    24→  ['norway','NO'],['oman','OM'],['philippines','PH'],['poland','PL'],['portugal','PT'],
+    25→  ['qatar','QA'],['romania','RO'],['russia','RU'],['saudi-arabia','SA'],['singapore','SG'],
+    26→  ['south-africa','ZA'],['south-korea','KR'],['spain','ES'],['sri-lanka','LK'],['sweden','SE'],
+    27→  ['switzerland','CH'],['tanzania','TZ'],['thailand','TH'],['tunisia','TN'],
+    28→  ['turkmenistan','TM'],['turkey','TR'],['uae','AE'],['uk','GB'],
+    29→  ['usa','US'],['vietnam','VN'],
+    30→];
+    31→
+    32→const SLUG_TO_CODE = Object.fromEntries(COUNTRY_SLUG_ENTRIES);
+    33→const CODE_TO_SLUG = Object.fromEntries(COUNTRY_SLUG_ENTRIES.map(([s,c])=>[c,s]));
+    34→
+    35→// ============================================================
+    36→// Inline data (server-safe, no 'use client')
+    37→// ============================================================
+    38→
+    39→const FLAG_ISO_MAP: Record<string, string> = {
+    40→  Afghanistan:'AF', Algeria:'DZ', Armenia:'AM', Australia:'AU', Austria:'AT',
+    41→  Azerbaijan:'AZ', Bahrain:'BH', Bangladesh:'BD', Belgium:'BE', Brazil:'BR',
+    42→  Cambodia:'KH', Canada:'CA', China:'CN', Czechia:'CZ', Denmark:'DK',
+    43→  Egypt:'EG', Ethiopia:'ET', France:'FR', Georgia:'GE', Germany:'DE',
+    44→  Greece:'GR', HongKong:'HK', Hungary:'HU', Iceland:'IS', India:'IN',
+    45→  Indonesia:'ID', Iran:'IR', Iraq:'IQ', Ireland:'IE', Italy:'IT',
+    46→  Japan:'JP', Jordan:'JO', Kenya:'KE', Kuwait:'KW', Lebanon:'LB',
+    47→  Luxembourg:'LU', Malaysia:'MY', Maldives:'MV', Mexico:'MX', Mongolia:'MN',
+    48→  Morocco:'MA', Nepal:'NP', Netherlands:'NL', NewZealand:'NZ', Nigeria:'NG',
+    49→  Norway:'NO', Oman:'OM', Philippines:'PH', Poland:'PL', Portugal:'PT',
+    50→  Qatar:'QA', Romania:'RO', Russia:'RU', SaudiArabia:'SA', Singapore:'SG',
+    51→  SouthAfrica:'ZA', SouthKorea:'KR', Spain:'ES', SriLanka:'LK', Sweden:'SE',
+    52→  Switzerland:'CH', Tanzania:'TZ', Thailand:'TH', Tunisia:'TN',
+    53→  Turkmenistan:'TM', Turkey:'TR', UAE:'AE', UK:'GB',
+    54→  USA:'US', Vietnam:'VN'
+    55→};
+    56→
+    57→const EXCHANGE_RATES: Record<string, number> = {
+    58→  AED: 75.8, SAR: 74.2, QAR: 76.1, OMR: 727.3, BHD: 745.6,
+    59→  TRY: 8.1, USD: 278.5, GBP: 351.2, EUR: 302.8, AUD: 182.3,
+    60→  CAD: 201.5, CNY: 38.4, JPY: 1.87, KRW: 0.21, MYR: 62.5,
+    61→  THB: 7.9, SGD: 206.8, IDR: 0.017, LKR: 0.95, BDT: 2.38,
+    62→  AFN: 3.9, AMD: 0.72, DZD: 2.08, BRL: 56.8, MGA: 0.061,
+    63→  EG: 5.7, GEL: 104.2, KZT: 0.61, KWD: 904.2, JOD: 393.2,
+    64→  KE: 1.79, LB: 0.0003, MA: 28.1, NP: 2.09, TN: 90.1,
+    65→  ZAR: 15.2, IQD: 0.19, IRR: 0.0004, MXN: 16.4,
+    66→};
+    67→
+    68→const EMBASSY_DATA: Record<string, { address: string; phone: string; email: string; website: string; hours: string; appointmentUrl: string; note?: string }> = {
+    69→  Afghanistan: { address: 'House No. 8, Street 90, G-6/3, Islamabad', phone: '+92-51-282-4505', email: 'contact@islamabad.mfa.gov.af', website: 'https://islamabad.mfa.gov.af', hours: 'Mon-Thu 09:00-16:00', appointmentUrl: 'https://islamabad.mfa.gov.af' },
+    70→  Algeria: { address: 'House No. 107, St. No. 9, Sector E-7, Islamabad', phone: '+92-51-265-4744', email: 'amb.algerie@isb.comsats.net.pk', website: 'https://www.mfa.gov.dz', hours: 'Sun-Thu 09:00-16:00', appointmentUrl: 'https://www.mfa.gov.dz/en/embassys-locations-list' },
+    71→  Azerbaijan: { address: 'Plot 1D & 1E, Diplomatic Enclave II, Islamabad', phone: '+92-51-260-0704', email: 'islamabad@mission.mfa.gov.az', website: 'https://islamabad.mfa.gov.az/en', hours: 'Mon-Fri 09:00-17:00', appointmentUrl: 'https://islamabad.mfa.gov.az/en' },
+    72→  Austria: { address: 'Embassy of Austria, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-227-6491', email: 'islamabad-ob@bmeia.gv.at', website: 'https://www.bmeia.gv.at', hours: 'Mon-Fri 09:00-12:00', appointmentUrl: 'https://www.bmeia.gv.at' },
+    73→  Bangladesh: { address: 'House No. 1, Street No. 5, Sector F-6, Islamabad', phone: '+92-51-227-9267', email: 'mission.islamabad@mofa.gov.bd', website: 'https://islamabad.mofa.gov.bd', hours: 'Sun-Thu 09:00-17:00', appointmentUrl: 'https://islamabad.mofa.gov.bd' },
+    74→  Belgium: { address: 'Embassy of Belgium, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-0850', email: 'islamabad@diplobel.fed.be', website: 'https://www.diplomatie.belgium.be', hours: 'Mon-Fri 09:00-12:30', appointmentUrl: 'https://www.diplomatie.belgium.be' },
+    75→  China: { address: 'Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-849-6389', email: 'chinaemb_pk@mfa.gov.cn', website: 'https://www.visaforchina.org', hours: 'Mon-Fri 09:00-12:00', appointmentUrl: 'https://www.visaforchina.org' },
+    76→  Denmark: { address: 'Embassy of Denmark, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-207-7000', email: 'islambad@um.dk', website: 'https://islamabad.um.dk', hours: 'Mon-Fri 09:00-16:00', appointmentUrl: 'https://islamabad.um.dk' },
+    77→  France: { address: 'Embassy of France, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-8000', email: 'info@ambafrance-pk.org', website: 'https://pk.ambafrance.org', hours: 'Mon-Fri 08:30-12:00', appointmentUrl: 'https://pk.ambafrance.org' },
+    78→  Germany: { address: 'Embassy of the Federal Republic of Germany, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-227-9400', email: 'info@islamabad.diplo.de', website: 'https://islamabad.diplo.de', hours: 'Mon-Fri 08:30-12:00', appointmentUrl: 'https://islamabad.diplo.de' },
+    79→  Greece: { address: '33A, School Road, F-6/2, Islamabad', phone: '+92-51-282-5186', email: 'grcon.isl@mfa.gr', website: 'https://www.mfa.gr/missionsabroad/en/pakistan-en', hours: 'Mon-Fri 09:00-16:00', appointmentUrl: 'https://www.mfa.gr/missionsabroad/en/pakistan-en' },
+    80→  Iran: { address: 'Plot No. 222-238, St. No. 2, G-5/1, Diplomatic Enclave, Islamabad', phone: '+92-51-283-3070', email: 'info@iranembassy.pk', website: 'https://www.islamabad.mfa.ir/en', hours: 'Mon-Fri 08:00-12:00', appointmentUrl: 'https://www.islamabad.mfa.ir/en' },
+    81→  Iraq: { address: 'Street 33, Ramna 4, Diplomatic Enclave, Islamabad', phone: '+92-51-225-3738', email: 'iabemb@iraqmofamail.net', website: 'https://mofa.gov.iq/islamabad', hours: 'Sun-Thu 09:00-15:00', appointmentUrl: 'https://mofa.gov.iq/islamabad' },
+    82→  Ireland: { address: 'Embassy of Ireland, Diplomatic Enclave, F-6, Islamabad', phone: '+92-51-835-5800', email: 'islamabad@dfa.ie', website: 'https://www.dfa.ie/irish-embassy/pakistan', hours: 'Mon-Fri 09:00-12:30', appointmentUrl: 'https://www.dfa.ie/irish-embassy/pakistan' },
+    83→  Italy: { address: 'Embassy of Italy, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-0131', email: 'ambasciata.islamabad@esteri.it', website: 'https://ambislamabad.esteri.it', hours: 'Mon-Fri 09:00-12:30', appointmentUrl: 'https://ambislamabad.esteri.it' },
+    84→  Japan: { address: 'Embassy of Japan, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-211-3371', email: 'jpemb-pk@mofa.go.jp', website: 'https://www.pk.emb-japan.go.jp', hours: 'Mon-Fri 09:00-12:30, 13:30-16:30', appointmentUrl: 'https://www.pk.emb-japan.go.jp' },
+    85→  Luxembourg: { address: 'Visa applications handled by Embassy of Belgium, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-0850', email: 'islamabad@diplobel.fed.be', website: 'https://mae.gouvernement.lu/en/missions-diplomatiques/missions-diplomatiques-et-consulaires-luxembourgeoises/pakistan.html', hours: 'Mon-Fri 09:00-12:30', appointmentUrl: 'https://www.diplomatie.belgium.be', note: 'No Luxembourg embassy in Pakistan. Visa applications processed through the Embassy of Belgium in Islamabad.' },
+    86→  Mongolia: { address: 'No embassy in Pakistan. Nearest: Embassy in New Delhi, India', phone: '+91-11-2688-5370', email: 'mongolia@mongolianembassy.in', website: 'https://www.mfa.mn/en/missions-abroad', hours: 'Mon-Fri 09:00-17:00', appointmentUrl: 'https://www.mfa.mn/en/missions-abroad', note: 'No Mongolian embassy in Pakistan. Apply through the Embassy of Mongolia in New Delhi, India.' },
+    87→  Morocco: { address: 'Plot 52, Street # 7, Diplomatic Enclave, Islamabad', phone: '+92-51-283-2271', email: 'sifamapak@morocco-embassy.com.pk', website: 'https://www.morocco-embassy.com.pk', hours: 'Mon-Fri 09:00-16:00', appointmentUrl: 'https://www.morocco-embassy.com.pk' },
+    88→  Netherlands: { address: 'Embassy of the Netherlands, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-0910', email: 'islam@minbuza.nl', website: 'https://www.nederlandwereldwijd.nl/pakistan', hours: 'Mon-Fri 08:30-12:00', appointmentUrl: 'https://www.nederlandwereldwijd.nl/pakistan' },
+    89→  NewZealand: { address: 'High Commission of New Zealand, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-282-0216', email: 'hcnz.islamabad@mfat.govt.nz', website: 'https://www.mfat.govt.nz/en/missions-and-international-relationships/pakistan', hours: 'Mon-Fri 09:00-12:00', appointmentUrl: 'https://www.immigration.govt.nz' },
+    90→  Norway: { address: 'Diplomatic Enclave, Islamabad', phone: '+92-51-849-7700', email: 'emb.islamabad@mfa.no', website: 'https://www.norway.no/en/pakistan', hours: 'Mon-Thu 08:00-16:00, Fri 08:00-13:00', appointmentUrl: 'https://www.norway.no/en/pakistan', note: 'Norwegian visa applications handled by the Norwegian Embassy in Abu Dhabi.' },
+    91→  Poland: { address: 'Embassy of the Republic of Poland, Diplomatic Enclave, F-6, Islamabad', phone: '+92-51-211-3144', email: 'islamabad@embassy.pl', website: 'https://www.gov.pl/web/pakistan', hours: 'Mon-Fri 08:30-16:30', appointmentUrl: 'https://www.gov.pl/web/pakistan' },
+    92→  Portugal: { address: 'House 8, Street 36, F-7/1, Islamabad', phone: '+92-51-844-7041', email: 'islamabad@mne.pt', website: 'https://islamabad.embaixadaportugal.mne.gov.pt/en', hours: 'Mon-Fri 09:00-17:00', appointmentUrl: 'https://islamabad.embaixadaportugal.mne.gov.pt/en/consular-section' },
+    93→  Romania: { address: 'House No. 5-A, Street No. 30, Sector F-7/1, Islamabad', phone: '+92-51-843-6662', email: 'islamabad@mae.ro', website: 'https://islamabad.mae.ro/en', hours: 'Mon-Fri 09:00-17:00', appointmentUrl: 'https://islamabad.mae.ro/en/node/397' },
+    94→  Russia: { address: 'Diplomatic Enclave, Khayaban-e-Suhrawardy, G-4, Islamabad', phone: '+92-51-260-08-11', email: 'pakistan@mid.ru', website: 'https://pakistan.mid.ru/en', hours: 'Mon-Fri 09:00-13:00', appointmentUrl: 'https://islamabad.kdmid.ru' },
+    95→  Singapore: { address: 'High Commission of Singapore, Diplomatic Enclave, F-6, Islamabad', phone: '+92-51-211-4844', email: 'singhc_isb@mfa.gov.sg', website: 'https://www.mfa.gov.sg/overseas-mission/islamabad', hours: 'Mon-Fri 09:00-12:30, 14:00-16:30', appointmentUrl: 'https://www.mfa.gov.sg/overseas-mission/islamabad' },
+    96→  SouthAfrica: { address: 'High Commission of South Africa, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-0600', email: 'islamabad@dirco.gov.za', website: 'https://www.dirco.gov.za', hours: 'Mon-Fri 08:30-13:00', appointmentUrl: 'https://www.dirco.gov.za' },
+    97→  SouthKorea: { address: 'Embassy of the Republic of Korea, Diplomatic Enclave, F-6, Islamabad', phone: '+92-51-211-3166', email: 'islbkorea@mofa.go.kr', website: 'https://overseas.mofa.go.kr/pk-en', hours: 'Mon-Fri 09:00-12:00, 13:30-17:30', appointmentUrl: 'https://overseas.mofa.go.kr/pk-en' },
+    98→  Spain: { address: 'Embassy of Spain, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-282-5300', email: 'emb.islamabad@maec.es', website: 'https://www.exteriores.gob.es', hours: 'Mon-Fri 09:00-14:00', appointmentUrl: 'https://www.exteriores.gob.es' },
+    99→  Sweden: { address: 'Embassy of Sweden, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-0700', email: 'ambassaden.islamabad@gov.se', website: 'https://www.swedenabroad.se/pakistan', hours: 'Mon-Fri 09:00-12:00', appointmentUrl: 'https://www.swedenabroad.se/pakistan' },
+   100→  Switzerland: { address: 'Embassy of Switzerland, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-287-0400', email: 'islamabad@eda.admin.ch', website: 'https://www.eda.admin.ch/pakistan', hours: 'Mon-Fri 09:00-12:00', appointmentUrl: 'https://www.eda.admin.ch/pakistan' },
+   101→  Tunisia: { address: 'House No. 221, St. No. 21, Sector E-7, Islamabad', phone: '+92-51-265-2387', email: 'atisl@tunisie.nat.tn', website: 'https://www.diplomatie.tn', hours: 'Mon-Fri 09:00-16:00', appointmentUrl: 'https://www.diplomatie.tn' },
+   102→  Turkmenistan: { address: 'Parveen Shakir Road 1-A, Str. 25, F-7/2, Islamabad', phone: '+92-51-260-9775', email: 'tmembislamabad2@mfa.gov.tm', website: 'https://pakistan.tmembassy.gov.tm', hours: 'Mon-Fri 09:00-18:00', appointmentUrl: 'https://pakistan.tmembassy.gov.tm' },
+   103→  UK: { address: 'British High Commission, Diplomatic Enclave, Islamabad', phone: '+92-51-201-2000', email: 'bhc.general@fco.gov.uk', website: 'https://www.gov.uk/government/world/organisations/british-high-commission-islamabad', hours: 'Mon-Fri 08:30-12:00', appointmentUrl: 'https://www.gov.uk/browse/visas-immigration' },
+   104→  USA: { address: 'Embassy of the United States, Diplomatic Enclave, G-5, Islamabad', phone: '+92-51-201-4000', email: 'islamabadacs@state.gov', website: 'https://pk.usembassy.gov', hours: 'Mon-Fri 08:00-16:30', appointmentUrl: 'https://www.ustraveldocs.com/pk' },
+   105→};
+   106→
+   107→const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+   108→
+   109→// ============================================================
+   110→// Helpers
+   111→// ============================================================
+   112→
+   113→function getFlagUrl(code: string, width = 160): string {
+   114→  const iso = FLAG_ISO_MAP[code];
+   115→  return iso ? `https://flagcdn.com/w${width}/${iso.toLowerCase()}.png` : '';
+   116→}
+   117→
+   118→function getVisaLabel(country: { visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean }): string {
+   119→  if (country.visaFree) return 'Visa Free';
+   120→  if (country.visaOnArrival) return 'Visa on Arrival';
+   121→  if (country.etaAvailable) return 'e-Visa';
+   122→  return 'Embassy Required';
+   123→}
+   124→
+   125→function getVisaBadgeClass(country: { visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean }): string {
+   126→  if (country.visaFree) return 'bg-emerald-100 text-emerald-700';
+   127→  if (country.visaOnArrival) return 'bg-amber-100 text-amber-700';
+   128→  if (country.etaAvailable) return 'bg-sky-100 text-sky-700';
+   129→  return 'bg-gray-100 text-gray-600';
+   130→}
+   131→
+   132→function getVisaDotClass(country: { visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean }): string {
+   133→  if (country.visaFree) return 'bg-emerald-500';
+   134→  if (country.visaOnArrival) return 'bg-amber-500';
+   135→  if (country.etaAvailable) return 'bg-sky-500';
+   136→  return 'bg-gray-400';
+   137→}
+   138→
+   139→function usdToPkr(usd: number): string {
+   140→  return Math.round(usd * 278.5).toLocaleString();
+   141→}
+   142→
+   143→function safetyStars(rating: number): string {
+   144→  const clamped = Math.min(Math.max(rating, 0), 5);
+   145→  return '\u2605'.repeat(clamped) + '\u2606'.repeat(5 - clamped);
+   146→}
+   147→
+   148→// ============================================================
+   149→// Static Params
+   150→// ============================================================
+   151→
+   152→export async function generateStaticParams() {
+   153→  const countries = await db.country.findMany({ select: { code: true } });
+   154→  return countries.map((c) => ({ slug: CODE_TO_SLUG[c.code] || c.code }));
+   155→}
+   156→
+   157→// ============================================================
+   158→// Metadata
+   159→// ============================================================
+   160→
+   161→type CountryPageData = {
+   162→  code: string;
+   163→  name: string;
+   164→  flagEmoji: string;
+   165→  visaFree: boolean;
+   166→  visaOnArrival: boolean;
+   167→  etaAvailable: boolean;
+   168→  processingDaysMin: number;
+   169→  processingDaysMax: number;
+   170→  safetyRating: number;
+   171→  currency: string;
+   172→  currencyCode: string;
+   173→};
+   174→
+   175→type CostProfileData = {
+   176→  visaFeeUSD: number;
+   177→  serviceFeeUSD: number;
+   178→  monthlyLivingUSD: number;
+   179→  monthlyRentUSD: number;
+   180→  monthlyFoodUSD: number;
+   181→  monthlyTransportUSD: number;
+   182→  healthInsuranceUSD: number;
+   183→  totalMonthlyUSD: number;
+   184→};
+   185→
+   186→type VisaTypeData = {
+   187→  type: string;
+   188→  description: string;
+   189→  maxDuration: string;
+   190→  extensions: boolean;
+   191→  multipleEntry: boolean;
+   192→};
+   193→
+   194→type VisaRequirementData = {
+   195→  category: string;
+   196→  requirement: string;
+   197→  mandatory: boolean;
+   198→  description: string;
+   199→};
+   200→
+   201→export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+   202→  const { slug } = await params;
+   203→  const code = SLUG_TO_CODE[slug];
+   204→  if (!code) return { title: 'Country Not Found | PakVisa Advisor' };
+   205→
+   206→  const country = await db.country.findUnique({
+   207→    where: { code },
+   208→    include: { costProfiles: true, visaTypes: true },
+   209→  });
+   210→
+   211→  if (!country) return { title: 'Country Not Found | PakVisa Advisor' };
+   212→
+   213→  const visaLabel = getVisaLabel(country);
+   214→  const costProfile = country.costProfiles[0];
+   215→  const visaFee = costProfile ? `$${costProfile.visaFeeUSD} (\u2248 PKR ${usdToPkr(costProfile.visaFeeUSD)})` : 'Free';
+   216→  const processing = country.visaFree ? 'No processing required' : `${country.processingDaysMin}-${country.processingDaysMax} business days`;
+   217→  const title = `${country.name} Visa for Pakistani Citizens - Requirements, Fees & Guide 2026`;
+   218→  const description = `Complete ${country.name} visa guide for Pakistani passport holders. ${visaLabel} access, ${visaFee} fee, ${processing} processing. Updated for 2026 with requirements, costs, and embassy details.`;
+   219→
+   220→  return {
+   221→    title,
+   222→    description,
+   223→    keywords: [
+   224→      `${country.name} visa Pakistan`,
+   225→      `${country.name} visa Pakistani passport`,
+   226→      `${country.name} ${visaLabel.toLowerCase()} Pakistan`,
+   227→      `Pakistani passport ${country.name}`,
+   228→      `${country.name} embassy Islamabad`,
+   229→      `${country.name} visa requirements 2026`,
+   230→      `how to get ${country.name} visa from Pakistan`,
+   231→      `${country.name} visa fee PKR`,
+   232→    ],
+   233→    openGraph: {
+   234→      type: 'article',
+   235→      locale: 'en_US',
+   236→      url: `https://pakvisaadvisor.com/${slug}`,
+   237→      siteName: 'PakVisa Advisor',
+   238→      title,
+   239→      description,
+   240→      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: `${country.name} Visa Guide - PakVisa Advisor` }],
+   241→    },
+   242→    twitter: {
+   243→      card: 'summary_large_image',
+   244→      title,
+   245→      description,
+   246→      images: ['/og-image.png'],
+   247→    },
+   248→    alternates: { canonical: `https://pakvisaadvisor.com/${slug}` },
+   249→  };
+   250→}
+   251→
+   252→// ============================================================
+   253→// Page Component
+   254→// ============================================================
+   255→
+   256→export default async function CountryPage({ params }: { params: Promise<{ slug: string }> }) {
+   257→  const { slug } = await params;
+   258→  const code = SLUG_TO_CODE[slug];
+   259→
+   260→  if (!code) {
+   261→    return (
+   262→      <div className="min-h-screen flex items-center justify-center bg-background">
+   263→        <div className="text-center">
+   264→          <h1 className="text-2xl font-bold mb-2">Country Not Found</h1>
+   265→          <p className="text-muted-foreground mb-4">The country you are looking for does not exist in our database.</p>
+   266→          <Link href="/" className="text-emerald-600 hover:underline flex items-center gap-1 justify-center">
+   267→            <ArrowLeft className="w-4 h-4" /> Back to PakVisa Advisor
+   268→          </Link>
+   269→        </div>
+   270→      </div>
+   271→    );
+   272→  }
+   273→
+   274→  const country = await db.country.findUnique({
+   275→    where: { code },
+   276→    include: {
+   277→      visaTypes: true,
+   278→      costProfiles: true,
+   279→      requirements: { orderBy: { category: 'asc' } },
+   280→    },
+   281→  });
+   282→
+   283→  if (!country) {
+   284→    return (
+   285→      <div className="min-h-screen flex items-center justify-center bg-background">
+   286→        <div className="text-center">
+   287→          <h1 className="text-2xl font-bold mb-2">Country Not Found</h1>
+   288→          <p className="text-muted-foreground mb-4">The country you are looking for does not exist in our database.</p>
+   289→          <Link href="/" className="text-emerald-600 hover:underline flex items-center gap-1 justify-center">
+   290→            <ArrowLeft className="w-4 h-4" /> Back to PakVisa Advisor
+   291→          </Link>
+   292→        </div>
+   293→      </div>
+   294→    );
+   295→  }
+   296→
+   297→  const visaLabel = getVisaLabel(country);
+   298→  const visaBadgeClass = getVisaBadgeClass(country);
+   299→  const visaDotClass = getVisaDotClass(country);
+   300→  const flagUrl = getFlagUrl(country.code);
+   301→  const costProfile = country.costProfiles[0] as CostProfileData | undefined;
+   302→  const visaTypes = country.visaTypes as VisaTypeData[];
+   303→  const requirements = country.requirements as VisaRequirementData[];
+   304→  const embassyInfo = EMBASSY_DATA[country.code];
+   305→  const isEmbassyRequired = !country.visaFree && !country.visaOnArrival && !country.etaAvailable;
+   306→
+   307→  // Parse monthly temps
+   308→  let monthlyTemps: Record<string, number> = {};
+   309→  try { monthlyTemps = JSON.parse(country.monthlyTemps || '{}'); } catch { /* empty */ }
+   310→
+   311→  // Parse best travel months
+   312→  const bestMonths = country.bestTravelMonths ? country.bestTravelMonths.split(',').map((m: string) => m.trim()).filter(Boolean) : [];
+   313→
+   314→  // Group requirements by category
+   315→  const groupedRequirements = requirements.reduce((acc, r) => {
+   316→    const cat = r.category || 'Other';
+   317→    if (!acc[cat]) acc[cat] = [];
+   318→    acc[cat].push(r);
+   319→    return acc;
+   320→  }, {} as Record<string, VisaRequirementData[]>);
+   321→
+   322→  // Generate FAQ based on country data
+   323→  const faqs = generateFAQs(country, costProfile, visaLabel, isEmbassyRequired);
+   324→
+   325→  // JSON-LD structured data
+   326→  const faqSchema = {
+   327→    '@context': 'https://schema.org',
+   328→    '@type': 'FAQPage',
+   329→    mainEntity: faqs.map((f) => ({
+   330→      '@type': 'Question',
+   331→      name: f.q,
+   332→      acceptedAnswer: { '@type': 'Answer', text: f.a },
+   333→    })),
+   334→  };
+   335→
+   336→  const webpageSchema = {
+   337→    '@context': 'https://schema.org',
+   338→    '@type': 'WebPage',
+   339→    name: `${country.name} Visa for Pakistani Citizens`,
+   340→    description: `Complete ${country.name} visa guide for Pakistani passport holders. ${visaLabel} access, updated for 2026.`,
+   341→    url: `https://pakvisaadvisor.com/${slug}`,
+   342→    isPartOf: { '@type': 'WebSite', name: 'PakVisa Advisor', url: 'https://pakvisaadvisor.com' },
+   343→    about: {
+   344→      '@type': 'Country',
+   345→      name: country.name,
+   346→    },
+   347→    dateModified: country.updatedAt?.toISOString().split('T')[0] || '2026-01-01',
+   348→  };
+   349→
+   350→  return (
+   351→    <>
+   352→      <script
+   353→        type="application/ld+json"
+   354→        dangerouslySetInnerHTML={{ __html: JSON.stringify(webpageSchema) }}
+   355→      />
+   356→      <script
+   357→        type="application/ld+json"
+   358→        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+   359→      />
+   360→
+   361→      <div className="min-h-screen flex flex-col bg-background text-foreground">
+   362→        {/* Header */}
+   363→        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+   364→          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+   365→            <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity">
+   366→              <span className="text-xl">\uD83C\uDDF5\uD83C\uDDF0</span>
+   367→              <span>PakVisa Advisor</span>
+   368→            </Link>
+   369→            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+   370→              <Home className="w-4 h-4" /> Home
+   371→            </Link>
+   372→          </div>
+   373→        </header>
+   374→
+   375→        <main className="flex-1">
+   376→          {/* Breadcrumb */}
+   377→          <nav className="max-w-5xl mx-auto px-4 py-3" aria-label="Breadcrumb">
+   378→            <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
+   379→              <li><Link href="/" className="hover:text-foreground transition-colors">Home</Link></li>
+   380→              <li><ChevronRight className="w-3.5 h-3.5" /></li>
+   381→              <li><Link href="/" className="hover:text-foreground transition-colors">Countries</Link></li>
+   382→              <li><ChevronRight className="w-3.5 h-3.5" /></li>
+   383→              <li className="text-foreground font-medium">{country.name}</li>
+   384→            </ol>
+   385→          </nav>
+   386→
+   387→          {/* Hero Section */}
+   388→          <section className="max-w-5xl mx-auto px-4 pb-8">
+   389→            <div className="flex flex-col sm:flex-row items-start gap-6">
+   390→              {flagUrl && (
+   391→                <img
+   392→                  src={flagUrl}
+   393→                  alt={`${country.name} flag`}
+   394→                  className="w-32 h-auto sm:w-40 rounded-lg shadow-lg border bg-muted"
+   395→                  width={160}
+   396→                  height={107}
+   397→                />
+   398→              )}
+   399→              <div className="flex-1">
+   400→                <div className="flex flex-wrap items-center gap-3 mb-2">
+   401→                  <h1 className="text-3xl sm:text-4xl font-bold">{country.name} Visa Guide</h1>
+   402→                  <span className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full ${visaBadgeClass}`}>
+   403→                    <span className={`w-2 h-2 rounded-full ${visaDotClass}`} />
+   404→                    {visaLabel}
+   405→                  </span>
+   406→                </div>
+   407→                <p className="text-lg text-muted-foreground mb-1">
+   408→                  Complete visa information for <strong>Pakistani passport holders</strong> traveling to {country.name}
+   409→                </p>
+   410→                <p className="text-sm text-muted-foreground">
+   411→                  Last updated: {country.updatedAt ? new Date(country.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '2026'} | Continent: {country.continent}
+   412→                  {country.currencyCode && <span> | Currency: {country.currency} ({country.currencyCode})</span>}
+   413→                </p>
+   414→              </div>
+   415→            </div>
+   416→          </section>
+   417→
+   418→          {/* Key Info Cards */}
+   419→          <section className="max-w-5xl mx-auto px-4 pb-8">
+   420→            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   421→              <InfoCard
+   422→                icon={<Clock className="w-5 h-5 text-sky-600" />}
+   423→                label="Processing Time"
+   424→                value={country.visaFree ? 'Instant' : `${country.processingDaysMin}-${country.processingDaysMax} days`}
+   425→                subtext={country.visaFree ? 'No processing needed' : 'Business days'}
+   426→              />
+   427→              <InfoCard
+   428→                icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
+   429→                label="Visa Fee"
+   430→                value={costProfile && costProfile.visaFeeUSD > 0 ? `$${costProfile.visaFeeUSD}` : 'Free'}
+   431→                subtext={costProfile && costProfile.visaFeeUSD > 0 ? `\u2248 PKR ${usdToPkr(costProfile.visaFeeUSD)}` : 'No fee required'}
+   432→              />
+   433→              <InfoCard
+   434→                icon={<Shield className="w-5 h-5 text-amber-600" />}
+   435→                label="Safety Rating"
+   436→                value={`${Math.min(country.safetyRating, 5)}/5`}
+   437→                subtext={safetyStars(country.safetyRating)}
+   438→              />
+   439→              <InfoCard
+   440→                icon={<Calendar className="w-5 h-5 text-purple-600" />}
+   441→                label="Best Travel Months"
+   442→                value={bestMonths.length > 0 ? bestMonths.slice(0, 3).join(', ') : 'Year-round'}
+   443→                subtext={bestMonths.length > 3 ? `+ ${bestMonths.length - 3} more` : ''}
+   444→              />
+   445→            </div>
+   446→          </section>
+   447→
+   448→          {/* Visa Types Section */}
+   449→          {visaTypes.length > 0 && (
+   450→            <section className="max-w-5xl mx-auto px-4 pb-8">
+   451→              <SectionTitle icon={<FileText className="w-5 h-5" />} title="Available Visa Types" />
+   452→              <div className="grid gap-4 sm:grid-cols-2">
+   453→                {visaTypes.map((vt, i) => (
+   454→                  <div key={i} className="border rounded-lg p-4 bg-card">
+   455→                    <div className="flex items-center gap-2 mb-2">
+   456→                      <Plane className="w-4 h-4 text-emerald-600" />
+   457→                      <h3 className="font-semibold">{vt.type}</h3>
+   458→                    </div>
+   459→                    {vt.description && <p className="text-sm text-muted-foreground mb-3">{vt.description}</p>}
+   460→                    <div className="flex flex-wrap gap-2 text-xs">
+   461→                      {vt.maxDuration && (
+   462→                        <span className="inline-flex items-center gap-1 bg-muted px-2 py-1 rounded">
+   463→                          <Clock className="w-3 h-3" /> {vt.maxDuration}
+   464→                        </span>
+   465→                      )}
+   466→                      <span className="inline-flex items-center gap-1 bg-muted px-2 py-1 rounded">
+   467→                        {vt.multipleEntry ? 'Multiple Entry' : 'Single Entry'}
+   468→                      </span>
+   469→                      {vt.extensions && (
+   470→                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-1 rounded">
+   471→                          Extensions Available
+   472→                        </span>
+   473→                      )}
+   474→                    </div>
+   475→                  </div>
+   476→                ))}
+   477→              </div>
+   478→            </section>
+   479→          )}
+   480→
+   481→          {/* Requirements Section */}
+   482→          {requirements.length > 0 && (
+   483→            <section className="max-w-5xl mx-auto px-4 pb-8">
+   484→              <SectionTitle icon={<ClipboardIcon className="w-5 h-5" />} title={`Visa Requirements for ${country.name}`} />
+   485→              <div className="space-y-6">
+   486→                {Object.entries(groupedRequirements).map(([category, items]) => (
+   487→                  <div key={category} className="border rounded-lg overflow-hidden">
+   488→                    <div className="bg-muted/50 px-4 py-3 border-b">
+   489→                      <h3 className="font-semibold text-sm">{category}</h3>
+   490→                    </div>
+   491→                    <div className="divide-y">
+   492→                      {items.map((item, i) => (
+   493→                        <div key={i} className="px-4 py-3 flex items-start gap-3">
+   494→                          {item.mandatory ? (
+   495→                            <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+   496→                          ) : (
+   497→                            <span className="mt-1.5 w-3 h-3 rounded-full border-2 border-amber-400 shrink-0" />
+   498→                          )}
+   499→                          <div className="flex-1">
+   500→                            <div className="flex items-center gap-2">
+   501→                              <span className="text-sm font-medium">{item.requirement}</span>
+   502→                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.mandatory ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+   503→                                {item.mandatory ? 'Required' : 'Recommended'}
+   504→                              </span>
+   505→                            </div>
+   506→                            {item.description && (
+   507→                              <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+   508→                            )}
+   509→                          </div>
+   510→                        </div>
+   511→                      ))}
+   512→                    </div>
+   513→                  </div>
+   514→                ))}
+   515→              </div>
+   516→            </section>
+   517→          )}
+   518→
+   519→          {/* Cost Breakdown Section */}
+   520→          {costProfile && costProfile.visaFeeUSD > 0 && (
+   521→            <section className="max-w-5xl mx-auto px-4 pb-8">
+   522→              <SectionTitle icon={<DollarSign className="w-5 h-5" />} title="Cost Breakdown" />
+   523→              <div className="border rounded-lg overflow-hidden">
+   524→                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0">
+   525→                  <CostCell label="Visa Fee" usd={costProfile.visaFeeUSD} />
+   526→                  <CostCell label="Service Fee" usd={costProfile.serviceFeeUSD} />
+   527→                  <CostCell label="Monthly Living" usd={costProfile.monthlyLivingUSD} />
+   528→                  <CostCell label="Monthly Rent" usd={costProfile.monthlyRentUSD} />
+   529→                </div>
+   530→                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x border-t">
+   531→                  <CostCell label="Monthly Food" usd={costProfile.monthlyFoodUSD} />
+   532→                  <CostCell label="Transport" usd={costProfile.monthlyTransportUSD} />
+   533→                  <CostCell label="Health Insurance" usd={costProfile.healthInsuranceUSD} />
+   534→                  <CostCell label="Total Monthly" usd={costProfile.totalMonthlyUSD} highlight />
+   535→                </div>
+   536→              </div>
+   537→              <p className="text-xs text-muted-foreground mt-2">* PKR conversions based on approximate exchange rate (1 USD \u2248 PKR 278.5). Actual rates may vary.</p>
+   538→            </section>
+   539→          )}
+   540→
+   541→          {/* Embassy Section */}
+   542→          {isEmbassyRequired && embassyInfo && (
+   543→            <section className="max-w-5xl mx-auto px-4 pb-8">
+   544→              <SectionTitle icon={<Building className="w-5 h-5" />} title="Embassy & Visa Application" />
+   545→              {embassyInfo.note && (
+   546→                <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-2">
+   547→                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+   548→                  <p className="text-sm text-amber-800 dark:text-amber-300">{embassyInfo.note}</p>
+   549→                </div>
+   550→              )}
+   551→              <div className="border rounded-lg divide-y">
+   552→                <div className="px-4 py-3 flex items-start gap-3">
+   553→                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+   554→                  <div>
+   555→                    <p className="text-xs text-muted-foreground">Address</p>
+   556→                    <p className="text-sm">{embassyInfo.address}</p>
+   557→                  </div>
+   558→                </div>
+   559→                <div className="px-4 py-3 flex items-start gap-3">
+   560→                  <Phone className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+   561→                  <div>
+   562→                    <p className="text-xs text-muted-foreground">Phone</p>
+   563→                    <p className="text-sm">{embassyInfo.phone}</p>
+   564→                  </div>
+   565→                </div>
+   566→                <div className="px-4 py-3 flex items-start gap-3">
+   567→                  <Mail className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+   568→                  <div>
+   569→                    <p className="text-xs text-muted-foreground">Email</p>
+   570→                    <p className="text-sm">{embassyInfo.email}</p>
+   571→                  </div>
+   572→                </div>
+   573→                <div className="px-4 py-3 flex items-start gap-3">
+   574→                  <Clock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+   575→                  <div>
+   576→                    <p className="text-xs text-muted-foreground">Hours</p>
+   577→                    <p className="text-sm">{embassyInfo.hours}</p>
+   578→                  </div>
+   579→                </div>
+   580→                <div className="px-4 py-3 flex items-start gap-3">
+   581→                  <Globe className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+   582→                  <div>
+   583→                    <p className="text-xs text-muted-foreground">Website</p>
+   584→                    <a href={embassyInfo.website} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+   585→                      {embassyInfo.website.replace('https://', '')} <ExternalLink className="w-3 h-3" />
+   586→                    </a>
+   587→                  </div>
+   588→                </div>
+   589→              </div>
+   590→              <a
+   591→                href={embassyInfo.appointmentUrl}
+   592→                target="_blank"
+   593→                rel="noopener noreferrer"
+   594→                className="mt-4 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+   595→              >
+   596→                Book Appointment <ExternalLink className="w-4 h-4" />
+   597→              </a>
+   598→            </section>
+   599→          )}
+   600→
+   601→          {/* Safety Overview */}
+   602→          {country.safetyRating > 0 && (
+   603→            <section className="max-w-5xl mx-auto px-4 pb-8">
+   604→              <SectionTitle icon={<Shield className="w-5 h-5" />} title="Safety Overview" />
+   605→              <div className="border rounded-lg p-4 bg-card">
+   606→                <div className="flex items-center gap-3 mb-3">
+   607→                  <span className="text-2xl">{safetyStars(country.safetyRating)}</span>
+   608→                  <span className="text-lg font-semibold">{Math.min(country.safetyRating, 5)}/5</span>
+   609→                </div>
+   610→                {country.safetySummary && (
+   611→                  <p className="text-sm text-muted-foreground leading-relaxed">{country.safetySummary}</p>
+   612→                )}
+   613→              </div>
+   614→            </section>
+   615→          )}
+   616→
+   617→          {/* Temperature & Climate */}
+   618→          {Object.keys(monthlyTemps).length > 0 && (
+   619→            <section className="max-w-5xl mx-auto px-4 pb-8">
+   620→              <SectionTitle icon={<Thermometer className="w-5 h-5" />} title="Climate & Temperature" />
+   621→              <p className="text-sm text-muted-foreground mb-3">Average temperature: <strong>{country.avgTempC}\u00B0C</strong></p>
+   622→              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
+   623→                {MONTH_NAMES.map((m, i) => {
+   624→                  const temp = monthlyTemps[m] ?? monthlyTemps[String(i + 1)];
+   625→                  return (
+   626→                    <div key={m} className={`text-center rounded-lg p-2 border ${bestMonths.some((bm: string) => bm.toLowerCase().startsWith(m.toLowerCase())) ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' : 'bg-card'}`}>
+   627→                      <p className="text-[10px] text-muted-foreground font-medium">{m}</p>
+   628→                      <p className="text-sm font-semibold">{temp !== undefined ? `${temp}\u00B0` : '--'}</p>
+   629→                    </div>
+   630→                  );
+   631→                })}
+   632→              </div>
+   633→            </section>
+   634→          )}
+   635→
+   636→          {/* FAQ Section */}
+   637→          <section className="max-w-5xl mx-auto px-4 pb-8">
+   638→            <SectionTitle icon={<HelpIcon className="w-5 h-5" />} title="Frequently Asked Questions" />
+   639→            <div className="space-y-3">
+   640→              {faqs.map((faq, i) => (
+   641→                <details key={i} className="border rounded-lg group">
+   642→                  <summary className="px-4 py-3 cursor-pointer text-sm font-medium hover:bg-muted/50 transition-colors list-none flex items-center justify-between">
+   643→                    {faq.q}
+   644→                    <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-90" />
+   645→                  </summary>
+   646→                  <div className="px-4 pb-3 text-sm text-muted-foreground leading-relaxed border-t">
+   647→                    <p className="pt-3">{faq.a}</p>
+   648→                  </div>
+   649→                </details>
+   650→              ))}
+   651→            </div>
+   652→          </section>
+   653→
+   654→          {/* CTA Section */}
+   655→          <section className="max-w-5xl mx-auto px-4 pb-12">
+   656→            <div className="bg-emerald-600 dark:bg-emerald-700 rounded-xl p-6 sm:p-8 text-center text-white">
+   657→              <h2 className="text-xl sm:text-2xl font-bold mb-2">Ready to Apply?</h2>
+   658→              <p className="text-emerald-100 mb-6 text-sm sm:text-base max-w-lg mx-auto">
+   659→                {country.etaAvailable
+   660→                  ? `Apply for your ${country.name} e-Visa online in minutes. No embassy visit required.`
+   661→                  : country.visaOnArrival
+   662→                    ? `Get your visa on arrival at the ${country.name} airport. Just bring your documents.`
+   663→                    : country.visaFree
+   664→                      ? `No visa needed! Just pack your bags and travel to ${country.name}.`
+   665→                      : `Start your ${country.name} visa application today. Check requirements and book an appointment.`}
+   666→              </p>
+   667→              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+   668→                {country.etaAvailable && (
+   669→                  <a
+   670→                    href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
+   671→                    target="_blank"
+   672→                    rel="noopener noreferrer sponsored"
+   673→                    className="inline-flex items-center gap-2 bg-white text-emerald-700 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition-colors"
+   674→                  >
+   675→                    Apply for e-Visa <ExternalLink className="w-4 h-4" />
+   676→                  </a>
+   677→                )}
+   678→                {!country.visaFree && (
+   679→                  <a
+   680→                    href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
+   681→                    target="_blank"
+   682→                    rel="noopener noreferrer sponsored"
+   683→                    className="inline-flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-400 transition-colors border border-emerald-400"
+   684→                  >
+   685→                    Check on iVisa <ExternalLink className="w-4 h-4" />
+   686→                  </a>
+   687→                )}
+   688→                <Link
+   689→                  href="/"
+   690→                  className="inline-flex items-center gap-2 bg-transparent border-2 border-white text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-white/10 transition-colors"
+   691→                >
+   692→                  Check on PakVisa Advisor <ArrowRight className="w-4 h-4" />
+   693→                </Link>
+   694→              </div>
+   695→            </div>
+   696→          </section>
+   697→        </main>
+   698→
+   699→        {/* Footer */}
+   700→        <footer className="border-t bg-muted/30 mt-auto">
+   701→          <div className="max-w-5xl mx-auto px-4 py-6">
+   702→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+   703→              <div>
+   704→                <p className="font-semibold mb-2">PakVisa Advisor</p>
+   705→                <p className="text-muted-foreground text-xs">AI-powered visa intelligence for Pakistani passport holders. Check requirements, fees, and processing times for 70+ countries.</p>
+   706→              </div>
+   707→              <div>
+   708→                <p className="font-semibold mb-2">Quick Links</p>
+   709→                <ul className="space-y-1 text-muted-foreground text-xs">
+   710→                  <li><Link href="/" className="hover:text-foreground transition-colors">Home</Link></li>
+   711→                  <li><Link href="/" className="hover:text-foreground transition-colors">All Countries</Link></li>
+   712→                  <li><Link href="/" className="hover:text-foreground transition-colors">AI Visa Consultant</Link></li>
+   713→                </ul>
+   714→              </div>
+   715→              <div>
+   716→                <p className="font-semibold mb-2">Legal</p>
+   717→                <ul className="space-y-1 text-muted-foreground text-xs">
+   718→                  <li><Link href="/" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+   719→                  <li><Link href="/" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
+   720→                  <li><Link href="/" className="hover:text-foreground transition-colors">Contact Us</Link></li>
+   721→                </ul>
+   722→              </div>
+   723→            </div>
+   724→            <div className="border-t mt-4 pt-4 text-center text-xs text-muted-foreground">
+   725→              <p>\u00A9 {new Date().getFullYear()} PakVisa Advisor. All rights reserved. Visa information is for guidance only. Always verify with official sources.</p>
+   726→            </div>
+   727→          </div>
+   728→        </footer>
+   729→      </div>
+   730→    </>
+   731→  );
+   732→}
+   733→
+   734→// ============================================================
+   735→// Sub-components (inline, no 'use client' needed)
+   736→// ============================================================
+   737→
+   738→function InfoCard({ icon, label, value, subtext }: { icon: React.ReactNode; label: string; value: string; subtext?: string }) {
+   739→  return (
+   740→    <div className="border rounded-lg p-4 bg-card">
+   741→      <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+   742→        {icon}
+   743→        <span className="text-xs font-medium">{label}</span>
+   744→      </div>
+   745→      <p className="font-bold text-lg">{value}</p>
+   746→      {subtext && <p className="text-xs text-muted-foreground mt-0.5">{subtext}</p>}
+   747→    </div>
+   748→  );
+   749→}
+   750→
+   751→function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
+   752→  return (
+   753→    <div className="flex items-center gap-2 mb-4">
+   754→      {icon}
+   755→      <h2 className="text-xl font-bold">{title}</h2>
+   756→    </div>
+   757→  );
+   758→}
+   759→
+   760→function CostCell({ label, usd, highlight }: { label: string; usd: number; highlight?: boolean }) {
+   761→  return (
+   762→    <div className={`px-4 py-3 text-center ${highlight ? 'bg-emerald-50 dark:bg-emerald-900/10' : ''}`}>
+   763→      <p className="text-[11px] text-muted-foreground">{label}</p>
+   764→      <p className={`font-semibold text-sm ${highlight ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>${usd}</p>
+   765→      <p className="text-[10px] text-muted-foreground">\u2248 PKR {usdToPkr(usd)}</p>
+   766→    </div>
+   767→  );
+   768→}
+   769→
+   770→function ClipboardIcon(props: React.SVGProps<SVGSVGElement>) {
+   771→  return (
+   772→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+   773→      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" />
+   774→    </svg>
+   775→  );
+   776→}
+   777→
+   778→function HelpIcon(props: React.SVGProps<SVGSVGElement>) {
+   779→  return (
+   780→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+   781→      <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />
+   782→    </svg>
+   783→  );
+   784→}
+   785→
+   786→function ArrowLeft(props: React.SVGProps<SVGSVGElement>) {
+   787→  return (
+   788→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+   789→      <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
+   790→    </svg>
+   791→  );
+   792→}
+   793→
+   794→// ============================================================
+   795→// FAQ Generator
+   796→// ============================================================
+   797→
+   798→function generateFAQs(
+   799→  country: {
+   800→    name: string; code: string; visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean;
+   801→    processingDaysMin: number; processingDaysMax: number; safetyRating: number; safetySummary: string;
+   802→    bestTravelMonths: string; avgTempC: string; currency: string; currencyCode: string;
+   803→  },
+   804→  costProfile: CostProfileData | undefined,
+   805→  visaLabel: string,
+   806→  isEmbassyRequired: boolean,
+   807→): { q: string; a: string }[] {
+   808→  const faqs: { q: string; a: string }[] = [];
+   809→
+   810→  // Q1: Do Pakistani citizens need a visa?
+   811→  faqs.push({
+   812→    q: `Do Pakistani citizens need a visa for ${country.name}?`,
+   813→    a: country.visaFree
+   814→      ? `No, Pakistani citizens do not need a visa to visit ${country.name}. You can travel visa-free with a valid Pakistani passport. Make sure your passport has at least 6 months of validity remaining.`
+   815→      : country.visaOnArrival
+   816→        ? `Pakistani citizens can get a visa on arrival at ${country.name}. Simply present your valid Pakistani passport at the immigration counter upon arrival. Processing is usually instant.`
+   817→        : country.etaAvailable
+   818→          ? `Yes, Pakistani citizens need an e-Visa to visit ${country.name}. The e-Visa can be applied for online through the official government portal. Processing typically takes ${country.processingDaysMin}-${country.processingDaysMax} business days.`
+   819→          : `Yes, Pakistani citizens need a visa to visit ${country.name}. You must apply at the embassy or consulate. The application process typically takes ${country.processingDaysMin}-${country.processingDaysMax} business days.`,
+   820→  });
+   821→
+   822→  // Q2: What is the visa fee?
+   823→  const feeText = costProfile && costProfile.visaFeeUSD > 0
+   824→    ? `The visa fee for ${country.name} is approximately $${costProfile.visaFeeUSD} USD (\u2248 PKR ${usdToPkr(costProfile.visaFeeUSD)}). Additional service fees of $${costProfile.serviceFeeUSD} may apply.`
+   825→    : `There is no visa fee for Pakistani citizens visiting ${country.name} as it is ${visaLabel.toLowerCase()}.`
+   826→  ;
+   827→  faqs.push({
+   828→    q: `What is the visa fee for ${country.name} for Pakistani citizens?`,
+   829→    a: feeText,
+   830→  });
+   831→
+   832→  // Q3: Processing time
+   833→  faqs.push({
+   834→    q: `How long does it take to get a ${country.name} visa?`,
+   835→    a: country.visaFree
+   836→      ? `No processing time is needed as ${country.name} offers visa-free entry to Pakistani passport holders. You can travel immediately.`
+   837→      : country.visaOnArrival
+   838→        ? `The visa on arrival for ${country.name} is processed instantly at the airport or border crossing. The entire process typically takes 5-15 minutes.`
+   839→        : `${country.name} visa processing typically takes ${country.processingDaysMin}-${country.processingDaysMax} business days for Pakistani citizens. It is recommended to apply at least 2-3 weeks before your planned travel date.`,
+   840→  });
+   841→
+   842→  // Q4: Safety
+   843→  faqs.push({
+   844→    q: `Is ${country.name} safe for Pakistani tourists?`,
+   845→    a: country.safetySummary
+   846→      ? `${country.name} has a safety rating of ${Math.min(country.safetyRating, 5)}/5. ${country.safetySummary}`
+   847→      : `${country.name} has a safety rating of ${Math.min(country.safetyRating, 5)}/5. As with any travel destination, exercise standard precautions, keep your belongings secure, and follow local laws and customs.`,
+   848→  });
+   849→
+   850→  // Q5: Best time to visit or documents required
+   851→  if (country.bestTravelMonths) {
+   852→    faqs.push({
+   853→      q: `What is the best time to visit ${country.name} from Pakistan?`,
+   854→      a: `The best months to visit ${country.name} are ${country.bestTravelMonths}. The average temperature is around ${country.avgTempC}\u00B0C. The local currency is ${country.currency} (${country.currencyCode}). Plan your trip during these months for the most comfortable weather conditions.`,
+   855→    });
+   856→  } else {
+   857→    faqs.push({
+   858→      q: `What documents do I need for a ${country.name} visa?`,
+   859→      a: `Common requirements for a ${country.name} visa include: a valid Pakistani passport with 6+ months validity, passport-sized photographs, proof of accommodation, return flight ticket, travel insurance, and proof of sufficient funds. For the complete and most up-to-date list, check the official embassy website or use PakVisa Advisor.`,
+   860→    });
+   861→  }
+   862→
+   863→  return faqs;
+   864→}
+   865→
