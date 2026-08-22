@@ -54,9 +54,7 @@ server.log
 # Migration scripts (contain auth tokens)
 migrate-to-turso.ts
 
-# Database files
-/db/
-*.db
+# Database binary files (tracked individually via git add -f when needed)
 
 # Skills directory
 /skills/bun.lock
