@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
   Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
   Filter, X, ChevronDown, MessageCircle, Hash, XIcon, CreditCard, FileImage,
-  Bell,
+  Bell, ArrowRightLeft, Loader2, AlertCircle, Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,7 +95,8 @@ interface PaymentProofWithUser {
   };
 }
 
-type AdminSection = 'overview' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'notifications';
+type AdminSection = 'overview' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'data-sync';
+type SyncStage = 'idle' | 'researching' | 'preview' | 'applying' | 'done';
 type MessageFilter = 'all' | 'unread' | 'replied';
 
 const QUICK_REPLIES = [
@@ -160,6 +161,20 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   // WhatsApp number settings
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+
+  // Data Sync state
+  const [syncStage, setSyncStage] = useState<SyncStage>('idle');
+  const [syncChanges, setSyncChanges] = useState<Array<{
+    id: string; name: string;
+    before: { accessType: string; visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean; visaFeeUSD: number; processingDaysMin: number; processingDaysMax: number };
+    after: { accessType: string; visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean; visaFeeUSD: number; processingDaysMin: number; processingDaysMax: number };
+    reason: string; source: string;
+  }>>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncTotalCountries, setSyncTotalCountries] = useState(0);
+  const [syncAppliedCount, setSyncAppliedCount] = useState(0);
+  const [syncFailedCount, setSyncFailedCount] = useState(0);
+  const [syncResearchTime, setSyncResearchTime] = useState<string | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('pakvisa-admin-token');
@@ -461,6 +476,89 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     finally { setSavingWhatsapp(false); }
   }, [token, whatsappNumber]);
 
+  // ===== DATA SYNC HANDLERS =====
+  const handleStartResearch = useCallback(async () => {
+    if (!token) return;
+    setSyncStage('researching');
+    setSyncError(null);
+    setSyncChanges([]);
+    try {
+      const res = await fetch('/api/admin/sync-database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'research' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSyncTotalCountries(data.totalCountries);
+        setSyncChanges(data.changes || []);
+        setSyncResearchTime(data.researchedAt);
+        if (data.changes?.length > 0) {
+          setSyncStage('preview');
+          toast.success(`Found ${data.changes.length} corrections needed`);
+        } else {
+          setSyncStage('done');
+          toast.success('All data is already up to date!');
+        }
+      } else {
+        setSyncError(data.error || 'Research failed');
+        setSyncStage('idle');
+        toast.error('Data sync research failed');
+      }
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Connection error');
+      setSyncStage('idle');
+      toast.error('Connection error during research');
+    }
+  }, [token]);
+
+  const handleApplyChanges = useCallback(async () => {
+    if (!token || syncChanges.length === 0) return;
+    setSyncStage('applying');
+    try {
+      const corrections = syncChanges.map(c => ({
+        name: c.name,
+        visaFree: c.after.visaFree,
+        visaOnArrival: c.after.visaOnArrival,
+        etaAvailable: c.after.etaAvailable,
+        visaFeeUSD: c.after.visaFeeUSD,
+        processingDaysMin: c.after.processingDaysMin,
+        processingDaysMax: c.after.processingDaysMax,
+      }));
+      const res = await fetch('/api/admin/sync-database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'apply', corrections }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSyncAppliedCount(data.applied);
+        setSyncFailedCount(data.failed);
+        setSyncStage('done');
+        toast.success(`Applied ${data.applied} changes successfully`);
+        // Refresh analytics to reflect new data
+        fetchAnalytics(true);
+      } else {
+        setSyncError(data.error || 'Apply failed');
+        setSyncStage('preview');
+        toast.error('Failed to apply changes');
+      }
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Connection error');
+      setSyncStage('preview');
+      toast.error('Connection error during apply');
+    }
+  }, [token, syncChanges]);
+
+  const handleResetSync = useCallback(() => {
+    setSyncStage('idle');
+    setSyncChanges([]);
+    setSyncError(null);
+    setSyncAppliedCount(0);
+    setSyncFailedCount(0);
+    setSyncResearchTime(null);
+  }, []);
+
   const markMessageRead = async (id: string) => {
     if (!token) return;
     try {
@@ -595,6 +693,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     { key: 'payment-proofs', label: 'Payment Proofs', icon: <CreditCard className="w-4 h-4" />, badge: paymentProofsPending || undefined },
     { key: 'newsletter', label: 'Newsletter', icon: <Mail className="w-4 h-4" /> },
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+    { key: 'data-sync', label: 'Data Sync', icon: <ArrowRightLeft className="w-4 h-4" /> },
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -1411,6 +1510,169 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                       </div>
                     )}
                   </>
+                )}
+
+                {/* ====== DATA SYNC TAB ====== */}
+                {activeSection === 'data-sync' && (
+                  <div className="space-y-5">
+                    <h3 className="text-lg font-semibold flex items-center gap-2"><ArrowRightLeft className="w-5 h-5 text-emerald-500" /> Database Sync</h3>
+
+                    {/* Info Card */}
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><Database className="w-5 h-5 text-emerald-600" /></div>
+                          <div>
+                            <CardTitle className="text-base">AI-Powered Data Verification</CardTitle>
+                            <CardDescription>Research and update visa data for all {syncTotalCountries || 70} countries</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                          <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p><strong>How it works:</strong></p>
+                            <p>1. <strong>Research</strong> — AI checks all 70 countries against the latest Henley Passport Index and official government sources.</p>
+                            <p>2. <strong>Preview</strong> — You review every suggested change before anything is saved.</p>
+                            <p>3. <strong>Apply</strong> — Only your confirmed changes are written to the database.</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Error Display */}
+                    {syncError && (
+                      <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
+                        <CardContent className="flex items-start gap-3 pt-4">
+                          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-red-700 dark:text-red-400">Sync Error</p>
+                            <p className="text-xs text-muted-foreground mt-1">{syncError}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* IDLE STAGE */}
+                    {syncStage === 'idle' && (
+                      <Card>
+                        <CardContent className="flex flex-col items-center py-8 gap-4">
+                          <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <RefreshCw className="w-8 h-8 text-emerald-600" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium">Ready to Sync</p>
+                            <p className="text-xs text-muted-foreground mt-1">Click below to start researching the latest visa data</p>
+                          </div>
+                          <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2" onClick={handleStartResearch}>
+                            <RefreshCw className="w-4 h-4" />
+                            Start Research
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* RESEARCHING STAGE */}
+                    {syncStage === 'researching' && (
+                      <Card>
+                        <CardContent className="flex flex-col items-center py-10 gap-4">
+                          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+                          <div className="text-center">
+                            <p className="text-sm font-medium">Researching Latest Visa Data...</p>
+                            <p className="text-xs text-muted-foreground mt-1">AI is checking all countries against official sources. This may take 30-60 seconds.</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* PREVIEW STAGE */}
+                    {syncStage === 'preview' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-sm font-semibold">{syncChanges.length} Correction{syncChanges.length !== 1 ? 's' : ''} Found</h4>
+                            {syncResearchTime && <p className="text-xs text-muted-foreground mt-0.5">Researched at {new Date(syncResearchTime).toLocaleString()}</p>}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={handleResetSync}>Cancel</Button>
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 gap-1.5" size="sm" onClick={handleApplyChanges}>
+                              <Check className="w-3.5 h-3.5" />
+                              Apply All Changes
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                          {syncChanges.map((change, idx) => (
+                            <Card key={change.id || idx} className="overflow-hidden">
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold truncate">{change.name}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                      <Badge variant="secondary" className="text-[10px] line-through opacity-60">{change.before.accessType}</Badge>
+                                      <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />
+                                      <Badge className="text-[10px] bg-emerald-600">{change.after.accessType}</Badge>
+                                      {change.before.visaFeeUSD !== change.after.visaFeeUSD && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          ${change.before.visaFeeUSD} → ${change.after.visaFeeUSD}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {change.reason && (
+                                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{change.reason}</p>
+                                    )}
+                                  </div>
+                                  {change.source && (
+                                    <Badge variant="outline" className="text-[9px] shrink-0">{change.source}</Badge>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* APPLYING STAGE */}
+                    {syncStage === 'applying' && (
+                      <Card>
+                        <CardContent className="flex flex-col items-center py-10 gap-4">
+                          <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+                          <div className="text-center">
+                            <p className="text-sm font-medium">Applying Changes to Database...</p>
+                            <p className="text-xs text-muted-foreground mt-1">Updating {syncChanges.length} countries. Please wait.</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* DONE STAGE */}
+                    {syncStage === 'done' && (
+                      <Card>
+                        <CardContent className="flex flex-col items-center py-8 gap-4">
+                          <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <CheckCheck className="w-8 h-8 text-emerald-600" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-semibold">Sync Complete!</p>
+                            {syncChanges.length > 0 ? (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {syncAppliedCount} applied, {syncFailedCount} failed out of {syncChanges.length} corrections.
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground mt-1">All visa data is already up to date.</p>
+                            )}
+                          </div>
+                          <Button variant="outline" onClick={handleResetSync} className="gap-2">
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            Sync Again
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 )}
 
                 {/* ====== SETTINGS TAB ====== */}
