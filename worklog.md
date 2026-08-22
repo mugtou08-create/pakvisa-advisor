@@ -1211,3 +1211,29 @@ Stage Summary:
 - The 6 Visa Free countries are now corrected on production
 - Pakistanis have 0 visa-free countries (per Henley Passport Index 2026)
 - Temporary fix endpoint removed from codebase
+
+---
+Task ID: data-sync-feature
+Agent: Main Agent
+Task: Build AI-powered Database Sync feature for admin dashboard
+
+Work Log:
+- Created /api/admin/sync-database API endpoint with two actions:
+  - research: Fetches all 70 countries, sends to LLM for verification against Henley Passport Index 2025 and official sources
+  - apply: Writes confirmed corrections to the Turso production database
+- Added 'Data Sync' tab to admin dialog (admin-dialog.tsx)
+- Implemented 3-step workflow: Research → Preview → Apply
+- Admin sees each proposed change before confirming
+- Each change shows: country name, before/after visa type, fee changes, reason, and source
+- LLM returns only countries that need correction (empty if all data is correct)
+- Set maxDuration=120 on the API route for longer LLM processing time
+- Added icons: ArrowRightLeft, Loader2, AlertCircle, Info to imports
+- Lint passes clean
+- Pushed to GitHub and verified endpoint is live on Vercel (returns 401 without auth)
+
+Stage Summary:
+- New admin feature: AI-Powered Database Sync
+- Route: /api/admin/sync-database (POST, auth required)
+- UI: New 'Data Sync' tab in admin panel sidebar
+- Workflow: Start Research → Preview Changes → Apply All
+- Owner has full control: nothing is saved until they click 'Apply All Changes'
