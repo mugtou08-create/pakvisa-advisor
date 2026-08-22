@@ -28,8 +28,7 @@ import { PaymentProofModal } from '@/components/visa/payment-proof-modal';
 import { AdminDialog } from '@/components/app/admin-dialog';
 import { WhatsAppButton } from '@/components/app/whatsapp-button';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
-import { SchengenWizard } from '@/components/visa/schengen-wizard';
-import { UmrahHajjTool } from '@/components/visa/umrah-hajj-tool';
+
 
 // ============================================================
 // Helpers
@@ -84,12 +83,12 @@ const POPULAR_COUNTRIES = [
 // Visa Policy Alerts
 // ============================================================
 const VISA_ALERTS = [
-  { id: 1, icon: CheckCircle2, color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can now apply for a Turkish e-Visa online in minutes.', source: 'evisa.gov.tr' },
-  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Malaysia has extended visa-free entry for Pakistani passport holders through 2026.', source: 'imi.gov.my' },
-  { id: 3, icon: Info, color: 'text-sky-600', title: 'Saudi e-Visa for Tourism', desc: 'Saudi Arabia now offers e-Visa for Pakistani tourists including Umrah travelers.', source: 'visa.visitsaudi.com' },
-  { id: 4, icon: AlertTriangle, color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.', source: 'uaevisaonline.com' },
-  { id: 5, icon: CheckCircle2, color: 'text-emerald-600', title: 'Azerbaijan Visa-Free Access', desc: 'Pakistani passport holders enjoy visa-free entry to Azerbaijan for up to 90 days.', source: 'mfa.gov.az' },
-  { id: 6, icon: Info, color: 'text-sky-600', title: 'Thailand Visa on Arrival Updated', desc: 'Thailand offers VoA for Pakistani tourists. Ensure you have 10,000 THB in cash proof.', source: 'thaievisa.go.th' },
+  { id: 1, icon: CheckCircle2, color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can apply for a Turkish e-Visa online in minutes.', source: 'evisa.gov.tr', url: 'https://www.evisa.gov.tr/en/' },
+  { id: 2, icon: Plane, color: 'text-amber-600', title: 'Malaysia Visa-Free Extended', desc: 'Visa-free entry for Pakistani passport holders extended through 2026.', source: 'imi.gov.my', url: 'https://www.imi.gov.my/index.php/main/passport/visa-requirement' },
+  { id: 3, icon: Info, color: 'text-sky-600', title: 'Saudi e-Visa for Tourism', desc: 'Saudi Arabia now offers e-Visa for Pakistani tourists including Umrah travelers.', source: 'visa.visitsaudi.com', url: 'https://visa.visitsaudi.com/' },
+  { id: 4, icon: AlertTriangle, color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.', source: 'uaevisaonline.com', url: 'https://uaevisaonline.com/uae-visa-on-arrival/' },
+  { id: 5, icon: CheckCircle2, color: 'text-emerald-600', title: 'Azerbaijan Visa-Free Access', desc: 'Pakistani passport holders enjoy visa-free entry for up to 90 days.', source: 'mfa.gov.az', url: 'https://mfa.gov.az/en/consular-information/visa-information' },
+  { id: 6, icon: Info, color: 'text-sky-600', title: 'Thailand Visa on Arrival Updated', desc: 'Thailand offers VoA for Pakistani tourists. Ensure 10,000 THB cash proof.', source: 'thaievisa.go.th', url: 'https://www.thaievisa.go.th/' },
 ];
 
 // ============================================================
@@ -982,23 +981,40 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ==================== SECTION 5: VISA POLICY ALERTS ==================== */}
-        <section className="px-4 pb-10">
+        {/* ==================== SECTION 5: VISA POLICY ALERTS CAROUSEL ==================== */}
+        <section className="px-4 pb-6">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-bold mb-4">Visa Policy Alerts</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {VISA_ALERTS.map((alert) => (
-                <div key={alert.id} className="flex items-start gap-3 rounded-xl border bg-card p-4 hover:shadow-sm transition-shadow">
-                  <div className="p-1.5 rounded-lg bg-muted shrink-0 mt-0.5">
-                    <alert.icon className={`w-4 h-4 ${alert.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{alert.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{alert.desc}</p>
-                    {alert.source && <p className="text-[10px] text-muted-foreground/70 mt-1">Source: {alert.source}</p>}
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <h2 className="text-sm font-bold uppercase tracking-wide">Visa Policy Alerts</h2>
+            </div>
+            <div className="overflow-hidden group/alerts">
+              <div
+                className="flex gap-3 animate-[alertScroll_45s_linear_infinite] group-hover/alerts:[animation-play-state:paused]"
+                style={{ animationDuration: '45s' }}
+              >
+                {[...VISA_ALERTS, ...VISA_ALERTS].map((alert, idx) => {
+                  const AlertIcon = alert.icon;
+                  return (
+                    <a
+                      key={`${alert.id}-${idx}`}
+                      href={alert.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all shrink-0 w-[320px] sm:w-[380px] cursor-pointer"
+                    >
+                      <div className="p-1.5 rounded-lg bg-muted shrink-0">
+                        <AlertIcon className={`w-4 h-4 ${alert.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{alert.title}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.desc}</p>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+                    </a>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
@@ -1192,23 +1208,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ==================== SCHENGEN VISA WIZARD ==================== */}
-        <section className="px-4 pb-10">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-bold mb-2">Schengen Visa Wizard</h2>
-            <p className="text-sm text-muted-foreground mb-4">Plan your Schengen visa application step by step</p>
-            <SchengenWizard />
-          </div>
-        </section>
-
-        {/* ==================== UMRAH & HAJJ PLANNER ==================== */}
-        <section className="px-4 pb-10">
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-bold mb-2">Umrah & Hajj Planner</h2>
-            <p className="text-sm text-muted-foreground mb-4">Everything you need for your spiritual journey</p>
-            <UmrahHajjTool />
-          </div>
-        </section>
 
         {/* ==================== SECTION 7: QUICK TOOLS STRIP ==================== */}
         <section className="px-4 pb-10">

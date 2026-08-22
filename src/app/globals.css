@@ -181,6 +181,12 @@ a, button, [role="button"], input, select, textarea,
   scrollbar-color: oklch(0.5 0.06 163 / 35%) transparent;
 }
 
+/* ===== VISA ALERTS CAROUSEL ===== */
+@keyframes alertScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* ===== SKIP TO CONTENT ===== */
 .skip-to-content {
   position: absolute;
