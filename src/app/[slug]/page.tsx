@@ -199,7 +199,8 @@ type VisaRequirementData = {
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = rawSlug.toLowerCase();
   const code = SLUG_TO_CODE[slug];
   if (!code) return { title: 'Country Not Found | PakVisa Advisor' };
 
@@ -254,7 +255,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // ============================================================
 
 export default async function CountryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = rawSlug.toLowerCase();
   const code = SLUG_TO_CODE[slug];
 
   if (!code) {
@@ -321,6 +323,14 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
 
   // Generate FAQ based on country data
   const faqs = generateFAQs(country, costProfile, visaLabel, isEmbassyRequired);
+
+  // Related countries from same continent
+  const relatedCountries = await db.country.findMany({
+    where: { continent: country.continent, code: { not: country.code } },
+    take: 6,
+    orderBy: { name: 'asc' },
+    select: { code: true, name: true, flagUrl: true, flagEmoji: true, visaFree: true, visaOnArrival: true, etaAvailable: true },
+  });
 
   // JSON-LD structured data
   const faqSchema = {
@@ -414,6 +424,38 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               </div>
             </div>
           </section>
+
+          {/* Quick Facts Row */}
+          <section className="max-w-5xl mx-auto px-4 pb-6">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 shrink-0">
+                💰 {country.currency} ({country.currencyCode})
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400 shrink-0">
+                🌍 {country.continent}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 shrink-0">
+                🕐 {country.timezone}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 shrink-0">
+                📅 {bestMonths.length > 0 ? bestMonths.join(', ') : 'Year-round'}
+              </span>
+            </div>
+          </section>
+
+          {/* iVisa CTA for non-visa-free */}
+          {!country.visaFree && (
+            <section className="max-w-5xl mx-auto px-4 pb-6">
+              <a
+                href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-base font-semibold transition-colors"
+              >
+                Apply for {country.name} Visa on iVisa <ExternalLink className="w-4 h-4" />
+              </a>
+            </section>
+          )}
 
           {/* Key Info Cards */}
           <section className="max-w-5xl mx-auto px-4 pb-8">
@@ -598,6 +640,25 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
             </section>
           )}
 
+          {/* SafetyWing Travel Insurance Banner */}
+          <section className="max-w-5xl mx-auto px-4 pb-8">
+            <a
+              href="https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador"
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="block border-2 border-emerald-200 dark:border-emerald-800 rounded-xl p-5 bg-gradient-to-r from-emerald-50 to-sky-50 dark:from-emerald-950/20 dark:to-sky-950/20 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-3xl">🛡️</div>
+                <div className="flex-1">
+                  <p className="font-bold text-base">Travel Insurance for {country.name}</p>
+                  <p className="text-sm text-muted-foreground">Get comprehensive nomad insurance from SafetyWing — coverage from $42/month worldwide.</p>
+                </div>
+                <span className="text-emerald-600 font-semibold text-sm shrink-0">Get Covered →</span>
+              </div>
+            </a>
+          </section>
+
           {/* Safety Overview */}
           {country.safetyRating > 0 && (
             <section className="max-w-5xl mx-auto px-4 pb-8">
@@ -664,7 +725,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                       ? `No visa needed! Just pack your bags and travel to ${country.name}.`
                       : `Start your ${country.name} visa application today. Check requirements and book an appointment.`}
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="flex flex-col items-center gap-3 w-full">
                 {country.etaAvailable && (
                   <a
                     href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
@@ -692,8 +753,66 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                   Check on PakVisa Advisor <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-4 w-full">
+                <a
+                  href="https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador"
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors"
+                >
+                  🛡️ Travel Insurance
+                </a>
+                <a
+                  href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(country.name)}&aid=304142&label=pakvisa`}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors"
+                >
+                  🏨 Book Hotels
+                </a>
+                <a
+                  href={`https://www.skyscanner.net/transport/flights/to/${country.code.toLowerCase()}/?ref=pakvisa`}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors"
+                >
+                  ✈️ Search Flights
+                </a>
+              </div>
             </div>
           </section>
+
+          {/* Explore More Destinations */}
+          {relatedCountries.length > 0 && (
+            <section className="max-w-5xl mx-auto px-4 pb-12">
+              <SectionTitle icon={<Globe className="w-5 h-5" />} title="Explore More Destinations" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {relatedCountries.map((rc) => {
+                  const rcSlug = CODE_TO_SLUG[rc.code];
+                  const rcFlag = getFlagUrl(rc.code, 80);
+                  return (
+                    <Link
+                      key={rc.code}
+                      href={rcSlug ? `/${rcSlug}` : '/'}
+                      className="flex flex-col items-center gap-2 border rounded-lg p-3 bg-card hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all text-center group"
+                    >
+                      {rcFlag ? (
+                        <img src={rcFlag} alt={`${rc.name} flag`} className="w-10 h-auto rounded" width={80} height={53} />
+                      ) : (
+                        <span className="text-2xl">{rc.flagEmoji}</span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate group-hover:text-emerald-600 transition-colors">{rc.name}</p>
+                        <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mt-0.5 ${getVisaBadgeClass(rc)}`}>
+                          {getVisaLabel(rc)}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </main>
 
         {/* Footer */}

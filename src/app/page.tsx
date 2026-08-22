@@ -988,11 +988,13 @@ export default function HomePage() {
               <AlertTriangle className="w-4 h-4 text-amber-500" />
               <h2 className="text-sm font-bold uppercase tracking-wide">Visa Policy Alerts</h2>
             </div>
-            <div className="overflow-hidden group/alerts">
-              <div
-                className="flex gap-3 animate-[alertScroll_45s_linear_infinite] group-hover/alerts:[animation-play-state:paused]"
-                style={{ animationDuration: '45s' }}
-              >
+            <style>{`
+              @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+              .alert-carousel-track { animation: scroll-left 30s linear infinite; }
+              .alert-carousel-track:hover { animation-play-state: paused; }
+            `}</style>
+            <div className="overflow-hidden">
+              <div className="alert-carousel-track flex gap-3">
                 {[...VISA_ALERTS, ...VISA_ALERTS].map((alert, idx) => {
                   const AlertIcon = alert.icon;
                   return (
@@ -1001,14 +1003,14 @@ export default function HomePage() {
                       href={alert.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all shrink-0 w-[320px] sm:w-[380px] cursor-pointer"
+                      className="flex items-center gap-3 w-72 shrink-0 rounded-xl border bg-card px-4 py-3 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all cursor-pointer"
                     >
-                      <div className="p-1.5 rounded-lg bg-muted shrink-0">
-                        <AlertIcon className={`w-4 h-4 ${alert.color}`} />
+                      <div className={`p-1.5 rounded-full bg-muted shrink-0 ${alert.color}`}>
+                        <AlertIcon className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm truncate">{alert.title}</p>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.desc}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.source}</p>
                       </div>
                       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
                     </a>
