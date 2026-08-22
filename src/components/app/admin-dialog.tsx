@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
   Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
   Filter, X, ChevronDown, MessageCircle, Hash, XIcon, CreditCard, FileImage,
-  Bell, ArrowRightLeft, Loader2, AlertCircle, Info,
+  Bell, ArrowRightLeft, Loader2, AlertCircle, Info, ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -175,6 +176,15 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [syncAppliedCount, setSyncAppliedCount] = useState(0);
   const [syncFailedCount, setSyncFailedCount] = useState(0);
   const [syncResearchTime, setSyncResearchTime] = useState<string | null>(null);
+  // Audit state (View All Data)
+  const [auditData, setAuditData] = useState<Array<{
+    name: string; code: string; accessType: string;
+    visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean;
+    visaFeeUSD: number; processingDaysMin: number; processingDaysMax: number;
+    hasCostProfile: boolean;
+  }>>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('pakvisa-admin-token');
@@ -557,7 +567,32 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     setSyncAppliedCount(0);
     setSyncFailedCount(0);
     setSyncResearchTime(null);
+    setShowAudit(false);
   }, []);
+
+  const handleLoadAudit = useCallback(async () => {
+    if (!token) return;
+    setAuditLoading(true);
+    try {
+      const res = await fetch('/api/admin/sync-database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'audit' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAuditData(data.countries || []);
+        setSyncTotalCountries(data.totalCountries);
+        setShowAudit(true);
+      } else {
+        toast.error(data.error || 'Failed to load audit data');
+      }
+    } catch {
+      toast.error('Connection error during audit');
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [token]);
 
   const markMessageRead = async (id: string) => {
     if (!token) return;
@@ -1515,7 +1550,18 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                 {/* ====== DATA SYNC TAB ====== */}
                 {activeSection === 'data-sync' && (
                   <div className="space-y-5">
-                    <h3 className="text-lg font-semibold flex items-center gap-2"><ArrowRightLeft className="w-5 h-5 text-emerald-500" /> Database Sync</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold flex items-center gap-2"><ArrowRightLeft className="w-5 h-5 text-emerald-500" /> Database Sync</h3>
+                      <Button
+                        variant="outline" size="sm"
+                        className={showAudit ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700' : ''}
+                        onClick={showAudit ? () => setShowAudit(false) : handleLoadAudit}
+                        disabled={auditLoading}
+                      >
+                        {auditLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ClipboardCheck className="w-3.5 h-3.5" />}
+                        {showAudit ? 'Hide Audit Table' : 'View All Data'}
+                      </Button>
+                    </div>
 
                     {/* Info Card */}
                     <Card className="hover:shadow-md transition-shadow">
@@ -1523,7 +1569,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><Database className="w-5 h-5 text-emerald-600" /></div>
                           <div>
-                            <CardTitle className="text-base">AI-Powered Data Verification</CardTitle>
+                            <CardTitle className="text-base">Data Verification</CardTitle>
                             <CardDescription>Research and update visa data for all {syncTotalCountries || 70} countries</CardDescription>
                           </div>
                         </div>
@@ -1533,13 +1579,84 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                           <div className="text-xs text-muted-foreground space-y-1">
                             <p><strong>How it works:</strong></p>
-                            <p>1. <strong>Research</strong> — Compares all 70 countries against the verified data file (Henley Passport Index 2025, official e-Visa portals).</p>
-                            <p>2. <strong>Preview</strong> — You review every suggested change before anything is saved.</p>
-                            <p>3. <strong>Apply</strong> — Only your confirmed changes are written to the database.</p>
+                            <p>1. <strong>View All Data</strong> — See every country's current visa type, fee, and processing time in one table.</p>
+                            <p>2. <strong>Research</strong> — Compares database against the verified data file (Henley Passport Index 2025, official e-Visa portals).</p>
+                            <p>3. <strong>Preview</strong> — Review every suggested change before anything is saved. Each card shows ALL fields.</p>
+                            <p>4. <strong>Apply</strong> — Only your confirmed changes are written to the database.</p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* FULL AUDIT TABLE */}
+                    {showAudit && auditData.length > 0 && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm">All {auditData.length} Countries — Complete Data</CardTitle>
+                          <CardDescription>Visa type, fee, and processing time for every country. Use this to manually verify accuracy.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                          <div className="max-h-[55vh] overflow-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10">#</TableHead>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10">Country</TableHead>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10">Visa Type</TableHead>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10 text-right">Fee (USD)</TableHead>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10 text-right">Processing</TableHead>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10 text-center">Profile</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {auditData.map((c, idx) => (
+                                  <TableRow key={c.code} className="hover:bg-muted/50">
+                                    <TableCell className="text-[10px] text-muted-foreground py-1.5">{idx + 1}</TableCell>
+                                    <TableCell className="text-[11px] font-medium py-1.5">{c.name}</TableCell>
+                                    <TableCell className="py-1.5">
+                                      <Badge className={
+                                        c.accessType === 'Visa Free' ? 'bg-emerald-600 text-[9px]' :
+                                        c.accessType === 'Visa on Arrival' ? 'bg-amber-600 text-[9px]' :
+                                        c.accessType === 'e-Visa' ? 'bg-sky-600 text-[9px]' :
+                                        'bg-gray-600 text-[9px]'
+                                      }>{c.accessType}</Badge>
+                                    </TableCell>
+                                    <TableCell className={`text-[11px] text-right py-1.5 font-mono ${c.visaFeeUSD === 0 ? 'text-muted-foreground' : 'font-medium'}`}>
+                                      {c.visaFeeUSD === 0 ? 'Free / N/A' : `$${c.visaFeeUSD}`}
+                                    </TableCell>
+                                    <TableCell className="text-[11px] text-right py-1.5 font-mono">
+                                      {c.processingDaysMin === 0 && c.processingDaysMax === 0 ? (
+                                        <span className="text-muted-foreground">N/A</span>
+                                      ) : c.processingDaysMin === c.processingDaysMax ? (
+                                        `${c.processingDaysMin} days`
+                                      ) : (
+                                        `${c.processingDaysMin}-${c.processingDaysMax} days`
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center py-1.5">
+                                      {c.hasCostProfile ? (
+                                        <Check className="w-3 h-3 text-emerald-600 inline" />
+                                      ) : (
+                                        <X className="w-3 h-3 text-red-400 inline" />
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {auditLoading && (
+                      <Card>
+                        <CardContent className="flex items-center justify-center py-8 gap-3">
+                          <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
+                          <p className="text-sm text-muted-foreground">Loading all country data...</p>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {/* Error Display */}
                     {syncError && (
@@ -1555,7 +1672,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                     )}
 
                     {/* IDLE STAGE */}
-                    {syncStage === 'idle' && (
+                    {syncStage === 'idle' && !showAudit && (
                       <Card>
                         <CardContent className="flex flex-col items-center py-8 gap-4">
                           <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -1563,7 +1680,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           </div>
                           <div className="text-center">
                             <p className="text-sm font-medium">Ready to Sync</p>
-                            <p className="text-xs text-muted-foreground mt-1">Click below to start researching the latest visa data</p>
+                            <p className="text-xs text-muted-foreground mt-1">Click below to compare database against the verified data file</p>
                           </div>
                           <Button className="bg-emerald-600 hover:bg-emerald-700 gap-2" onClick={handleStartResearch}>
                             <RefreshCw className="w-4 h-4" />
@@ -1586,7 +1703,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                       </Card>
                     )}
 
-                    {/* PREVIEW STAGE */}
+                    {/* PREVIEW STAGE — improved with ALL fields shown */}
                     {syncStage === 'preview' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -1604,33 +1721,60 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                         </div>
 
                         <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-                          {syncChanges.map((change, idx) => (
-                            <Card key={change.id || idx} className="overflow-hidden">
-                              <CardContent className="p-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold truncate">{change.name}</p>
-                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                      <Badge variant="secondary" className="text-[10px] line-through opacity-60">{change.before.accessType}</Badge>
-                                      <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />
-                                      <Badge className="text-[10px] bg-emerald-600">{change.after.accessType}</Badge>
-                                      {change.before.visaFeeUSD !== change.after.visaFeeUSD && (
-                                        <span className="text-[10px] text-muted-foreground">
-                                          ${change.before.visaFeeUSD} → ${change.after.visaFeeUSD}
-                                        </span>
+                          {syncChanges.map((change, idx) => {
+                            const feeChanged = change.before.visaFeeUSD !== change.after.visaFeeUSD;
+                            const daysChanged = change.before.processingDaysMin !== change.after.processingDaysMin || change.before.processingDaysMax !== change.after.processingDaysMax;
+                            const categoryChanged = change.before.accessType !== change.after.accessType;
+
+                            const formatDays = (min: number, max: number) => {
+                              if (min === 0 && max === 0) return 'N/A';
+                              if (min === max) return `${min} days`;
+                              return `${min}-${max} days`;
+                            };
+                            const formatFee = (fee: number) => fee === 0 ? 'Free / N/A' : `$${fee}`;
+
+                            return (
+                              <Card key={change.id || idx} className="overflow-hidden">
+                                <CardContent className="p-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-semibold truncate">{change.name}</p>
+                                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                        <Badge variant="secondary" className={`text-[10px] ${categoryChanged ? 'line-through opacity-60' : 'opacity-80'}`}>{change.before.accessType}</Badge>
+                                        {categoryChanged && <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />}
+                                        <Badge className={`text-[10px] ${categoryChanged ? 'bg-emerald-600' : 'bg-emerald-600/40'}`}>{change.after.accessType}</Badge>
+                                      </div>
+
+                                      {/* Always show Fee and Processing Time */}
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] text-muted-foreground shrink-0">Fee:</span>
+                                          <span className={`text-[11px] font-mono ${feeChanged ? 'text-amber-600 font-semibold' : ''}`}>{formatFee(change.after.visaFeeUSD)}</span>
+                                          {feeChanged && (
+                                            <span className="text-[9px] text-muted-foreground line-through">{formatFee(change.before.visaFeeUSD)}</span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] text-muted-foreground shrink-0">Processing:</span>
+                                          <span className={`text-[11px] font-mono ${daysChanged ? 'text-amber-600 font-semibold' : ''}`}>{formatDays(change.after.processingDaysMin, change.after.processingDaysMax)}</span>
+                                          {daysChanged && (
+                                            <span className="text-[9px] text-muted-foreground line-through">{formatDays(change.before.processingDaysMin, change.before.processingDaysMax)}</span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {change.reason && (
+                                        <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{change.reason}</p>
                                       )}
                                     </div>
-                                    {change.reason && (
-                                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{change.reason}</p>
+                                    {change.source && (
+                                      <Badge variant="outline" className="text-[9px] shrink-0">{change.source}</Badge>
                                     )}
                                   </div>
-                                  {change.source && (
-                                    <Badge variant="outline" className="text-[9px] shrink-0">{change.source}</Badge>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -1665,10 +1809,16 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                               <p className="text-xs text-muted-foreground mt-1">All visa data is already up to date.</p>
                             )}
                           </div>
-                          <Button variant="outline" onClick={handleResetSync} className="gap-2">
-                            <RefreshCw className="w-3.5 h-3.5" />
-                            Sync Again
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleResetSync} className="gap-2">
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              Sync Again
+                            </Button>
+                            <Button variant="outline" onClick={handleLoadAudit} className="gap-2">
+                              <ClipboardCheck className="w-3.5 h-3.5" />
+                              View All Data
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     )}

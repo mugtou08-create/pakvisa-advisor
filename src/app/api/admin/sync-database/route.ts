@@ -44,6 +44,19 @@ interface TruthData {
   countries: TruthCountry[];
 }
 
+interface AuditCountry {
+  name: string;
+  code: string;
+  accessType: string;
+  visaFree: boolean;
+  visaOnArrival: boolean;
+  etaAvailable: boolean;
+  visaFeeUSD: number;
+  processingDaysMin: number;
+  processingDaysMax: number;
+  hasCostProfile: boolean;
+}
+
 function getAccessLabel(vf: boolean, voa: boolean, eta: boolean) {
   if (vf) return 'Visa Free';
   if (voa) return 'Visa on Arrival';
@@ -68,8 +81,10 @@ export async function POST(request: NextRequest) {
       return await handleResearch();
     } else if (action === 'apply') {
       return await handleApply(body.corrections);
+    } else if (action === 'audit') {
+      return await handleAudit();
     } else {
-      return NextResponse.json({ success: false, error: 'Invalid action. Use "research" or "apply".' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Invalid action. Use "research", "apply", or "audit".' }, { status: 400 });
     }
   } catch (error) {
     console.error('Sync database error:', error);
@@ -174,6 +189,52 @@ async function handleResearch() {
     correctionsNeeded: changes.length,
     changes,
     researchedAt: new Date().toISOString(),
+  });
+}
+
+// ============================================================
+// AUDIT: Return ALL countries with complete data for manual verification
+// ============================================================
+async function handleAudit() {
+  const countries = await db.country.findMany({
+    select: {
+      id: true, name: true, code: true,
+      visaFree: true, visaOnArrival: true, etaAvailable: true,
+      costProfiles: { select: { id: true, visaFeeUSD: true }, take: 1 },
+      processingDaysMin: true, processingDaysMax: true,
+    },
+    orderBy: { name: 'asc' },
+  });
+
+  const auditData: AuditCountry[] = countries.map(c => ({
+    name: c.name,
+    code: c.code,
+    accessType: getAccessLabel(c.visaFree, c.visaOnArrival, c.etaAvailable),
+    visaFree: c.visaFree,
+    visaOnArrival: c.visaOnArrival,
+    etaAvailable: c.etaAvailable,
+    visaFeeUSD: c.costProfiles[0]?.visaFeeUSD ?? 0,
+    processingDaysMin: c.processingDaysMin,
+    processingDaysMax: c.processingDaysMax,
+    hasCostProfile: c.costProfiles.length > 0,
+  }));
+
+  // Also load truth data for comparison
+  let truthData: TruthData | null = null;
+  try {
+    const truthPath = join(process.cwd(), 'src/data/visa-truth.json');
+    const raw = readFileSync(truthPath, 'utf-8');
+    truthData = JSON.parse(raw);
+  } catch { /* truth file may not exist */ }
+
+  return NextResponse.json({
+    success: true,
+    action: 'audit',
+    totalCountries: auditData.length,
+    countries: auditData,
+    truthVersion: truthData?.version || null,
+    truthSource: truthData?.source || null,
+    truthLastVerified: truthData?.lastVerified || null,
   });
 }
 

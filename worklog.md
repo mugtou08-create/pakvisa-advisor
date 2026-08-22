@@ -1261,3 +1261,32 @@ Stage Summary:
 - The truth file (src/data/visa-truth.json) can be updated by me when visa policies change
 - The owner clicks 'Start Research' to compare, reviews changes, then 'Apply All Changes'
 - This approach is 100% reliable and works on any server including Vercel free tier
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Fix missing Visa Fee and Processing Time in Data Sync preview + add View All Data audit table
+
+Work Log:
+- Investigated user report: 9 countries showing no Visa Fee, 14 countries showing no Processing Time in Data Sync preview
+- Queried local SQLite database for all 23 mentioned countries — ALL had correct fee and processing time values
+- Compared database values against visa-truth.json — ALL matched perfectly
+- Identified root cause: The Data Sync preview cards only showed fee/processing time when they CHANGED. If a country had only a category change but correct fee and processing time, those fields were hidden entirely
+- Also found: processing time was never shown as a separate UI element in change cards (only in the reason text string)
+- Updated backend route.ts: Added new 'audit' action that returns ALL 70 countries with complete data (visa type, fee, processing time, hasCostProfile)
+- Updated admin-dialog.tsx:
+  - Added audit state variables (auditData, auditLoading, showAudit)
+  - Added handleLoadAudit function to fetch all country data
+  - Added 'View All Data' button at top of Data Sync tab
+  - Built comprehensive audit table with 6 columns (#, Country, Visa Type, Fee, Processing, Profile checkmark)
+  - Improved sync preview cards to ALWAYS show Fee and Processing Time (with changed values highlighted in amber, unchanged shown in normal text)
+  - Changed changed values display from inline arrow ($X → $Y) to a clean 2-column grid with strikethrough old values
+  - Added 'View All Data' button to Done stage for quick re-audit after sync
+  - Imported Table components and ClipboardCheck icon
+- Verified: lint passes clean, TypeScript compiles, page renders without JS errors
+
+Stage Summary:
+- Root cause: UI only displayed fields that changed, hiding unchanged but correct data
+- Fix: Always show all data fields in sync preview + new 'View All Data' audit table for full manual verification
+- Backend audit endpoint: POST /api/admin/sync-database { action: 'audit' }
+- Files modified: src/app/api/admin/sync-database/route.ts, src/components/app/admin-dialog.tsx
