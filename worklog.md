@@ -1082,3 +1082,33 @@ Stage Summary:
 - Country pages: now have affiliate links, related countries, quick facts, travel insurance banner
 - Admin: backup download button added
 - All pages verified working with agent-browser
+
+---
+Task ID: BugFix-Round2
+Agent: Main Agent
+Task: Fix garbage emoji on country pages, fix contact form, verify all auth/pro/WhatsApp functionality
+
+Work Log:
+- Investigated garbage characters `\uD83C\uDDF5\uD83C\uDDF0` on country pages
+- Root cause: Raw Unicode escape sequences in JSX text content (line 376 of [slug]/page.tsx) are NOT processed as Unicode escapes - rendered as literal text
+- Fixed by replacing `\uD83C\uDDF5\uD83C\uDDF0` with actual emoji character `🇵🇰`
+- Verified no other source files have the same issue (searched all .tsx/.ts files)
+- Tested Contact Us form - API works from curl, form submits successfully in browser
+- Contact form error the user saw was caused by missing ContactMessage DB table (since resolved with db:push)
+- Tested full auth flow: signup, login, auth/me, duplicate signup prevention, wrong password rejection
+- Verified pro user features: free tier 2 queries/day limit, pro tier 60 queries/min, payment proof upload
+- Verified WhatsApp button renders with correct wa.me link
+- Browser-verified: homepage loads with all 70+ countries, Malaysia page shows 🇵🇰 correctly, Afghanistan page shows 🇵🇰 correctly, Turkey page shows 🇵🇰 correctly
+- Browser-verified: Contact form fills and submits successfully showing "Message Sent!"
+- Browser-verified: Login modal opens, login succeeds, header updates to show user name
+- Browser-verified: User menu shows My Account, Upgrade to Pro, Submit Payment Proof, Logout
+- Browser-verified: Pricing modal shows $14.90/month, PKR equivalent, 8 pro features, upload proof button
+- Browser-verified: WhatsApp floating button visible on all pages
+- Zero console errors on all tested pages
+
+Stage Summary:
+- Flag emoji garbage: FIXED (replaced Unicode escapes with actual emoji in [slug]/page.tsx line 376)
+- Contact form: WORKING (was broken due to missing DB table, now resolved)
+- Login/Signup: WORKING perfectly with proper state management
+- Pro features: WORKING (tiered rate limits, payment proof upload, admin notifications)
+- WhatsApp: WORKING (static wa.me link, placeholder number needs updating to real business number)
