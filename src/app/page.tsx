@@ -243,10 +243,14 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
             </span>
           </div>
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-            {country.costProfile?.visaFeeUSD ? (
+            {country.visaFree ? (
+              <span className="flex items-center gap-1 text-emerald-600 font-medium">Free</span>
+            ) : country.costProfile?.visaFeeUSD ? (
               <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />${country.costProfile.visaFeeUSD}</span>
             ) : null}
-            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{country.processingDaysMin}-{country.processingDaysMax}d</span>
+            {country.visaFree ? null : (
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{country.processingDaysMin}-{country.processingDaysMax}d</span>
+            )}
             <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{Math.min(country.safetyRating, 5)}/5</span>
             {country.currencyCode && (
               <span className="flex items-center gap-1 hidden sm:flex"><Globe className="w-3 h-3" />{country.currencyCode}</span>
