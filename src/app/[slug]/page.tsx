@@ -373,8 +373,8 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
         <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity">
-              <span className="text-xl">🇵🇰</span>
-              <span>PakVisa Advisor</span>
+              <Globe className="w-5 h-5 text-emerald-600" />
+              <span>PakVisa</span>
             </Link>
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
               <Home className="w-4 h-4" /> Home

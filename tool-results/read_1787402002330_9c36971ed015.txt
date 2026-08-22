@@ -1,0 +1,926 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useMemo } from 'react';
+     4→import {
+     5→  Clock, Globe, DollarSign, Languages, Plug, Phone, Droplets, UtensilsCrossed,
+     6→  Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
+     7→  Calculator, ChevronDown, ChevronUp, AlertTriangle, Banknote, ArrowRightLeft,
+     8→  FileText, Plane, Lock, Crown, CheckCircle2, ClipboardList, Download,
+     9→} from 'lucide-react';
+    10→import { useAuthStore } from '@/lib/auth-store';
+    11→import { Button } from '@/components/ui/button';
+    12→import { Badge } from '@/components/ui/badge';
+    13→import type { CountryData } from '@/lib/types';
+    14→import {
+    15→  EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES,
+    16→} from '@/components/app/constants';
+    17→import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
+    18→
+    19→// ============================================================
+    20→// Helpers
+    21→// ============================================================
+    22→const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    23→
+    24→// ============================================================
+    25→// Live Clock Component
+    26→// ============================================================
+    27→function LiveClock({ timezone, cityName }: { timezone: string; cityName: string }) {
+    28→  const [time, setTime] = useState('');
+    29→  const [date, setDate] = useState('');
+    30→
+    31→  useEffect(() => {
+    32→    function updateTime() {
+    33→      try {
+    34→        const now = new Date();
+    35→        const formatter = new Intl.DateTimeFormat('en-US', {
+    36→          timeZone: timezone,
+    37→          hour: '2-digit',
+    38→          minute: '2-digit',
+    39→          second: '2-digit',
+    40→          hour12: true,
+    41→        });
+    42→        const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    43→          timeZone: timezone,
+    44→          weekday: 'short',
+    45→          month: 'short',
+    46→          day: 'numeric',
+    47→        });
+    48→        setTime(formatter.format(now));
+    49→        setDate(dateFormatter.format(now));
+    50→      } catch {
+    51→        setTime('—');
+    52→        setDate('—');
+    53→      }
+    54→    }
+    55→    updateTime();
+    56→    const interval = setInterval(updateTime, 1000);
+    57→    return () => clearInterval(interval);
+    58→  }, [timezone]);
+    59→
+    60→  // Calculate time difference from PKT (Asia/Karachi)
+    61→  const timeDiff = useMemo(() => {
+    62→    try {
+    63→      const now = new Date();
+    64→      // Get UTC offsets in minutes for both timezones
+    65→      const targetParts = new Intl.DateTimeFormat('en-US', {
+    66→        timeZone: timezone,
+    67→        timeZoneName: 'shortOffset',
+    68→      }).formatToParts(now);
+    69→      const pktParts = new Intl.DateTimeFormat('en-US', {
+    70→        timeZone: 'Asia/Karachi',
+    71→        timeZoneName: 'shortOffset',
+    72→      }).formatToParts(now);
+    73→
+    74→      const parseOffset = (parts: Intl.DateTimeFormatPart[]) => {
+    75→        const tzPart = parts.find(p => p.type === 'timeZoneName');
+    76→        if (!tzPart) return 0;
+    77→        const match = tzPart.value.match(/GMT([+-]?)(\d{1,2})(?::(\d{2}))?/);
+    78→        if (!match) return 0;
+    79→        const sign = match[1] === '-' ? -1 : 1;
+    80→        const hours = parseInt(match[2]);
+    81→        const minutes = match[3] ? parseInt(match[3]) : 0;
+    82→        return sign * (hours * 60 + minutes);
+    83→      };
+    84→
+    85→      const targetOffset = parseOffset(targetParts);
+    86→      const pktOffset = parseOffset(pktParts);
+    87→      const diffHours = (targetOffset - pktOffset) / 60;
+    88→
+    89→      if (diffHours === 0) return 'Same as PKT';
+    90→      if (diffHours > 0) return `+${diffHours}h from PKT`;
+    91→      return `${diffHours}h from PKT`;
+    92→    } catch {
+    93→      return '';
+    94→    }
+    95→  }, [timezone]);
+    96→
+    97→  return (
+    98→    <div className="flex items-center gap-3 rounded-lg bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 p-3">
+    99→      <Clock className="w-5 h-5 text-sky-600 shrink-0" />
+   100→      <div>
+   101→        <p className="text-sm font-semibold text-sky-900 dark:text-sky-200">{time}</p>
+   102→        <p className="text-xs text-sky-700 dark:text-sky-400">{date} {timeDiff && `· ${timeDiff}`}</p>
+   103→      </div>
+   104→    </div>
+   105→  );
+   106→}
+   107→
+   108→// ============================================================
+   109→// Currency Converter Widget
+   110→// ============================================================
+   111→function CurrencyConverter({ currencyCode, currencyName }: { currencyCode: string; currencyName: string }) {
+   112→  const [amount, setAmount] = useState<string>('100');
+   113→  const [direction, setDirection] = useState<'topkr' | 'frompkr'>('topkr');
+   114→
+   115→  const rate = EXCHANGE_RATES[currencyCode];
+   116→  const [topkr, frompkr] = useMemo(() => {
+   117→    if (!rate) return ['—', '—'];
+   118→    return [
+   119→      (parseFloat(amount || '0') * rate).toLocaleString('en-PK', { maximumFractionDigits: 2 }),
+   120→      (parseFloat(amount || '0') / rate).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+   121→    ];
+   122→  }, [amount, rate]);
+   123→
+   124→  return (
+   125→    <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3 space-y-2">
+   126→      <div className="flex items-center justify-between">
+   127→        <div className="flex items-center gap-2">
+   128→          <Banknote className="w-4 h-4 text-emerald-600" />
+   129→          <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">Currency Converter</span>
+   130→        </div>
+   131→        <Badge variant="outline" className="text-[10px] border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400">
+   132→          {currencyCode} · {currencyName}
+   133→        </Badge>
+   134→      </div>
+   135→      <div className="flex items-center gap-2">
+   136→        <input
+   137→          type="number"
+   138→          value={amount}
+   139→          onChange={(e) => setAmount(e.target.value)}
+   140→          className="w-full h-8 px-2 rounded-md border bg-white dark:bg-background text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+   141→          min="0"
+   142→        />
+   143→        <button
+   144→          onClick={() => setDirection((d) => d === 'topkr' ? 'frompkr' : 'topkr')}
+   145→          className="p-1.5 rounded-md border bg-white dark:bg-background hover:bg-muted transition-colors"
+   146→          title="Swap direction"
+   147→        >
+   148→          <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-600" />
+   149→        </button>
+   150→      </div>
+   151→      {rate ? (
+   152→        <div className="flex items-center justify-between text-xs">
+   153→          <span className="text-muted-foreground">
+   154→            {direction === 'topkr' ? `${amount || '0'} ${currencyCode} =` : `PKR ${amount || '0'} =`}
+   155→          </span>
+   156→          <span className="font-semibold text-emerald-800 dark:text-emerald-300">
+   157→            {direction === 'topkr' ? `PKR ${topkr}` : `${frompkr} ${currencyCode}`}
+   158→          </span>
+   159→        </div>
+   160→      ) : (
+   161→        <p className="text-xs text-muted-foreground">Exchange rate not available</p>
+   162→      )}
+   163→      <p className="text-[10px] text-emerald-700/70 dark:text-emerald-400/70">
+   164→        Rate: 1 {currencyCode} ≈ PKR {rate?.toFixed(2) || '—'} · Approximate, verify before transaction
+   165→      </p>
+   166→    </div>
+   167→  );
+   168→}
+   169→
+   170→// ============================================================
+   171→// Travel Essentials Grid
+   172→// ============================================================
+   173→function TravelEssentials({ info, countryName }: { info: TravelInfo; countryName: string }) {
+   174→  const essentials = [
+   175→    {
+   176→      icon: <Languages className="w-3.5 h-3.5" />,
+   177→      label: 'Languages',
+   178→      value: info.languages.join(', '),
+   179→      color: 'text-violet-600',
+   180→    },
+   181→    {
+   182→      icon: <Phone className="w-3.5 h-3.5" />,
+   183→      label: 'Dial Code',
+   184→      value: info.dialCode,
+   185→      color: 'text-blue-600',
+   186→    },
+   187→    {
+   188→      icon: <Plug className="w-3.5 h-3.5" />,
+   189→      label: 'Plug / Voltage',
+   190→      value: `${info.plugType}, ${info.voltage}`,
+   191→      color: 'text-orange-600',
+   192→    },
+   193→    {
+   194→      icon: <Droplets className="w-3.5 h-3.5" />,
+   195→      label: 'Tap Water',
+   196→      value: info.waterSafe ? '✅ Safe to drink' : '⚠️ Not safe — use bottled',
+   197→      color: info.waterSafe ? 'text-emerald-600' : 'text-amber-600',
+   198→    },
+   199→    {
+   200→      icon: <UtensilsCrossed className="w-3.5 h-3.5" />,
+   201→      label: 'Halal Food',
+   202→      value: info.halalFood,
+   203→      color: info.halalFood === 'Widely Available' ? 'text-emerald-600' : info.halalFood === 'Available' ? 'text-amber-600' : 'text-red-500',
+   204→    },
+   205→    {
+   206→      icon: <Calculator className="w-3.5 h-3.5" />,
+   207→      label: 'Tipping',
+   208→      value: info.tipping,
+   209→      color: 'text-gray-600',
+   210→    },
+   211→    {
+   212→      icon: <Car className="w-3.5 h-3.5" />,
+   213→      label: 'Transport',
+   214→      value: info.transport,
+   215→      color: 'text-cyan-600',
+   216→    },
+   217→    {
+   218→      icon: <Heart className="w-3.5 h-3.5" />,
+   219→      label: 'Pakistani Community',
+   220→      value: info.pakistaniCommunity,
+   221→      color: info.pakistaniCommunity === 'Large' ? 'text-emerald-600' : info.pakistaniCommunity === 'Moderate' ? 'text-amber-600' : 'text-gray-500',
+   222→    },
+   223→    {
+   224→      icon: <Wifi className="w-3.5 h-3.5" />,
+   225→      label: 'Internet',
+   226→      value: info.internet,
+   227→      color: 'text-indigo-600',
+   228→    },
+   229→  ];
+   230→
+   231→  return (
+   232→    <div>
+   233→      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Travel Essentials</h5>
+   234→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+   235→        {essentials.map((item) => {
+   236→          const iconCls = item.color + ' shrink-0 mt-0.5';
+   237→          return (
+   238→          <div key={item.label} className="rounded-lg bg-muted/50 p-2.5 flex items-start gap-2">
+   239→            <span className={iconCls}>{item.icon}</span>
+   240→            <div className="min-w-0">
+   241→              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{item.label}</p>
+   242→              <p className="text-xs font-medium leading-snug">{item.value}</p>
+   243→            </div>
+   244→          </div>
+   245→          );
+   246→        })}
+   247→      </div>
+   248→    </div>
+   249→  );
+   250→}
+   251→
+   252→// ============================================================
+   253→// Emergency & Health Section
+   254→// ============================================================
+   255→function EmergencyHealth({ info }: { info: TravelInfo }) {
+   256→  const [expanded, setExpanded] = useState(false);
+   257→  return (
+   258→    <div>
+   259→      <button
+   260→        onClick={() => setExpanded((v) => !v)}
+   261→        className="flex items-center justify-between w-full text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 hover:text-foreground transition-colors"
+   262→      >
+   263→        <span className="flex items-center gap-1.5">
+   264→          <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+   265→          Emergency & Health
+   266→        </span>
+   267→        {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+   268→      </button>
+   269→      {expanded && (
+   270→        <div className="space-y-2">
+   271→          {/* Emergency Numbers */}
+   272→          <div className="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3">
+   273→            <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-2">Emergency Numbers</p>
+   274→            {info.emergencyPolice === info.emergencyAmbulance && info.emergencyAmbulance === info.emergencyFire ? (
+   275→              /* All three numbers are the same — show one clean line */
+   276→              <div className="flex items-center justify-center gap-2">
+   277→                <Phone className="w-4 h-4 text-red-500" />
+   278→                <p className="text-lg font-bold text-red-900 dark:text-red-200">{info.emergencyPolice}</p>
+   279→                <p className="text-[10px] text-red-600 dark:text-red-400">Police · Ambulance · Fire</p>
+   280→              </div>
+   281→            ) : (
+   282→              /* Numbers differ — show 3-column grid */
+   283→              <div className="grid grid-cols-3 gap-2">
+   284→                {[
+   285→                  { label: 'Police', icon: ShieldCheck, number: info.emergencyPolice },
+   286→                  { label: 'Ambulance', icon: Syringe, number: info.emergencyAmbulance },
+   287→                  { label: 'Fire', icon: AlertTriangle, number: info.emergencyFire },
+   288→                ].map((e) => (
+   289→                  <div key={e.label} className="text-center">
+   290→                    <e.icon className="w-3.5 h-3.5 mx-auto mb-1 text-red-500" />
+   291→                    <p className="text-[10px] text-red-700 dark:text-red-400">{e.label}</p>
+   292→                    <p className="text-sm font-bold text-red-900 dark:text-red-200">{e.number}</p>
+   293→                  </div>
+   294→                ))}
+   295→              </div>
+   296→            )}
+   297→          </div>
+   298→          {/* Vaccines */}
+   299→          {info.vaccines.length > 0 && (
+   300→            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+   301→              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-2">Recommended Vaccinations</p>
+   302→              <div className="flex flex-wrap gap-1.5">
+   303→                {info.vaccines.map((v) => (
+   304→                  <Badge key={v} variant="outline" className="text-[10px] border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
+   305→                    <Syringe className="w-2.5 h-2.5 mr-1" /> {v}
+   306→                  </Badge>
+   307→                ))}
+   308→              </div>
+   309→            </div>
+   310→          )}
+   311→        </div>
+   312→      )}
+   313→    </div>
+   314→  );
+   315→}
+   316→
+   317→// ============================================================
+   318→// Embassy Contact Section
+   319→// ============================================================
+   320→function EmbassyContact({ countryCode }: { countryCode: string }) {
+   321→  const embassy = EMBASSY_DATA[countryCode] || GENERIC_EMBASSY;
+   322→
+   323→  return (
+   324→    <div className="rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 p-3">
+   325→      <div className="flex items-center gap-2 mb-2">
+   326→        <Building2 className="w-4 h-4 text-purple-600" />
+   327→        <p className="text-xs font-semibold text-purple-800 dark:text-purple-300">Embassy in Islamabad</p>
+   328→      </div>
+   329→      <div className="space-y-1.5 text-xs text-purple-900 dark:text-purple-200">
+   330→        <p className="flex items-start gap-1.5">
+   331→          <span className="text-purple-500 shrink-0">📍</span>
+   332→          <span>{embassy.address}</span>
+   333→        </p>
+   334→        <p className="flex items-start gap-1.5">
+   335→          <span className="text-purple-500 shrink-0">📞</span>
+   336→          <span>{embassy.phone}</span>
+   337→        </p>
+   338→        <p className="flex items-start gap-1.5">
+   339→          <span className="text-purple-500 shrink-0">🕐</span>
+   340→          <span>{embassy.hours}</span>
+   341→        </p>
+   342→        {embassy.note && (
+   343→          <p className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+   344→            <span className="text-amber-500 shrink-0">⚠️</span>
+   345→            <span>{embassy.note}</span>
+   346→          </p>
+   347→        )}
+   348→      </div>
+   349→      <a
+   350→        href={embassy.appointmentUrl}
+   351→        target="_blank"
+   352→        rel="noopener noreferrer"
+   353→        className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[11px] font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+   354→      >
+   355→        Book Appointment <ExternalLink className="w-2.5 h-2.5" />
+   356→      </a>
+   357→    </div>
+   358→  );
+   359→}
+   360→
+   361→// ============================================================
+   362→// Safety Info Section
+   363→// ============================================================
+   364→function SafetyInfo({ rating, summary }: { rating: number; summary: string }) {
+   365→  const displayRating = Math.min(Math.max(rating, 0), 5);
+   366→  return (
+   367→    <div>
+   368→      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Safety Overview</h5>
+   369→      <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+   370→        <div className="flex items-center justify-between">
+   371→          <span className="text-sm font-medium">Safety Rating</span>
+   372→          <div className="flex items-center gap-1">
+   373→            {Array.from({ length: 5 }).map((_, i) => {
+   374→              const dotCls = 'w-4 h-4 rounded-full ' + (i < displayRating ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700');
+   375→              return (
+   376→              <span
+   377→                key={i}
+   378→                className={dotCls}
+   379→              />
+   380→              );
+   381→            })}
+   382→            <span className="text-xs font-semibold ml-1">{displayRating}/5</span>
+   383→          </div>
+   384→        </div>
+   385→        {summary && <p className="text-xs text-muted-foreground leading-relaxed">{summary}</p>}
+   386→      </div>
+   387→    </div>
+   388→  );
+   389→}
+   390→
+   391→// ============================================================
+   392→// Weather Info Section
+   393→// ============================================================
+   394→function WeatherInfo({ avgTemp, monthlyTemps }: { avgTemp: string; monthlyTemps: Record<string, number> }) {
+   395→  const temps = Object.entries(monthlyTemps);
+   396→  if (temps.length === 0 && !avgTemp) return null;
+   397→
+   398→  const maxTemp = temps.length > 0 ? Math.max(...temps.map(([, v]) => v)) : parseInt(avgTemp) || 0;
+   399→  const minTemp = temps.length > 0 ? Math.min(...temps.map(([, v]) => v)) : parseInt(avgTemp) || 0;
+   400→
+   401→  return (
+   402→    <div>
+   403→      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Climate & Weather</h5>
+   404→      <div className="rounded-lg bg-muted/50 p-3 space-y-3">
+   405→        <div className="flex items-center justify-between text-sm">
+   406→          <span className="flex items-center gap-1.5">
+   407→            <Thermometer className="w-4 h-4 text-red-500" />
+   408→            <span className="font-medium">Avg Temperature</span>
+   409→          </span>
+   410→          <span className="font-semibold">{avgTemp}°C</span>
+   411→        </div>
+   412→        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+   413→          <span>🔥 High: {maxTemp}°C</span>
+   414→          <span>❄️ Low: {minTemp}°C</span>
+   415→        </div>
+   416→        {temps.length > 0 && (
+   417→          <div className="flex items-end gap-0.5 h-8">
+   418→            {temps.map(([month, temp], idx) => {
+   419→              const height = maxTemp > minTemp ? ((temp - minTemp) / (maxTemp - minTemp)) * 100 : 50;
+   420→              return (
+   421→                <div key={month} className="flex-1 flex flex-col items-center gap-0.5">
+   422→                  <div
+   423→                    className="w-full rounded-t-sm min-h-[2px] transition-all"
+   424→                    style={{
+   425→                      height: 'height: ' + Math.max(height, 5) + '%' === 'height: ' + Math.max(height, 5) + '%' ? Math.max(height, 5) + '%' : Math.max(height, 5) + '%',
+   426→                      backgroundColor: temp > 30 ? '#ef4444' : temp > 20 ? '#f59e0b' : temp > 10 ? '#3b82f6' : '#6366f1',
+   427→                    }}
+   428→                  />
+   429→                  <span className="text-[8px] text-muted-foreground">{MONTH_NAMES[idx]?.[0] || ''}</span>
+   430→                </div>
+   431→              );
+   432→            })}
+   433→          </div>
+   434→        )}
+   435→      </div>
+   436→    </div>
+   437→  );
+   438→}
+   439→
+   440→// ============================================================
+   441→// Trip Cost Calculator
+   442→// ============================================================
+   443→function TripCalculator({ costProfile }: { costProfile: NonNullable<CountryData['costProfile']> }) {
+   444→  const [days, setDays] = useState('14');
+   445→  const n = parseFloat(days) || 0;
+   446→  const months = n / 30;
+   447→  const totalUSD = costProfile.visaFeeUSD + (months * costProfile.totalMonthlyUSD);
+   448→  const totalPKR = Math.round(totalUSD * 278.5);
+   449→
+   450→  return (
+   451→    <div className="mt-3 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 p-3 space-y-2">
+   452→      <div className="flex items-center justify-between">
+   453→        <div className="flex items-center gap-2">
+   454→          <Calculator className="w-4 h-4 text-violet-600" />
+   455→          <span className="text-xs font-semibold text-violet-900 dark:text-violet-200">Trip Cost Calculator</span>
+   456→        </div>
+   457→      </div>
+   458→      <div className="flex items-center gap-2">
+   459→        <input
+   460→          type="number"
+   461→          value={days}
+   462→          onChange={(e) => setDays(e.target.value)}
+   463→          className="w-24 h-8 px-2 rounded-md border bg-white dark:bg-background text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
+   464→          min="1"
+   465→          max="365"
+   466→        />
+   467→        <span className="text-xs text-muted-foreground">days</span>
+   468→      </div>
+   469→      <div className="grid grid-cols-3 gap-2 text-center">
+   470→        <div>
+   471→          <p className="text-[10px] text-violet-700 dark:text-violet-400">Visa Fee</p>
+   472→          <p className="text-xs font-bold text-violet-900 dark:text-violet-200">${costProfile.visaFeeUSD}</p>
+   473→        </div>
+   474→        <div>
+   475→          <p className="text-[10px] text-violet-700 dark:text-violet-400">Living ({months.toFixed(1)}mo)</p>
+   476→          <p className="text-xs font-bold text-violet-900 dark:text-violet-200">${Math.round(months * costProfile.totalMonthlyUSD).toLocaleString()}</p>
+   477→        </div>
+   478→        <div>
+   479→          <p className="text-[10px] text-violet-700 dark:text-violet-400">Total in PKR</p>
+   480→          <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Rs. {totalPKR.toLocaleString()}</p>
+   481→        </div>
+   482→      </div>
+   483→      <p className="text-[10px] text-violet-700/60 dark:text-violet-400/60">
+   484→        Total: ${Math.round(totalUSD).toLocaleString()} USD · Approximate estimate for budgeting
+   485→      </p>
+   486→    </div>
+   487→  );
+   488→}
+   489→
+   490→// ============================================================
+   491→// Affiliate: Travel Resources (iVisa, Insurance, Hotels, Flights)
+   492→// ============================================================
+   493→function AffiliateResources({ country }: { country: CountryData }) {
+   494→  const ivisaUrl = `https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`;
+   495→  const safetyWingUrl = `https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador`;
+   496→  const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(country.name)}&aid=304142&label=pakvisa`;
+   497→  const skyscannerUrl = `https://www.skyscanner.net/transport/flights/to/${country.code.toLowerCase()}/?ref=pakvisa`;
+   498→
+   499→  return (
+   500→    <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-gradient-to-r from-emerald-50/80 to-sky-50/50 dark:from-emerald-950/20 dark:to-sky-950/10 p-4">
+   501→      <div className="flex items-center gap-2 mb-3">
+   502→        <span className="text-xs font-semibold text-foreground">Prepare Your Trip</span>
+   503→        <span className="text-[9px] text-muted-foreground/70">(sponsored)</span>
+   504→      </div>
+   505→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   506→        {!country.visaFree && (
+   507→          <a
+   508→            href={ivisaUrl}
+   509→            target="_blank"
+   510→            rel="noopener noreferrer sponsored"
+   511→            className="flex flex-col items-center gap-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-white/80 dark:bg-background/80 p-3 hover:shadow-sm hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
+   512→          >
+   513→            <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+   514→              <FileText className="w-4 h-4 text-emerald-600" />
+   515→            </div>
+   516→            <div className="text-center">
+   517→              <p className="text-xs font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">Apply Visa</p>
+   518→              <p className="text-[10px] text-muted-foreground">via iVisa</p>
+   519→            </div>
+   520→          </a>
+   521→        )}
+   522→        <a
+   523→          href={skyscannerUrl}
+   524→          target="_blank"
+   525→          rel="noopener noreferrer sponsored"
+   526→          className="flex flex-col items-center gap-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-white/80 dark:bg-background/80 p-3 hover:shadow-sm hover:border-orange-300 dark:hover:border-orange-700 transition-all group"
+   527→        >
+   528→          <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+   529→            <Plane className="w-4 h-4 text-orange-600" />
+   530→          </div>
+   531→          <div className="text-center">
+   532→            <p className="text-xs font-medium group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">Find Flights</p>
+   533→            <p className="text-[10px] text-muted-foreground">via Skyscanner</p>
+   534→          </div>
+   535→        </a>
+   536→        <a
+   537→          href={bookingUrl}
+   538→          target="_blank"
+   539→          rel="noopener noreferrer sponsored"
+   540→          className="flex flex-col items-center gap-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-white/80 dark:bg-background/80 p-3 hover:shadow-sm hover:border-violet-300 dark:hover:border-violet-700 transition-all group"
+   541→        >
+   542→          <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+   543→            <Building2 className="w-4 h-4 text-violet-600" />
+   544→          </div>
+   545→          <div className="text-center">
+   546→            <p className="text-xs font-medium group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">Book Hotel</p>
+   547→            <p className="text-[10px] text-muted-foreground">via Booking.com</p>
+   548→          </div>
+   549→        </a>
+   550→        <a
+   551→          href={safetyWingUrl}
+   552→          target="_blank"
+   553→          rel="noopener noreferrer sponsored"
+   554→          className="flex flex-col items-center gap-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-white/80 dark:bg-background/80 p-3 hover:shadow-sm hover:border-blue-300 dark:hover:border-blue-700 transition-all group"
+   555→        >
+   556→          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+   557→            <ShieldCheck className="w-4 h-4 text-blue-600" />
+   558→          </div>
+   559→          <div className="text-center">
+   560→            <p className="text-xs font-medium group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">Get Insurance</p>
+   561→            <p className="text-[10px] text-muted-foreground">from $42/mo</p>
+   562→          </div>
+   563→        </a>
+   564→      </div>
+   565→      <p className="text-[9px] text-muted-foreground/50 text-center mt-2">
+   566→        We may earn a commission at no extra cost to you.
+   567→      </p>
+   568→    </div>
+   569→  );
+   570→}
+   571→
+   572→// ============================================================
+   573→// Main Country Detail Panel
+   574→// ============================================================
+   575→export function CountryDetailPanel({ country }: { country: CountryData }) {
+   576→  const travel = getTravelInfo(country.code);
+   577→  const reqs = country.requirements?.slice(0, 5) || [];
+   578→  const travelMonths = country.bestTravelMonths
+   579→    ? country.bestTravelMonths.split(',').map((m: string) => m.trim())
+   580→    : [];
+   581→  const visaTypes = country.visaTypes?.slice(0, 4) || [];
+   582→
+   583→  // Parse monthlyTemps safely (may arrive as JSON string from API)
+   584→  const parsedMonthlyTemps: Record<string, number> = useMemo(() => {
+   585→    const raw = country.monthlyTemps;
+   586→    if (!raw) return {};
+   587→    if (typeof raw === 'object') return raw as Record<string, number>;
+   588→    if (typeof raw === 'string') {
+   589→      try { return JSON.parse(raw); } catch { return {}; }
+   590→    }
+   591→    return {};
+   592→  }, [country.monthlyTemps]);
+   593→
+   594→  // Determine if embassy info should be shown (for embassy-required countries)
+   595→  const isEmbassyRequired = !country.visaFree && !country.visaOnArrival && !country.etaAvailable;
+   596→
+   597→  return (
+   598→    <div className="border-t px-4 pb-4 pt-3 space-y-4">
+   599→      {/* Country Description */}
+   600→      {travel.description && (
+   601→        <p className="text-xs text-muted-foreground leading-relaxed italic">{travel.description}</p>
+   602→      )}
+   603→
+   604→      {/* Row 1: Live Clock + Currency Converter (side by side on larger screens) */}
+   605→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   606→        {country.timezone && (
+   607→          <LiveClock timezone={country.timezone} cityName={country.name} />
+   608→        )}
+   609→        {country.currencyCode && (
+   610→          <CurrencyConverter currencyCode={country.currencyCode} currencyName={country.currency} />
+   611→        )}
+   612→      </div>
+   613→
+   614→      {/* Row 2: Quick Glance Row */}
+   615→      <div className="flex flex-wrap gap-2">
+   616→        <Badge variant="outline" className="text-[10px] gap-1">
+   617→          <Globe className="w-2.5 h-2.5" /> {travel.languages.slice(0, 2).join(', ')}
+   618→        </Badge>
+   619→        <Badge variant="outline" className="text-[10px] gap-1">
+   620→          <Plug className="w-2.5 h-2.5" /> {travel.plugType}, {travel.voltage}
+   621→        </Badge>
+   622→        <Badge variant="outline" className="text-[10px] gap-1">
+   623→          <Phone className="w-2.5 h-2.5" /> {travel.dialCode}
+   624→        </Badge>
+   625→        <Badge variant="outline" className={'text-[10px] gap-1 ' + (travel.halalFood === 'Widely Available' ? 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400' : '')}>
+   626→          <UtensilsCrossed className="w-2.5 h-2.5" /> Halal: {travel.halalFood}
+   627→        </Badge>
+   628→        <Badge variant="outline" className="text-[10px] gap-1">
+   629→          <Heart className="w-2.5 h-2.5" /> Community: {travel.pakistaniCommunity}
+   630→        </Badge>
+   631→      </div>
+   632→
+   633→      {/* Key Requirements (free preview — first 5) */}
+   634→      {reqs.length > 0 && (
+   635→        <div>
+   636→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Key Requirements</h5>
+   637→          <ul className="space-y-1.5">
+   638→            {reqs.map((r) => (
+   639→              <li key={r.id} className="flex items-start gap-2 text-sm">
+   640→                <span className={'mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ' + (r.mandatory ? 'bg-emerald-500' : 'bg-amber-400')} />
+   641→                <span className="text-muted-foreground">{r.requirement}</span>
+   642→              </li>
+   643→            ))}
+   644→          </ul>
+   645→          {/* Pro: Full Document Checklist */}
+   646→          {country.requirements && country.requirements.length > 5 && (
+   647→            <FullDocumentChecklist requirements={country.requirements} countryName={country.name} />
+   648→          )}
+   649→        </div>
+   650→      )}
+   651→
+   652→      {/* Cost Breakdown */}
+   653→      {country.costProfile && (
+   654→        <div>
+   655→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cost Breakdown (per month)</h5>
+   656→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   657→            <div className="rounded-lg bg-muted/50 p-2 text-center">
+   658→              <p className="text-xs text-muted-foreground">Visa Fee</p>
+   659→              <p className="font-semibold text-sm">${country.costProfile.visaFeeUSD}</p>
+   660→              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.visaFeeUSD * 278.5).toLocaleString()}</p>
+   661→            </div>
+   662→            <div className="rounded-lg bg-muted/50 p-2 text-center">
+   663→              <p className="text-xs text-muted-foreground">Living Cost</p>
+   664→              <p className="font-semibold text-sm">${country.costProfile.monthlyLivingUSD}</p>
+   665→              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyLivingUSD * 278.5).toLocaleString()}</p>
+   666→            </div>
+   667→            <div className="rounded-lg bg-muted/50 p-2 text-center">
+   668→              <p className="text-xs text-muted-foreground">Rent</p>
+   669→              <p className="font-semibold text-sm">${country.costProfile.monthlyRentUSD}</p>
+   670→              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyRentUSD * 278.5).toLocaleString()}</p>
+   671→            </div>
+   672→            <div className="rounded-lg bg-muted/50 p-2 text-center">
+   673→              <p className="text-xs text-muted-foreground">Food</p>
+   674→              <p className="font-semibold text-sm">${country.costProfile.monthlyFoodUSD}</p>
+   675→              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyFoodUSD * 278.5).toLocaleString()}</p>
+   676→            </div>
+   677→          </div>
+   678→          <TripCalculator costProfile={country.costProfile} />
+   679→        </div>
+   680→      )}
+   681→
+   682→      {/* Travel Months */}
+   683→      {travelMonths.length > 0 && (
+   684→        <div>
+   685→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Best Travel Months</h5>
+   686→          <div className="flex flex-wrap gap-1.5">
+   687→            {MONTH_NAMES.map((m, i) => {
+   688→              const isActive = travelMonths.some((tm: string) => tm.toLowerCase().startsWith(m.toLowerCase()));
+   689→              const monthCls = isActive ? 'text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground';
+   690→              return (
+   691→                <span key={m} className={monthCls}>{m}</span>
+   692→              );
+   693→            })}
+   694→          </div>
+   695→        </div>
+   696→      )}
+   697→
+   698→      {/* Visa Types */}
+   699→      {visaTypes.length > 0 && (
+   700→        <div>
+   701→          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Available Visa Types</h5>
+   702→          <div className="flex flex-wrap gap-1.5">
+   703→            {visaTypes.map((vt2) => {
+   704→              const durationText = vt2.maxDuration ? ' (' + vt2.maxDuration + ')' : '';
+   705→              return (
+   706→              <Badge key={vt2.id} variant="outline" className="text-xs font-normal">
+   707→                {vt2.type}{durationText}
+   708→              </Badge>
+   709→              );
+   710→            })}
+   711→          </div>
+   712→        </div>
+   713→      )}
+   714→
+   715→      {/* Safety Info */}
+   716→      {(country.safetyRating > 0 || country.safetySummary) && (
+   717→        <SafetyInfo rating={country.safetyRating} summary={country.safetySummary} />
+   718→      )}
+   719→
+   720→      {/* Weather/Climate */}
+   721→      <WeatherInfo avgTemp={country.avgTempC} monthlyTemps={parsedMonthlyTemps} />
+   722→
+   723→      {/* Travel Essentials Grid */}
+   724→      <TravelEssentials info={travel} countryName={country.name} />
+   725→
+   726→      {/* Emergency & Health (collapsible) */}
+   727→      <EmergencyHealth info={travel} />
+   728→
+   729→      {/* Embassy Contact (only for embassy-required countries) */}
+   730→      {isEmbassyRequired && <EmbassyContact countryCode={country.code} />}
+   731→
+   732→      {/* Download Country Guide (Pro Feature) */}
+   733→      <DownloadCountryGuide country={country} />
+   734→
+   735→      {/* Affiliate: Prepare Your Trip (always last) */}
+   736→      <AffiliateResources country={country} />
+   737→    </div>
+   738→  );
+   739→}
+   740→
+   741→// ============================================================
+   742→// Full Document Checklist (Pro Feature)
+   743→// ============================================================
+   744→function FullDocumentChecklist({
+   745→  requirements,
+   746→  countryName,
+   747→}: {
+   748→  requirements: { id: string; category: string; requirement: string; mandatory: boolean; description?: string }[];
+   749→  countryName: string;
+   750→}) {
+   751→  const { user, isAuthenticated } = useAuthStore();
+   752→  const [expanded, setExpanded] = useState(false);
+   753→  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+   754→
+   755→  // Group requirements by category
+   756→  const grouped = useMemo(() => {
+   757→    const map = new Map<string, typeof requirements>();
+   758→    for (const r of requirements) {
+   759→      const cat = r.category || 'Other';
+   760→      if (!map.has(cat)) map.set(cat, []);
+   761→      map.get(cat)!.push(r);
+   762→    }
+   763→    return Array.from(map.entries());
+   764→  }, [requirements]);
+   765→
+   766→  const mandatoryCount = requirements.filter(r => r.mandatory).length;
+   767→  const optionalCount = requirements.length - mandatoryCount;
+   768→
+   769→  return (
+   770→    <div className="mt-3 border rounded-lg overflow-hidden">
+   771→      <button
+   772→        onClick={() => setExpanded(!expanded)}
+   773→        className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 transition-colors"
+   774→      >
+   775→        <div className="flex items-center gap-2">
+   776→          {isPro ? (
+   777→            <ClipboardList className="w-4 h-4 text-amber-600" />
+   778→          ) : (
+   779→            <Lock className="w-4 h-4 text-amber-600" />
+   780→          )}
+   781→          <div className="text-left">
+   782→            <span className="text-sm font-semibold">Full Document Checklist</span>
+   783→            <span className="text-[11px] text-muted-foreground ml-2">
+   784→              {'(' + mandatoryCount + ' required' + (optionalCount > 0 ? ', ' + optionalCount + ' optional' : '') + ' items)'}
+   785→            </span>
+   786→          </div>
+   787→        </div>
+   788→        {isPro ? (
+   789→          <ChevronDown className={'w-4 h-4 text-muted-foreground transition-transform ' + (expanded ? 'rotate-180' : '')} />
+   790→        ) : (
+   791→          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
+   792→            <Crown className="w-3 h-3" /> Pro
+   793→          </span>
+   794→        )}
+   795→      </button>
+   796→
+   797→      {expanded && isPro && (
+   798→        <div className="p-3 space-y-4 max-h-80 overflow-y-auto">
+   799→          {grouped.map(([category, items]) => (
+   800→            <div key={category}>
+   801→              <h6 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
+   802→                <FileText className="w-3 h-3" /> {category}
+   803→              </h6>
+   804→              <ul className="space-y-1">
+   805→                {items.map((item) => (
+   806→                  <li key={item.id} className="flex items-start gap-2 text-sm">
+   807→                    {item.mandatory ? (
+   808→                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+   809→                    ) : (
+   810→                      <span className="mt-1.5 w-2 h-2 rounded-full border border-amber-400 shrink-0" />
+   811→                    )}
+   812→                    <div>
+   813→                      <span className={item.mandatory ? 'text-foreground' : 'text-muted-foreground'}>{item.requirement}</span>
+   814→                      {item.description && (
+   815→                        <p className="text-[11px] text-muted-foreground mt-0.5">{item.description}</p>
+   816→                      )}
+   817→                    </div>
+   818→                  </li>
+   819→                ))}
+   820→              </ul>
+   821→            </div>
+   822→          ))}
+   823→        </div>
+   824→      )}
+   825→
+   826→      {expanded && !isPro && (
+   827→        <div className="p-4 text-center">
+   828→          <Crown className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+   829→          <p className="text-sm font-medium mb-1">Pro Feature</p>
+   830→          <p className="text-xs text-muted-foreground mb-3">
+   831→            Get the complete document checklist with {mandatoryCount} required items organized by category, with descriptions.
+   832→          </p>
+   833→          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5" onClick={() => window.dispatchEvent(new CustomEvent('open-pricing'))}>
+   834→            <Crown className="w-3.5 h-3.5" /> Upgrade to Pro
+   835→          </Button>
+   836→        </div>
+   837→      )}
+   838→    </div>
+   839→  );
+   840→}
+   841→
+   842→// ============================================================
+   843→// Download Country Guide (Pro Feature)
+   844→// ============================================================
+   845→function DownloadCountryGuide({ country }: { country: CountryData }) {
+   846→  const { user, isAuthenticated } = useAuthStore();
+   847→  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+   848→  const [generating, setGenerating] = useState(false);
+   849→
+   850→  const handleDownload = async () => {
+   851→    if (!isPro) {
+   852→      window.dispatchEvent(new CustomEvent('open-pricing'));
+   853→      return;
+   854→    }
+   855→    setGenerating(true);
+   856→    try {
+   857→      // Open the country page in a new tab for Print > Save as PDF
+   858→      const url = `/${toSlug(country.name)}`;
+   859→      window.open(url, '_blank');
+   860→    } catch {
+   861→      // fallback: download text guide
+   862→      const lines = [
+   863→        `PakVisa Advisor — ${country.name} Visa Guide`,
+   864→        `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+   865→        '',
+   866→        `Visa Status: ${country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'Visa on Arrival' : country.etaAvailable ? 'e-Visa' : 'Embassy Required'}`,
+   867→        `Processing Time: ${country.processingDaysMin}-${country.processingDaysMax} days`,
+   868→        `Safety Rating: ${country.safetyRating}/5`,
+   869→        `Best Travel Months: ${country.bestTravelMonths || 'N/A'}`,
+   870→        '',
+   871→        '--- Visa Types ---',
+   872→        ...(country.visaTypes?.map(v => `${v.type}: ${v.description} (${v.maxDuration})`) || []),
+   873→        '',
+   874→        '--- Key Requirements ---',
+   875→        ...(country.requirements?.map(r => `[${r.mandatory ? 'Required' : 'Optional'}] ${r.requirement}: ${r.description || ''}`) || []),
+   876→        '',
+   877→        '--- Cost Breakdown ---',
+   878→        country.costProfile ? `Visa Fee: $${country.costProfile.visaFeeUSD} (≈ PKR ${Math.round(country.costProfile.visaFeeUSD * 278.5).toLocaleString()})` : 'N/A',
+   879→        country.costProfile ? `Monthly Living: $${country.costProfile.monthlyLivingUSD}` : '',
+   880→        '',
+   881→        'Disclaimer: This guide is for informational purposes only. Always verify with the official embassy.',
+   882→      ];
+   883→      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+   884→      const link = document.createElement('a');
+   885→      link.href = URL.createObjectURL(blob);
+   886→      link.download = `pakvisa-${country.name.replace(/\s+/g, '-').toLowerCase()}-guide.txt`;
+   887→      link.click();
+   888→      URL.revokeObjectURL(link.href);
+   889→    }
+   890→    setGenerating(false);
+   891→  };
+   892→
+   893→  return (
+   894→    <div className="rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/10 p-3">
+   895→      <div className="flex items-center justify-between">
+   896→        <div className="flex items-center gap-2">
+   897→          {isPro ? (
+   898→            <FileText className="w-4 h-4 text-emerald-600" />
+   899→          ) : (
+   900→            <Lock className="w-4 h-4 text-emerald-600" />
+   901→          )}
+   902→          <div className="text-left">
+   903→            <span className="text-sm font-semibold">Download Country Guide (PDF)</span>
+   904→            <p className="text-[11px] text-muted-foreground">Get a printable visa guide for {country.name}</p>
+   905→          </div>
+   906→        </div>
+   907→        <Button
+   908→          size="sm"
+   909→          variant={isPro ? 'default' : 'outline'}
+   910→          className={isPro ? 'bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5' : 'gap-1.5 border-amber-300 dark:border-amber-700'}
+   911→          onClick={handleDownload}
+   912→          disabled={generating}
+   913→        >
+   914→          {generating ? (
+   915→            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+   916→          ) : isPro ? (
+   917→            <><Download className="w-3.5 h-3.5" /> Download</>
+   918→          ) : (
+   919→            <><Crown className="w-3.5 h-3.5 text-amber-500" /> Pro Only</>
+   920→          )}
+   921→        </Button>
+   922→      </div>
+   923→    </div>
+   924→  );
+   925→}
+   926→
