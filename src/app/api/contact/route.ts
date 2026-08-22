@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await db.contactMessage.create({
+    const result = await db.contactMessage.create({
       data: {
         name: name.trim(),
         email: email.trim().toLowerCase(),
@@ -48,11 +48,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log('Contact message saved:', result.id, 'from:', email.trim());
     return NextResponse.json({ success: true, message: 'Message sent successfully! We will get back to you soon.' });
   } catch (error) {
-    console.error('Contact form error:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('Contact form error:', errMsg, error);
     return NextResponse.json(
-      { success: false, message: 'An error occurred. Please try again later.' },
+      { success: false, message: 'Failed to save message. Please try again.' },
       { status: 500 }
     );
   }

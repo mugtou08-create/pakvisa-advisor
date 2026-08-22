@@ -22,24 +22,47 @@ export function ContactForm() {
       toast.error('Please fill in name, email, and message');
       return;
     }
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email.trim())) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
     setSending(true);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, subject, message }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), subject: subject.trim(), message: message.trim() }),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message);
+      clearTimeout(timeoutId);
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        console.error('Contact form: non-JSON response, status:', res.status);
+        toast.error('Server returned an unexpected response. Please try again.');
+        return;
+      }
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Message sent successfully!');
         setSent(true);
         setName(''); setEmail(''); setSubject(''); setMessage('');
         setTimeout(() => setSent(false), 5000);
+      } else if (res.status === 429) {
+        toast.error(data.message || 'Too many messages. Please wait a few minutes.');
       } else {
-        toast.error(data.message || 'Failed to send message');
+        toast.error(data.message || 'Failed to send message. Please try again.');
       }
-    } catch {
-      toast.error('Connection error. Please try again.');
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        toast.error('Request timed out. Please check your connection and try again.');
+      } else {
+        console.error('Contact form submission error:', err);
+        toast.error('Could not send message. Please check your connection and try again.');
+      }
     } finally {
       setSending(false);
     }
