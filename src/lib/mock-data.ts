@@ -1,3 +1,16 @@
+// ⚠️ DEPRECATED: This file is legacy mock data used only for initial development.
+// The app now uses the SQLite database (via /api/countries) as the single source of truth.
+// Visa categories and fees in this file may be OUTDATED — do NOT rely on them.
+// All visa data corrections should be made in the database only.
+//
+// Correct data sources (as of July 2026, verified via Henley Passport Index 2026):
+//   - Visa-free for Pakistani passport: Barbados, Dominica, Haiti, Micronesia, Vanuatu,
+//     Trinidad & Tobago, Gambia, Cook Islands, Montserrat, Rwanda, St. Vincent & Grenadines
+//   - Visa on Arrival: Cambodia, Maldives, Nepal, Burundi, etc.
+//   - e-Visa/ETA: UAE, Qatar, Oman, Bahrain, Malaysia, Thailand, Singapore, Indonesia,
+//     Turkey, Sri Lanka, Kenya, Egypt, South Africa, Azerbaijan, Georgia, Armenia, etc.
+//   - Embassy: Saudi Arabia, UK, USA, Canada, Schengen, China, Japan, India, etc.
+
 import type { CountryData } from "./types";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
