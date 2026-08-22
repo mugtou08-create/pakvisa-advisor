@@ -501,7 +501,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
           toast.success('All data is already up to date!');
         }
       } else {
-        setSyncError(data.error || 'Research failed');
+        setSyncError(data.details || data.error || 'Research failed');
         setSyncStage('idle');
         toast.error('Data sync research failed');
       }
@@ -1533,7 +1533,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                           <div className="text-xs text-muted-foreground space-y-1">
                             <p><strong>How it works:</strong></p>
-                            <p>1. <strong>Research</strong> — AI checks all 70 countries against the latest Henley Passport Index and official government sources.</p>
+                            <p>1. <strong>Research</strong> — Compares all 70 countries against the verified data file (Henley Passport Index 2025, official e-Visa portals).</p>
                             <p>2. <strong>Preview</strong> — You review every suggested change before anything is saved.</p>
                             <p>3. <strong>Apply</strong> — Only your confirmed changes are written to the database.</p>
                           </div>
@@ -1580,7 +1580,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
                           <div className="text-center">
                             <p className="text-sm font-medium">Researching Latest Visa Data...</p>
-                            <p className="text-xs text-muted-foreground mt-1">AI is checking all countries against official sources. This may take 30-60 seconds.</p>
+                            <p className="text-xs text-muted-foreground mt-1">Comparing database against verified data file. This takes a few seconds.</p>
                           </div>
                         </CardContent>
                       </Card>

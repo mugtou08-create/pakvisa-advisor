@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import ZAI from 'z-ai-web-dev-sdk';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-// Vercel: allow up to 120 seconds for the LLM research call
-export const maxDuration = 120;
+export const maxDuration = 30;
 
 // --- Auth helper (same pattern as other admin routes) ---
 function validateToken(token: string): { valid: boolean; username?: string } {
@@ -27,10 +27,8 @@ function authenticate(request: NextRequest) {
   return validateToken(auth.slice(7)).valid;
 }
 
-interface CountrySnapshot {
-  id: string;
+interface TruthCountry {
   name: string;
-  code: string;
   visaFree: boolean;
   visaOnArrival: boolean;
   etaAvailable: boolean;
@@ -39,21 +37,23 @@ interface CountrySnapshot {
   processingDaysMax: number;
 }
 
-interface LLMCorrection {
-  name: string;
-  visaFree: boolean;
-  visaOnArrival: boolean;
-  etaAvailable: boolean;
-  visaFeeUSD: number;
-  processingDaysMin: number;
-  processingDaysMax: number;
-  reason: string;
+interface TruthData {
+  version: string;
   source: string;
+  lastVerified: string;
+  countries: TruthCountry[];
+}
+
+function getAccessLabel(vf: boolean, voa: boolean, eta: boolean) {
+  if (vf) return 'Visa Free';
+  if (voa) return 'Visa on Arrival';
+  if (eta) return 'e-Visa';
+  return 'Embassy Required';
 }
 
 // ============================================================
 // POST /api/admin/sync-database
-// Body: { action: 'research' } | { action: 'apply', corrections: LLMCorrection[] }
+// Body: { action: 'research' } | { action: 'apply', corrections: [...] }
 // ============================================================
 export async function POST(request: NextRequest) {
   if (!authenticate(request)) {
@@ -81,151 +81,98 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================================
-// RESEARCH: Use LLM to verify and correct visa data for all countries
+// RESEARCH: Compare verified truth file against the database
 // ============================================================
 async function handleResearch() {
-  // 1. Fetch all countries with current data
+  // 1. Load the verified truth data
+  let truthData: TruthData;
+  try {
+    const truthPath = join(process.cwd(), 'src/data/visa-truth.json');
+    const raw = readFileSync(truthPath, 'utf-8');
+    truthData = JSON.parse(raw);
+  } catch (err) {
+    return NextResponse.json({
+      success: false,
+      error: `Failed to load verified data file: ${err}`,
+    }, { status: 500 });
+  }
+
+  const truthMap = new Map(truthData.countries.map(c => [c.name, c]));
+
+  // 2. Fetch all countries from the database
   const countries = await db.country.findMany({
     select: {
       id: true, name: true, code: true,
       visaFree: true, visaOnArrival: true, etaAvailable: true,
-      costProfiles: { select: { visaFeeUSD: true }, take: 1 },
+      costProfiles: { select: { id: true, visaFeeUSD: true }, take: 1 },
       processingDaysMin: true, processingDaysMax: true,
     },
     orderBy: { name: 'asc' },
   });
 
-  const snapshots: CountrySnapshot[] = countries.map(c => ({
-    id: c.id,
-    name: c.name,
-    code: c.code,
-    visaFree: c.visaFree,
-    visaOnArrival: c.visaOnArrival,
-    etaAvailable: c.etaAvailable,
-    visaFeeUSD: c.costProfiles[0]?.visaFeeUSD ?? 0,
-    processingDaysMin: c.processingDaysMin,
-    processingDaysMax: c.processingDaysMax,
-  }));
+  // 3. Compare and find differences
+  const changes: Array<{
+    id: string; name: string;
+    before: { accessType: string; visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean; visaFeeUSD: number; processingDaysMin: number; processingDaysMax: number };
+    after: { accessType: string; visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean; visaFeeUSD: number; processingDaysMin: number; processingDaysMax: number };
+    reason: string; source: string;
+  }> = [];
 
-  // 2. Build the prompt with current data
-  const currentDataStr = snapshots.map((c, i) =>
-    `${i + 1}. ${c.name} | visaFree:${c.visaFree} visaOnArrival:${c.visaOnArrival} eVisa:${c.etaAvailable} fee:${c.visaFeeUSD}USD days:${c.processingDaysMin}-${c.processingDaysMax}`
-  ).join('\n');
+  for (const country of countries) {
+    const truth = truthMap.get(country.name);
+    if (!truth) continue;
 
-  const systemPrompt = `You are an expert visa research assistant for PakVisa Advisor, a website that helps Pakistani citizens understand visa requirements worldwide.
+    const beforeAccessType = getAccessLabel(country.visaFree, country.visaOnArrival, country.etaAvailable);
+    const afterAccessType = getAccessLabel(truth.visaFree, truth.visaOnArrival, truth.etaAvailable);
+    const currentFee = country.costProfiles[0]?.visaFeeUSD ?? 0;
 
-Your job is to verify and correct visa data for Pakistani passport holders for each country listed below.
+    // Check if anything differs
+    const categoryChanged = country.visaFree !== truth.visaFree || country.visaOnArrival !== truth.visaOnArrival || country.etaAvailable !== truth.etaAvailable;
+    const feeChanged = currentFee !== truth.visaFeeUSD;
+    const daysChanged = country.processingDaysMin !== truth.processingDaysMin || country.processingDaysMax !== truth.processingDaysMax;
 
-RULES:
-1. Pakistani citizens currently have ZERO visa-free countries (as of 2025). If any country is marked visaFree:true, it is WRONG.
-2. Use the Henley Passport Index 2025 and official government e-Visa portals as your authoritative sources.
-3. For each country, determine the CORRECT visa category:
-   - visaFree: true ONLY if Pakistanis can enter with NO visa at all (currently NONE)
-   - visaOnArrival: true if Pakistanis get visa on arrival at the airport/border
-   - etaAvailable: true if Pakistanis can apply for an e-Visa online
-   - If none of the above, all three should be false (Embassy Required)
-4. Priority: visaFree > visaOnArrival > etaAvailable. A country can only be in ONE primary category.
-5. For visa fees, provide the most common/standard tourist visa fee in USD.
-6. For processing days, provide the typical range for the primary visa type.
-7. Only include countries where the data DIFFERS from what is currently stored. If current data is correct, skip it.
-8. Provide the reason for each correction and the source you used.
+    if (categoryChanged || feeChanged || daysChanged) {
+      const reasons: string[] = [];
+      if (categoryChanged) reasons.push(`Visa type: ${beforeAccessType} → ${afterAccessType}`);
+      if (feeChanged) reasons.push(`Fee: $${currentFee} → $${truth.visaFeeUSD}`);
+      if (daysChanged) reasons.push(`Processing: ${country.processingDaysMin}-${country.processingDaysMax}d → ${truth.processingDaysMin}-${truth.processingDaysMax}d`);
 
-RESPOND WITH VALID JSON ONLY. No markdown, no code blocks, just the JSON array.`;
-
-  const userPrompt = `Here is the CURRENT visa data for ${countries.length} countries in our database for Pakistani passport holders. Review each one and return ONLY the countries that need correction.
-
-${currentDataStr}
-
-Return a JSON array of corrections. Each object must have exactly these fields:
-{
-  "name": "Country Name",
-  "visaFree": false,
-  "visaOnArrival": false,
-  "etaAvailable": false,
-  "visaFeeUSD": 0,
-  "processingDaysMin": 5,
-  "processingDaysMax": 30,
-  "reason": "Brief explanation of the correction",
-  "source": "e.g. Henley Passport Index 2025, evisa.gov.tr, etc."
-}
-
-If ALL data is already correct, return an empty array: []`;
-
-  // 3. Call LLM
-  const zai = await ZAI.create();
-  const completion = await zai.chat.completions.create({
-    messages: [
-      { role: 'assistant', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    thinking: { type: 'disabled' },
-  });
-
-  let raw = completion.choices[0]?.message?.content || '';
-
-  // Clean up response - remove markdown code blocks if present
-  raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-
-  let corrections: LLMCorrection[];
-  try {
-    corrections = JSON.parse(raw);
-    if (!Array.isArray(corrections)) corrections = [];
-  } catch {
-    // Try to extract JSON array from the response
-    const match = raw.match(/\[[\s\S]*\]/);
-    if (match) {
-      try { corrections = JSON.parse(match[0]); } catch { corrections = []; }
-    } else {
-      corrections = [];
+      changes.push({
+        id: country.id,
+        name: country.name,
+        before: {
+          accessType: beforeAccessType,
+          visaFree: country.visaFree,
+          visaOnArrival: country.visaOnArrival,
+          etaAvailable: country.etaAvailable,
+          visaFeeUSD: currentFee,
+          processingDaysMin: country.processingDaysMin,
+          processingDaysMax: country.processingDaysMax,
+        },
+        after: {
+          accessType: afterAccessType,
+          visaFree: truth.visaFree,
+          visaOnArrival: truth.visaOnArrival,
+          etaAvailable: truth.etaAvailable,
+          visaFeeUSD: truth.visaFeeUSD,
+          processingDaysMin: truth.processingDaysMin,
+          processingDaysMax: truth.processingDaysMax,
+        },
+        reason: reasons.join('. '),
+        source: truthData.source,
+      });
     }
   }
-
-  // 4. Compare with current data to build change summary
-  const currentMap = new Map(snapshots.map(c => [c.name, c]));
-  const changes = corrections.map(correction => {
-    const current = currentMap.get(correction.name);
-    if (!current) return null;
-
-    const getAccessLabel = (vf: boolean, voa: boolean, eta: boolean) => {
-      if (vf) return 'Visa Free';
-      if (voa) return 'Visa on Arrival';
-      if (eta) return 'e-Visa';
-      return 'Embassy Required';
-    };
-
-    return {
-      id: current.id,
-      name: correction.name,
-      before: {
-        accessType: getAccessLabel(current.visaFree, current.visaOnArrival, current.etaAvailable),
-        visaFree: current.visaFree,
-        visaOnArrival: current.visaOnArrival,
-        etaAvailable: current.etaAvailable,
-        visaFeeUSD: current.visaFeeUSD,
-        processingDaysMin: current.processingDaysMin,
-        processingDaysMax: current.processingDaysMax,
-      },
-      after: {
-        accessType: getAccessLabel(correction.visaFree, correction.visaOnArrival, correction.etaAvailable),
-        visaFree: correction.visaFree,
-        visaOnArrival: correction.visaOnArrival,
-        etaAvailable: correction.etaAvailable,
-        visaFeeUSD: correction.visaFeeUSD,
-        processingDaysMin: correction.processingDaysMin,
-        processingDaysMax: correction.processingDaysMax,
-      },
-      reason: correction.reason || '',
-      source: correction.source || '',
-    };
-  }).filter(Boolean);
 
   return NextResponse.json({
     success: true,
     action: 'research',
-    totalCountries: snapshots.length,
+    totalCountries: countries.length,
+    truthVersion: truthData.version,
+    truthSource: truthData.source,
+    truthLastVerified: truthData.lastVerified,
     correctionsNeeded: changes.length,
     changes,
-    rawLLMResponse: raw,
     researchedAt: new Date().toISOString(),
   });
 }
@@ -233,7 +180,11 @@ If ALL data is already correct, return an empty array: []`;
 // ============================================================
 // APPLY: Write confirmed corrections to the database
 // ============================================================
-async function handleApply(corrections: LLMCorrection[]) {
+async function handleApply(corrections: Array<{
+  name: string;
+  visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean;
+  visaFeeUSD: number; processingDaysMin: number; processingDaysMax: number;
+}>) {
   if (!Array.isArray(corrections) || corrections.length === 0) {
     return NextResponse.json({ success: false, error: 'No corrections provided' }, { status: 400 });
   }
@@ -255,7 +206,6 @@ async function handleApply(corrections: LLMCorrection[]) {
         continue;
       }
 
-      // Update country visa flags
       await db.country.update({
         where: { id: country.id },
         data: {
@@ -268,7 +218,6 @@ async function handleApply(corrections: LLMCorrection[]) {
         },
       });
 
-      // Update visa fee if cost profile exists
       if (country.costProfiles.length > 0) {
         await db.costProfile.update({
           where: { id: country.costProfiles[0].id },
