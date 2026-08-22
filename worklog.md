@@ -1162,3 +1162,25 @@ Stage Summary:
 - Fix: Complete database update of all 70 countries with verified data from Henley Index 2026
 - Data sources: passportindex.org, Henley Passport Index 2026 (Khaleej Times), Wikipedia
 - All visa categories now match official government sources
+
+---
+Task ID: visa-free-filter-fix
+Agent: Main Agent
+Task: Fix Visa Free filter still showing 6 countries (Azerbaijan, Georgia, Lebanon, Malaysia, Mexico, UAE) on Vercel
+
+Work Log:
+- Investigated database: local db shows 0 countries with visaFree=true (correctly fixed)
+- Checked git history: pre-fix commit (5c10e7d) had exactly those 6 countries as visaFree=true
+- Post-fix commits (d692e71, 3e6665a) correctly set all 6 to visaFree=false
+- Discovered .gitignore had '/db/' and '*.db' entries that could block db updates on Vercel
+- Verified db file IS in git archive (git archive HEAD includes db/custom.db)
+- Verified with agent-browser: local Visa Free filter shows 0 countries (correct)
+- Removed '/db/' and '*.db' from .gitignore to prevent any future issues
+- Pushed fix commit df8c2e0 to GitHub
+
+Stage Summary:
+- Database data is CORRECT (0 visaFree countries) in both local db and git-tracked db
+- Local verification confirms Visa Free filter shows 0 results
+- .gitignore no longer blocks db files
+- Pushed to GitHub; Vercel should redeploy with correct data
+- If Vercel still shows old data, user may need to trigger manual redeployment from Vercel dashboard
