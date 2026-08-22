@@ -1184,3 +1184,30 @@ Stage Summary:
 - .gitignore no longer blocks db files
 - Pushed to GitHub; Vercel should redeploy with correct data
 - If Vercel still shows old data, user may need to trigger manual redeployment from Vercel dashboard
+
+---
+Task ID: turso-visafix-production
+Agent: Main Agent
+Task: Fix 6 Visa Free countries showing on Vercel production (Turso database was never corrected)
+
+Work Log:
+- Discovered the app uses TWO databases: local SQLite for dev, Turso cloud for Vercel production
+- Previous fixes only updated local db/custom.db — Turso was never touched
+- Created temporary API endpoint /api/admin/fix-visa-data to fix Turso production data
+- Pushed endpoint to Vercel and called it on live site
+- All 6 countries corrected in Turso:
+  - UAE: visaFree true→false, visaOnArrival true→false, etaAvailable stays true (e-Visa)
+  - Malaysia: visaFree true→false, visaOnArrival true→false, etaAvailable false→true (e-Visa)
+  - Mexico: visaFree true→false (Embassy Required)
+  - Azerbaijan: visaFree true→false (e-Visa)
+  - Georgia: visaFree true→false, etaAvailable false→true (e-Visa)
+  - Lebanon: visaFree true→false (Embassy Required)
+- Safety sweep found 0 additional visaFree countries (correct)
+- Verified on live Vercel site: stats show "0 Visa Free", filter shows 0 results
+- Removed temporary endpoint for security, committed and pushed
+
+Stage Summary:
+- ROOT CAUSE: Vercel uses Turso cloud DB (via PrismaLibSQL adapter), not the local SQLite file
+- The 6 Visa Free countries are now corrected on production
+- Pakistanis have 0 visa-free countries (per Henley Passport Index 2026)
+- Temporary fix endpoint removed from codebase
