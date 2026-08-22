@@ -62,3 +62,4 @@ migrate-to-turso.ts
 /skills/bun.lock
 public/uploads/
 
+tool-results/
