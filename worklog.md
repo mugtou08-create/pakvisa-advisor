@@ -1061,3 +1061,24 @@ Stage Summary:
 - Old /country/* URLs 308-redirect to new pretty URLs
 - Sitemap updated with all 71 pretty URLs
 - Pushed to GitHub: commit b7405bb
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Bug fixes, homepage cleanup, country page enhancements, admin backup
+
+Work Log:
+- Fixed Malaysia pretty URL bug: slug lookup was case-sensitive (SLUG_TO_CODE['Malaysia'] failed because key is 'malaysia'). Added .toLowerCase() in generateMetadata and CountryPage
+- Removed Schengen Wizard and Umrah/Hajj Planner imports and sections from homepage
+- Replaced Visa Policy Alerts static grid with infinite horizontal CSS carousel (scrolls right-to-left, pauses on hover, clicks go to source URL)
+- Added Download Database Backup button to admin dashboard (links to /api/download-backup)
+- Enhanced all country pages: Quick Facts pills, iVisa affiliate CTA, SafetyWing insurance banner, Booking.com/Skyscanner links in CTA, Explore More Destinations (related countries from same continent)
+- Verified all APIs work: signup, login, auth/me, countries, stats, payment proof upload, backup download
+- Committed and pushed to GitHub
+
+Stage Summary:
+- Malaysia bug: case-sensitivity in slug lookup (2 lines changed in [slug]/page.tsx)
+- Homepage: Schengen/Umrah removed, visa alert carousel added
+- Country pages: now have affiliate links, related countries, quick facts, travel insurance banner
+- Admin: backup download button added
+- All pages verified working with agent-browser
