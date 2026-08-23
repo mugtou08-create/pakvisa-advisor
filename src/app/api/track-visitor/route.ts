@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
-import { ensureVisitorTable } from '@/lib/ensure-tables';
 
 // IP geolocation cache (5 minutes TTL)
 const geoCache = new Map<string, { country: string; city: string; cachedAt: number }>();
@@ -71,9 +70,6 @@ async function cleanupStaleSessions() {
 }
 
 export async function POST(request: NextRequest) {
-  // Ensure VisitorSession table exists on Turso (auto-creates on first request)
-  await ensureVisitorTable();
-
   const ip = getClientIp(request);
 
   // Rate limit: 1 per 15 seconds per IP

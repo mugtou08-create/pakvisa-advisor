@@ -11,5 +11,16 @@ export async function register() {
     // The adapter handles the real connection, so this is purely for validation.
     // Only applies in production — development uses local SQLite directly.
     process.env.DATABASE_URL = 'file:./dummy.db';
+
+    // Ensure all database tables exist on Turso.
+    // This is needed because Prisma db push is not run on Vercel.
+    // We use @libsql/client directly for DDL (CREATE TABLE IF NOT EXISTS).
+    try {
+      const { ensureAllTables } = await import('@/lib/ensure-tables');
+      await ensureAllTables();
+      console.log('[instrumentation] All Turso tables ensured');
+    } catch (err) {
+      console.error('[instrumentation] Failed to ensure tables:', err);
+    }
   }
 }
