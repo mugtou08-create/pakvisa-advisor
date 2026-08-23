@@ -96,7 +96,7 @@ interface PaymentProofWithUser {
   };
 }
 
-type AdminSection = 'overview' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'data-sync';
+type AdminSection = 'overview' | 'visitors' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'data-sync';
 type SyncStage = 'idle' | 'researching' | 'preview' | 'applying' | 'done';
 type MessageFilter = 'all' | 'unread' | 'replied';
 
@@ -185,6 +185,23 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   }>>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+
+  // Visitors state
+  const [visitorData, setVisitorData] = useState<{
+    live: Array<{ id: string; sessionId: string; country: string; city: string; page: string; lastSeen: string; flag: string }>;
+    todayCount: number; weekCount: number; monthCount: number;
+    topCountries: Array<{ country: string; flag: string; count: number }>;
+    weekBreakdown: Array<{ date: string; visitors: number }>;
+    monthBreakdown: Array<{ date: string; visitors: number }>;
+    totalAllTime: number;
+    userActivity: {
+      totalUsers: number;
+      recentSignups: Array<{ id: string; email: string; fullName: string; createdAt: string }>;
+      recentLogins: Array<{ id: string; email: string; fullName: string; lastLogin: string | null }>;
+    };
+  } | null>(null);
+  const [visitorsLoading, setVisitorsLoading] = useState(false);
+  const [visitorPeriod, setVisitorPeriod] = useState<'live' | 'today' | 'week' | 'month'>('live');
 
   useEffect(() => {
     const savedToken = localStorage.getItem('pakvisa-admin-token');
@@ -724,6 +741,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
 
   const navItems: { key: AdminSection; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: 'overview', label: 'Overview', icon: <TrendingUp className="w-4 h-4" /> },
+    { key: 'visitors', label: 'Live Visitors', icon: <Users className="w-4 h-4" /> },
     { key: 'messages', label: 'Messages', icon: <Inbox className="w-4 h-4" />, badge: messagesUnread || undefined },
     { key: 'payment-proofs', label: 'Payment Proofs', icon: <CreditCard className="w-4 h-4" />, badge: paymentProofsPending || undefined },
     { key: 'newsletter', label: 'Newsletter', icon: <Mail className="w-4 h-4" /> },
@@ -731,6 +749,31 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     { key: 'data-sync', label: 'Data Sync', icon: <ArrowRightLeft className="w-4 h-4" /> },
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
+
+  // Fetch visitors data
+  const fetchVisitors = useCallback(async (period: 'live' | 'today' | 'week' | 'month' = 'live') => {
+    if (!token) return;
+    setVisitorsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/visitors?period=${period}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVisitorData(data);
+      }
+    } catch { /* silent */ } finally {
+      setVisitorsLoading(false);
+    }
+  }, [token]);
+
+  // Auto-refresh visitors tab every 30s
+  useEffect(() => {
+    if (!isLoggedIn || activeSection !== 'visitors') return;
+    fetchVisitors(visitorPeriod);
+    const interval = setInterval(() => fetchVisitors(visitorPeriod), 30000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, activeSection, visitorPeriod, fetchVisitors]);
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const timeAgo = (d: string) => {
@@ -1045,6 +1088,231 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                         </Card>
                       </div>
                     </div>
+                  </>
+                  )
+                )}
+
+                {/* ====== LIVE VISITORS TAB ====== */}
+                {activeSection === 'visitors' && (
+                  visitorsLoading && !visitorData ? (
+                    <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /></div>
+                  ) : (
+                  <>
+                    {/* Stat Cards Row */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <StatCard icon={<Users className="w-4 h-4" />} label="Online Now" value={visitorData?.live.length ?? 0} color="emerald" />
+                      <StatCard icon={<Clock className="w-4 h-4" />} label="Today" value={visitorData?.todayCount ?? 0} color="blue" />
+                      <StatCard icon={<TrendingUp className="w-4 h-4" />} label="This Week" value={visitorData?.weekCount ?? 0} color="violet" />
+                      <StatCard icon={<Globe className="w-4 h-4" />} label="This Month" value={visitorData?.monthCount ?? 0} color="orange" />
+                    </div>
+
+                    {/* Live Visitors Table */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Users className="w-4 h-4 text-emerald-500" /> Live Visitors
+                            {visitorData?.live.length ? (
+                              <Badge className="bg-emerald-600 text-[10px]">{visitorData.live.length} online</Badge>
+                            ) : null}
+                          </CardTitle>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] text-muted-foreground">Auto-refreshing</span>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        {!visitorData?.live.length ? (
+                          <div className="text-center py-10 text-muted-foreground text-sm">
+                            <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                            No visitors currently online
+                          </div>
+                        ) : (
+                          <div className="max-h-72 overflow-y-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10">Location</TableHead>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10">Page</TableHead>
+                                  <TableHead className="text-[10px] sticky top-0 bg-background z-10 text-right">Last Seen</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {visitorData.live.map((v: { id: string; country: string; city: string; page: string; lastSeen: string; flag: string }) => (
+                                  <TableRow key={v.id} className="hover:bg-muted/50">
+                                    <TableCell className="py-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-base">{v.flag || '\uD83C\uDF0D'}</span>
+                                        <div>
+                                          <div className="text-xs font-medium">{v.country || 'Unknown'}</div>
+                                          {v.city ? <div className="text-[10px] text-muted-foreground">{v.city}</div> : null}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-2 text-xs text-muted-foreground font-mono max-w-[140px] truncate">
+                                      {v.page || '/'}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-[10px] text-muted-foreground text-right">{timeAgo(v.lastSeen)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      {/* Top Countries */}
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-orange-500" /> Top Countries
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {!visitorData?.topCountries?.length ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {visitorData.topCountries.map((c: { country: string; flag: string; count: number }, i: number) => {
+                                const maxCount = visitorData.topCountries[0]?.count || 1;
+                                const pct = (c.count / maxCount) * 100;
+                                return (
+                                  <div key={c.country} className="flex items-center gap-3">
+                                    <span className="text-sm w-5 text-center text-muted-foreground text-xs">{i + 1}</span>
+                                    <span className="text-base">{c.flag}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className="text-xs font-medium truncate">{c.country}</span>
+                                        <span className="text-xs font-mono text-muted-foreground">{c.count}</span>
+                                      </div>
+                                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Daily Breakdown */}
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                              <BarChart3 className="w-4 h-4 text-violet-500" /> Daily Breakdown
+                            </CardTitle>
+                            <div className="flex gap-1">
+                              {(['week', 'month'] as const).map((p: 'week' | 'month') => (
+                                <Button
+                                  key={p}
+                                  variant={visitorPeriod === p ? 'default' : 'outline'}
+                                  size="sm"
+                                  className={`text-[10px] h-6 px-2 ${visitorPeriod === p ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+                                  onClick={() => setVisitorPeriod(p)}
+                                >
+                                  {p === 'week' ? '7d' : '30d'}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {visitorPeriod === 'week' && visitorData?.weekBreakdown && (
+                            <div className="flex items-end gap-1.5 h-28">
+                              {visitorData.weekBreakdown.map((d: { date: string; visitors: number }) => {
+                                const maxVal = Math.max(1, ...visitorData.weekBreakdown.map(x => x.visitors));
+                                const height = (d.visitors / maxVal) * 100;
+                                const dayLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+                                return (
+                                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+                                    <span className="text-[10px] font-medium text-muted-foreground">{d.visitors}</span>
+                                    <div className="w-full max-w-8 rounded-t-sm transition-all duration-500" style={{ height: `${Math.max(4, height)}%`, backgroundColor: '#059669' }} />
+                                    <span className="text-[9px] text-muted-foreground">{dayLabel}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {visitorPeriod === 'month' && visitorData?.monthBreakdown && (
+                            <div className="flex items-end gap-0.5 h-28">
+                              {visitorData.monthBreakdown.map((d: { date: string; visitors: number }) => {
+                                const maxVal = Math.max(1, ...visitorData.monthBreakdown.map(x => x.visitors));
+                                const height = (d.visitors / maxVal) * 100;
+                                return (
+                                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1">
+                                    <span className="text-[9px] font-medium text-muted-foreground">{d.visitors}</span>
+                                    <div className="w-full rounded-t-sm transition-all duration-500" style={{ height: `${Math.max(2, height)}%`, backgroundColor: '#059669' }} />
+                                    <span className="text-[7px] text-muted-foreground">{new Date(d.date + 'T00:00:00').getDate()}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between mt-3 pt-2 border-t">
+                            <span className="text-[10px] text-muted-foreground">All-time total</span>
+                            <span className="text-sm font-bold text-emerald-600">{visitorData?.totalAllTime ?? 0} visitors</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* User Activity */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <User className="w-4 h-4 text-blue-500" /> User Activity
+                          {visitorData?.userActivity.totalUsers ? (
+                            <Badge variant="secondary" className="text-[10px]">{visitorData.userActivity.totalUsers} registered</Badge>
+                          ) : null}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Recent Signups</h4>
+                            {!visitorData?.userActivity.recentSignups?.length ? (
+                              <p className="text-xs text-muted-foreground">No signups yet</p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                {visitorData.userActivity.recentSignups.map((u: { id: string; email: string; fullName: string; createdAt: string }) => (
+                                  <div key={u.id} className="flex items-center justify-between text-xs p-1.5 rounded-lg hover:bg-muted/50">
+                                    <div className="min-w-0">
+                                      <div className="font-medium truncate">{u.fullName || u.email}</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{u.email}</div>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{timeAgo(u.createdAt)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Recent Logins</h4>
+                            {!visitorData?.userActivity.recentLogins?.length ? (
+                              <p className="text-xs text-muted-foreground">No logins yet</p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                {visitorData.userActivity.recentLogins.map((u: { id: string; email: string; fullName: string; lastLogin: string | null }) => (
+                                  <div key={u.id} className="flex items-center justify-between text-xs p-1.5 rounded-lg hover:bg-muted/50">
+                                    <div className="min-w-0">
+                                      <div className="font-medium truncate">{u.fullName || u.email}</div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{u.email}</div>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{u.lastLogin ? timeAgo(u.lastLogin) : 'Never'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </>
                   )
                 )}

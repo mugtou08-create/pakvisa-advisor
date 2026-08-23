@@ -292,3 +292,21 @@ model ContactMessage {
   @@index([isRead])
   @@index([createdAt])
 }
+
+model VisitorSession {
+  id        String   @id @default(cuid())
+  sessionId String
+  ip        String   @default("unknown")
+  country   String   @default("")
+  city      String   @default("")
+  page      String   @default("")
+  referrer  String   @default("")
+  userAgent String   @default("")
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([lastSeen])
+  @@index([createdAt])
+  @@index([country])
+}

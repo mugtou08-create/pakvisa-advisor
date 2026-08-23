@@ -1320,3 +1320,53 @@ Stage Summary:
 - Biggest change: Sri Lanka is now FREE for Pakistani citizens
 - All other visa categories (visaFree/visaOnArrival/etaAvailable) remain unchanged for all 70 countries
 - Next step: Admin should use Data Sync to push these updates to Turso production DB
+
+---
+Task ID: 4-a
+Agent: Main Agent
+Task: Build complete visitor tracking system for admin dashboard
+
+Work Log:
+- Added VisitorSession model to Prisma schema with indexes on sessionId, lastSeen, createdAt, country
+- Ran db:push to sync schema to local SQLite
+- Created /api/track-visitor POST endpoint (public, no auth):
+  - Accepts sessionId, page, referrer from client
+  - Reads IP from x-forwarded-for / x-real-ip headers
+  - IP geolocation via ip-api.com with 5-minute in-memory cache
+  - Upserts VisitorSession by sessionId+ip combo (updates lastSeen, page, country, city)
+  - Cleans up stale sessions older than 5 minutes
+  - Rate limited: 1 request per 15 seconds per IP (custom Map-based, not using rate-limit lib)
+- Created /api/admin/visitors GET endpoint (admin auth, same validateToken+authenticate pattern):
+  - Supports ?period=live|today|week|month
+  - Returns live visitors (last 5 min) with country/city/page/flag
+  - Returns today/week/month unique visitor counts
+  - Returns daily breakdown for week (7 days) and month (up to today)
+  - Returns top 10 countries with visitor counts and flag emojis
+  - Returns total all-time visitors
+  - Returns user activity: total registered users, recent signups, recent logins
+- Added heartbeat script to layout.tsx (plain JS, not React):
+  - Generates unique sessionId from localStorage
+  - Sends POST to /api/track-visitor immediately on load, every 30s, and on beforeunload
+  - Uses fetch with keepalive for reliability
+- Added 'Live Visitors' tab to admin-dialog.tsx:
+  - Added 'visitors' to AdminSection type
+  - Added visitorData state with full TypeScript interface
+  - Added fetchVisitors function with useCallback
+  - Auto-refresh every 30 seconds via useEffect
+  - Added 'Live Visitors' nav item with Users icon (second position in sidebar)
+  - 4 stat cards: Online Now, Today, This Week, This Month
+  - Live visitors table with flag emoji, city, page path, relative last-seen time
+  - Top Countries card with horizontal bar visualization
+  - Daily Breakdown card with 7d/30d toggle, bar charts
+  - User Activity card showing recent signups and logins
+  - Uses existing StatCard, Card, Badge, Table, Button components
+- Lint passes clean
+
+Stage Summary:
+- Complete visitor tracking system deployed
+- Public heartbeat endpoint: POST /api/track-visitor (no auth, rate limited)
+- Admin endpoint: GET /api/admin/visitors (auth required)
+- Heartbeat script runs on every page via layout.tsx
+- Admin panel shows real-time visitors, country breakdown, daily charts, user activity
+- Files created: src/app/api/track-visitor/route.ts, src/app/api/admin/visitors/route.ts
+- Files modified: prisma/schema.prisma, src/app/layout.tsx, src/components/app/admin-dialog.tsx

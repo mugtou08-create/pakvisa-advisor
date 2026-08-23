@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, X, Loader2, CheckCircle2, Camera, FileImage, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,18 @@ function formatFileSize(bytes: number): string {
 
 export function PaymentProofModal({ onClose }: { onClose: () => void }) {
   const { token, user, latestProof, checkAuth } = useAuthStore();
+  const [waNumber, setWaNumber] = useState('');
+
+  useEffect(() => {
+    fetch('/api/public-settings')
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data?.whatsapp_number) {
+          setWaNumber(res.data.whatsapp_number);
+        }
+      })
+      .catch(() => {});
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -129,13 +141,15 @@ export function PaymentProofModal({ onClose }: { onClose: () => void }) {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 We have received your proof of payment. Our team will verify it and activate your Pro features within 24 hours.
               </p>
-              <Button
-                variant="outline"
-                className="mt-4 gap-2 text-green-600 border-green-200 hover:bg-green-50"
-                onClick={() => window.open('https://wa.me/923001234567?text=' + encodeURIComponent('New payment proof from ' + user?.fullName + ' (' + user?.email + '). Please check admin dashboard.'), '_blank')}
-              >
-                <MessageCircle className="w-4 h-4" /> Notify via WhatsApp
-              </Button>
+              {waNumber && (
+                <Button
+                  variant="outline"
+                  className="mt-4 gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                  onClick={() => window.open('https://wa.me/' + waNumber + '?text=' + encodeURIComponent('New payment proof from ' + user?.fullName + ' (' + user?.email + '). Please check admin dashboard.'), '_blank')}
+                >
+                  <MessageCircle className="w-4 h-4" /> Notify via WhatsApp
+                </Button>
+              )}
               <div className="pt-2">
                 <Button onClick={onClose} className="bg-emerald-600 hover:bg-emerald-700">
                   Got it

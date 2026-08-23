@@ -1,13 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
 
+const FALLBACK_NUMBER = '';
+const MESSAGE = encodeURIComponent('Hi! I have a question about visa requirements for Pakistani passport holders. (Text message only, please — no calls)');
+
 export function WhatsAppButton() {
-  // Replace with your actual WhatsApp number (with country code, no +)
-  // Example: '923001234567' for Pakistan
-  const WHATSAPP_NUMBER = '923001234567';
-  const message = encodeURIComponent('Hi! I have a question about visa requirements for Pakistani passport holders. (Text message only, please — no calls 🙏)');
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+  const [number, setNumber] = useState<string>(FALLBACK_NUMBER);
+
+  useEffect(() => {
+    fetch('/api/public-settings')
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data?.whatsapp_number) {
+          setNumber(res.data.whatsapp_number);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Don't render if no WhatsApp number is configured
+  if (!number) return null;
+
+  const url = `https://wa.me/${number}?text=${MESSAGE}`;
 
   return (
     <a
