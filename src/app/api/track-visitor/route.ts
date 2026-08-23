@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { rateLimit } from '@/lib/rate-limit';
 import { parseUserAgent, categorizeReferrer } from '@/lib/parse-ua';
 
 const geoCache = new Map<string, { country: string; city: string; cachedAt: number }>();
@@ -33,8 +32,16 @@ function getClientIp(req: NextRequest): string {
   return r?.trim() || 'unknown';
 }
 
-async function cleanupStaleSessions() {
-  try { await db.visitorSession.deleteMany({ where: { lastSeen: { lt: new Date(Date.now() - 5 * 60 * 1000) } } }); } catch { /* ignore */ }
+// Cleanup old sessions (7+ days) to manage DB size.
+// The 'live' view already filters by lastSeen >= 5min at query time,
+// so we do NOT delete recent records — we need them for today/week/month stats.
+let lastCleanup = 0;
+async function cleanupOldSessions() {
+  const now = Date.now();
+  // Only run cleanup at most once per 10 minutes (avoids repeated DELETEs on every heartbeat)
+  if (now - lastCleanup < 10 * 60 * 1000) return;
+  lastCleanup = now;
+  try { await db.visitorSession.deleteMany({ where: { lastSeen: { lt: new Date(now - 7 * 24 * 60 * 60 * 1000) } } }); } catch { /* ignore */ }
 }
 
 export async function POST(request: NextRequest) {
@@ -55,13 +62,15 @@ export async function POST(request: NextRequest) {
     const { device, browser, os } = parseUserAgent(userAgent);
     const referrerCategory = categorizeReferrer(referrer || '');
     const geo = await getGeoLocation(ip);
-    cleanupStaleSessions();
+    cleanupOldSessions();
 
-    const existing = await db.visitorSession.findFirst({ where: { sessionId, ip } });
+    // Look up by sessionId only (not sessionId+ip) so that IP changes
+    // (mobile switching WiFi/cellular) update the same record instead of creating duplicates
+    const existing = await db.visitorSession.findFirst({ where: { sessionId } });
     if (existing) {
       await db.visitorSession.update({
         where: { id: existing.id },
-        data: { page: page || existing.page, referrer: referrer || existing.referrer, referrerCategory, lastSeen: new Date(), country: geo.country || existing.country, city: geo.city || existing.city, device, browser, os },
+        data: { ip, page: page || existing.page, referrer: referrer || existing.referrer, referrerCategory, lastSeen: new Date(), country: geo.country || existing.country, city: geo.city || existing.city, device, browser, os },
       });
     } else {
       await db.visitorSession.create({ data: { sessionId, ip, country: geo.country, city: geo.city, page: page || '', referrer: referrer || '', referrerCategory, userAgent, device, browser, os } });
