@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { ensureVisitorTable } from '@/lib/ensure-tables';
 
 // --- Auth helper (same pattern as sync-database route) ---
 function validateToken(token: string): { valid: boolean; username?: string } {
@@ -89,6 +90,9 @@ export async function GET(request: NextRequest) {
   if (!authenticate(request)) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Ensure VisitorSession table exists on Turso
+  await ensureVisitorTable();
 
   try {
     const url = new URL(request.url);

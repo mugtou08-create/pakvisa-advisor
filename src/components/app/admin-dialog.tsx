@@ -7,7 +7,7 @@ import {
   RefreshCw, Server, FileCheck, MessageSquare, Mail, Send, Trash2,
   ChevronLeft, ChevronRight, Check, Clock, User, Inbox, TrendingUp,
   Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
-  Filter, X, ChevronDown, MessageCircle, Hash, XIcon, CreditCard, FileImage,
+  Filter, X, ChevronDown, MessageCircle, XIcon, CreditCard, FileImage,
   Bell, ArrowRightLeft, Loader2, AlertCircle, Info, ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -160,7 +160,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   const [showNotifPanel, setShowNotifPanel] = useState(false);
 
   // WhatsApp number settings
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [whatsappRaw, setWhatsappRaw] = useState('');
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
 
   // Data Sync state
@@ -280,7 +280,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
       if (data.success) {
         setAnalytics(data.data);
         setMaintenanceMode(data.data.settings?.maintenance_mode === 'true');
-        setWhatsappNumber(data.data.settings?.whatsapp_number || '');
+        setWhatsappRaw(data.data.settings?.whatsapp_number || '');
         setAnalyticsError(null);
       } else {
         setAnalyticsError(data.error || 'Failed to load analytics');
@@ -487,21 +487,44 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     finally { setTogglingMaintenance(false); }
   }, [token]);
 
+  const whatsappDigits = whatsappRaw.replace(/[^\d]/g, '');
+  const whatsappPreview = whatsappDigits.length >= 10 ? `https://wa.me/${whatsappDigits}` : '';
+  const whatsappIsLocal = whatsappDigits.startsWith('03');
+
+  const fixWhatsappNumber = () => {
+    // If user typed a Pakistani local number like 03001234567 or 30012345678, convert to international format
+    let digits = whatsappRaw.replace(/[^\d]/g, '');
+    if (digits.startsWith('03')) {
+      digits = '92' + digits.slice(1);
+    } else if (digits.length === 10 && digits.startsWith('3')) {
+      digits = '92' + digits;
+    }
+    setWhatsappRaw(digits);
+  };
+
   const saveWhatsappNumber = useCallback(async () => {
     if (!token) return;
+    // Auto-fix Pakistani local numbers before saving
+    let digits = whatsappDigits;
+    if (digits.startsWith('03')) {
+      digits = '92' + digits.slice(1);
+    } else if (digits.length === 10 && digits.startsWith('3')) {
+      digits = '92' + digits;
+    }
+    if (digits !== whatsappDigits) setWhatsappRaw(digits);
     setSavingWhatsapp(true);
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ key: 'whatsapp_number', value: whatsappNumber.replace(/[^\d]/g, '') }),
+        body: JSON.stringify({ key: 'whatsapp_number', value: digits }),
       });
       const data = await res.json();
-      if (data.success) toast.success('WhatsApp number saved');
+      if (data.success) toast.success(`WhatsApp number saved: ${digits}`);
       else toast.error('Failed to save');
     } catch { toast.error('Connection error'); }
     finally { setSavingWhatsapp(false); }
-  }, [token, whatsappNumber]);
+  }, [token, whatsappDigits]);
 
   // ===== DATA SYNC HANDLERS =====
   const handleStartResearch = useCallback(async () => {
@@ -2140,24 +2163,44 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                           <div><CardTitle className="text-base">WhatsApp Number</CardTitle><CardDescription>Messages only — no calls allowed</CardDescription></div>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="space-y-3">
                         <div className="flex gap-2">
                           <div className="relative flex-1">
-                            <Hash className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Phone className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
-                              value={whatsappNumber}
-                              onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^\d]/g, ''))}
+                              value={whatsappDigits}
+                              onChange={(e) => setWhatsappRaw(e.target.value.replace(/[^\d]/g, ''))}
                               placeholder="923001234567"
                               className="pl-9"
                             />
                           </div>
-                          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={saveWhatsappNumber} disabled={savingWhatsapp || whatsappNumber.length < 8}>
+                          {whatsappIsLocal && whatsappDigits.length > 0 && (
+                            <Button variant="outline" onClick={fixWhatsappNumber} className="shrink-0 text-amber-600 border-amber-300 hover:bg-amber-50">
+                              Auto-fix +92
+                            </Button>
+                          )}
+                          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={saveWhatsappNumber} disabled={savingWhatsapp || whatsappDigits.length < 10}>
                             {savingWhatsapp ? 'Saving...' : 'Save'}
                           </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
-                          <AlertTriangle className="w-3 h-3" />
-                          Include country code (no + sign). E.g. 923001234567 for Pakistan.
+                        {whatsappIsLocal && whatsappDigits.length > 0 && (
+                          <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div className="text-xs text-amber-800 dark:text-amber-200">
+                              <p className="font-medium">This looks like a local Pakistani number (starts with 03).</p>
+                              <p className="mt-1">WhatsApp needs the international format: <span className="font-mono font-bold">92</span> + your number without the 0. Example: <span className="font-mono font-bold">923001234567</span></p>
+                              <p className="mt-1">Click <span className="font-semibold">"Auto-fix +92"</span> to fix it automatically.</p>
+                            </div>
+                          </div>
+                        )}
+                        {whatsappPreview && !whatsappIsLocal && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <ExternalLink className="w-3 h-3" />
+                            Link preview: <span className="font-mono text-emerald-600">{whatsappPreview}</span>
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Format: country code + number, no + sign. Pakistan: <span className="font-mono">923001234567</span>
                         </p>
                       </CardContent>
                     </Card>
