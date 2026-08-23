@@ -469,6 +469,15 @@ export default function HomePage() {
   // Reset page when filters/search change
   useEffect(() => { setCurrentPage(1); }, [filters, searchQuery]);
 
+  // Log search queries to admin analytics (debounced)
+  useEffect(() => {
+    if (!searchQuery || searchQuery.length < 2) return;
+    const t = setTimeout(() => {
+      try { fetch('/api/log-search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: searchQuery, results: 0 }) }).catch(() => {}); } catch {}
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   // Scroll to country list when searching or expanding
   const countryListRef = useRef<HTMLDivElement>(null);
   const filteredCountriesRef = useRef<CountryData[]>([]);

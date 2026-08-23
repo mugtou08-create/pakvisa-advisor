@@ -9,6 +9,7 @@ import {
   Phone, ExternalLink, Reply, Search, CheckCheck, Download, Copy,
   Filter, X, ChevronDown, MessageCircle, XIcon, CreditCard, FileImage,
   Bell, ArrowRightLeft, Loader2, AlertCircle, Info, ClipboardCheck,
+  Lightbulb, ShieldAlert, Search as SearchIcon, MousePointerClick, Monitor, Smartphone, Tablet, Globe2, Link2, Share2, Clock as ClockIcon, CheckCircle2, XCircle, BarChart2, PieChart as PieChartIcon, Eye as EyeIcon, Flag, Fingerprint, UsersRound, ArrowUpRight, AlertOctagon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,7 +97,7 @@ interface PaymentProofWithUser {
   };
 }
 
-type AdminSection = 'overview' | 'visitors' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'data-sync';
+type AdminSection = 'overview' | 'visitors' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'data-sync' | 'insights';
 type SyncStage = 'idle' | 'researching' | 'preview' | 'applying' | 'done';
 type MessageFilter = 'all' | 'unread' | 'replied';
 
@@ -202,6 +203,25 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   } | null>(null);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
   const [visitorPeriod, setVisitorPeriod] = useState<'live' | 'today' | 'week' | 'month'>('live');
+
+  // Insights state
+  const [insightsData, setInsightsData] = useState<{
+    alerts: Array<{ type: 'error' | 'warning' | 'info'; title: string; message: string }>;
+    totalUsers: number; freeUsers: number; proUsers: number;
+    searchesToday: number; searchesWeek: number;
+    affiliateClicks: number;
+    failedLogins: number;
+    topSearchQueries: Array<{ query: string; count: number }>;
+    popularCountries: Array<{ flag: string; name: string; visitors: number }>;
+    trafficSources: { organic: number; direct: number; social: number; referral: number };
+    deviceBreakdown: { desktop: number; mobile: number; tablet: number };
+    browserBreakdown: Array<{ browser: string; percentage: number }>;
+    visaDataFreshness: Array<{ flag: string; name: string; daysSinceUpdate: number }>;
+    securityLog: Array<{ timestamp: string; action: string; email: string; ip: string; success: boolean }>;
+    securityStats: { totalLogins: number; failedAttempts: number };
+    affiliateTracking: Array<{ partner: string; clicks: number }>;
+  } | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('pakvisa-admin-token');
@@ -770,6 +790,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     { key: 'newsletter', label: 'Newsletter', icon: <Mail className="w-4 h-4" /> },
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { key: 'data-sync', label: 'Data Sync', icon: <ArrowRightLeft className="w-4 h-4" /> },
+    { key: 'insights', label: 'Insights', icon: <Lightbulb className='w-4 h-4' /> },
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -797,6 +818,54 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     const interval = setInterval(() => fetchVisitors(visitorPeriod), 30000);
     return () => clearInterval(interval);
   }, [isLoggedIn, activeSection, visitorPeriod, fetchVisitors]);
+
+  // Fetch insights data
+  const fetchInsights = useCallback(async () => {
+    if (!token) return;
+    setInsightsLoading(true);
+    try {
+      const res = await fetch('/api/admin/insights', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const r = await res.json();
+      if (r.success) {
+        const d = r;
+        const srcMap: Record<string, number> = {};
+        for (const s of (d.trafficSources || [])) srcMap[s.source.toLowerCase()] = s.count;
+        const devMap: Record<string, number> = { desktop: 0, mobile: 0, tablet: 0 };
+        for (const dev of (d.devices || [])) devMap[(dev.type || '').toLowerCase()] = dev.count;
+        setInsightsData({
+          alerts: (d.alerts || []).map((a: any) => ({ type: a.severity || 'info', title: a.title, message: a.message })),
+          totalUsers: d.subscription?.totalUsers || 0,
+          freeUsers: d.subscription?.freeUsers || 0,
+          proUsers: d.subscription?.proUsers || 0,
+          searchesToday: d.searchQueries?.searchesToday || 0,
+          searchesWeek: d.searchQueries?.searchesWeek || 0,
+          affiliateClicks: d.affiliate?.total || 0,
+          failedLogins: d.security?.stats?.failedLogins || 0,
+          topSearchQueries: (d.searchQueries?.topSearches || []).map((s: any) => ({ query: s.query, count: s.count })),
+          popularCountries: (d.popularCountries || []).map((c: any) => ({ flag: c.flag, name: c.country, visitors: c.count })),
+          trafficSources: { organic: srcMap['organic search'] || 0, direct: srcMap['direct'] || 0, social: srcMap['social media'] || 0, referral: srcMap['referral'] || 0 },
+          deviceBreakdown: devMap,
+          browserBreakdown: (d.browsers || []).map((b: any) => ({ browser: b.name, percentage: b.pct })),
+          visaDataFreshness: (d.visaFreshness || []).map((c: any) => ({ flag: c.flagEmoji, name: c.name, daysSinceUpdate: c.daysSince })),
+          securityLog: (d.security?.recent || []).map((l: any) => ({ timestamp: l.createdAt, action: l.action, email: l.email, ip: l.ip, success: l.success })),
+          securityStats: { totalLogins: d.security?.stats?.totalLogins || 0, failedAttempts: d.security?.stats?.failedLogins || 0 },
+          affiliateTracking: (d.affiliate?.partners || []).map((p: any) => ({ partner: p.partner, clicks: p.clicks })),
+        });
+      }
+    } catch { /* silent */ } finally {
+      setInsightsLoading(false);
+    }
+  }, [token]);
+
+  // Auto-refresh insights tab every 60 seconds
+  useEffect(() => {
+    if (!isLoggedIn || activeSection !== 'insights') return;
+    fetchInsights();
+    const interval = setInterval(() => fetchInsights(), 60000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, activeSection, fetchInsights]);
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const timeAgo = (d: string) => {
@@ -2114,6 +2183,421 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                       </Card>
                     )}
                   </div>
+                )}
+
+                {/* ====== INSIGHTS TAB ====== */}
+                {activeSection === 'insights' && (
+                  insightsLoading && !insightsData ? (
+                    <div className='flex items-center justify-center py-20'>
+                      <Loader2 className='w-6 h-6 animate-spin text-emerald-500' />
+                      <span className='ml-2 text-sm text-muted-foreground'>Loading insights...</span>
+                    </div>
+                  ) : insightsData ? (
+                    <div className='space-y-6 p-4 max-h-[70vh] overflow-y-auto'>
+                      {/* ====== Section A: Critical Alerts ====== */}
+                      {insightsData.alerts.length > 0 && (
+                        <div className='space-y-2'>
+                          <h3 className='text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2'>
+                            <ShieldAlert className='w-4 h-4' /> Critical Alerts
+                          </h3>
+                          {insightsData.alerts.map((alert, i) => {
+                            const borderColors = {
+                              error: 'border-l-red-500 bg-red-50 dark:bg-red-950/20',
+                              warning: 'border-l-amber-500 bg-amber-50 dark:bg-amber-950/20',
+                              info: 'border-l-blue-500 bg-blue-50 dark:bg-blue-950/20',
+                            };
+                            const alertIcons = {
+                              error: <XCircle className='w-4 h-4 text-red-500 shrink-0' />,
+                              warning: <AlertTriangle className='w-4 h-4 text-amber-500 shrink-0' />,
+                              info: <Info className='w-4 h-4 text-blue-500 shrink-0' />,
+                            };
+                            return (
+                              <div key={i} className={`border-l-4 ${borderColors[alert.type]} rounded-r-lg p-3 flex items-start gap-3`}>
+                                {alertIcons[alert.type]}
+                                <div className='min-w-0'>
+                                  <div className='text-sm font-medium'>{alert.title}</div>
+                                  <div className='text-xs text-muted-foreground mt-0.5'>{alert.message}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* ====== Section B: Stat Cards Row ====== */}
+                      <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+                        {/* Total Users */}
+                        <Card className='border-l-4 border-l-emerald-500'>
+                          <CardContent className='p-3'>
+                            <div className='flex items-center gap-2 mb-1'>
+                              <UsersRound className='w-4 h-4 text-emerald-500' />
+                              <span className='text-xs text-muted-foreground'>Total Users</span>
+                            </div>
+                            <div className='text-xl font-bold'>{insightsData.totalUsers}</div>
+                            <div className='text-[10px] text-muted-foreground mt-1'>
+                              {insightsData.freeUsers} free / {insightsData.proUsers} pro
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Searches This Week */}
+                        <Card className='border-l-4 border-l-blue-500'>
+                          <CardContent className='p-3'>
+                            <div className='flex items-center gap-2 mb-1'>
+                              <SearchIcon className='w-4 h-4 text-blue-500' />
+                              <span className='text-xs text-muted-foreground'>Searches This Week</span>
+                            </div>
+                            <div className='text-xl font-bold'>{insightsData.searchesWeek}</div>
+                            <div className='text-[10px] text-muted-foreground mt-1'>
+                              {insightsData.searchesToday} today
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Affiliate Clicks */}
+                        <Card className='border-l-4 border-l-purple-500'>
+                          <CardContent className='p-3'>
+                            <div className='flex items-center gap-2 mb-1'>
+                              <MousePointerClick className='w-4 h-4 text-purple-500' />
+                              <span className='text-xs text-muted-foreground'>Affiliate Clicks</span>
+                            </div>
+                            <div className='text-xl font-bold'>{insightsData.affiliateClicks}</div>
+                            <div className='text-[10px] text-muted-foreground mt-1'>Total clicks</div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Security Alerts */}
+                        <Card className='border-l-4 border-l-red-500'>
+                          <CardContent className='p-3'>
+                            <div className='flex items-center gap-2 mb-1'>
+                              <ShieldAlert className='w-4 h-4 text-red-500' />
+                              <span className='text-xs text-muted-foreground'>Security Alerts</span>
+                            </div>
+                            <div className='text-xl font-bold'>{insightsData.failedLogins}</div>
+                            <div className='text-[10px] text-muted-foreground mt-1'>Failed logins</div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* ====== Section C: Two-column grid ====== */}
+                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                        {/* Left column */}
+                        <div className='space-y-4'>
+                          {/* Top Search Queries */}
+                          <Card>
+                            <CardHeader className='pb-2'>
+                              <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                                <SearchIcon className='w-4 h-4 text-blue-500' /> Top Search Queries
+                              </CardTitle>
+                              <CardDescription>
+                                {insightsData.searchesToday} today / {insightsData.searchesWeek} this week
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent className='space-y-1.5 max-h-48 overflow-y-auto'>
+                              {insightsData.topSearchQueries.length === 0 ? (
+                                <p className='text-xs text-muted-foreground'>No search data yet</p>
+                              ) : (
+                                insightsData.topSearchQueries.map((q, i) => (
+                                  <div key={i} className='flex items-center justify-between py-1'>
+                                    <span className='text-sm truncate mr-2'>{q.query}</span>
+                                    <Badge variant='secondary' className='shrink-0 text-xs'>{q.count}</Badge>
+                                  </div>
+                                ))
+                              )}
+                            </CardContent>
+                          </Card>
+
+                          {/* Popular Countries */}
+                          <Card>
+                            <CardHeader className='pb-2'>
+                              <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                                <Globe className='w-4 h-4 text-emerald-500' /> Popular Countries
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className='space-y-2 max-h-48 overflow-y-auto'>
+                              {insightsData.popularCountries.length === 0 ? (
+                                <p className='text-xs text-muted-foreground'>No country data yet</p>
+                              ) : (
+                                insightsData.popularCountries.map((c, i) => {
+                                  const maxVisitors = insightsData.popularCountries[0]?.visitors || 1;
+                                  const pct = Math.round((c.visitors / maxVisitors) * 100);
+                                  return (
+                                    <div key={i} className='space-y-0.5'>
+                                      <div className='flex items-center justify-between text-sm'>
+                                        <span className='flex items-center gap-1.5'>
+                                          <span>{c.flag}</span>
+                                          <span className='truncate'>{c.name}</span>
+                                        </span>
+                                        <span className='text-xs text-muted-foreground shrink-0 ml-2'>{c.visitors}</span>
+                                      </div>
+                                      <div className='h-1.5 bg-muted rounded-full overflow-hidden'>
+                                        <div className='h-full bg-emerald-500 rounded-full' style={{ width: `${pct}%` }} />
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Right column */}
+                        <div className='space-y-4'>
+                          {/* Traffic Sources */}
+                          <Card>
+                            <CardHeader className='pb-2'>
+                              <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                                <Globe2 className='w-4 h-4 text-emerald-500' /> Traffic Sources
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className='space-y-3'>
+                              {(() => {
+                                const ts = insightsData.trafficSources;
+                                const total = ts.organic + ts.direct + ts.social + ts.referral;
+                                if (total === 0) return <p className='text-xs text-muted-foreground'>No traffic data yet</p>;
+                                const orgPct = Math.round((ts.organic / total) * 100);
+                                const dirPct = Math.round((ts.direct / total) * 100);
+                                const socPct = Math.round((ts.social / total) * 100);
+                                const refPct = 100 - orgPct - dirPct - socPct;
+                                return (
+                                  <>
+                                    {/* Stacked bar */}
+                                    <div className='flex h-3 rounded-full overflow-hidden'>
+                                      {ts.organic > 0 && <div className='bg-emerald-500' style={{ width: `${orgPct}%` }} />}
+                                      {ts.direct > 0 && <div className='bg-blue-500' style={{ width: `${dirPct}%` }} />}
+                                      {ts.social > 0 && <div className='bg-purple-500' style={{ width: `${socPct}%` }} />}
+                                      {ts.referral > 0 && <div className='bg-orange-500' style={{ width: `${refPct}%` }} />}
+                                    </div>
+                                    {/* Legend */}
+                                    <div className='grid grid-cols-2 gap-x-4 gap-y-1.5'>
+                                      {[
+                                        { name: 'Organic', count: ts.organic, pct: orgPct, color: 'bg-emerald-500' },
+                                        { name: 'Direct', count: ts.direct, pct: dirPct, color: 'bg-blue-500' },
+                                        { name: 'Social', count: ts.social, pct: socPct, color: 'bg-purple-500' },
+                                        { name: 'Referral', count: ts.referral, pct: refPct, color: 'bg-orange-500' },
+                                      ].map((s) => (
+                                        <div key={s.name} className='flex items-center gap-2 text-xs'>
+                                          <div className={`w-2.5 h-2.5 rounded-sm shrink-0 ${s.color}`} />
+                                          <span className='text-muted-foreground'>{s.name}</span>
+                                          <span className='ml-auto font-medium'>{s.count}</span>
+                                          <span className='text-muted-foreground w-8 text-right'>{s.pct}%</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </CardContent>
+                          </Card>
+
+                          {/* Device Breakdown */}
+                          <Card>
+                            <CardHeader className='pb-2'>
+                              <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                                <Monitor className='w-4 h-4 text-emerald-500' /> Device Breakdown
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className='space-y-2'>
+                              {(() => {
+                                const db = insightsData.deviceBreakdown;
+                                const total = db.desktop + db.mobile + db.tablet;
+                                if (total === 0) return <p className='text-xs text-muted-foreground'>No device data yet</p>;
+                                return [
+                                  { label: 'Desktop', value: db.desktop, icon: <Monitor className='w-3.5 h-3.5' /> },
+                                  { label: 'Mobile', value: db.mobile, icon: <Smartphone className='w-3.5 h-3.5' /> },
+                                  { label: 'Tablet', value: db.tablet, icon: <Tablet className='w-3.5 h-3.5' /> },
+                                ].map((d) => {
+                                  const pct = Math.round((d.value / total) * 100);
+                                  return (
+                                    <div key={d.label} className='space-y-0.5'>
+                                      <div className='flex items-center justify-between text-xs'>
+                                        <span className='flex items-center gap-1.5 text-muted-foreground'>{d.icon} {d.label}</span>
+                                        <span className='font-medium'>{pct}%</span>
+                                      </div>
+                                      <div className='h-1.5 bg-muted rounded-full overflow-hidden'>
+                                        <div className='h-full bg-emerald-500 rounded-full' style={{ width: `${pct}%` }} />
+                                      </div>
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </CardContent>
+                          </Card>
+
+                          {/* Browser Breakdown */}
+                          <Card>
+                            <CardHeader className='pb-2'>
+                              <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                                <Globe2 className='w-4 h-4 text-blue-500' /> Browser Breakdown
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className='space-y-2'>
+                              {insightsData.browserBreakdown.length === 0 ? (
+                                <p className='text-xs text-muted-foreground'>No browser data yet</p>
+                              ) : (
+                                insightsData.browserBreakdown.map((b, i) => (
+                                  <div key={i} className='space-y-0.5'>
+                                    <div className='flex items-center justify-between text-xs'>
+                                      <span className='text-muted-foreground'>{b.browser}</span>
+                                      <span className='font-medium'>{b.percentage}%</span>
+                                    </div>
+                                    <div className='h-1.5 bg-muted rounded-full overflow-hidden'>
+                                      <div className='h-full bg-emerald-500 rounded-full' style={{ width: `${b.percentage}%` }} />
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+
+                      {/* ====== Section D: Bottom row - two columns ====== */}
+                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                        {/* Visa Data Freshness */}
+                        <Card>
+                          <CardHeader className='pb-2'>
+                            <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                              <ClockIcon className='w-4 h-4 text-amber-500' /> Visa Data Freshness
+                            </CardTitle>
+                            <CardDescription>10 oldest-updated countries</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {insightsData.visaDataFreshness.length === 0 ? (
+                              <p className='text-xs text-muted-foreground'>No freshness data</p>
+                            ) : (
+                              <div className='overflow-x-auto'>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className='text-xs'>Country</TableHead>
+                                      <TableHead className='text-xs text-right'>Days Ago</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {insightsData.visaDataFreshness.map((v, i) => {
+                                      const colorClass = v.daysSinceUpdate < 30
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : v.daysSinceUpdate <= 90
+                                          ? 'text-amber-600 dark:text-amber-400'
+                                          : 'text-red-600 dark:text-red-400';
+                                      return (
+                                        <TableRow key={i}>
+                                          <TableCell className='text-sm py-1.5'>
+                                            <span className='mr-1.5'>{v.flag}</span>{v.name}
+                                          </TableCell>
+                                          <TableCell className={`text-sm text-right font-medium py-1.5 ${colorClass}`}>
+                                            {v.daysSinceUpdate}d
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Security Log */}
+                        <Card>
+                          <CardHeader className='pb-2'>
+                            <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                              <Fingerprint className='w-4 h-4 text-red-500' /> Security Log
+                            </CardTitle>
+                            <CardDescription>
+                              {insightsData.securityStats.totalLogins} logins, {insightsData.securityStats.failedAttempts} failed attempts
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {insightsData.securityLog.length === 0 ? (
+                              <p className='text-xs text-muted-foreground'>No security events</p>
+                            ) : (
+                              <div className='overflow-x-auto max-h-52 overflow-y-auto'>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className='text-xs'>Time</TableHead>
+                                      <TableHead className='text-xs'>Action</TableHead>
+                                      <TableHead className='text-xs'>User / IP</TableHead>
+                                      <TableHead className='text-xs text-right'>Status</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {insightsData.securityLog.map((ev, i) => {
+                                      const actionColor = ev.action === 'login_failed'
+                                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                        : ev.action === 'login_success'
+                                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                                      return (
+                                        <TableRow key={i}>
+                                          <TableCell className='text-xs py-1.5 text-muted-foreground whitespace-nowrap'>
+                                            {new Date(ev.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                          </TableCell>
+                                          <TableCell className='py-1.5'>
+                                            <Badge variant='secondary' className={`text-[10px] ${actionColor}`}>
+                                              {ev.action.replace(/_/g, ' ')}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell className='text-xs py-1.5'>
+                                            <div className='truncate max-w-[120px]'>{ev.email || ev.ip}</div>
+                                          </TableCell>
+                                          <TableCell className='py-1.5 text-right'>
+                                            {ev.success
+                                              ? <CheckCircle2 className='w-4 h-4 text-emerald-500 inline' />
+                                              : <XCircle className='w-4 h-4 text-red-500 inline' />}
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* ====== Section E: Affiliate Tracking ====== */}
+                      <Card>
+                        <CardHeader className='pb-2'>
+                          <CardTitle className='text-sm font-semibold flex items-center gap-2'>
+                            <Link2 className='w-4 h-4 text-purple-500' /> Affiliate Tracking
+                          </CardTitle>
+                          <CardDescription>Partner click performance</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {insightsData.affiliateTracking.length === 0 ? (
+                            <p className='text-xs text-muted-foreground'>No affiliate data yet</p>
+                          ) : (
+                            <div className='space-y-2'>
+                              {insightsData.affiliateTracking.map((a, i) => {
+                                const maxClicks = Math.max(...insightsData.affiliateTracking.map(x => x.clicks), 1);
+                                const pct = Math.round((a.clicks / maxClicks) * 100);
+                                return (
+                                  <div key={i} className='space-y-0.5'>
+                                    <div className='flex items-center justify-between text-sm'>
+                                      <span className='text-muted-foreground'>{a.partner}</span>
+                                      <span className='font-medium'>{a.clicks} clicks</span>
+                                    </div>
+                                    <div className='h-1.5 bg-muted rounded-full overflow-hidden'>
+                                      <div className='h-full bg-emerald-500 rounded-full' style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  ) : (
+                    <div className='flex flex-col items-center justify-center py-20 text-muted-foreground'>
+                      <AlertCircle className='w-8 h-8 mb-2' />
+                      <p className='text-sm'>Unable to load insights data</p>
+                    </div>
+                  )
                 )}
 
                 {/* ====== SETTINGS TAB ====== */}

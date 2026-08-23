@@ -300,13 +300,59 @@ model VisitorSession {
   country   String   @default("")
   city      String   @default("")
   page      String   @default("")
-  referrer  String   @default("")
-  userAgent String   @default("")
+  referrer      String   @default("")
+  referrerCategory String @default("direct") // "direct","organic","social","referral"
+  userAgent     String   @default("")
+  device        String   @default("")  // "Desktop","Mobile","Tablet"
+  browser       String   @default("")  // "Chrome","Safari",etc.
+  os            String   @default("")  // "Windows","Android",etc.
   lastSeen  DateTime @default(now())
   createdAt DateTime @default(now())
 
   @@index([sessionId])
   @@index([lastSeen])
+  @@index([createdAt])
+  @@index([country])
+  @@index([referrerCategory])
+  @@index([device])
+}
+
+model SearchLog {
+  id        String   @id @default(cuid())
+  query     String
+  ip        String   @default("unknown")
+  results   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([query])
+  @@index([createdAt])
+}
+
+model SecurityLog {
+  id        String   @id @default(cuid())
+  action    String   // "admin_login","admin_login_fail","user_signup","user_login","user_login_fail"
+  email     String   @default("")
+  ip        String   @default("unknown")
+  userAgent String   @default("")
+  success   Boolean  @default(true)
+  details   String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([success])
+}
+
+model AffiliateClick {
+  id        String   @id @default(cuid())
+  partner   String   // "ivisa","booking","skyscanner","safetywing"
+   country   String   @default("")
+  ip        String   @default("unknown")
+  sessionId String   @default("")
+  page      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([partner])
   @@index([createdAt])
   @@index([country])
 }
