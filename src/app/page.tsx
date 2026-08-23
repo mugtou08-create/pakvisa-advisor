@@ -962,7 +962,7 @@ export default function HomePage() {
                 </div>
               </a>
               <a
-                href="https://www.booking.com/?aid=304142&label=pakvisa"
+                href="https://www.booking.com/searchresults.html?aid=304142&label=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-md hover:border-violet-300 dark:hover:border-violet-700 transition-all group"
@@ -976,7 +976,7 @@ export default function HomePage() {
                 </div>
               </a>
               <a
-                href="https://www.skyscanner.net/?ref=pakvisa"
+                href="https://www.skyscanner.net/"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-md hover:border-orange-300 dark:hover:border-orange-700 transition-all group"
@@ -1485,7 +1485,7 @@ export default function HomePage() {
                 <Shield className="w-4 h-4 text-blue-600" /> <span className="text-sm font-medium text-blue-700 dark:text-blue-400 group-hover:underline">SafetyWing — Travel Insurance</span>
               </a>
               <a
-                href="https://www.booking.com/?aid=304142&label=pakvisa"
+                href="https://www.booking.com/searchresults.html?aid=304142&label=pakvisa"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/50 hover:bg-violet-100 dark:hover:bg-violet-950/40 hover:shadow-sm transition-all group"
@@ -1493,7 +1493,7 @@ export default function HomePage() {
                 <Building className="w-4 h-4 text-violet-600" /> <span className="text-sm font-medium text-violet-700 dark:text-violet-400 group-hover:underline">Booking.com — Hotels</span>
               </a>
               <a
-                href="https://www.skyscanner.net/?ref=pakvisa"
+                href="https://www.skyscanner.net/"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 hover:bg-orange-100 dark:hover:bg-orange-950/40 hover:shadow-sm transition-all group"

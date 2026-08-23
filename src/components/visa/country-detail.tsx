@@ -494,7 +494,7 @@ function AffiliateResources({ country }: { country: CountryData }) {
   const ivisaUrl = `https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`;
   const safetyWingUrl = `https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador`;
   const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(country.name)}&aid=304142&label=pakvisa`;
-  const skyscannerUrl = `https://www.skyscanner.net/transport/flights/to/${country.code.toLowerCase()}/?ref=pakvisa`;
+  const skyscannerUrl = `https://www.skyscanner.net/transport/flights/isl/${country.name.toLowerCase().replace(/\s+/g, '-')}/`;
 
   return (
     <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-gradient-to-r from-emerald-50/80 to-sky-50/50 dark:from-emerald-950/20 dark:to-sky-950/10 p-4">

@@ -6,7 +6,7 @@
  * 2. Replace the placeholder URLs below with your actual affiliate URLs
  * 3. The URLs are used in country detail cards and the footer
  * 
- * CURRENT STATUS: SafetyWing ✅ LIVE | iVisa ✅ LIVE | Booking.com, Skyscanner — placeholders
+ * CURRENT STATUS: SafetyWing LIVE | iVisa LIVE | Booking.com, Skyscanner — placeholders
  */
 
 export const AFFILIATE_CONFIG = {
@@ -40,20 +40,18 @@ export const AFFILIATE_CONFIG = {
       `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(countryName)}&aid=304142&label=pakvisa`,
   },
 
-  /** Skyscanner — flight search (per-click commission) */
+  /** Skyscanner — flight search */
   skyscanner: {
     name: 'Skyscanner',
     baseUrl: 'https://www.skyscanner.net',
-    referralParam: 'ref=pakvisa',
-    getCountryUrl: (countryCode: string) =>
-      `https://www.skyscanner.net/transport/flights/to/${countryCode.toLowerCase()}/?ref=pakvisa`,
+    getCountryUrl: (countryName: string) =>
+      `https://www.skyscanner.net/transport/flights/isl/${countryName.toLowerCase().replace(/\s+/g, '-')}/`,
   },
 
   /** WorldNomads — travel insurance alternative (5-15% commission) */
   worldNomads: {
     name: 'WorldNomads',
     baseUrl: 'https://www.worldnomads.com',
-    referralParam: 'ref=pakvisa',
     getUrl: () =>
       'https://www.worldnomads.com/?ref=pakvisa&utm_source=pakvisa',
   },

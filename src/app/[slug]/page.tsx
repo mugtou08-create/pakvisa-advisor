@@ -771,7 +771,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                   🏨 Book Hotels
                 </a>
                 <a
-                  href={`https://www.skyscanner.net/transport/flights/to/${country.code.toLowerCase()}/?ref=pakvisa`}
+                  href={`https://www.skyscanner.net/transport/flights/isl/${country.name.toLowerCase().replace(/\s+/g, '-')}/`}
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors"
