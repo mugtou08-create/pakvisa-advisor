@@ -1447,3 +1447,38 @@ Stage Summary:
 - FIX: instrumentation.ts now auto-creates ALL tables via @libsql/client on every cold start
 - Contact form, Live Visitors, Newsletter, Payment Proofs, and all other features now work
 - No more missing table issues — even if new models are added to schema, they just need to be added to ensure-tables.ts
+
+---
+Task ID: insights-dashboard
+Agent: Main Agent
+Task: Build 9 admin dashboard insights features
+
+Work Log:
+- Added 3 new Prisma models: SearchLog, SecurityLog, AffiliateClick
+- Added 4 new columns to VisitorSession: referrerCategory, device, browser, os
+- Created parse-ua.ts: lightweight regex-based user-agent parser (no deps)
+- Updated track-visitor to parse UA and categorize referrers on every heartbeat
+- Created security-log.ts helper for logging auth events
+- Added security logging to admin login, user login, and user signup routes
+- Created /api/log-search POST endpoint (search query logging with rate limit)
+- Created /api/go GET endpoint (affiliate click tracker with redirect)
+- Created /api/admin/insights GET endpoint (unified data for all 9 features)
+- Added search query logging to page.tsx (debounced 2s after user types)
+- Updated ensure-tables.ts with all new tables and ALTER TABLE for new columns
+- Added Insights tab to admin dialog with full UI for all 9 features
+- Lint passes clean, pushed as commit d7bfaf3
+
+Stage Summary:
+- All 9 features built and deployed:
+  1. Search Queries Log - logs queries, shows top 25
+  2. Popular Countries - visitor counts by country with flags
+  3. Subscription Metrics - free/pro users, weekly/monthly growth
+  4. Visa Update Tracker - oldest 10 countries by data freshness
+  5. Security Logs - login attempts with success/fail tracking
+  6. Traffic Sources - organic/direct/social/referral breakdown
+  7. Device & Browser - UA parsing with percentage bars
+  8. Critical Alerts - auto-detect stale data, failed logins, unread messages
+  9. Affiliate Click Tracking - click counting via /api/go redirect
+- New admin tab: Insights (lightbulb icon)
+- Data starts collecting from now (no historical data)
+- User should see Insights tab after hard-refreshing browser
