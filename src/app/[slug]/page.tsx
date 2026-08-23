@@ -213,7 +213,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const visaLabel = getVisaLabel(country);
   const costProfile = country.costProfiles[0];
-  const visaFee = costProfile ? `$${costProfile.visaFeeUSD} (\u2248 PKR ${usdToPkr(costProfile.visaFeeUSD)})` : 'Free';
+  const visaFee = costProfile ? `$${costProfile.visaFeeUSD} (≈ PKR ${usdToPkr(costProfile.visaFeeUSD)})` : 'Free';
   const processing = country.visaFree ? 'No processing required' : `${country.processingDaysMin}-${country.processingDaysMax} business days`;
   const title = `${country.name} Visa for Pakistani Citizens - Requirements, Fees & Guide 2026`;
   const description = `Complete ${country.name} visa guide for Pakistani passport holders. ${visaLabel} access, ${visaFee} fee, ${processing} processing. Updated for 2026 with requirements, costs, and embassy details.`;
@@ -447,7 +447,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           {!country.visaFree && (
             <section className="max-w-5xl mx-auto px-4 pb-6">
               <a
-                href={`https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`}
+                href="https://www.ivisa.com/?promotion=SHARE20"
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-base font-semibold transition-colors"
@@ -470,7 +470,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
                 label="Visa Fee"
                 value={costProfile && costProfile.visaFeeUSD > 0 ? `$${costProfile.visaFeeUSD}` : 'Free'}
-                subtext={costProfile && costProfile.visaFeeUSD > 0 ? `\u2248 PKR ${usdToPkr(costProfile.visaFeeUSD)}` : 'No fee required'}
+                subtext={costProfile && costProfile.visaFeeUSD > 0 ? `≈ PKR ${usdToPkr(costProfile.visaFeeUSD)}` : 'No fee required'}
               />
               <InfoCard
                 icon={<Shield className="w-5 h-5 text-amber-600" />}
@@ -576,7 +576,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                   <CostCell label="Total Monthly" usd={costProfile.totalMonthlyUSD} highlight />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">* PKR conversions based on approximate exchange rate (1 USD \u2248 PKR 278.5). Actual rates may vary.</p>
+              <p className="text-xs text-muted-foreground mt-2">* PKR conversions based on approximate exchange rate (1 USD ≈ PKR 278.5). Actual rates may vary.</p>
             </section>
           )}
 
@@ -728,7 +728,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               <div className="flex flex-col items-center gap-3 w-full">
                 {country.etaAvailable && (
                   <a
-                    href={`https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`}
+                    href="https://www.ivisa.com/?promotion=SHARE20"
                     target="_blank"
                     rel="noopener noreferrer sponsored"
                     className="inline-flex items-center gap-2 bg-white text-emerald-700 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition-colors"
@@ -738,7 +738,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 )}
                 {!country.visaFree && (
                   <a
-                    href={`https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`}
+                    href="https://www.ivisa.com/?promotion=SHARE20"
                     target="_blank"
                     rel="noopener noreferrer sponsored"
                     className="inline-flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-400 transition-colors border border-emerald-400"
@@ -841,7 +841,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               </div>
             </div>
             <div className="border-t mt-4 pt-4 text-center text-xs text-muted-foreground">
-              <p>\u00A9 {new Date().getFullYear()} PakVisa Advisor. All rights reserved. Visa information is for guidance only. Always verify with official sources.</p>
+              <p>© {new Date().getFullYear()} PakVisa Advisor. All rights reserved. Visa information is for guidance only. Always verify with official sources.</p>
             </div>
           </div>
         </footer>
@@ -881,7 +881,7 @@ function CostCell({ label, usd, highlight }: { label: string; usd: number; highl
     <div className={`px-4 py-3 text-center ${highlight ? 'bg-emerald-50 dark:bg-emerald-900/10' : ''}`}>
       <p className="text-[11px] text-muted-foreground">{label}</p>
       <p className={`font-semibold text-sm ${highlight ? 'text-emerald-700 dark:text-emerald-400' : ''}`}>${usd}</p>
-      <p className="text-[10px] text-muted-foreground">\u2248 PKR {usdToPkr(usd)}</p>
+      <p className="text-[10px] text-muted-foreground">≈ PKR {usdToPkr(usd)}</p>
     </div>
   );
 }
@@ -940,7 +940,7 @@ function generateFAQs(
 
   // Q2: What is the visa fee?
   const feeText = costProfile && costProfile.visaFeeUSD > 0
-    ? `The visa fee for ${country.name} is approximately $${costProfile.visaFeeUSD} USD (\u2248 PKR ${usdToPkr(costProfile.visaFeeUSD)}). Additional service fees of $${costProfile.serviceFeeUSD} may apply.`
+    ? `The visa fee for ${country.name} is approximately $${costProfile.visaFeeUSD} USD (≈ PKR ${usdToPkr(costProfile.visaFeeUSD)}). Additional service fees of $${costProfile.serviceFeeUSD} may apply.`
     : `There is no visa fee for Pakistani citizens visiting ${country.name} as it is ${visaLabel.toLowerCase()}.`
   ;
   faqs.push({

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-/** Build iVisa URL: https://www.ivisa.com/{country-slug}-visa?promotion=SHARE20 */
-function ivisaUrl(country?: string): string {
-  if (!country) return 'https://www.ivisa.com/?promotion=SHARE20';
-  const slug = country.toLowerCase().replace(/\s+/g, '-');
-  return `https://www.ivisa.com/${slug}-visa?promotion=SHARE20`;
+/** iVisa homepage with referral — country-specific slugs 404 for most countries */
+function ivisaUrl(_country?: string): string {
+  return 'https://www.ivisa.com/?promotion=SHARE20';
 }
 
 /** Build Booking.com URL with search */
