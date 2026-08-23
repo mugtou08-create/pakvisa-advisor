@@ -80,9 +80,9 @@ export const metadata: Metadata = {
       { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
-  // verification: {
-  //   google: "YOUR_ACTUAL_GOOGLE_VERIFICATION_CODE",
-  // },
+  verification: {
+    google: "aXhN2r-V-uKdvYHhLmnjF8OOpLW48PPCx8_AZrEq3as",
+  },
 };
 
 export default function RootLayout({
@@ -95,6 +95,7 @@ export default function RootLayout({
       <head>
         <GoogleAnalytics />
         <GoogleAdSense />
+        <meta name="google-site-verification" content="aXhN2r-V-uKdvYHhLmnjF8OOpLW48PPCx8_AZrEq3as" />
         <meta name="theme-color" content="#059669" />
         <link rel="canonical" href="https://pakvisaadvisor.com" />
         <link rel="icon" href="/icon.png?v=2" sizes="32x32" type="image/png" />
