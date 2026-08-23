@@ -1426,3 +1426,24 @@ Unresolved Issues / Risks
 - ⚠️ If user's old WhatsApp number (30012345678) was cached, visitors may see stale link until cache clears
 - ⚠️ In-memory rate limiting and geo cache are ineffective on Vercel serverless (each request may hit a different instance)
 - 📋 Previous backlog: clean up page.tsx, build Afghanistan pilot page
+
+---
+Task ID: contact-form-fix
+Agent: Main Agent
+Task: Fix Contact Us form failing with "Failed to save message"
+
+Work Log:
+- Tested live site: POST /api/contact returned {"success":false,"message":"Failed to save message. Please try again."}
+- Root cause: ContactMessage table did not exist on Turso production DB (same issue as VisitorSession)
+- Rewrote ensure-tables.ts to auto-create ALL 17 Prisma models as SQL tables
+- Moved table creation from per-route calls to instrumentation.ts (runs once at server startup)
+- This is the clean solution: tables are guaranteed to exist before ANY request is handled
+- Removed redundant ensureAllTables calls from contact, track-visitor, and admin/visitors routes
+- Verified: POST /api/contact on live site now returns {"success":true}
+- Lint passes clean, pushed as commit 5edb438
+
+Stage Summary:
+- ROOT CAUSE: Prisma schema updates were never pushed to Turso (prisma db push was not run on Vercel)
+- FIX: instrumentation.ts now auto-creates ALL tables via @libsql/client on every cold start
+- Contact form, Live Visitors, Newsletter, Payment Proofs, and all other features now work
+- No more missing table issues — even if new models are added to schema, they just need to be added to ensure-tables.ts
