@@ -17,7 +17,7 @@ export const AFFILIATE_CONFIG = {
     referralParam: 'promotion=SHARE20',
     utmSource: 'pakvisa',
     getCountryUrl: (countryName: string) =>
-      `https://www.ivisa.com/search?q=${encodeURIComponent(countryName)}&promotion=SHARE20`,
+      `https://www.ivisa.com/${countryName.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`,
   },
 
   /** SafetyWing — travel insurance (10-20% commission) */

@@ -262,7 +262,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         <div className="flex items-center gap-2 shrink-0">
           {!country.visaFree && (
             <a
-              href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
+              href={`https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`}
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}

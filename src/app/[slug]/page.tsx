@@ -447,7 +447,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           {!country.visaFree && (
             <section className="max-w-5xl mx-auto px-4 pb-6">
               <a
-                href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
+                href={`https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-base font-semibold transition-colors"
@@ -728,7 +728,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               <div className="flex flex-col items-center gap-3 w-full">
                 {country.etaAvailable && (
                   <a
-                    href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
+                    href={`https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`}
                     target="_blank"
                     rel="noopener noreferrer sponsored"
                     className="inline-flex items-center gap-2 bg-white text-emerald-700 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition-colors"
@@ -738,7 +738,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 )}
                 {!country.visaFree && (
                   <a
-                    href={`https://www.ivisa.com/search?q=${encodeURIComponent(country.name)}&promotion=SHARE20`}
+                    href={`https://www.ivisa.com/${country.name.toLowerCase().replace(/\s+/g, '-')}-visa?promotion=SHARE20`}
                     target="_blank"
                     rel="noopener noreferrer sponsored"
                     className="inline-flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-400 transition-colors border border-emerald-400"
