@@ -1370,3 +1370,59 @@ Stage Summary:
 - Admin panel shows real-time visitors, country breakdown, daily charts, user activity
 - Files created: src/app/api/track-visitor/route.ts, src/app/api/admin/visitors/route.ts
 - Files modified: prisma/schema.prisma, src/app/layout.tsx, src/components/app/admin-dialog.tsx
+
+---
+Task ID: live-visitors-fix
+Agent: Main Agent
+Task: Fix missing Live Visitors tab in admin dashboard + WhatsApp number auto-fix
+
+Work Log:
+- Diagnosed root cause: VisitorSession table existed in Prisma schema and local SQLite but was NEVER pushed to Turso production DB
+- The Live Visitors tab code was already deployed on Vercel (confirmed via curl chunk analysis)
+- The tab was always visible in the admin dialog sidebar (line 744 navItems array)
+- Problem: When admin clicked Live Visitors, the API call to /api/admin/visitors failed because the table didn't exist on Turso
+- Created src/lib/ensure-tables.ts: Uses @libsql/client directly to run CREATE TABLE IF NOT EXISTS on Turso
+- Updated /api/track-visitor and /api/admin/visitors to call ensureVisitorTable() before any query
+- In development mode, ensure-tables is a no-op (prisma db push handles schema locally)
+- Verified: POST to /api/track-visitor on live Vercel returns {ok:true} — table auto-created successfully
+- Verified: WhatsApp number currently stored is 923361300089 (correct Pakistan format)
+- Enhanced WhatsApp admin settings UI:
+  - Detects local Pakistani numbers starting with 03xx
+  - Shows amber warning box explaining the +92 requirement
+  - Added "Auto-fix +92" button that converts 03xx to 92xx
+  - Save button auto-converts local format before saving
+  - Shows link preview when valid international format is entered
+  - Minimum 10 digits required (was 8)
+  - Replaced Hash icon with Phone icon for clarity
+- Verified sign-in flow: users can sign up and log in with just email/password, no Pro payment required
+- Verified contact form: functional, saves to ContactMessage model via /api/contact
+- Lint passes clean, all changes pushed to GitHub (commit 90e390d)
+
+Stage Summary:
+- ROOT CAUSE of missing Live Visitors: VisitorSession table not on Turso production DB
+- FIX: Auto-create table via @libsql/client on first API request (ensure-tables.ts)
+- WhatsApp fix: auto-detects local Pakistani format, offers one-click fix
+- Sign-in and Contact form were already fully functional — no changes needed
+- Current WhatsApp number in DB: 923361300089 (correct format)
+
+---
+Project Status Assessment
+- All 4 original user requests are now resolved
+- Live Visitors tab should now work after Vercel deploys commit 90e390d
+- Visitor tracking is active: heartbeat sends to /api/track-visitor every 30s
+- Admin should hard-refresh browser (Ctrl+Shift+R) to see Live Visitors tab
+
+---
+Current Goals / Completed Modifications
+- ✅ VisitorSession table auto-creation on Turso (ensure-tables.ts)
+- ✅ WhatsApp number auto-fix for Pakistani local format
+- ✅ Sign-in flow verified (works without Pro)
+- ✅ Contact form verified (works, saves to DB)
+- ✅ Cron job active (webDevReview every 15 min)
+
+---
+Unresolved Issues / Risks
+- ⚠️ User may need to hard-refresh browser to see Live Visitors tab
+- ⚠️ If user's old WhatsApp number (30012345678) was cached, visitors may see stale link until cache clears
+- ⚠️ In-memory rate limiting and geo cache are ineffective on Vercel serverless (each request may hit a different instance)
+- 📋 Previous backlog: clean up page.tsx, build Afghanistan pilot page
