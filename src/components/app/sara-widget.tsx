@@ -15,11 +15,11 @@ interface SaraMessage {
 
 // Quick action buttons (zero-cost affiliate links)
 const QUICK_ACTIONS = [
-  { icon: FileText, label: 'Apply for e-Visa', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400', partner: 'ivisa' },
-  { icon: Plane, label: 'Find Cheap Flights', color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/30 dark:text-sky-400', partner: 'skyscanner' },
-  { icon: Hotel, label: 'Book a Hotel', color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/30 dark:text-violet-400', partner: 'booking' },
+  { icon: FileText, label: 'e-Visa Apply Karein', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400', partner: 'ivisa' },
+  { icon: Plane, label: 'Saste Flights', color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/30 dark:text-sky-400', partner: 'skyscanner' },
+  { icon: Hotel, label: 'Hotel Book Karein', color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/30 dark:text-violet-400', partner: 'booking' },
   { icon: Shield, label: 'Travel Insurance', color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400', partner: 'safetywing' },
-  { icon: CreditCard, label: 'Send Money Abroad', color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/30 dark:text-teal-400', partner: 'wise' },
+  { icon: CreditCard, label: 'Paisa Bhejein', color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/30 dark:text-teal-400', partner: 'wise' },
   { icon: Smartphone, label: 'Travel eSIM', color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400', partner: 'airalo' },
 ];
 
@@ -88,7 +88,7 @@ export function SaraWidget() {
       // Add Sara's greeting
       setMessages([{
         role: 'sara',
-        content: 'Hey there! Welcome to PakVisa! I\'m Sara, your travel assistant. Are you planning a trip abroad? I\'d love to help you get everything sorted out.',
+        content: 'Assalam o Alaikum! Main Sara hoon, aapki travel assistant. Aap mujhse Urdu mein baat kar sakte hain. Kya aap kisi trip ki planning kar rahe hain? Main madad kar sakti hoon!'
       }]);
     }, 18000);
     return () => clearTimeout(timer);
@@ -200,7 +200,7 @@ export function SaraWidget() {
         json = await res.json();
       } catch {
         console.error('Sara API: invalid JSON response, status:', res.status);
-        setMessages(prev => [...prev, { role: 'sara', content: 'Something went wrong on my end. Give me a moment and try again?' }]);
+        setMessages(prev => [...prev, { role: 'sara', content: 'Meri taraf se kuch issue aa gaya. Thoda ruko aur dobara try karein?' }]);
         return;
       }
 
@@ -208,14 +208,14 @@ export function SaraWidget() {
         setMessages(prev => [...prev, { role: 'sara', content: json.data }]);
       } else {
         console.error('Sara API error:', json.error);
-        setMessages(prev => [...prev, { role: 'sara', content: json.error || 'Something went wrong. Try again?' }]);
+        setMessages(prev => [...prev, { role: 'sara', content: json.error || 'Kuch masla ho gaya. Dobara try karein?' }]);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setMessages(prev => [...prev, { role: 'sara', content: 'That took too long. Try again — I\'ll be faster this time!' }]);
+        setMessages(prev => [...prev, { role: 'sara', content: 'Bohat zyada time lag gaya. Dobara try karein — is baar zyada tez hoon gi!' }]);
       } else {
         console.error('Sara fetch error:', err);
-        setMessages(prev => [...prev, { role: 'sara', content: 'Having a little trouble connecting. Check your internet and try again?' }]);
+        setMessages(prev => [...prev, { role: 'sara', content: 'Connection mein thori problem ho rahi hai. Apna internet check karein aur dobara try karein?' }]);
       }
     } finally {
       setIsLoading(false);
@@ -249,7 +249,7 @@ export function SaraWidget() {
     if (!isOpen && messages.length === 0) {
       setMessages([{
         role: 'sara',
-        content: 'Hey! I\'m Sara, your travel assistant. Planning a trip abroad? Let me help you get everything sorted!',
+        content: 'Assalam o Alaikum! Main Sara hoon, aapki travel assistant. Aap Urdu mein likhein, main Urdu mein jawab doongi. Kya aap kisi trip ki planning kar rahe hain?'
       }]);
     }
   };
@@ -290,7 +290,7 @@ export function SaraWidget() {
             )}
             {/* Tooltip */}
             <div className="absolute bottom-full right-0 mb-3 px-3 py-2 bg-popover text-popover-foreground rounded-lg shadow-lg border border-border text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              Chat with Sara
+              Sara se baat karein
               <div className="absolute top-full right-5 w-2 h-2 bg-popover border-r border-b border-border rotate-45 -mt-1" />
             </div>
           </div>
@@ -309,7 +309,7 @@ export function SaraWidget() {
               </div>
               <div>
                 <p className="text-sm font-semibold leading-tight">Sara</p>
-                <p className="text-[11px] text-white/80">Your travel assistant</p>
+                <p className="text-[11px] text-white/80">Aapki travel assistant</p>
               </div>
             </div>
             <button onClick={toggleChat} className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors" aria-label="Close">
@@ -325,7 +325,7 @@ export function SaraWidget() {
                   <Sparkles className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Hi! I can help you with visas, flights, hotels, and more. What do you need?
+                  Salam! Main aapki visa, flights, hotels, aur travel ki madad kar sakti hoon. Kya chahiye aapko?
                 </p>
               </div>
             ) : (
@@ -452,7 +452,7 @@ export function SaraWidget() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask Sara anything..."
+                placeholder="Sara se kuch bhi poochein..."
                 disabled={isLoading}
                 className="flex-1 h-9 px-3.5 rounded-full border border-border bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500/40 transition-colors disabled:opacity-50"
               />
