@@ -7,6 +7,7 @@
  * 3. The URLs are used in country detail cards and the footer
  * 
  * CURRENT STATUS: SafetyWing LIVE | iVisa LIVE | Booking.com, Skyscanner — placeholders
+ * NEW: Wise (money transfer) | Airalo (travel eSIM)
  */
 
 export const AFFILIATE_CONFIG = {
@@ -34,7 +35,7 @@ export const AFFILIATE_CONFIG = {
   booking: {
     name: 'Booking.com',
     baseUrl: 'https://www.booking.com',
-    aid: '304142', // Replace with your actual Booking.com affiliate AID
+    aid: '304142',
     label: 'pakvisa',
     getCountryUrl: (countryName: string) =>
       `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(countryName)}&aid=304142&label=pakvisa`,
@@ -54,5 +55,25 @@ export const AFFILIATE_CONFIG = {
     baseUrl: 'https://www.worldnomads.com',
     getUrl: () =>
       'https://www.worldnomads.com/?ref=pakvisa&utm_source=pakvisa',
+  },
+
+  /** Wise — international money transfer (10-15% of transfer fee commission)
+   *  Pakistani travelers NEED this to pay visa fees in foreign currency.
+   *  Better exchange rates than banks, fast transfers. */
+  wise: {
+    name: 'Wise',
+    baseUrl: 'https://wise.com',
+    getUrl: () =>
+      'https://wise.com/pub/a/pakvisa?utm_source=pakvisa&utm_medium=affiliate',
+  },
+
+  /** Airalo — travel eSIM (10-15% commission)
+   *  Instant data in 190+ countries. No physical SIM needed.
+   *  Very popular with Pakistani travelers avoiding expensive roaming. */
+  airalo: {
+    name: 'Airalo',
+    baseUrl: 'https://www.airalo.com',
+    getUrl: () =>
+      'https://www.airalo.com/?utm_source=pakvisa&utm_medium=affiliate',
   },
 } as const;

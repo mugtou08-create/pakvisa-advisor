@@ -356,3 +356,35 @@ model AffiliateClick {
   @@index([createdAt])
   @@index([country])
 }
+
+model Referral {
+  id            String   @id @default(cuid())
+  refCode       String   @unique              // e.g. "SARA4827"
+  referrerIp    String                        // IP of person who created the referral
+  referrerSid   String   @default("")        // Browser session ID
+  visitorCount  Int      @default(0)          // Unique IPs that visited via this code
+  rewardTier    Int      @default(0)          // 0=none, 1=1 query, 3=5 queries, 5=1 day pro
+  bonusQueries  Int      @default(0)          // Extra queries earned
+  proDaysEarned Int      @default(0)          // Free Pro days earned
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  visitors      ReferralVisitor[]
+
+  @@index([referrerIp])
+  @@index([refCode])
+  @@index([createdAt])
+}
+
+model ReferralVisitor {
+  id         String   @id @default(cuid())
+  referralId String
+  referral   Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  @@index([referralId])
+  visitorIp  String
+  visitedAt  DateTime @default(now())
+
+  @@index([visitorIp])
+  @@index([visitedAt])
+}

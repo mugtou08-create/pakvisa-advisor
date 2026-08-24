@@ -27,6 +27,7 @@ import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactM
 import { PaymentProofModal } from '@/components/visa/payment-proof-modal';
 import { AdminDialog } from '@/components/app/admin-dialog';
 import { WhatsAppButton } from '@/components/app/whatsapp-button';
+import { SaraWidget } from '@/components/app/sara-widget';
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 
 
@@ -647,7 +648,6 @@ export default function HomePage() {
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
         {showPaymentProof && <PaymentProofModal onClose={() => setShowPaymentProof(false)} />}
         <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />
-        <WhatsAppButton />
       </div>
     );
   }
@@ -1547,11 +1547,12 @@ export default function HomePage() {
       <AdminDialog open={adminOpen} onClose={() => setAdminOpen(false)} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} />
 
       {/* Floating Buttons */}
+      <SaraWidget />
       <WhatsAppButton />
       {showBackToTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 left-6 z-50 w-11 h-11 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+          className="fixed bottom-20 left-6 z-50 w-11 h-11 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
           aria-label="Back to top"
         >
           <ArrowUp className="w-5 h-5" />
