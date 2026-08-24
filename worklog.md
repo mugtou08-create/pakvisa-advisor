@@ -1618,3 +1618,21 @@ Stage Summary:
 - All Sara features preserved: widget, API, referral, affiliates
 - Local verification passed
 - Vercel should deploy cleanly from this single commit
+
+---
+Task ID: 4
+Agent: Main
+Task: Fix Sara response truncation + full app QA
+
+Work Log:
+- Root cause: maxOutputTokens was 1500, too low for detailed travel advice
+- Increased to 2048 (matching AI Visa Consultant)
+- Added prompt instruction: "Keep each response to 3-5 short paragraphs max — don't write essays"
+- Verified all 70 countries via API: 70/70 have flagEmoji, visaFeeUSD, name, visa type
+- QA verified: Sara open/close, theme toggle, search (Malaysia), country filter, pagination (9 pages), travel essentials links, quick tools, all 6 Sara quick actions
+- Single commit pushed: 159873c
+
+Stage Summary:
+- Sara responses will no longer cut off mid-sentence
+- All 70 countries render with flags and data
+- All core features working
