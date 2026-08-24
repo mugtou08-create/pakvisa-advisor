@@ -207,7 +207,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   // Insights state
   const [insightsData, setInsightsData] = useState<{
     alerts: Array<{ type: 'error' | 'warning' | 'info'; title: string; message: string }>;
-    totalUsers: number; freeUsers: number; proUsers: number;
+    totalUsers: number; freeUsers: number; proUsers: number; newUsersWeek: number; newUsersMonth: number;
     searchesToday: number; searchesWeek: number;
     affiliateClicks: number;
     failedLogins: number;
@@ -280,6 +280,10 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     setSubscribers([]);
     setPaymentProofs([]);
     setPaymentProofsPending(0);
+    setVisitorData(null);
+    setInsightsData(null);
+    setNotifications([]);
+    setUnreadCount(0);
     setActiveSection('overview');
     toast.success('Logged out');
   }, []);
@@ -466,6 +470,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     if (activeSection === 'overview') {
       fetchMessages(1);
       fetchSubscribers();
+      fetchPaymentProofs();
     }
     if (activeSection === 'messages') fetchMessages(1, messageFilter, messageSearch);
     if (activeSection === 'newsletter') fetchSubscribers();
@@ -839,6 +844,8 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
           totalUsers: d.subscription?.totalUsers || 0,
           freeUsers: d.subscription?.freeUsers || 0,
           proUsers: d.subscription?.proUsers || 0,
+          newUsersWeek: d.subscription?.newUsersWeek || 0,
+          newUsersMonth: d.subscription?.newUsersMonth || 0,
           searchesToday: d.searchQueries?.searchesToday || 0,
           searchesWeek: d.searchQueries?.searchesWeek || 0,
           affiliateClicks: d.affiliate?.total || 0,
@@ -2237,6 +2244,13 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                             <div className='text-[10px] text-muted-foreground mt-1'>
                               {insightsData.freeUsers} free / {insightsData.proUsers} pro
                             </div>
+                            {(insightsData.newUsersWeek > 0 || insightsData.newUsersMonth > 0) && (
+                              <div className='text-[10px] mt-0.5'>
+                                {insightsData.newUsersWeek > 0 && <span className='text-emerald-600'>+{insightsData.newUsersWeek} this week</span>}
+                                {insightsData.newUsersWeek > 0 && insightsData.newUsersMonth > 0 && ' · '}
+                                {insightsData.newUsersMonth > 0 && <span className='text-emerald-600'>+{insightsData.newUsersMonth} this month</span>}
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
 
@@ -2358,7 +2372,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                                 const orgPct = Math.round((ts.organic / total) * 100);
                                 const dirPct = Math.round((ts.direct / total) * 100);
                                 const socPct = Math.round((ts.social / total) * 100);
-                                const refPct = 100 - orgPct - dirPct - socPct;
+                                const refPct = Math.max(0, 100 - orgPct - dirPct - socPct);
                                 return (
                                   <>
                                     {/* Stacked bar */}

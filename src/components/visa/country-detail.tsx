@@ -491,10 +491,15 @@ function TripCalculator({ costProfile }: { costProfile: NonNullable<CountryData[
 // Affiliate: Travel Resources (iVisa, Insurance, Hotels, Flights)
 // ============================================================
 function AffiliateResources({ country }: { country: CountryData }) {
-  const ivisaUrl = 'https://www.ivisa.com/?promotion=SHARE20';
+  const getSessionId = () => {
+    try { return localStorage.getItem('_pvsid') || ''; } catch { return ''; }
+  };
+  const sid = typeof window !== 'undefined' ? getSessionId() : '';
+  const page = typeof window !== 'undefined' ? window.location.pathname : '';
+  const ivisaUrl = `/api/go?p=ivisa&c=${encodeURIComponent(country.name)}&sid=${encodeURIComponent(sid)}&page=${encodeURIComponent(page)}`;
   const safetyWingUrl = `https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador`;
-  const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(country.name)}&aid=304142&label=pakvisa`;
-  const skyscannerUrl = `https://www.skyscanner.net/transport/flights/isl/${country.name.toLowerCase().replace(/\s+/g, '-')}/`;
+  const bookingUrl = `/api/go?p=booking&c=${encodeURIComponent(country.name)}&sid=${encodeURIComponent(sid)}&page=${encodeURIComponent(page)}`;
+  const skyscannerUrl = `/api/go?p=skyscanner&c=${encodeURIComponent(country.name)}&sid=${encodeURIComponent(sid)}&page=${encodeURIComponent(page)}`;
 
   return (
     <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-gradient-to-r from-emerald-50/80 to-sky-50/50 dark:from-emerald-950/20 dark:to-sky-950/10 p-4">
@@ -652,7 +657,7 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
       {/* Cost Breakdown */}
       {country.costProfile && (
         <div>
-          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cost Breakdown (per month)</h5>
+          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cost Breakdown</h5>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="rounded-lg bg-muted/50 p-2 text-center">
               <p className="text-xs text-muted-foreground">Visa Fee</p>
@@ -660,19 +665,41 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
               <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.visaFeeUSD * 278.5).toLocaleString()}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-2 text-center">
-              <p className="text-xs text-muted-foreground">Living Cost</p>
-              <p className="font-semibold text-sm">${country.costProfile.monthlyLivingUSD}</p>
-              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyLivingUSD * 278.5).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Service Fee</p>
+              <p className="font-semibold text-sm">${country.costProfile.serviceFeeUSD}</p>
+              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.serviceFeeUSD * 278.5).toLocaleString()}</p>
             </div>
-            <div className="rounded-lg bg-muted/50 p-2 text-center">
-              <p className="text-xs text-muted-foreground">Rent</p>
-              <p className="font-semibold text-sm">${country.costProfile.monthlyRentUSD}</p>
-              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyRentUSD * 278.5).toLocaleString()}</p>
+            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 p-2 text-center">
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">Monthly Total</p>
+              <p className="font-bold text-sm text-emerald-700 dark:text-emerald-400">${country.costProfile.totalMonthlyUSD}</p>
+              <p className="text-[10px] text-emerald-600/70 dark:text-emerald-500/70">≈ PKR {(country.costProfile.totalMonthlyUSD * 278.5).toLocaleString()}/mo</p>
             </div>
-            <div className="rounded-lg bg-muted/50 p-2 text-center">
-              <p className="text-xs text-muted-foreground">Food</p>
-              <p className="font-semibold text-sm">${country.costProfile.monthlyFoodUSD}</p>
-              <p className="text-[10px] text-muted-foreground">≈ PKR {(country.costProfile.monthlyFoodUSD * 278.5).toLocaleString()}</p>
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-2 text-center">
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">One-time Total</p>
+              <p className="font-bold text-sm text-amber-700 dark:text-amber-400">${(country.costProfile.visaFeeUSD + country.costProfile.serviceFeeUSD)}</p>
+              <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70">≈ PKR {((country.costProfile.visaFeeUSD + country.costProfile.serviceFeeUSD) * 278.5).toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="rounded-lg bg-muted/30 p-2 text-center">
+              <p className="text-[10px] text-muted-foreground">Rent</p>
+              <p className="text-xs font-medium">${country.costProfile.monthlyRentUSD}</p>
+              <p className="text-[9px] text-muted-foreground/70">≈ PKR {(country.costProfile.monthlyRentUSD * 278.5).toLocaleString()}/mo</p>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-2 text-center">
+              <p className="text-[10px] text-muted-foreground">Food</p>
+              <p className="text-xs font-medium">${country.costProfile.monthlyFoodUSD}</p>
+              <p className="text-[9px] text-muted-foreground/70">≈ PKR {(country.costProfile.monthlyFoodUSD * 278.5).toLocaleString()}/mo</p>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-2 text-center">
+              <p className="text-[10px] text-muted-foreground">Transport</p>
+              <p className="text-xs font-medium">${country.costProfile.monthlyTransportUSD}</p>
+              <p className="text-[9px] text-muted-foreground/70">≈ PKR {(country.costProfile.monthlyTransportUSD * 278.5).toLocaleString()}/mo</p>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-2 text-center">
+              <p className="text-[10px] text-muted-foreground">Insurance</p>
+              <p className="text-xs font-medium">${country.costProfile.healthInsuranceUSD}</p>
+              <p className="text-[9px] text-muted-foreground/70">≈ PKR {(country.costProfile.healthInsuranceUSD * 278.5).toLocaleString()}/mo</p>
             </div>
           </div>
           <TripCalculator costProfile={country.costProfile} />

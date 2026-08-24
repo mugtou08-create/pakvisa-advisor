@@ -30,7 +30,7 @@ function renderWithAffiliateLinks(text: string): React.ReactNode {
 
   const getUrl = (match: string): string | null => {
     const lower = match.toLowerCase();
-    if (lower.includes('ivisa')) return 'https://www.ivisa.com/?promotion=SHARE20'; // generic iVisa homepage
+    if (lower.includes('ivisa')) return '/api/go?p=ivisa';
     if (lower.includes('safetywing')) return 'https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador';
     if (lower.includes('skyscanner')) return 'https://www.skyscanner.net/';
     if (lower.includes('booking.com')) return 'https://www.booking.com/searchresults.html?aid=304142&label=pakvisa';

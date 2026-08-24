@@ -33,6 +33,15 @@ import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/
 // ============================================================
 // Helpers
 // ============================================================
+function getSid() { try { return localStorage.getItem('_pvsid') || ''; } catch { return ''; } }
+function affiliateGo(partner: string, country?: string) {
+  const sid = getSid();
+  const params = new URLSearchParams({ p: partner });
+  if (country) params.set('c', country);
+  if (sid) params.set('sid', sid);
+  params.set('page', window.location.pathname);
+  return `/api/go?${params.toString()}`;
+}
 const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
 // ============================================================
@@ -262,7 +271,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         <div className="flex items-center gap-2 shrink-0">
           {!country.visaFree && (
             <a
-              href="https://www.ivisa.com/?promotion=SHARE20"
+              href={affiliateGo('ivisa', country.name)}
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}
@@ -934,7 +943,7 @@ export default function HomePage() {
             <h2 className="text-xl font-bold mb-4">Travel Essentials</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <a
-                href="https://www.ivisa.com/?promotion=SHARE20"
+                href={affiliateGo('ivisa')}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
@@ -1469,7 +1478,7 @@ export default function HomePage() {
             <p className="text-center text-[10px] text-muted-foreground/70 font-medium uppercase tracking-widest mb-3">Trusted Travel Partners</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <a
-                href="https://www.ivisa.com/?promotion=SHARE20"
+                href={affiliateGo('ivisa')}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:shadow-sm transition-all group"

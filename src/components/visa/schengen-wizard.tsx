@@ -595,9 +595,9 @@ export function SchengenWizard() {
 
           {/* CTA */}
           <a
-            href="https://www.ivisa.com/?promotion=SHARE20"
+            href={"/api/go?p=ivisa&c=Schengen&page=/schengen-wizard"}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noopener noreferrer sponsored"
             className="block"
           >
             <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-12 text-base">

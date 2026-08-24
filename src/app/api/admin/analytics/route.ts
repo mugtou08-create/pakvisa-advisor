@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
     const etaAvailableCount = await db.country.count({ where: { etaAvailable: true } });
     const totalRequirements = await db.visaRequirement.count();
     const totalCostProfiles = await db.costProfile.count();
-    const totalUsers = await db.userProfile.count();
-    const totalSessions = await db.session.count();
+    const totalUsers = await db.user.count().catch(() => 0);
+    const totalSessions = await db.visitorSession.count().catch(() => 0);
 
     // Most recent data fetch
     const latestFetch = await db.country.findFirst({

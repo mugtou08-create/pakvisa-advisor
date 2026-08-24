@@ -447,7 +447,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           {!country.visaFree && (
             <section className="max-w-5xl mx-auto px-4 pb-6">
               <a
-                href="https://www.ivisa.com/?promotion=SHARE20"
+                href={`/api/go?p=ivisa&c=${encodeURIComponent(country.name)}&page=${encodeURIComponent(`/${slug}`)}`}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-base font-semibold transition-colors"
@@ -563,20 +563,22 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
             <section className="max-w-5xl mx-auto px-4 pb-8">
               <SectionTitle icon={<DollarSign className="w-5 h-5" />} title="Cost Breakdown" />
               <div className="border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0">
-                  <CostCell label="Visa Fee" usd={costProfile.visaFeeUSD} />
-                  <CostCell label="Service Fee" usd={costProfile.serviceFeeUSD} />
-                  <CostCell label="Monthly Living" usd={costProfile.monthlyLivingUSD} />
-                  <CostCell label="Monthly Rent" usd={costProfile.monthlyRentUSD} />
+                {/* One-time Costs */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x">
+                  <CostCell label="Visa Fee (one-time)" usd={costProfile.visaFeeUSD} />
+                  <CostCell label="Service Fee (one-time)" usd={costProfile.serviceFeeUSD} />
+                  <CostCell label={"Upfront Total"} usd={costProfile.visaFeeUSD + costProfile.serviceFeeUSD} highlight />
+                  <CostCell label="Monthly Living Total" usd={costProfile.totalMonthlyUSD} highlight />
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x border-t">
-                  <CostCell label="Monthly Food" usd={costProfile.monthlyFoodUSD} />
-                  <CostCell label="Transport" usd={costProfile.monthlyTransportUSD} />
-                  <CostCell label="Health Insurance" usd={costProfile.healthInsuranceUSD} />
-                  <CostCell label="Total Monthly" usd={costProfile.totalMonthlyUSD} highlight />
+                {/* Monthly Breakdown */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x border-t bg-muted/20">
+                  <CostCell label="Rent (monthly)" usd={costProfile.monthlyRentUSD} />
+                  <CostCell label="Food (monthly)" usd={costProfile.monthlyFoodUSD} />
+                  <CostCell label="Transport (monthly)" usd={costProfile.monthlyTransportUSD} />
+                  <CostCell label="Insurance (monthly)" usd={costProfile.healthInsuranceUSD} />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">* PKR conversions based on approximate exchange rate (1 USD ≈ PKR 278.5). Actual rates may vary.</p>
+              <p className="text-xs text-muted-foreground mt-2">* PKR conversions based on approximate exchange rate (1 USD ≈ PKR 278.5). Actual rates may vary. Monthly total includes rent, food, transport, and insurance.</p>
             </section>
           )}
 
@@ -728,7 +730,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               <div className="flex flex-col items-center gap-3 w-full">
                 {country.etaAvailable && (
                   <a
-                    href="https://www.ivisa.com/?promotion=SHARE20"
+                    href={`/api/go?p=ivisa&c=${encodeURIComponent(country.name)}&page=${encodeURIComponent(`/${slug}`)}`}
                     target="_blank"
                     rel="noopener noreferrer sponsored"
                     className="inline-flex items-center gap-2 bg-white text-emerald-700 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition-colors"
@@ -738,7 +740,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 )}
                 {!country.visaFree && (
                   <a
-                    href="https://www.ivisa.com/?promotion=SHARE20"
+                    href={`/api/go?p=ivisa&c=${encodeURIComponent(country.name)}&page=${encodeURIComponent(`/${slug}`)}`}
                     target="_blank"
                     rel="noopener noreferrer sponsored"
                     className="inline-flex items-center gap-2 bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-400 transition-colors border border-emerald-400"
@@ -763,7 +765,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                   🛡️ Travel Insurance
                 </a>
                 <a
-                  href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(country.name)}&aid=304142&label=pakvisa`}
+                  href={`/api/go?p=booking&c=${encodeURIComponent(country.name)}&page=${encodeURIComponent(`/${slug}`)}`}
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors"
@@ -771,7 +773,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                   🏨 Book Hotels
                 </a>
                 <a
-                  href={`https://www.skyscanner.net/transport/flights/isl/${country.name.toLowerCase().replace(/\s+/g, '-')}/`}
+                  href={`/api/go?p=skyscanner&c=${encodeURIComponent(country.name)}&page=${encodeURIComponent(`/${slug}`)}`}
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   className="inline-flex items-center gap-2 bg-white/10 border border-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors"

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // 4. Visa Freshness (oldest first)
     const staleCountries = await db.country.findMany({select:{name:true,code:true,flagEmoji:true,fetchTimestamp:true},orderBy:{fetchTimestamp:'asc'},take:10}).catch(()=>[]);
-    const visaFreshness = staleCountries.map(c=>({name:c.name,code:c.code,flagEmoji:c.flagEmoji,daysSince:Math.floor((now.getTime()-c.fetchTimestamp.getTime())/86400000),fetchTimestamp:c.fetchTimestamp.toISOString()}));
+    const visaFreshness = staleCountries.map(c=>({name:c.name,code:c.code,flagEmoji:c.flagEmoji,daysSince:c.fetchTimestamp?Math.floor((now.getTime()-c.fetchTimestamp.getTime())/86400000):-1,fetchTimestamp:c.fetchTimestamp?c.fetchTimestamp.toISOString():null}));
 
     // 5. Security Logs
     const secLogs = await db.securityLog.findMany({orderBy:{createdAt:'desc'},take:20}).catch(()=>[]);
