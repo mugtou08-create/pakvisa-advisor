@@ -8,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
       },
     ],
-    sitemap: 'https://pakvisaadvisor.com/sitemap.xml',
+    sitemap: 'https://pakvisa-advisor.vercel.app/sitemap.xml',
   };
 }

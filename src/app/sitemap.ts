@@ -7,7 +7,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     select: { code: true, name: true, updatedAt: true },
   });
 
-  const BASE_URL = 'https://pakvisaadvisor.com';
+  const BASE_URL = 'https://pakvisa-advisor.vercel.app';
 
   const countryPages: MetadataRoute.Sitemap = countries.map((c) => ({
     url: `${BASE_URL}/${CODE_TO_SLUG[c.code] || c.code}`,

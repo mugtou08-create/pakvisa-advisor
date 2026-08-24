@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://pakvisaadvisor.com'),
+  metadataBase: new URL('https://pakvisa-advisor.vercel.app'),
   title: "PakVisa Advisor — Pakistani Passport Visa Checker & Travel Tools",
   description:
     "Free AI-powered visa intelligence for Pakistani passport holders. Check visa requirements for 70+ countries, convert PKR currencies, estimate trip budgets, compare destinations, and plan your travels — all in one place.",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://pakvisaadvisor.com",
+    url: "https://pakvisa-advisor.vercel.app",
     siteName: "PakVisa Advisor",
     title: "PakVisa Advisor — Pakistani Passport Visa Checker & Travel Tools",
     description: "Free AI-powered visa intelligence for Pakistani passport holders. Check visa requirements for 70+ countries, convert currencies, and estimate trip budgets.",
@@ -98,7 +98,7 @@ export default function RootLayout({
         <meta name="google-site-verification" content="aXhN2r-V-uKdvYHhLmnjF8OOpLW48PPCx8_AZrEq3as" />
         <meta name="impact-site-verification" content="d482a492-cd48-44cc-a7e7-592734249e0f" />
         <meta name="theme-color" content="#059669" />
-        <link rel="canonical" href="https://pakvisaadvisor.com" />
+        <link rel="canonical" href="https://pakvisa-advisor.vercel.app" />
         <link rel="icon" href="/icon.png?v=2" sizes="32x32" type="image/png" />
         <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" type="image/x-icon" />
         <link rel="apple-touch-icon" href="/apple-icon.png?v=2" sizes="180x180" />
@@ -109,7 +109,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebApplication",
               name: "PakVisa Advisor",
-              url: "https://pakvisaadvisor.com",
+              url: "https://pakvisa-advisor.vercel.app",
               description: "AI-powered visa eligibility checker and travel tools for Pakistani passport holders.",
               applicationCategory: "TravelApplication",
               operatingSystem: "All",
