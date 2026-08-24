@@ -39,7 +39,7 @@ function affiliateGo(partner: string, country?: string) {
   const params = new URLSearchParams({ p: partner });
   if (country) params.set('c', country);
   if (sid) params.set('sid', sid);
-  params.set('page', window.location.pathname);
+  try { params.set('page', window.location.pathname); } catch {}
   return `/api/go?${params.toString()}`;
 }
 const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
