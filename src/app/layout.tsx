@@ -96,6 +96,7 @@ export default function RootLayout({
         <GoogleAnalytics />
         <GoogleAdSense />
         <meta name="google-site-verification" content="aXhN2r-V-uKdvYHhLmnjF8OOpLW48PPCx8_AZrEq3as" />
+        <meta name="impact-site-verification" content="d482a492-cd48-44cc-a7e7-592734249e0f" />
         <meta name="theme-color" content="#059669" />
         <link rel="canonical" href="https://pakvisaadvisor.com" />
         <link rel="icon" href="/icon.png?v=2" sizes="32x32" type="image/png" />
