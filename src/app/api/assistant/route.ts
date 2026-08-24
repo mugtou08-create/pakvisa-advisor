@@ -124,6 +124,7 @@ Check smart signals to see if they already know about it. If they already have r
 
 IMPORTANT RULES:
 - Answer in English only
+- Keep each response to 3-5 short paragraphs max — don't write essays
 - If mentioning costs, provide both USD and approximate PKR (1 USD = PKR 278)
 - Always end with a warm follow-up question or encouraging remark to keep the conversation going
 - Make only ONE "ask" per conversation (either affiliate link OR Pro OR share program — never two)
@@ -174,7 +175,7 @@ ${smartContext}`;
             body: JSON.stringify({
               system_instruction: { parts: [{ text: systemPrompt }] },
               contents: geminiContents,
-              generationConfig: { temperature: 0.8, maxOutputTokens: 1500, topP: 0.9 },
+              generationConfig: { temperature: 0.8, maxOutputTokens: 2048, topP: 0.9 },
             }),
           }
         );
