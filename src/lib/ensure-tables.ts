@@ -19,7 +19,7 @@ const TABLES_SQL: string[] = [
   `CREATE INDEX IF NOT EXISTS "AiUsageLog_createdAt_idx" ON "AiUsageLog"("createdAt")`,
   `CREATE TABLE IF NOT EXISTS "PaymentProof" ("id" TEXT NOT NULL PRIMARY KEY,"userId" TEXT NOT NULL DEFAULT '',"fileName" TEXT NOT NULL DEFAULT '',"filePath" TEXT NOT NULL DEFAULT '',"fileSize" INTEGER NOT NULL DEFAULT 0,"status" TEXT NOT NULL DEFAULT 'pending',"userNote" TEXT NOT NULL DEFAULT '',"adminNote" TEXT NOT NULL DEFAULT '',"reviewedAt" DATETIME,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE INDEX IF NOT EXISTS "PaymentProof_userId_idx" ON "PaymentProof"("userId")`,
-  `CREATE TABLE IF NOT EXISTS "Country" ("id" TEXT NOT NULL PRIMARY KEY,"code" TEXT NOT NULL,"name" TEXT NOT NULL DEFAULT '',"flagEmoji" TEXT NOT NULL DEFAULT '',"flagUrl" TEXT NOT NULL DEFAULT '',"continent" TEXT NOT NULL DEFAULT '',"currency" TEXT NOT NULL DEFAULT '',"currencyCode" TEXT NOT NULL DEFAULT '',"timezone" TEXT NOT NULL DEFAULT '',"visaFree" INTEGER NOT NULL DEFAULT 0,"visaOnArrival" INTEGER NOT NULL DEFAULT 0,"etaAvailable" INTEGER NOT NULL DEFAULT 0,"safetyRating" INTEGER NOT NULL DEFAULT 5,"safetySummary" TEXT NOT NULL DEFAULT '',"bestTravelMonths" TEXT NOT NULL DEFAULT '',"avgTempC" TEXT NOT NULL DEFAULT '25',"monthlyTemps" TEXT NOT NULL DEFAULT '{}',"processingDaysMin" INTEGER NOT NULL DEFAULT 5,"processingDaysMax" INTEGER NOT NULL DEFAULT 30,"sourceUrl" TEXT NOT NULL DEFAULT '',"fetchTimestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"fetchHash" TEXT NOT NULL DEFAULT '',"parserVersion" TEXT NOT NULL DEFAULT '1.0.0',"parserConfidence" REAL NOT NULL DEFAULT 0.8,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE("code"))`,
+  `CREATE TABLE IF NOT EXISTS "Country" ("id" TEXT NOT NULL PRIMARY KEY,"code" TEXT NOT NULL,"name" TEXT NOT NULL DEFAULT '',"flagEmoji" TEXT NOT NULL DEFAULT '',"flagUrl" TEXT NOT NULL DEFAULT '',"continent" TEXT NOT NULL DEFAULT '',"currency" TEXT NOT NULL DEFAULT '',"currencyCode" TEXT NOT NULL DEFAULT '',"timezone" TEXT NOT NULL DEFAULT '',"visaFree" INTEGER NOT NULL DEFAULT 0,"visaOnArrival" INTEGER NOT NULL DEFAULT 0,"etaAvailable" INTEGER NOT NULL DEFAULT 0,"safetyRating" INTEGER NOT NULL DEFAULT 5,"safetySummary" TEXT NOT NULL DEFAULT '',"bestTravelMonths" TEXT NOT NULL DEFAULT '',"avgTempC" TEXT NOT NULL DEFAULT '25',"monthlyTemps" TEXT NOT NULL DEFAULT '{}',"processingDaysMin" INTEGER NOT NULL DEFAULT 5,"processingDaysMax" INTEGER NOT NULL DEFAULT 30,"sourceUrl" TEXT NOT NULL DEFAULT '',"fetchTimestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"fetchHash" TEXT NOT NULL DEFAULT '',"parserVersion" TEXT NOT NULL DEFAULT '1.0.0',"parserConfidence" REAL NOT NULL DEFAULT 0.8,"heroImageEnabled" INTEGER NOT NULL DEFAULT 0,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE("code"))`,
   `CREATE TABLE IF NOT EXISTS "VisaType" ("id" TEXT NOT NULL PRIMARY KEY,"countryId" TEXT NOT NULL DEFAULT '',"type" TEXT NOT NULL DEFAULT '',"description" TEXT NOT NULL DEFAULT '',"maxDuration" TEXT NOT NULL DEFAULT '',"extensions" INTEGER NOT NULL DEFAULT 0,"multipleEntry" INTEGER NOT NULL DEFAULT 0,"sourceUrl" TEXT NOT NULL DEFAULT '',"fetchTimestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"parserConfidence" REAL NOT NULL DEFAULT 0.8,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS "VisaRequirement" ("id" TEXT NOT NULL PRIMARY KEY,"countryId" TEXT NOT NULL DEFAULT '',"visaTypeId" TEXT,"category" TEXT NOT NULL DEFAULT '',"requirement" TEXT NOT NULL DEFAULT '',"mandatory" INTEGER NOT NULL DEFAULT 1,"description" TEXT NOT NULL DEFAULT '',"scoringWeight" REAL NOT NULL DEFAULT 0.0,"sourceUrl" TEXT NOT NULL DEFAULT '',"fetchTimestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"fetchHash" TEXT NOT NULL DEFAULT '',"parserVersion" TEXT NOT NULL DEFAULT '1.0.0',"parserConfidence" REAL NOT NULL DEFAULT 0.8,"needsReview" INTEGER NOT NULL DEFAULT 0,"reviewNote" TEXT NOT NULL DEFAULT '',"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE INDEX IF NOT EXISTS "VisaRequirement_countryId_idx" ON "VisaRequirement"("countryId")`,
@@ -67,7 +67,11 @@ const ALTER_SQL: string[] = [
   `ALTER TABLE "VisitorSession" ADD COLUMN "device" TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "VisitorSession" ADD COLUMN "browser" TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "VisitorSession" ADD COLUMN "os" TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE "Country" ADD COLUMN "heroImageEnabled" INTEGER NOT NULL DEFAULT 0`,
 ];
+
+// One-time data migrations
+const HERO_CODES = ['UAE','SaudiArabia','Malaysia','Turkey','UK','USA','Thailand','China','Oman','Qatar','Bahrain','Egypt','Indonesia','Jordan','Singapore'];
 
 export async function ensureAllTables(): Promise<void> {
   if (ensured) return;
@@ -77,7 +81,11 @@ export async function ensureAllTables(): Promise<void> {
   try {
     for (const sql of TABLES_SQL) { await client.execute(sql); }
     for (const sql of ALTER_SQL) { try { await client.execute(sql); } catch { /* column may already exist */ } }
-    console.log('[ensure-tables] All tables ensured');
+    // Enable hero images for the 15 top countries (idempotent)
+    for (const code of HERO_CODES) {
+      try { await client.execute(`UPDATE "Country" SET "heroImageEnabled" = 1 WHERE "code" = '${code}'`); } catch { /* ok */ }
+    }
+    console.log('[ensure-tables] All tables ensured + hero images enabled');
   } catch (err) { console.error('[ensure-tables] Error:', err); }
   ensured = true;
 }
