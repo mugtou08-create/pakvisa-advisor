@@ -2,9 +2,13 @@ import type { Metadata } from 'next';
 import { db } from '@/lib/db';
 
 // Force dynamic rendering — pages query the database at request time.
-// During Vercel build the local SQLite may lack newer columns,
-// so we must NOT pre-render these pages at build time.
 export const dynamic = 'force-dynamic';
+
+// Countries that have hero images — no DB column needed, just check this set.
+const HERO_IMAGE_SLUGS = new Set([
+  'uae','saudi-arabia','malaysia','turkey','uk','usa','thailand','china',
+  'oman','qatar','bahrain','egypt','indonesia','jordan','singapore',
+]);
 import Link from 'next/link';
 import {
   Clock, DollarSign, Shield, Calendar, Plane, FileText, Building,
@@ -154,9 +158,7 @@ function safetyStars(rating: number): string {
 // Static Params
 // ============================================================
 
-// generateStaticParams removed — page is fully dynamic (force-dynamic)
-// Static generation was causing build failures when the local SQLite
-// schema lagged behind the Prisma schema (e.g. heroImageEnabled column).
+// generateStaticParams removed — page is fully dynamic (force-dynamic).
 
 // ============================================================
 // Metadata
@@ -413,7 +415,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           </nav>
 
           {/* Hero Image Banner */}
-          {country.heroImageEnabled && (
+          {HERO_IMAGE_SLUGS.has(slug) && (
             <div className="max-w-5xl mx-auto px-4 pb-6">
               <img
                 src={`/country-heroes/${slug}.png`}

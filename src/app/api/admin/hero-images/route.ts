@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
-import { existsSync } from 'fs';
-import path from 'path';
 
-// 15 countries that have hero images — slug-code pairs
 const HERO_COUNTRIES: { slug: string; code: string; name: string }[] = [
   { slug: 'uae', code: 'UAE', name: 'UAE' },
   { slug: 'saudi-arabia', code: 'SaudiArabia', name: 'Saudi Arabia' },
@@ -49,6 +46,17 @@ function authenticate(request: NextRequest): { authenticated: boolean; response?
   return { authenticated: true };
 }
 
+async function getDisabledSlugs(): Promise<Set<string>> {
+  try {
+    const setting = await db.siteSettings.findUnique({ where: { key: 'hero_images_disabled' } });
+    if (!setting || setting.value !== 'true') return new Set();
+    const list = setting.value;
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
@@ -59,33 +67,22 @@ export async function GET(request: NextRequest) {
     const auth = authenticate(request);
     if (!auth.authenticated) return auth.response!;
 
-    // Check global enabled setting
-    const globalSetting = await db.siteSettings.findUnique({ where: { key: 'hero_images_global_enabled' } });
-    const globalEnabled = globalSetting ? globalSetting.value !== 'false' : true;
+    // Check global disabled setting
+    let globalDisabled = false;
+    try {
+      const setting = await db.siteSettings.findUnique({ where: { key: 'hero_images_global_disabled' } });
+      globalDisabled = setting?.value === 'true';
+    } catch { /* ok */ }
 
-    // Fetch countries that have hero images
-    const codes = HERO_COUNTRIES.map(c => c.code);
-    const countries = await db.country.findMany({
-      where: { code: { in: codes } },
-      select: { code: true, name: true, heroImageEnabled: true },
-    });
+    const data = HERO_COUNTRIES.map(hc => ({
+      code: hc.code,
+      name: hc.name,
+      slug: hc.slug,
+      enabled: !globalDisabled,
+      hasImageFile: true, // files are in /public/country-heroes/
+    }));
 
-    const countryMap = Object.fromEntries(countries.map(c => [c.code, c]));
-    const publicDir = path.join(process.cwd(), 'public');
-
-    const data = HERO_COUNTRIES.map(hc => {
-      const dbCountry = countryMap[hc.code];
-      const imagePath = path.join(publicDir, 'country-heroes', `${hc.slug}.png`);
-      return {
-        code: hc.code,
-        name: dbCountry?.name || hc.name,
-        slug: hc.slug,
-        heroImageEnabled: dbCountry?.heroImageEnabled ?? false,
-        hasImageFile: existsSync(imagePath),
-      };
-    });
-
-    return NextResponse.json({ success: true, data: { globalEnabled, countries: data } });
+    return NextResponse.json({ success: true, data: { globalEnabled: !globalDisabled, countries: data } });
   } catch (error) {
     console.error('Hero images GET error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
@@ -103,18 +100,20 @@ export async function PUT(request: NextRequest) {
     if (!auth.authenticated) return auth.response!;
 
     const body = await request.json();
-    const { code, enabled } = body;
+    const { enabled } = body;
 
-    if (!code || typeof enabled !== 'boolean') {
-      return NextResponse.json({ success: false, error: 'Missing code or enabled' }, { status: 400 });
+    if (typeof enabled !== 'boolean') {
+      return NextResponse.json({ success: false, error: 'Missing enabled' }, { status: 400 });
     }
 
-    await db.country.updateMany({
-      where: { code },
-      data: { heroImageEnabled: enabled },
+    // Store global state in SiteSettings
+    await db.siteSettings.upsert({
+      where: { key: 'hero_images_global_disabled' },
+      update: { value: String(!enabled) },
+      create: { key: 'hero_images_global_disabled', value: String(!enabled) },
     });
 
-    return NextResponse.json({ success: true, data: { code, enabled } });
+    return NextResponse.json({ success: true, data: { enabled } });
   } catch (error) {
     console.error('Hero images PUT error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
@@ -131,9 +130,11 @@ export async function DELETE(request: NextRequest) {
     const auth = authenticate(request);
     if (!auth.authenticated) return auth.response!;
 
-    // Global kill switch: disable all hero images
-    await db.country.updateMany({
-      data: { heroImageEnabled: false },
+    // Global kill switch
+    await db.siteSettings.upsert({
+      where: { key: 'hero_images_global_disabled' },
+      update: { value: 'true' },
+      create: { key: 'hero_images_global_disabled', value: 'true' },
     });
 
     return NextResponse.json({ success: true, data: { message: 'All hero images disabled' } });
