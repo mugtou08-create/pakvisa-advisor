@@ -1749,3 +1749,33 @@ Stage Summary:
 - Root causes fixed: no Next.js Image optimization, lazy loading on above-fold, no responsive sizing
 - On Vercel CDN with edge caching, expected <200ms load time
 - Commit: 00a3cd9 pushed to main
+---
+Task ID: 9
+Agent: Main Agent
+Task: Generate hero images for all 70 countries with diverse travel scenes
+
+Work Log:
+- Audited existing images: 30 countries had hero images, 40 missing
+- Generated 40 new images with diverse, creative prompts:
+  - Couples in cafes (Afghanistan, Austria, Belgium, Poland)
+  - Solo beach wanderers (Algeria, Brazil, Maldives, Philippines)
+  - Elderly couples with pets (Armenia, Ireland, Netherlands)
+  - Street culture scenes (Bangladesh, Mexico, Nigeria, Portugal)
+  - Adventure/safari (Ethiopia, Kenya, Mongolia, Tanzania)
+  - Alpine/nature (Iceland, New Zealand, Norway, Switzerland)
+  - Cultural landmarks (Cambodia, Czechia, Romania, Russia)
+  - City nightlife (Hong Kong, Hungary, Singapore)
+  - Tea/garden scenes (Sri Lanka, Tunisia, Georgia)
+  - Maritime/coastal (Lebanon, Denmark, Sweden, Vietnam)
+- All 40 converted to WebP (6.6MB -> 5.3MB, 19% saved)
+- Regenerated blur URLs for all 70 countries
+- Updated HERO_IMAGE_SLUGS to include all 70 countries
+- Updated admin hero-images API route with all 70 entries
+- Verified: Afghanistan, Maldives, Vietnam pages all show hero images
+- All specs consistent: 1344x768, WebP, Next.js Image with priority+blur
+
+Stage Summary:
+- All 70 countries now have unique hero banner images
+- Diverse scene types: couples, solo travelers, families, elderly, friends
+- All images: 1344x768 WebP, ~75-200KB, blur placeholder, priority loading
+- Commit: 4747d3f pushed to main
