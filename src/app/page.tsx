@@ -4,7 +4,6 @@ import type { CountryData, CostProfileData } from '@/lib/types';
 import HomeClient from './home-client';
 import {
   Globe, CheckCircle2, Plane, FileText, Building, Shield,
-  AlertTriangle, Info, ExternalLink,
 } from 'lucide-react';
 
 // ============================================================
@@ -48,18 +47,6 @@ const POPULAR_COUNTRIES = [
 ];
 
 // ============================================================
-// Visa Policy Alerts
-// ============================================================
-const VISA_ALERTS = [
-  { id: 1, icon: 'check', color: 'text-emerald-600', title: 'Turkey e-Visa Now Available', desc: 'Pakistani citizens can apply for a Turkish e-Visa online in minutes.', source: 'evisa.gov.tr', url: 'https://www.evisa.gov.tr/en/' },
-  { id: 2, icon: 'plane', color: 'text-amber-600', title: 'Malaysia e-Visa Available', desc: 'Pakistani citizens can apply for a Malaysia e-Visa online. RM 20 fee, 30-day stay, air entry only.', source: 'imi.gov.my', url: 'https://www.imi.gov.my/index.php/main/passport/visa-requirement' },
-  { id: 3, icon: 'info', color: 'text-sky-600', title: 'Saudi Visa for Pakistani Tourists', desc: 'Saudi Arabia offers package visas through authorized travel agencies. Includes Umrah and tourism visas.', source: 'visitsaudi.com', url: 'https://visitsaudi.com/' },
-  { id: 4, icon: 'alert', color: 'text-orange-600', title: 'UAE Insurance Requirement', desc: 'UAE now requires travel insurance for visa on arrival. Check latest rules.', source: 'uaevisaonline.com', url: 'https://uaevisaonline.com/uae-visa-on-arrival/' },
-  { id: 5, icon: 'check', color: 'text-emerald-600', title: 'Azerbaijan e-Visa Online', desc: 'Pakistani citizens can get an Azerbaijan e-Visa online for $20. Processing within 3 business days.', source: 'evisa.gov.az', url: 'https://evisa.gov.az/en/' },
-  { id: 6, icon: 'info', color: 'text-sky-600', title: 'Thailand e-Visa for Pakistanis', desc: 'Pakistani citizens must apply for a Thailand Tourist Visa online via thaievisa.go.th. Fee: 2,000 THB.', source: 'thaievisa.go.th', url: 'https://www.thaievisa.go.th/' },
-];
-
-// ============================================================
 // Visa type helper (server-safe, no React dependency)
 // ============================================================
 function getVisaTypeLabel(c: { visaFree: boolean; visaOnArrival: boolean; etaAvailable: boolean }) {
@@ -67,18 +54,6 @@ function getVisaTypeLabel(c: { visaFree: boolean; visaOnArrival: boolean; etaAva
   if (c.visaOnArrival) return { label: 'Visa on Arrival', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', dot: 'bg-amber-500' };
   if (c.etaAvailable) return { label: 'e-Visa', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', dot: 'bg-sky-500' };
   return { label: 'Embassy Required', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', dot: 'bg-gray-400' };
-}
-
-// ============================================================
-// Alert icon component (server-safe)
-// ============================================================
-function AlertIcon({ type, className }: { type: string; className?: string }) {
-  switch (type) {
-    case 'check': return <CheckCircle2 className={className} />;
-    case 'plane': return <Plane className={className} />;
-    case 'alert': return <AlertTriangle className={className} />;
-    default: return <Info className={className} />;
-  }
 }
 
 // ============================================================
@@ -350,42 +325,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ==================== SECTION 5: VISA POLICY ALERTS CAROUSEL (static) ==================== */}
-        <section className="px-4 pb-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <h2 className="text-sm font-bold uppercase tracking-wide">Visa Policy Alerts</h2>
-            </div>
-            <style>{`
-              @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-              .alert-carousel-track { animation: scroll-left 30s linear infinite; }
-              .alert-carousel-track:hover { animation-play-state: paused; }
-            `}</style>
-            <div className="overflow-hidden">
-              <div className="alert-carousel-track flex gap-3">
-                {[...VISA_ALERTS, ...VISA_ALERTS].map((alert, idx) => (
-                  <a
-                    key={`${alert.id}-${idx}`}
-                    href={alert.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 w-72 shrink-0 rounded-xl border bg-card px-4 py-3 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all cursor-pointer"
-                  >
-                    <div className={`p-1.5 rounded-full bg-muted shrink-0 ${alert.color}`}>
-                      <AlertIcon type={alert.icon} className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{alert.title}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.source}</p>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
       </HomeClient>
     </>
   );
