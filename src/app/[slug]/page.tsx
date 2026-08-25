@@ -234,7 +234,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       type: 'article',
       locale: 'en_US',
-      url: `https://pakvisaadvisor.com/${slug}`,
+      url: `https://pakvisa-advisor.vercel.app/${slug}`,
       siteName: 'PakVisa Advisor',
       title,
       description,
@@ -246,7 +246,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description,
       images: ['/og-image.png'],
     },
-    alternates: { canonical: `https://pakvisaadvisor.com/${slug}` },
+    alternates: { canonical: `https://pakvisa-advisor.vercel.app/${slug}` },
   };
 }
 
@@ -348,13 +348,23 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
     '@type': 'WebPage',
     name: `${country.name} Visa for Pakistani Citizens`,
     description: `Complete ${country.name} visa guide for Pakistani passport holders. ${visaLabel} access, updated for 2026.`,
-    url: `https://pakvisaadvisor.com/${slug}`,
-    isPartOf: { '@type': 'WebSite', name: 'PakVisa Advisor', url: 'https://pakvisaadvisor.com' },
+    url: `https://pakvisa-advisor.vercel.app/${slug}`,
+    isPartOf: { '@type': 'WebSite', name: 'PakVisa Advisor', url: 'https://pakvisa-advisor.vercel.app' },
     about: {
       '@type': 'Country',
       name: country.name,
     },
     dateModified: country.updatedAt?.toISOString().split('T')[0] || '2026-01-01',
+  };
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://pakvisa-advisor.vercel.app' },
+      { '@type': 'ListItem', position: 2, name: 'Countries', item: 'https://pakvisa-advisor.vercel.app' },
+      { '@type': 'ListItem', position: 3, name: country.name, item: `https://pakvisa-advisor.vercel.app/${slug}` },
+    ],
   };
 
   return (
@@ -366,6 +376,10 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
       <div className="min-h-screen flex flex-col bg-background text-foreground">
