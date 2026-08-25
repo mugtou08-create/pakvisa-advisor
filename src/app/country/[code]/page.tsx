@@ -3,8 +3,12 @@ import { db } from '@/lib/db';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
 
 export async function generateStaticParams() {
-  const countries = await db.country.findMany({ select: { code: true } });
-  return countries.map((c) => ({ code: c.code }));
+  try {
+    const countries = await db.country.findMany({ select: { code: true } });
+    return countries.map((c) => ({ code: c.code }));
+  } catch {
+    return [];
+  }
 }
 
 export default async function CountryRedirectPage({

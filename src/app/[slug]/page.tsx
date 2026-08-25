@@ -150,8 +150,14 @@ function safetyStars(rating: number): string {
 // ============================================================
 
 export async function generateStaticParams() {
-  const countries = await db.country.findMany({ select: { code: true } });
-  return countries.map((c) => ({ slug: CODE_TO_SLUG[c.code] || c.code }));
+  try {
+    const countries = await db.country.findMany({ select: { code: true } });
+    return countries.map((c) => ({ slug: CODE_TO_SLUG[c.code] || c.code }));
+  } catch {
+    // Database unavailable during build (e.g. Vercel CI) —
+    // return empty so pages are rendered on-demand instead.
+    return [];
+  }
 }
 
 // ============================================================
