@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { db } from '@/lib/db';
+import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 
 // Force dynamic rendering — pages query the database at request time.
 export const dynamic = 'force-dynamic';
@@ -421,15 +423,19 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           {/* Hero Image Banner */}
           {HERO_IMAGE_SLUGS.has(slug) && (
             <div className="max-w-5xl mx-auto px-4 pb-6">
-              <img
-                src={`/country-heroes/${slug}.jpg`}
-                alt={`${country.name} travel destination — Pakistani travelers guide`}
-                width={1344}
-                height={768}
-                loading="lazy"
-                decoding="async"
-                className="w-full sm:w-3/5 mx-auto rounded-xl aspect-video object-cover shadow-md"
-              />
+              <div className="w-full sm:w-3/5 mx-auto relative rounded-xl overflow-hidden shadow-md aspect-video">
+                <Image
+                  src={`/country-heroes/${slug}.webp`}
+                  alt={`${country.name} travel destination — Pakistani travelers guide`}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 60vw"
+                  quality={85}
+                  priority
+                  placeholder="blur"
+                  blurDataURL={HERO_BLUR_URLS[slug] || ''}
+                  className="object-cover"
+                />
+              </div>
             </div>
           )}
 

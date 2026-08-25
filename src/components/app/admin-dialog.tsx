@@ -2816,7 +2816,7 @@ function HeroImagesSection({ token }: { token: string | null }) {
             <CardContent className="p-3">
               <div className="flex items-center gap-3">
                 <img
-                  src={`/country-heroes/${country.slug}.jpg`}
+                  src={`/country-heroes/${country.slug}.webp`}
                   alt={country.name}
                   width={80}
                   height={45}
