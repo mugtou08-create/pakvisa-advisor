@@ -1719,3 +1719,33 @@ Stage Summary:
 - Desktop width is ~60% (sm:w-3/5), mobile is full width
 - USA image fixed and regenerated
 - Commit: 39729b3 pushed to main
+---
+Task ID: 8
+Agent: Main Agent
+Task: Fix hero image loading performance (7s+ → <1s)
+
+Work Log:
+- Diagnosed: raw <img> tags with loading="lazy" on above-fold hero, no format optimization
+- Converted all 30 hero images from JPEG to WebP using sharp (4.8MB → 3.9MB, 20% smaller)
+- Generated 20px-wide blur placeholders as base64 data URLs for all 30 images
+- Created src/lib/hero-blur-urls.ts with exported HERO_BLUR_URLS map
+- Replaced raw <img> with Next.js <Image> component:
+  - fill mode with relative positioning
+  - priority (above-fold, no lazy delay)
+  - sizes="(max-width: 640px) 100vw, 60vw" (responsive srcset)
+  - quality={85} with proper config entry
+  - placeholder="blur" with blurDataURL
+- Fixed missing export on hero-blur-urls.ts
+- Added quality 85 to next.config.ts images.qualities
+- Updated admin-dialog image reference from .jpg to .webp
+
+Performance verification (cold browser, local dev):
+  Desktop USA: 587ms, 73KB transferred (was 7s+, 200KB+ raw)
+  Desktop UAE: 682ms, 64KB transferred
+  Mobile Japan: 629ms, 208KB transferred
+  Improvement: 10-12x faster, 65% less data on desktop
+
+Stage Summary:
+- Root causes fixed: no Next.js Image optimization, lazy loading on above-fold, no responsive sizing
+- On Vercel CDN with edge caching, expected <200ms load time
+- Commit: 00a3cd9 pushed to main
