@@ -8,12 +8,14 @@ export const dynamic = 'force-dynamic';
 
 // Countries that have hero images — no DB column needed, just check this set.
 const HERO_IMAGE_SLUGS = new Set([
-  // Original 15
-  'uae','saudi-arabia','malaysia','turkey','uk','usa','thailand','china',
-  'oman','qatar','bahrain','egypt','indonesia','jordan','singapore',
-  // New 15
-  'canada','australia','japan','germany','france','italy','south-korea',
-  'india','iran','iraq','kuwait','nepal','morocco','spain','greece',
+  'afghanistan','algeria','armenia','australia','austria','azerbaijan','bahrain','bangladesh',
+  'belgium','brazil','cambodia','canada','china','czechia','denmark','egypt','ethiopia',
+  'france','georgia','germany','greece','hong-kong','hungary','iceland','india','indonesia',
+  'iran','iraq','ireland','italy','japan','jordan','kenya','kuwait','lebanon','luxembourg',
+  'malaysia','maldives','mexico','mongolia','morocco','nepal','netherlands','new-zealand',
+  'nigeria','norway','oman','philippines','poland','portugal','qatar','romania','russia',
+  'saudi-arabia','singapore','south-africa','south-korea','spain','sri-lanka','sweden',
+  'switzerland','tanzania','thailand','tunisia','turkmenistan','turkey','uae','uk','usa','vietnam',
 ]);
 import Link from 'next/link';
 import {
