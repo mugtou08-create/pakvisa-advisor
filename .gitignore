@@ -61,3 +61,4 @@ migrate-to-turso.ts
 public/uploads/
 
 tool-results/
+.zscripts/dev.pid
