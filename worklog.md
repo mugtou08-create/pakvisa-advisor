@@ -1830,3 +1830,36 @@ Stage Summary:
 - Loading skeleton shows while JS hydrates
 - Expected improvement: 6s → 1-2s on production (Vercel)
 - Dev mode still has Turbopack cold compile (unavoidable)
+
+---
+Task ID: 2-a
+Agent: fullstack-developer
+Task: Split page.tsx into server+client for performance
+
+Work Log:
+- Read full 1572-line page.tsx to understand all sections, state, hooks, imports
+- Read db.ts, types.ts, schema.prisma, API routes to understand data flow
+- Identified that constants.ts has 'use client' directive — cannot import from server component
+- Created src/app/home-client.tsx (1315 lines) — 'use client' component with ALL interactive logic
+- Rewrote src/app/page.tsx (392 lines) — server component with direct DB queries
+- Used Next.js 'children' pattern: server component passes static JSX as children to HomeClient
+- Server component fetches all countries + computes stats in a single DB query
+- Server renders: hero text, stats bar (static numbers), popular destinations grid (as <a> links), travel essentials, visa alerts carousel
+- Client renders: sticky header, search form, filter bar, country list, tools, FAQ, testimonials, footer, modals, floating buttons
+- Preconnect to flagcdn.com + preload 8 popular country flag images in server component
+- Moved track-visitor inline script from layout.tsx to home-client.tsx useEffect
+- Removed animated counter hook — stats use static numbers (CLS fix)
+- Added tabular-nums + min-w-[2ch] for stats numbers (CLS fix)
+- Added explicit width/height on all flag images (CLS fix)
+- Popular destinations in server use <a> links to slug pages (works without JS)
+- Added export const dynamic = 'force-dynamic' for DB queries
+- Fixed 3 TypeScript errors (boolean coercion for isPro/isUserPro)
+- ESLint passes clean, Next.js build succeeds, slug pages unaffected
+
+Stage Summary:
+- Split 1572-line monolithic client component into server (392 lines) + client (1315 lines)
+- Hero, stats, popular destinations, travel essentials, visa alerts now server-rendered (visible in initial HTML)
+- Eliminated 2 API round-trips on page load (data comes from DB in server component)
+- Expected LCP improvement: hero text + stats visible immediately (no JS required)
+- All existing functionality preserved: search, filters, pagination, favorites, modals, tools
+

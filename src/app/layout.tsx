@@ -163,40 +163,7 @@ export default function RootLayout({
           {children}
           <Toaster position="top-right" richColors />
         </ThemeProvider>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-(function(){
-  try {
-    var sid = localStorage.getItem('_pvsid');
-    if (!sid) {
-      sid = 'v_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('_pvsid', sid);
-    }
-    function sendHeartbeat() {
-      try {
-        fetch('/api/track-visitor', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            sessionId: sid,
-            page: window.location.pathname,
-            referrer: document.referrer
-          }),
-          keepalive: true
-        }).catch(function(){});
-      } catch(e) {}
-    }
-    sendHeartbeat();
-    setInterval(sendHeartbeat, 30000);
-    window.addEventListener('beforeunload', function() {
-      sendHeartbeat();
-    });
-  } catch(e) {}
-})();
-`,
-          }}
-        />
+
       </body>
     </html>
   );
