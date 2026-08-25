@@ -1779,3 +1779,27 @@ Stage Summary:
 - Diverse scene types: couples, solo travelers, families, elderly, friends
 - All images: 1344x768 WebP, ~75-200KB, blur placeholder, priority loading
 - Commit: 4747d3f pushed to main
+---
+Task ID: 10
+Agent: Main Agent
+Task: Verify and finalize all 70 hero images, push to GitHub
+
+Work Log:
+- Confirmed all 70 hero images exist as valid WebP files (1344x768)
+- File sizes range from 72KB to 219KB (total 9.2MB)
+- Verified HERO_IMAGE_SLUGS has 70 entries in [slug]/page.tsx
+- Verified HERO_BLUR_URLS has 70 entries in hero-blur-urls.ts
+- Verified HERO_COUNTRIES has 70 entries in admin/hero-images/route.ts
+- All slugs match perfectly across all three files
+- Fixed corrupted git index entry (sri-lanka.jpg with absolute path)
+- Updated .gitignore for .zscripts/dev.pid
+- ESLint passes with zero errors
+- Verified Afghanistan page returns 355KB with hero image preloaded
+- Pushed cleanup commit 6654b00 to GitHub
+
+Stage Summary:
+- All 70 countries have hero banner images with diverse travel themes
+- Images: 1344x768 WebP, 72-219KB each, blur placeholders, priority loading
+- Diverse themes: couples in cafes, solo beach travelers, elderly with pets, street culture, adventure/safari, alpine/nature, cultural landmarks, city nightlife, tea/garden scenes, maritime/coastal
+- All code files (HERO_IMAGE_SLUGS, HERO_BLUR_URLS, HERO_COUNTRIES) have consistent 70 entries
+- Git clean and pushed to main branch
