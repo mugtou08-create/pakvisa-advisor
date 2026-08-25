@@ -1689,3 +1689,33 @@ Stage Summary:
 - Build now passes even when Turso env vars are absent during CI/build
 - Pages will be statically generated when DB is available, or rendered on-demand when not
 - Vercel deployment should succeed with this fix
+---
+Task ID: 7
+Agent: Main Agent
+Task: Fix USA hero image, resize desktop hero to 60%, generate 15 new country hero images
+
+Work Log:
+- Diagnosed USA image issue: all 15 hero images were JPEGs saved with .png extension
+- Renamed all 15 existing images from .png to .jpg to match actual format
+- Regenerated USA hero image with fresh AI generation
+- Generated 15 new hero images for: Canada, Australia, Japan, Germany, France, Italy, South Korea, India, Iran, Iraq, Kuwait, Nepal, Morocco, Spain, Greece
+- Fixed desktop hero image width: changed from w-full to sm:w-3/5 mx-auto (~60%)
+- Mobile remains full width (w-full)
+- Updated HERO_IMAGE_SLUGS in [slug]/page.tsx with all 30 country slugs
+- Updated admin hero-images API route with all 30 countries
+- Updated admin-dialog.tsx image reference from .png to .jpg
+- Verified via agent-browser:
+  - USA page: image loads at 595px/1024px container (58%) on desktop
+  - Mobile: image is 358px/390px (full width)
+  - Canada, Japan, France, Kuwait all load correctly
+  - Afghanistan (no hero) correctly shows no image
+  - Dev log: all 200s, no errors
+- Lint passes clean
+- Committed and pushed to GitHub
+
+Stage Summary:
+- Total 30 countries now have hero banner images (15 original + 15 new)
+- All images are correctly formatted as .jpg files
+- Desktop width is ~60% (sm:w-3/5), mobile is full width
+- USA image fixed and regenerated
+- Commit: 39729b3 pushed to main
