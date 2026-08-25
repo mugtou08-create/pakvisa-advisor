@@ -1669,3 +1669,23 @@ Stage Summary:
 - 15 AI-generated hero images (1344x768px) now display on country pages
 - Admin can toggle per-country or kill-switch all hero images
 - All changes are zero-config (standard `<img>` tag, /public/ assets)
+
+---
+Task ID: build-fix-1
+Agent: Main Agent
+Task: Fix Vercel build failure caused by undefined TURSO_DATABASE_URL during static generation
+
+Work Log:
+- Diagnosed: Vercel build failed with `URL_INVALID: The URL 'undefined'` error
+- Root cause: `generateStaticParams` in `[slug]/page.tsx` and `country/[code]/page.tsx` call `db.country.findMany()` at build time
+- During Vercel build, `TURSO_DATABASE_URL` env var is not set, causing PrismaLibSQL adapter to crash
+- Fixed `db.ts`: Added guard `process.env.TURSO_DATABASE_URL` check — falls back to local SQLite when Turso vars are missing
+- Fixed `src/app/[slug]/page.tsx`: Wrapped `generateStaticParams` in try/catch — returns `[]` on failure (pages render on-demand instead)
+- Fixed `src/app/country/[code]/page.tsx`: Same try/catch pattern
+- Verified build passes with `TURSO_DATABASE_URL=` and `TURSO_AUTH_TOKEN=` unset — 188/188 pages generated
+- Pushed commit 6d654d6 to GitHub
+
+Stage Summary:
+- Build now passes even when Turso env vars are absent during CI/build
+- Pages will be statically generated when DB is available, or rendered on-demand when not
+- Vercel deployment should succeed with this fix
