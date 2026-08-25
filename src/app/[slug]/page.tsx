@@ -408,6 +408,21 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
             </ol>
           </nav>
 
+          {/* Hero Image Banner */}
+          {country.heroImageEnabled && (
+            <div className="max-w-5xl mx-auto px-4 pb-6">
+              <img
+                src={`/country-heroes/${slug}.png`}
+                alt={`${country.name} travel destination — Pakistani travelers guide`}
+                width={1344}
+                height={768}
+                loading="lazy"
+                decoding="async"
+                className="w-full rounded-xl aspect-video object-cover shadow-md"
+              />
+            </div>
+          )}
+
           {/* Hero Section */}
           <section className="max-w-5xl mx-auto px-4 pb-8">
             <div className="flex flex-col sm:flex-row items-start gap-6">

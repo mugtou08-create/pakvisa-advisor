@@ -97,7 +97,7 @@ interface PaymentProofWithUser {
   };
 }
 
-type AdminSection = 'overview' | 'visitors' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'data-sync' | 'insights';
+type AdminSection = 'overview' | 'visitors' | 'messages' | 'newsletter' | 'payment-proofs' | 'analytics' | 'settings' | 'data-sync' | 'insights' | 'hero-images';
 type SyncStage = 'idle' | 'researching' | 'preview' | 'applying' | 'done';
 type MessageFilter = 'all' | 'unread' | 'replied';
 
@@ -796,6 +796,7 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { key: 'data-sync', label: 'Data Sync', icon: <ArrowRightLeft className="w-4 h-4" /> },
     { key: 'insights', label: 'Insights', icon: <Lightbulb className='w-4 h-4' /> },
+    { key: 'hero-images', label: 'Hero Images', icon: <FileImage className="w-4 h-4" /> },
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -2615,6 +2616,10 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                 )}
 
                 {/* ====== SETTINGS TAB ====== */}
+                {activeSection === 'hero-images' && (
+                  <HeroImagesSection token={token} />
+                )}
+
                 {activeSection === 'settings' && (
                   <div className="space-y-5">
                     <h3 className="text-lg font-semibold flex items-center gap-2"><Settings className="w-5 h-5 text-emerald-500" /> Feature Toggles</h3>
@@ -2713,6 +2718,136 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
 }
 
 // Helper Components
+function HeroImagesSection({ token }: { token: string | null }) {
+  const [countries, setCountries] = useState<Array<{
+    code: string; name: string; slug: string;
+    heroImageEnabled: boolean; hasImageFile: boolean;
+  }>>([]);
+  const [globalEnabled, setGlobalEnabled] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [disablingAll, setDisablingAll] = useState(false);
+  const [togglingCode, setTogglingCode] = useState<string | null>(null);
+
+  const fetchHeroData = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/hero-images', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGlobalEnabled(data.data.globalEnabled);
+        setCountries(data.data.countries);
+      }
+    } catch { toast.error('Failed to fetch hero image data'); }
+    finally { setLoading(false); }
+  }, [token]);
+
+  useEffect(() => { fetchHeroData(); }, [fetchHeroData]);
+
+  const handleToggle = useCallback(async (code: string, enabled: boolean) => {
+    if (!token) return;
+    setTogglingCode(code);
+    try {
+      const res = await fetch('/api/admin/hero-images', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code, enabled }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCountries(prev => prev.map(c => c.code === code ? { ...c, heroImageEnabled: enabled } : c));
+        toast.success(`${enabled ? 'Enabled' : 'Disabled'} hero image`);
+      } else {
+        toast.error(data.error || 'Failed to update');
+      }
+    } catch { toast.error('Connection error'); }
+    finally { setTogglingCode(null); }
+  }, [token]);
+
+  const handleDisableAll = useCallback(async () => {
+    if (!token) return;
+    if (!confirm('Disable ALL hero images across every country? This cannot be undone easily.')) return;
+    setDisablingAll(true);
+    try {
+      const res = await fetch('/api/admin/hero-images', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCountries(prev => prev.map(c => ({ ...c, heroImageEnabled: false })));
+        toast.success('All hero images disabled');
+      } else {
+        toast.error(data.error || 'Failed to disable');
+      }
+    } catch { toast.error('Connection error'); }
+    finally { setDisablingAll(false); }
+  }, [token]);
+
+  const enabledCount = countries.filter(c => c.heroImageEnabled).length;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <FileImage className="w-5 h-5 text-emerald-500" /> Hero Images
+        </h3>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleDisableAll}
+          disabled={disablingAll || enabledCount === 0}
+        >
+          {disablingAll ? 'Disabling...' : 'Disable All Hero Images'}
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Badge variant={globalEnabled ? 'default' : 'secondary'} className={globalEnabled ? 'bg-emerald-600' : ''}>
+          {globalEnabled ? 'Global: ON' : 'Global: OFF'}
+        </Badge>
+        <span>{enabledCount} of {countries.length} countries enabled</span>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {countries.map((country) => (
+            <Card key={country.code} className="hover:shadow-sm transition-shadow">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={`/country-heroes/${country.slug}.png`}
+                    alt={country.name}
+                    width={80}
+                    height={45}
+                    className="w-20 h-[45px] rounded-md object-cover border bg-muted shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{country.name}</p>
+                    <p className="text-xs text-muted-foreground">/{country.slug} · {country.hasImageFile ? '✓ File exists' : '✗ Missing'}</p>
+                  </div>
+                  <Switch
+                    checked={country.heroImageEnabled}
+                    onCheckedChange={(checked) => handleToggle(country.code, checked)}
+                    disabled={togglingCode === country.code}
+                    className="data-[state=checked]:bg-emerald-600 shrink-0"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: string }) {
   const colorMap: Record<string, string> = {
     red: 'bg-red-50 dark:bg-red-900/20 border-red-200/50 dark:border-red-800/30',

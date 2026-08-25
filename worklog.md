@@ -1636,3 +1636,36 @@ Stage Summary:
 - Sara responses will no longer cut off mid-sentence
 - All 70 countries render with flags and data
 - All core features working
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Integrate hero images into country pages + create admin management
+
+Work Log:
+- Added `heroImageEnabled Boolean @default(false)` to Country model in prisma/schema.prisma
+- Ran `bun run db:push` to sync schema with SQLite database
+- Created and ran script to enable hero images for 15 countries (UAE, SaudiArabia, Malaysia, Turkey, UK, USA, Thailand, China, Oman, Qatar, Bahrain, Egypt, Indonesia, Jordan, Singapore)
+- Added hero image banner to `src/app/[slug]/page.tsx` after breadcrumb nav, before Hero Section
+  - Uses standard `<img>` tag with `loading="lazy"`, `decoding="async"`, `width={1344}`, `height={768}`
+  - Conditionally rendered when `country.heroImageEnabled` is true
+  - Styled: full width within `max-w-5xl`, rounded-xl, aspect-video, object-cover, shadow-md
+  - Alt text: `{country.name} travel destination — Pakistani travelers guide`
+- Created `src/app/api/admin/hero-images/route.ts` with GET/PUT/DELETE endpoints
+  - GET: Returns list of all 15 hero countries with heroImageEnabled status and hasImageFile (via fs.existsSync)
+  - PUT: Toggle individual country's heroImageEnabled via { code, enabled } body
+  - DELETE: Global kill switch — disables ALL countries' hero images
+  - All endpoints require Bearer token auth + rate limiting
+- Added `hero-images` to AdminSection type in `src/components/app/admin-dialog.tsx`
+- Added `FileImage` nav item for Hero Images in admin sidebar (between Insights and Settings)
+- Created `HeroImagesSection` component with:
+  - Global "Disable All Hero Images" destructive button (calls DELETE endpoint)
+  - Status badge showing global enabled state and X of 15 count
+  - Grid of 15 country cards, each showing: 80x45px thumbnail, country name, slug, file status, Switch toggle
+  - Self-contained data fetching via useEffect
+- ESLint passes with zero errors
+
+Stage Summary:
+- 15 AI-generated hero images (1344x768px) now display on country pages
+- Admin can toggle per-country or kill-switch all hero images
+- All changes are zero-config (standard `<img>` tag, /public/ assets)
