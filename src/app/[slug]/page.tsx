@@ -1,5 +1,10 @@
 import type { Metadata } from 'next';
 import { db } from '@/lib/db';
+
+// Force dynamic rendering — pages query the database at request time.
+// During Vercel build the local SQLite may lack newer columns,
+// so we must NOT pre-render these pages at build time.
+export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import {
   Clock, DollarSign, Shield, Calendar, Plane, FileText, Building,
@@ -149,16 +154,9 @@ function safetyStars(rating: number): string {
 // Static Params
 // ============================================================
 
-export async function generateStaticParams() {
-  try {
-    const countries = await db.country.findMany({ select: { code: true } });
-    return countries.map((c) => ({ slug: CODE_TO_SLUG[c.code] || c.code }));
-  } catch {
-    // Database unavailable during build (e.g. Vercel CI) —
-    // return empty so pages are rendered on-demand instead.
-    return [];
-  }
-}
+// generateStaticParams removed — page is fully dynamic (force-dynamic)
+// Static generation was causing build failures when the local SQLite
+// schema lagged behind the Prisma schema (e.g. heroImageEnabled column).
 
 // ============================================================
 // Metadata

@@ -1,15 +1,8 @@
 import { permanentRedirect } from 'next/navigation';
-import { db } from '@/lib/db';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
 
-export async function generateStaticParams() {
-  try {
-    const countries = await db.country.findMany({ select: { code: true } });
-    return countries.map((c) => ({ code: c.code }));
-  } catch {
-    return [];
-  }
-}
+// Force dynamic — avoid pre-rendering at build time
+export const dynamic = 'force-dynamic';
 
 export default async function CountryRedirectPage({
   params,
