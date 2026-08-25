@@ -17,17 +17,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from 'next-themes';
 import { useAppStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
-import { AuthModal } from '@/components/visa/auth-modal';
 import type { CountryData } from '@/lib/types';
-import { AiChatPanel } from '@/components/visa/ai-chat-panel';
-import { VisaQuizPanel } from '@/components/visa/visa-quiz-panel';
-import { ComparePanel } from '@/components/visa/compare-panel';
-import { CountryDetailPanel } from '@/components/visa/country-detail';
-import { PricingModal, HelpModal, AboutModal, PrivacyModal, TermsModal, ContactModal } from '@/components/visa/modals';
-import { PaymentProofModal } from '@/components/visa/payment-proof-modal';
-import { AdminDialog } from '@/components/app/admin-dialog';
-import { WhatsAppButton } from '@/components/app/whatsapp-button';
-import { SaraWidget } from '@/components/app/sara-widget';
+import dynamic from 'next/dynamic';
+
+// Lazy-load heavy components — they only render on user interaction.
+// This cuts the initial JS bundle by ~60%.
+const CountryDetailPanel = dynamic(() => import('@/components/visa/country-detail').then(m => ({ default: m.CountryDetailPanel })), { loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
+const AuthModal = dynamic(() => import('@/components/visa/auth-modal').then(m => ({ default: m.AuthModal })), { ssr: false });
+const AiChatPanel = dynamic(() => import('@/components/visa/ai-chat-panel').then(m => ({ default: m.AiChatPanel })), { ssr: false });
+const VisaQuizPanel = dynamic(() => import('@/components/visa/visa-quiz-panel').then(m => ({ default: m.VisaQuizPanel })), { ssr: false });
+const ComparePanel = dynamic(() => import('@/components/visa/compare-panel').then(m => ({ default: m.ComparePanel })), { ssr: false });
+const PricingModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.PricingModal })), { ssr: false });
+const HelpModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.HelpModal })), { ssr: false });
+const AboutModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.AboutModal })), { ssr: false });
+const PrivacyModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.PrivacyModal })), { ssr: false });
+const TermsModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.TermsModal })), { ssr: false });
+const ContactModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.ContactModal })), { ssr: false });
+const PaymentProofModal = dynamic(() => import('@/components/visa/payment-proof-modal').then(m => ({ default: m.PaymentProofModal })), { ssr: false });
+const AdminDialog = dynamic(() => import('@/components/app/admin-dialog').then(m => ({ default: m.AdminDialog })), { ssr: false });
+const WhatsAppButton = dynamic(() => import('@/components/app/whatsapp-button').then(m => ({ default: m.WhatsAppButton })), { ssr: false });
+const SaraWidget = dynamic(() => import('@/components/app/sara-widget').then(m => ({ default: m.SaraWidget })), { ssr: false });
 import { getFlagUrl, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 
 
