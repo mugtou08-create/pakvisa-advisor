@@ -6,8 +6,12 @@ export const dynamic = 'force-dynamic';
 
 // Countries that have hero images — no DB column needed, just check this set.
 const HERO_IMAGE_SLUGS = new Set([
+  // Original 15
   'uae','saudi-arabia','malaysia','turkey','uk','usa','thailand','china',
   'oman','qatar','bahrain','egypt','indonesia','jordan','singapore',
+  // New 15
+  'canada','australia','japan','germany','france','italy','south-korea',
+  'india','iran','iraq','kuwait','nepal','morocco','spain','greece',
 ]);
 import Link from 'next/link';
 import {
@@ -418,13 +422,13 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           {HERO_IMAGE_SLUGS.has(slug) && (
             <div className="max-w-5xl mx-auto px-4 pb-6">
               <img
-                src={`/country-heroes/${slug}.png`}
+                src={`/country-heroes/${slug}.jpg`}
                 alt={`${country.name} travel destination — Pakistani travelers guide`}
                 width={1344}
                 height={768}
                 loading="lazy"
                 decoding="async"
-                className="w-full rounded-xl aspect-video object-cover shadow-md"
+                className="w-full sm:w-3/5 mx-auto rounded-xl aspect-video object-cover shadow-md"
               />
             </div>
           )}

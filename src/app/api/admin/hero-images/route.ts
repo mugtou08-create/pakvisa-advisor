@@ -18,6 +18,21 @@ const HERO_COUNTRIES: { slug: string; code: string; name: string }[] = [
   { slug: 'indonesia', code: 'Indonesia', name: 'Indonesia' },
   { slug: 'jordan', code: 'Jordan', name: 'Jordan' },
   { slug: 'singapore', code: 'Singapore', name: 'Singapore' },
+  { slug: 'canada', code: 'Canada', name: 'Canada' },
+  { slug: 'australia', code: 'Australia', name: 'Australia' },
+  { slug: 'japan', code: 'Japan', name: 'Japan' },
+  { slug: 'germany', code: 'Germany', name: 'Germany' },
+  { slug: 'france', code: 'France', name: 'France' },
+  { slug: 'italy', code: 'Italy', name: 'Italy' },
+  { slug: 'south-korea', code: 'SouthKorea', name: 'South Korea' },
+  { slug: 'india', code: 'India', name: 'India' },
+  { slug: 'iran', code: 'Iran', name: 'Iran' },
+  { slug: 'iraq', code: 'Iraq', name: 'Iraq' },
+  { slug: 'kuwait', code: 'Kuwait', name: 'Kuwait' },
+  { slug: 'nepal', code: 'Nepal', name: 'Nepal' },
+  { slug: 'morocco', code: 'Morocco', name: 'Morocco' },
+  { slug: 'spain', code: 'Spain', name: 'Spain' },
+  { slug: 'greece', code: 'Greece', name: 'Greece' },
 ];
 
 function validateToken(token: string): { valid: boolean; username?: string } {
