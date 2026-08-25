@@ -76,7 +76,6 @@ model Country {
   fetchHash     String   @default("")
   parserVersion String   @default("1.0.0")
   parserConfidence Float @default(0.8)
-  heroImageEnabled Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
