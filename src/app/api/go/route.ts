@@ -25,7 +25,7 @@ function skyscannerUrl(country?: string): string {
 /** SafetyWing — your live affiliate link */
 const SAFETYWING_URL = 'https://safetywing.com/nomad-insurance?referenceID=26323190&utm_source=26323190&utm_medium=Ambassador';
 const WISE_URL = 'https://wise.com/pub/a/pakvisa?utm_source=pakvisa&utm_medium=affiliate';
-const AIRALO_URL = 'https://www.airalo.com/?utm_source=pakvisa&utm_medium=affiliate';
+const HOLFLY_URL = 'https://esim.holafly.com/?utm_source=pakvisa&utm_medium=affiliate';
 
 const AFFILIATE_URLS: Record<string, (country?: string) => string> = {
   ivisa: ivisaUrl,
@@ -36,7 +36,8 @@ const AFFILIATE_URLS: Record<string, (country?: string) => string> = {
   flight: skyscannerUrl,
   insurance: () => SAFETYWING_URL,
   wise: () => WISE_URL,
-  airalo: () => AIRALO_URL,
+  airalo: () => HOLFLY_URL,
+  holafly: () => HOLFLY_URL,
 };
 
 export async function GET(request: NextRequest) {

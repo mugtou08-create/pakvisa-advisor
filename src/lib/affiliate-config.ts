@@ -7,7 +7,7 @@
  * 3. The URLs are used in country detail cards and the footer
  * 
  * CURRENT STATUS: SafetyWing LIVE | iVisa LIVE | Booking.com, Skyscanner — placeholders
- * NEW: Wise (money transfer) | Airalo (travel eSIM)
+ * NEW: Wise (money transfer) | Holafly (travel eSIM — 20-30% commission)
  */
 
 export const AFFILIATE_CONFIG = {
@@ -67,13 +67,14 @@ export const AFFILIATE_CONFIG = {
       'https://wise.com/pub/a/pakvisa?utm_source=pakvisa&utm_medium=affiliate',
   },
 
-  /** Airalo — travel eSIM (10-15% commission)
-   *  Instant data in 190+ countries. No physical SIM needed.
-   *  Very popular with Pakistani travelers avoiding expensive roaming. */
-  airalo: {
-    name: 'Airalo',
-    baseUrl: 'https://www.airalo.com',
+  /** Holafly — travel eSIM (20-30% commission)
+   *  Instant data in 190+ countries. Unlimited data plans available.
+   *  Very popular with Pakistani travelers avoiding expensive roaming.
+   *  Affiliate sign-up: https://esim.holafly.com/affiliate-program */
+  holafly: {
+    name: 'Holafly',
+    baseUrl: 'https://esim.holafly.com',
     getUrl: () =>
-      'https://www.airalo.com/?utm_source=pakvisa&utm_medium=affiliate',
+      'https://esim.holafly.com/?utm_source=pakvisa&utm_medium=affiliate',
   },
 } as const;

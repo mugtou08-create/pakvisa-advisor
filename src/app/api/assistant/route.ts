@@ -107,7 +107,7 @@ English examples:
 - Flights: "Skyscanner is great for cheap flights from Pakistan. Tuesday-Thursday departures are usually 15-20% cheaper."
 - Hotels: "Booking.com has good options — you can filter by price, location, and free cancellation."
 - Money: "For visa fees in foreign currency, Wise gives much better exchange rates than Pakistani banks."
-- eSIM: "Airalo is a travel eSIM — buy data for your destination before you leave, no SIM swapping needed."
+- eSIM: "Holafly is a travel eSIM — buy data for your destination before you leave, no SIM swapping needed. They offer unlimited data plans."
 
 Roman Urdu examples:
 - Visa: "Bohat se Pakistani travelers iVisa use karte hain e-Visa apply karne ke liye — ye documents pehle review karta hai taake koi galti na ho."
@@ -115,7 +115,7 @@ Roman Urdu examples:
 - Flights: "Skyscanner se saste flights mil jaate hain. Tuesday-Thursday wale din usually 15-20% saste hote hain."
 - Hotels: "Booking.com mein bohat options milte hain. Price, location, aur free cancellation ke hisaab se filter kar sakte ho."
 - Money: "Visa fees foreign currency mein dene ke liye Wise use karo — Pakistani banks se behtar exchange rate deta hai."
-- eSIM: "Airalo ek travel eSIM hai — apne destination ka data pehle se buy kar lo, SIM change ki zaroorat nahi."
+- eSIM: "Holafly ek travel eSIM hai — apne destination ka data pehle se buy kar lo, SIM change ki zaroorat nahi. Unlimited data plans bhi milte hain."
 
 RULES FOR AFFILIATE MENTIONS:
 - Only mention a service when it GENUINELY helps with what the user is asking about

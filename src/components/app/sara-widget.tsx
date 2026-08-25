@@ -3,10 +3,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   MessageCircle, X, Send, Sparkles, ChevronDown, ExternalLink,
   Plane, Hotel, Shield, CreditCard, Smartphone, FileText, Gift, Crown, Users,
+  Zap, Share2, XIcon,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
 import { AFFILIATE_CONFIG } from '@/lib/affiliate-config';
+import { cn } from '@/lib/utils';
 
 interface SaraMessage {
   role: 'user' | 'sara';
@@ -20,13 +22,13 @@ const QUICK_ACTIONS = [
   { icon: Hotel, label: 'Book a Hotel', color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/30 dark:text-violet-400', partner: 'booking' },
   { icon: Shield, label: 'Travel Insurance', color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400', partner: 'safetywing' },
   { icon: CreditCard, label: 'Send Money Abroad', color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/30 dark:text-teal-400', partner: 'wise' },
-  { icon: Smartphone, label: 'Travel eSIM', color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400', partner: 'airalo' },
+  { icon: Smartphone, label: 'Travel eSIM', color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-400', partner: 'holafly' },
 ];
 
 function renderSaraText(text: string): React.ReactNode {
   if (!text) return text;
   // Match affiliate service names and make them clickable
-  const pattern = /(iVisa|SafetyWing|Skyscanner|Booking\.com|Wise|Airalo)/gi;
+  const pattern = /(iVisa|SafetyWing|Skyscanner|Booking\.com|Wise|Holafly)/gi;
   const parts = text.split(pattern);
   if (parts.length <= 1) return <>{text}</>;
 
@@ -37,7 +39,7 @@ function renderSaraText(text: string): React.ReactNode {
     if (lower.includes('skyscanner')) return 'https://www.skyscanner.net/';
     if (lower.includes('booking.com')) return AFFILIATE_CONFIG.booking.getCountryUrl('');
     if (lower.includes('wise')) return AFFILIATE_CONFIG.wise.getUrl();
-    if (lower.includes('airalo')) return AFFILIATE_CONFIG.airalo.getUrl();
+    if (lower.includes('holafly')) return AFFILIATE_CONFIG.holafly.getUrl();
     return null;
   };
 
@@ -355,18 +357,24 @@ export function SaraWidget() {
 
             {/* Quick Actions Panel */}
             {showQuickActions && messages.length <= 1 && (
-              <div className="space-y-2 pt-1">
-                <p className="text-xs text-muted-foreground font-medium px-1">Quick actions:</p>
-                <div className="grid grid-cols-2 gap-1.5">
+              <div className="space-y-2.5 pt-1">
+                <div className="flex items-center gap-1.5 px-0.5">
+                  <Zap className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Travel Services</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   {QUICK_ACTIONS.map((action) => (
                     <button
                       key={action.partner}
                       onClick={() => handleQuickAction(action.partner)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.98] ${action.color}`}
+                      className={`flex items-center gap-2.5 px-3 py-3 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-border/60 ${action.color}`}
                     >
-                      <action.icon className="w-3.5 h-3.5 shrink-0" />
-                      <span>{action.label}</span>
-                      <ExternalLink className="w-2.5 h-2.5 ml-auto opacity-40" />
+                      <div className={cn(
+                        'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-white/60 dark:bg-black/20'
+                      )}>
+                        <action.icon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="leading-tight">{action.label}</span>
                     </button>
                   ))}
                 </div>
@@ -418,29 +426,41 @@ export function SaraWidget() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="shrink-0 border-t border-border bg-background">
-            {/* Quick toolbar */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto">
+          <div className="shrink-0 border-t border-border/60 bg-background">
+            {/* Toggle buttons — cleaner pill design with icons */}
+            <div className="flex items-center gap-2 px-3 pt-2 pb-1.5 overflow-x-auto scrollbar-none">
               <button
                 onClick={() => { setShowQuickActions(!showQuickActions); setShowSharePanel(false); }}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors shrink-0 ${showQuickActions ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-primary/40 text-muted-foreground hover:text-foreground'}`}
+                className={cn(
+                  'flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all shrink-0',
+                  showQuickActions
+                    ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                )}
               >
-                Quick Actions
+                <Zap className={cn('w-3 h-3', showQuickActions && 'text-rose-500')} />
+                Tools
               </button>
               <button
                 onClick={() => { setShowSharePanel(!showSharePanel); setShowQuickActions(false); }}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors shrink-0 flex items-center gap-1 ${showSharePanel ? 'bg-emerald-600 text-white border-emerald-600' : 'border-border hover:border-emerald-400 text-muted-foreground hover:text-foreground'}`}
+                className={cn(
+                  'flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all shrink-0',
+                  showSharePanel
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                )}
               >
-                <Gift className="w-3 h-3" /> Share & Earn
+                <Gift className={cn('w-3 h-3', showSharePanel && 'text-emerald-500')} />
+                Refer & Earn
               </button>
               {referralStatus && referralStatus.bonusQueries > 0 && (
-                <span className="text-[11px] px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-medium shrink-0">
-                  +{referralStatus.bonusQueries} bonus queries
+                <span className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-semibold shrink-0 ring-1 ring-amber-200/50 dark:ring-amber-800/30">
+                  +{referralStatus.bonusQueries} queries
                 </span>
               )}
               {referralStatus && referralStatus.proDaysEarned > 0 && (
-                <span className="text-[11px] px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 font-medium shrink-0 flex items-center gap-1">
-                  <Crown className="w-3 h-3" /> {referralStatus.proDaysEarned}d Pro earned
+                <span className="text-[11px] px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 font-semibold shrink-0 flex items-center gap-1 ring-1 ring-purple-200/50 dark:ring-purple-800/30">
+                  <Crown className="w-3 h-3" /> {referralStatus.proDaysEarned}d Pro
                 </span>
               )}
             </div>
