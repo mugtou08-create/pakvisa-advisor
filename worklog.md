@@ -1863,3 +1863,23 @@ Stage Summary:
 - Expected LCP improvement: hero text + stats visible immediately (no JS required)
 - All existing functionality preserved: search, filters, pagination, favorites, modals, tools
 
+---
+Task ID: 12
+Agent: Main Agent
+Task: Fix Lighthouse Performance 74 → target 90+ on mobile
+
+Work Log:
+- Diagnosed 5 root causes: LCP (empty HTML shell), CLS (animated counters, no img dimensions), main thread blocking (30+ icons, 1572-line client component), unused JS, third-party scripts
+- Split monolithic page.tsx into server component (393 lines) + client component (1315 lines)
+- Server component: fetches countries directly from DB, renders hero/stats/popular/travel essentials/alerts as static HTML
+- Client component: receives data as props, no API fetch needed, handles all interactivity
+- Removed track-visitor inline script from layout.tsx (moved to client useEffect)
+- CLS fixes: static stats (no animated counters), tabular-nums, min-w-[2ch], explicit width/height on all images
+- Added preconnect to flagcdn.com + preload 8 popular country flag images
+- Eliminated 2 API round-trips (countries + stats) — data comes from server DB query
+
+Stage Summary:
+- LCP: Hero h1 now renders in initial HTML (no JS required) → expected <1.5s
+- CLS: Static numbers, explicit image dimensions → expected <0.05
+- Main thread: Smaller initial JS bundle (only interactive parts) → less blocking
+- Committed 711720f and pushed to main
