@@ -2027,3 +2027,26 @@ Stage Summary:
 - Service worker caches static assets for faster repeat visits
 - Offline banner shows when network drops
 - No Play Store needed — direct browser install
+
+---
+Task ID: Country Slug Fix
+Agent: Main Agent
+Task: Fix 5 countries showing "Country Not Found" on View Full Country Guide
+
+Work Log:
+- Wrote script to compare DB country names vs hardcoded slug map
+- Found 5 mismatches: UAE, Türkiye, UK, USA, Czech Republic
+- Root cause: toSlug("United Arab Emirates") = "united-arab-emirates" but map only had "uae"
+- Added slug aliases to [slug]/page.tsx (COUNTRY_SLUG_ENTRIES + HERO_IMAGE_SLUGS)
+- Added same aliases to country-slug.ts
+- Fixed CODE_TO_SLUG to prefer shorter slug ("uae" over "united-arab-emirates")
+- Fixed home-client.tsx to use CODE_TO_SLUG[code] instead of toSlug(name)
+- Fixed country-detail.tsx PDF link to use CODE_TO_SLUG[code]
+- Moved PWA dynamic import to client wrapper component
+- Browser verified all 70 countries load correctly
+- Lint clean, pushed 917424f
+
+Stage Summary:
+- All 70 country guide pages now work
+- Both short (/uae) and long (/united-arab-emirates) URL formats supported
+- Sitemap.ts already used CODE_TO_SLUG — no change needed
