@@ -281,7 +281,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         <div className="flex items-center gap-2 shrink-0">
           {!country.visaFree && (
             <a
-              href={affiliateGo('ivisa', country.name, mounted)}
+              href={affiliateGo('ivisa', country.name)}
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}

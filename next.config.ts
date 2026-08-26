@@ -17,21 +17,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
     qualities: [75, 85],
   },
-  // Optimize package imports for smaller bundles (stable in Next.js 15.1+)
-  optimizePackageImports: [
-    'lucide-react',
-    'date-fns',
-    'recharts',
-    '@radix-ui/react-dialog',
-    '@radix-ui/react-dropdown-menu',
-    '@radix-ui/react-popover',
-    '@radix-ui/react-tabs',
-    '@radix-ui/react-tooltip',
-    '@radix-ui/react-select',
-    '@radix-ui/react-accordion',
-    '@radix-ui/react-collapsible',
-    '@radix-ui/react-scroll-area',
-  ],
+  // Modern browsers — no legacy polyfills (see browserslist in package.json)
   async headers() {
     return [
       {
