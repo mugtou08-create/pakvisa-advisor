@@ -3,7 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleAnalytics, GoogleAdSense } from "@/components/analytics";
-import { PwaInstallPrompt } from "@/components/app/pwa-install-prompt";
+import dynamic from "next/dynamic";
+const PwaInstallPrompt = dynamic(() => import("@/components/app/pwa-install-prompt").then(m => ({ default: m.PwaInstallPrompt })), { ssr: false });
 import "./globals.css";
 
 const geistSans = Geist({
