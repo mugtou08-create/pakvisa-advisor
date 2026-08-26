@@ -1,0 +1,30 @@
+{
+  "name": "PakVisa Advisor — Visa Checker & Travel Tools",
+  "short_name": "PakVisa",
+  "description": "Free AI-powered visa intelligence for Pakistani passport holders. Check visa requirements, convert currencies, and estimate trip budgets.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "dir": "ltr",
+  "lang": "en",
+  "categories": ["travel", "utilities", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

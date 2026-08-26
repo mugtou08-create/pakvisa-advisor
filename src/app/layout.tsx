@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { GoogleAnalytics, GoogleAdSense } from "@/components/analytics";
+import { PwaInstallPrompt } from "@/components/app/pwa-install-prompt";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -98,10 +99,17 @@ export default function RootLayout({
         <meta name="google-site-verification" content="aXhN2r-V-uKdvYHhLmnjF8OOpLW48PPCx8_AZrEq3as" />
         <meta name="impact-site-verification" content="d482a492-cd48-44cc-a7e7-592734249e0f" />
         <meta name="theme-color" content="#059669" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="PakVisa" />
+        <meta name="application-name" content="PakVisa" />
+        <meta name="msapplication-TileColor" content="#059669" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="canonical" href="https://pakvisa-advisor.vercel.app" />
         <link rel="icon" href="/icon.png?v=2" sizes="32x32" type="image/png" />
         <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" type="image/x-icon" />
-        <link rel="apple-touch-icon" href="/apple-icon.png?v=2" sizes="180x180" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -161,6 +169,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
+          <PwaInstallPrompt />
           <Toaster position="top-right" richColors />
         </ThemeProvider>
 
