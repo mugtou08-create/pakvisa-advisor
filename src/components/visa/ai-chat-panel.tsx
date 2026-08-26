@@ -98,10 +98,14 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
     if (!messageText || isLoading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: messageText };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const prevMessages = [...messages, userMessage];
+    const botMsgIndex = prevMessages.length;
+    setMessages(prevMessages);
     setInput('');
     setIsLoading(true);
+
+    // Add placeholder for bot response (streaming)
+    setMessages(prev => [...prev, { role: 'assistant', content: '', meta: undefined }]);
 
     try {
       const res = await fetch('/api/chat', {
@@ -109,70 +113,102 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: messageText,
-          history: updatedMessages.slice(0, -1), // Don't send the current user message in history (it's in message)
+          history: prevMessages.slice(0, -1),
           isPro: isProUser,
         }),
       });
 
-      if (!res.ok) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: 'Sorry, something went wrong. Please try again.',
-            meta: { dataVerified: false },
-          },
-        ]);
-        return;
-      }
+      const contentType = res.headers.get('content-type') || '';
 
-      const json = await res.json();
-      if (json.success) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: json.data,
-            meta: json.meta ? {
+      if (contentType.includes('application/json')) {
+        // Error or rate-limit response
+        const json = await res.json();
+        setIsLoading(false);
+        if (json.success && json.data) {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[botMsgIndex] = { role: 'assistant', content: json.data, meta: json.meta ? {
               dataVerified: json.meta.dataVerified,
               detectedCountry: json.meta.detectedCountry,
               sourceUrl: json.meta.sourceUrl,
               lastUpdated: json.meta.lastUpdated,
-            } : undefined,
-          },
-        ]);
-        if (json.meta?.globalFreshness) setGlobalFreshness(json.meta.globalFreshness);
-        if (json.meta?.remainingFreeQueries !== undefined && json.meta.remainingFreeQueries >= 0) {
-          setRemainingFree(json.meta.remainingFreeQueries);
+            } : undefined };
+            return updated;
+          });
+        } else if (json.code === 'LIMIT_REACHED') {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[botMsgIndex] = { role: 'assistant', content: 'You\'ve reached the free daily limit of 5 queries. Share PakVisa with friends on WhatsApp to earn more queries, or upgrade to Pro for unlimited AI access with verified data.', meta: { dataVerified: false } };
+            return updated;
+          });
+          setRemainingFree(0);
+        } else {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[botMsgIndex] = { role: 'assistant', content: json.error || 'Sorry, something went wrong. Please try again.', meta: { dataVerified: false } };
+            return updated;
+          });
         }
-      } else if (json.code === 'LIMIT_REACHED') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: 'You\'ve reached the free daily limit of 5 queries. Share PakVisa with friends on WhatsApp to earn more queries, or upgrade to Pro for unlimited AI access with verified data.',
-            meta: { dataVerified: false },
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: 'Sorry, something went wrong. Please try again.',
-            meta: { dataVerified: false },
-          },
-        ]);
+        return;
+      }
+
+      // Streaming response
+      if (!res.body) {
+        setIsLoading(false);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[botMsgIndex] = { role: 'assistant', content: 'Unable to reach the server. Please check your connection and try again.', meta: { dataVerified: false } };
+          return updated;
+        });
+        return;
+      }
+
+      // Read metadata from response headers
+      const dataVerified = res.headers.get('X-Data-Verified') === 'true';
+      const detectedCountry = res.headers.get('X-Detected-Country') || undefined;
+      const sourceUrl = res.headers.get('X-Source-Url') || undefined;
+      const lastUpdated = res.headers.get('X-Last-Updated') || undefined;
+      const freshness = res.headers.get('X-Global-Freshness') || '';
+      const remainingHeader = res.headers.get('X-Remaining-Queries');
+      if (freshness) setGlobalFreshness(freshness);
+      if (remainingHeader) setRemainingFree(parseInt(remainingHeader, 10));
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[botMsgIndex] = { role: 'assistant', content: accumulated, meta: {
+            dataVerified,
+            detectedCountry,
+            sourceUrl,
+            lastUpdated,
+          } };
+          return updated;
+        });
+      }
+
+      if (!accumulated.trim()) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[botMsgIndex] = { role: 'assistant', content: 'Sorry, something went wrong. Please try again.', meta: { dataVerified: false } };
+          return updated;
+        });
       }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Unable to reach the server. Please check your connection and try again.',
-          meta: { dataVerified: false },
-        },
-      ]);
+      setIsLoading(false);
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastMsg = updated[botMsgIndex];
+        if (lastMsg?.content?.trim()) return updated; // Keep partial response
+        updated[botMsgIndex] = { role: 'assistant', content: 'Unable to reach the server. Please check your connection and try again.', meta: { dataVerified: false } };
+        return updated;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -320,8 +356,8 @@ export function AiChatPanel({ onClose }: { onClose: () => void }) {
                 </div>
               ))}
 
-              {/* Loading Indicator */}
-              {isLoading && (
+              {/* Loading Indicator — only before first chunk */}
+              {isLoading && messages.length > 0 && messages[messages.length - 1]?.content === '' && (
                 <div className="flex justify-start">
                   <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />

@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createGeminiStream, createStreamResponse } from '@/lib/gemini-stream';
 
 function getClientIp(request: NextRequest): string {
   return (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
 }
 
-// Bonus queries earned from referrals (in-memory, keyed by IP)
-const referralBonusQueries = new Map<string, number>();
-
 export async function POST(request: NextRequest) {
   try {
-    const ip = getClientIp(request);
     const body = await request.json();
     const { message, history, signals } = body;
 
     if (!message || !message.trim()) {
       return NextResponse.json({ success: false, error: 'message is required' }, { status: 400 });
+    }
+
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json({ success: false, error: 'AI service is not configured.' }, { status: 503 });
     }
 
     // Smart signals from the frontend
@@ -28,7 +30,6 @@ export async function POST(request: NextRequest) {
     // Build smart context for Sara
     let smartContext = '';
 
-    // Signal: consultant query usage
     if (consultantQueriesUsed > 0) {
       smartContext += `\nSMART SIGNAL - Consultant usage: User has used ${consultantQueriesUsed} of ${consultantQueriesMax} free AI Visa Consultant questions today.`;
       if (consultantQueriesUsed >= consultantQueriesMax - 1) {
@@ -36,18 +37,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Signal: current page
     if (currentPage && currentPage !== '/') {
       const pageName = currentPage.replace(/[/-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       smartContext += `\nSMART SIGNAL - Current page: User is currently viewing the ${pageName} page.`;
     }
 
-    // Signal: time on site
     if (timeOnSite > 120) {
       smartContext += `\nSMART SIGNAL - Engaged user: They have been on the site for ${Math.floor(timeOnSite / 60)} minutes. This is a highly engaged visitor.`;
     }
 
-    // Signal: referral data
     if (referralData) {
       if (referralData.hasReferral && referralData.visitorCount > 0) {
         smartContext += `\nSMART SIGNAL - Referral progress: User has shared and earned ${referralData.visitorCount} visitor(s). Current tier: ${referralData.rewardTier}. They have ${referralData.bonusQueries} bonus queries.`;
@@ -66,7 +64,7 @@ export async function POST(request: NextRequest) {
       smartContext += `\nSMART SIGNAL - User is a Pro member. Do NOT suggest Pro upgrade. Focus on affiliate services and helpful tips.`;
     }
 
-    // Sara's system prompt
+    // Sara's system prompt (kept exactly the same as before)
     const systemPrompt = `You are Sara — a warm, friendly, and helpful travel assistant for PakVisa Advisor. You help Pakistani travelers plan their international trips.
 
 LANGUAGE RULES (very important):
@@ -150,7 +148,7 @@ IMPORTANT RULES:
 - Be genuine. If you can't help with something, say so honestly
 ${smartContext}`;
 
-    // Build conversation for Gemini
+    // Build conversation contents for Gemini
     const geminiContents: { role: string; parts: { text: string }[] }[] = [];
 
     if (history && history.length > 0) {
@@ -170,58 +168,16 @@ ${smartContext}`;
       parts: [{ text: message }],
     });
 
-    // Gemini API call
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      return NextResponse.json(
-        { success: false, error: 'AI service is not configured.' },
-        { status: 503 }
-      );
-    }
-
-    const MODELS = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
-    let aiResponse: string | null = null;
-    let lastError = '';
-
-    for (const model of MODELS) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              system_instruction: { parts: [{ text: systemPrompt }] },
-              contents: geminiContents,
-              generationConfig: { temperature: 0.8, maxOutputTokens: 4096, topP: 0.9 },
-            }),
-          }
-        );
-
-        if (res.ok) {
-          const json = await res.json();
-          aiResponse = json?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-          if (aiResponse) break;
-        } else {
-          lastError = `${model}: ${res.status}`;
-        }
-      } catch (err) {
-        lastError = `${model}: ${String(err)}`;
-      }
-    }
-
-    if (!aiResponse) {
-      console.error('Sara AI failed:', lastError);
-      return NextResponse.json(
-        { success: false, error: 'Sara is temporarily unavailable. Please try again.' },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: aiResponse,
+    // Create streaming response — text starts flowing immediately
+    const stream = await createGeminiStream({
+      models: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+      apiKey: GEMINI_API_KEY,
+      systemPrompt,
+      contents: geminiContents,
+      generationConfig: { temperature: 0.8, maxOutputTokens: 4096, topP: 0.9 },
     });
+
+    return createStreamResponse(stream);
   } catch (error) {
     console.error('Sara assistant error:', error);
     return NextResponse.json(

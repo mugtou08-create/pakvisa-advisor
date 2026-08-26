@@ -57,6 +57,7 @@ interface AppState {
   setChatOpen: (open: boolean) => void;
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   addChatMessage: (role: 'user' | 'assistant', content: string) => void;
+  updateLastChatMessage: (content: string) => void;
   savedBudgets: Record<string, { duration: number; tier: string; foodPerDay: number; transportPerDay: number; activities: number }>;
   saveBudget: (countryCode: string, budget: { duration: number; tier: string; foodPerDay: number; transportPerDay: number; activities: number }) => void;
   conversionHistory: Array<{ from: string; to: string; amount: number; result: number; timestamp: string }>;
@@ -139,6 +140,13 @@ export const useAppStore = create<AppState>()(
       addChatMessage: (role, content) => set((state) => ({
         chatHistory: [...state.chatHistory, { role, content }],
       })),
+      updateLastChatMessage: (content) => set((state) => {
+        const updated = [...state.chatHistory];
+        if (updated.length > 0) {
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content };
+        }
+        return { chatHistory: updated };
+      }),
       savedBudgets: {},
       saveBudget: (countryCode, budget) => set((state) => ({
         savedBudgets: { ...state.savedBudgets, [countryCode]: budget },

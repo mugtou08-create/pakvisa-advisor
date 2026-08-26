@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 import { getUserFromRequest } from '@/lib/auth';
 import { detectCountries } from '@/lib/country-detect';
+import { createGeminiStream, createStreamResponse } from '@/lib/gemini-stream';
 import type { ScoreBreakdown, UserProfileData } from '@/lib/types';
 
 interface ChatRequestBody {
@@ -17,12 +18,14 @@ interface ChatRequestBody {
 }
 
 // Rate limits per tier
-const FREE_RATE_LIMIT = 5;     // 5 queries per day
-const FREE_WINDOW = 86400000;  // 24 hours
-const PRO_RATE_LIMIT = 60;     // 60 queries per minute
+const FREE_RATE_LIMIT = 5;
+const FREE_WINDOW = 86400000;
 
 // In-memory tracking for free tier daily limits (anonymous users only)
 const freeUsageCounts = new Map<string, { count: number; resetAt: number }>();
+
+// Global freshness cache (avoids DB query on every request)
+let freshnessCache: { value: string; expiresAt: number } = { value: 'August 2025', expiresAt: 0 };
 
 function checkFreeLimit(ip: string): boolean {
   const now = Date.now();
@@ -36,6 +39,22 @@ function checkFreeLimit(ip: string): boolean {
   return true;
 }
 
+async function getGlobalFreshness(): Promise<string> {
+  const now = Date.now();
+  if (freshnessCache.expiresAt > now) return freshnessCache.value;
+
+  const latestCountry = await db.country.findFirst({
+    orderBy: { updatedAt: 'desc' },
+    select: { updatedAt: true },
+  });
+  const value = latestCountry?.updatedAt
+    ? new Date(latestCountry.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : 'August 2025';
+
+  freshnessCache = { value, expiresAt: now + 600000 }; // Cache for 10 minutes
+  return value;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const ip = (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
@@ -43,13 +62,15 @@ export async function POST(request: NextRequest) {
     const { message, context, history } = body;
 
     if (!message || !message.trim()) {
-      return NextResponse.json(
-        { success: false, error: 'message is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'message is required' }, { status: 400 });
     }
 
-    // Check real auth
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json({ success: false, error: 'AI service is not configured.' }, { status: 503 });
+    }
+
+    // Check auth
     let proUser = false;
     let userId: string | null = null;
     try {
@@ -65,15 +86,13 @@ export async function POST(request: NextRequest) {
       if (!rateLimit(ip, 60, 60000)) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
       }
-      // Log Pro usage
       if (userId) {
         await db.aiUsageLog.create({ data: { userId, message: message.slice(0, 200) } });
       }
     } else {
       if (userId) {
-        // Authenticated free user — use DB-based limit
-        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
         const todayCount = await db.aiUsageLog.count({ where: { userId, createdAt: { gte: todayStart, lte: todayEnd } } });
         if (todayCount >= FREE_RATE_LIMIT) {
           return NextResponse.json({
@@ -85,7 +104,6 @@ export async function POST(request: NextRequest) {
         }
         await db.aiUsageLog.create({ data: { userId, message: message.slice(0, 200) } });
       } else {
-        // Anonymous user — IP-based limit
         if (!checkFreeLimit(ip)) {
           return NextResponse.json({
             success: false,
@@ -98,83 +116,75 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // COUNTRY DETECTION (Phase 2A)
+    // COUNTRY DETECTION & DB CONTEXT (run in parallel)
     // ============================================================
     let detectedCountry = context?.countryCode || null;
-    let detectedCountries = detectCountries(message);
-
-    // If no explicit countryCode but we detected one, use it
+    const detectedCountries = detectCountries(message);
     if (!detectedCountry && detectedCountries.length > 0) {
       detectedCountry = detectedCountries[0];
     }
 
-    // ============================================================
-    // DATABASE CONTEXT INJECTION (Phase 2B) — Pro only
-    // ============================================================
+    // Fetch DB data and freshness in parallel
+    const [countryData, globalFreshness] = await Promise.all([
+      (proUser && detectedCountry)
+        ? db.country.findUnique({
+            where: { code: detectedCountry },
+            include: { visaTypes: true, requirements: { where: { mandatory: true }, take: 10 }, costProfiles: true },
+          })
+        : (context?.countryCode
+          ? db.country.findUnique({ where: { code: context.countryCode.toUpperCase() }, include: { visaTypes: true, requirements: true, costProfiles: true } })
+          : Promise.resolve(null)),
+      getGlobalFreshness(),
+    ]);
+
+    // Build context string from DB data
     let contextStr = '';
     let verifiedData: {
       countryName: string;
       countryCode: string;
       sourceUrl: string;
       lastUpdated: string;
-      requirements: { category: string; requirement: string; mandatory: boolean }[];
-      costProfile: { visaFeeUSD: number; monthlyLivingUSD: number; totalMonthlyUSD: number } | null;
-      visaTypes: { type: string; maxDuration: string; multipleEntry: boolean }[];
     } | null = null;
 
-    if (proUser && detectedCountry) {
-      const country = await db.country.findUnique({
-        where: { code: detectedCountry },
-        include: {
-          visaTypes: true,
-          requirements: { where: { mandatory: true }, take: 10 },
-          costProfiles: true,
-        },
-      });
-
-      if (country) {
+    if (countryData) {
+      if (proUser && detectedCountry) {
         verifiedData = {
-          countryName: country.name,
-          countryCode: country.code,
-          sourceUrl: country.sourceUrl || '',
-          lastUpdated: country.updatedAt ? new Date(country.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unknown',
-          requirements: country.requirements.map(r => ({ category: r.category, requirement: r.requirement, mandatory: r.mandatory })),
-          costProfile: country.costProfiles[0] ? {
-            visaFeeUSD: country.costProfiles[0].visaFeeUSD,
-            monthlyLivingUSD: country.costProfiles[0].monthlyLivingUSD,
-            totalMonthlyUSD: country.costProfiles[0].totalMonthlyUSD,
-          } : null,
-          visaTypes: country.visaTypes.map(vt => ({ type: vt.type, maxDuration: vt.maxDuration, multipleEntry: vt.multipleEntry })),
+          countryName: countryData.name,
+          countryCode: countryData.code,
+          sourceUrl: countryData.sourceUrl || '',
+          lastUpdated: countryData.updatedAt
+            ? new Date(countryData.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'Unknown',
         };
 
-        contextStr += `\n\n===== VERIFIED COUNTRY DATA FOR ${country.name.toUpperCase()} =====\n`;
+        contextStr += `\n\n===== VERIFIED COUNTRY DATA FOR ${countryData.name.toUpperCase()} =====\n`;
         contextStr += `IMPORTANT: The following data is from our verified database. Use this as the PRIMARY source for your answer.\n`;
         contextStr += `Data last updated: ${verifiedData.lastUpdated}\n`;
-        contextStr += `Visa Access: ${country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'Visa on Arrival' : country.etaAvailable ? 'e-Visa Available' : 'Embassy Required'}\n`;
-        contextStr += `Processing Time: ${country.processingDaysMin}-${country.processingDaysMax} days\n`;
-        contextStr += `Currency: ${country.currency} (${country.currencyCode})\n`;
-        contextStr += `Safety Rating: ${country.safetyRating}/10\n`;
-        contextStr += `Best Travel Months: ${country.bestTravelMonths}\n`;
-        contextStr += `Timezone: ${country.timezone}\n`;
-        if (country.safetySummary) contextStr += `Safety Summary: ${country.safetySummary}\n`;
+        contextStr += `Visa Access: ${countryData.visaFree ? 'Visa Free' : countryData.visaOnArrival ? 'Visa on Arrival' : countryData.etaAvailable ? 'e-Visa Available' : 'Embassy Required'}\n`;
+        contextStr += `Processing Time: ${countryData.processingDaysMin}-${countryData.processingDaysMax} days\n`;
+        contextStr += `Currency: ${countryData.currency} (${countryData.currencyCode})\n`;
+        contextStr += `Safety Rating: ${countryData.safetyRating}/10\n`;
+        contextStr += `Best Travel Months: ${countryData.bestTravelMonths}\n`;
+        contextStr += `Timezone: ${countryData.timezone}\n`;
+        if (countryData.safetySummary) contextStr += `Safety Summary: ${countryData.safetySummary}\n`;
 
-        if (country.visaTypes.length > 0) {
+        if (countryData.visaTypes.length > 0) {
           contextStr += `\nAvailable Visa Types:\n`;
-          for (const vt of country.visaTypes) {
+          for (const vt of countryData.visaTypes) {
             contextStr += `  - ${vt.type}: ${vt.description || 'No description'} (Duration: ${vt.maxDuration}, Multiple Entry: ${vt.multipleEntry})\n`;
           }
         }
 
-        if (country.requirements.length > 0) {
+        if (countryData.requirements.length > 0) {
           contextStr += `\nKey Requirements (Mandatory):\n`;
-          for (const req of country.requirements) {
+          for (const req of countryData.requirements) {
             contextStr += `  - ${req.category}: ${req.requirement}\n`;
             if (req.description) contextStr += `    Details: ${req.description}\n`;
           }
         }
 
-        if (country.costProfiles.length > 0) {
-          const cp = country.costProfiles[0];
+        if (countryData.costProfiles.length > 0) {
+          const cp = countryData.costProfiles[0];
           contextStr += `\nCost Estimates:\n`;
           contextStr += `  - Visa Fee: $${cp.visaFeeUSD} (≈ PKR ${Math.round(cp.visaFeeUSD * 278.5).toLocaleString()})\n`;
           contextStr += `  - Monthly Living: $${cp.monthlyLivingUSD} (≈ PKR ${Math.round(cp.monthlyLivingUSD * 278.5).toLocaleString()})\n`;
@@ -183,30 +193,19 @@ export async function POST(request: NextRequest) {
           contextStr += `  - Total Monthly: $${cp.totalMonthlyUSD}\n`;
         }
         contextStr += `\n===== END VERIFIED DATA =====\n`;
-      }
-    }
-
-    // Legacy context injection (for explicit countryCode in context — not auto-detected)
-    if (context?.countryCode && !verifiedData) {
-      const country = await db.country.findUnique({
-        where: { code: context.countryCode.toUpperCase() },
-        include: { visaTypes: true, requirements: true, costProfiles: true },
-      });
-      if (country) {
-        contextStr += `\n\nCountry: ${country.name}\nVisa Access: ${country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'Visa on Arrival' : country.etaAvailable ? 'e-Visa' : 'Embassy Required'}\nProcessing: ${country.processingDaysMin}-${country.processingDaysMax} days\n`;
-        if (country.visaTypes.length > 0) {
-          contextStr += `Visa Types: ${country.visaTypes.map(vt => vt.type).join(', ')}\n`;
+      } else if (context?.countryCode && !verifiedData) {
+        contextStr += `\n\nCountry: ${countryData.name}\nVisa Access: ${countryData.visaFree ? 'Visa Free' : countryData.visaOnArrival ? 'Visa on Arrival' : countryData.etaAvailable ? 'e-Visa' : 'Embassy Required'}\nProcessing: ${countryData.processingDaysMin}-${countryData.processingDaysMax} days\n`;
+        if (countryData.visaTypes.length > 0) {
+          contextStr += `Visa Types: ${countryData.visaTypes.map(vt => vt.type).join(', ')}\n`;
         }
       }
     }
 
-    // Profile context
+    // Profile & score context
     if (context?.profile) {
       contextStr += `\n\nUser Profile:\n`;
       contextStr += `Age: ${context.profile.age}, Occupation: ${context.profile.occupation || 'N/A'}, Income: $${context.profile.monthlyIncomeUSD}/mo, Savings: $${context.profile.savingsUSD}, Purpose: ${context.profile.travelPurpose || 'N/A'}, Stay: ${context.profile.intendedStayDays} days, Prior Travel: ${context.profile.hasPriorTravel ? 'Yes' : 'No'}\n`;
     }
-
-    // Score breakdown context
     if (context?.scoreBreakdown) {
       const sb = context.scoreBreakdown;
       contextStr += `\n\nScore: ${sb.finalScore}/100, Likelihood: ${sb.visaLikelihood}%\n`;
@@ -251,22 +250,9 @@ AFFILIATE SUGGESTION RULES (very important):
 - Keep any service mention to ONE short sentence. Do not elaborate or push.
 ${proContextInstruction}`;
 
-    // ============================================================
-    // LLM CALL — Google Gemini API
-    // ============================================================
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-      return NextResponse.json(
-        { success: false, error: 'AI service is not configured. Please contact the administrator.' },
-        { status: 503 }
-      );
-    }
-
-    // Convert our messages array to Gemini format
-    // Gemini uses: systemInstruction + contents[] with role "user"/"model"
+    // Build Gemini contents
     const geminiContents: { role: string; parts: { text: string }[] }[] = [];
 
-    // Add conversation history
     if (history && history.length > 0) {
       const recentHistory = history.slice(-20);
       for (const h of recentHistory) {
@@ -279,88 +265,17 @@ ${proContextInstruction}`;
       }
     }
 
-    // Add current message with context
     geminiContents.push({
       role: 'user',
-      parts: [{
-        text: contextStr
-          ? `${message}\n\n---Context Data---\n${contextStr}`
-          : message,
-      }],
+      parts: [{ text: contextStr ? `${message}\n\n---Context Data---\n${contextStr}` : message }],
     });
 
-    // Try models in order of preference (fallback if one is unavailable)
-    const MODELS = [
-      'gemini-3.6-flash',
-      'gemini-2.5-flash',
-      'gemini-1.5-flash',
-    ];
-
-    let aiResponse: string | null = null;
-    let lastError = '';
-
-    for (const model of MODELS) {
-      try {
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              system_instruction: {
-                parts: [{ text: systemPrompt }],
-              },
-              contents: geminiContents,
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 2048,
-                topP: 0.9,
-              },
-            }),
-          }
-        );
-
-        if (geminiRes.ok) {
-          const geminiJson = await geminiRes.json();
-          aiResponse = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-          if (aiResponse) break;
-        } else {
-          const errText = await geminiRes.text().catch(() => '');
-          lastError = `${model}: ${geminiRes.status} ${errText.slice(0, 200)}`;
-          console.error('Gemini model failed:', lastError);
-        }
-      } catch (err) {
-        lastError = `${model}: ${String(err)}`;
-        console.error('Gemini model error:', lastError);
-      }
-    }
-
-    if (!aiResponse) {
-      console.error('All Gemini models failed:', lastError);
-      return NextResponse.json(
-        { success: false, error: 'AI service temporarily unavailable. Please try again in a moment.' },
-        { status: 502 }
-      );
-    }
-
-    // ============================================================
-    // BUILD RESPONSE (Phase 1B + 2C)
-    // ============================================================
-    // Get global data freshness timestamp
-    const latestCountry = await db.country.findFirst({
-      orderBy: { updatedAt: 'desc' },
-      select: { updatedAt: true },
-    });
-    const globalFreshness = latestCountry?.updatedAt
-      ? new Date(latestCountry.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-      : 'August 2025';
-
-    // Check remaining free usage
+    // Compute remaining queries for the header
     let remainingFreeQueries = -1;
     if (!proUser) {
       if (userId) {
-        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
         const todayCount = await db.aiUsageLog.count({ where: { userId, createdAt: { gte: todayStart, lte: todayEnd } } });
         remainingFreeQueries = Math.max(0, FREE_RATE_LIMIT - todayCount);
       } else {
@@ -369,23 +284,33 @@ ${proContextInstruction}`;
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      data: aiResponse,
-      meta: {
-        proUser,
-        dataVerified: !!verifiedData,
-        detectedCountry: verifiedData?.countryName || null,
-        sourceUrl: verifiedData?.sourceUrl || null,
-        lastUpdated: verifiedData?.lastUpdated || null,
-        globalFreshness,
-        remainingFreeQueries,
-      },
+    // Create streaming response
+    const stream = await createGeminiStream({
+      models: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+      apiKey: GEMINI_API_KEY,
+      systemPrompt,
+      contents: geminiContents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048, topP: 0.9 },
     });
+
+    // Send metadata in response headers (known before stream starts)
+    const metaHeaders: Record<string, string> = {
+      'X-Pro-User': String(proUser),
+      'X-Data-Verified': String(!!verifiedData),
+      'X-Global-Freshness': globalFreshness,
+      'X-Remaining-Queries': String(remainingFreeQueries),
+    };
+    if (verifiedData) {
+      metaHeaders['X-Detected-Country'] = verifiedData.countryName;
+      metaHeaders['X-Source-Url'] = verifiedData.sourceUrl;
+      metaHeaders['X-Last-Updated'] = verifiedData.lastUpdated;
+    }
+
+    return createStreamResponse(stream, metaHeaders);
   } catch (error) {
     console.error('Error in chat:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to process chat message', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
+      { success: false, error: 'Failed to process chat message' },
       { status: 500 }
     );
   }
