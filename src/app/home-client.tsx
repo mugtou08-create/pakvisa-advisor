@@ -37,7 +37,7 @@ const PaymentProofModal = dynamic(() => import('@/components/visa/payment-proof-
 const AdminDialog = dynamic(() => import('@/components/app/admin-dialog').then(m => ({ default: m.AdminDialog })), { ssr: false });
 const WhatsAppButton = dynamic(() => import('@/components/app/whatsapp-button').then(m => ({ default: m.WhatsAppButton })), { ssr: false });
 const SaraWidget = dynamic(() => import('@/components/app/sara-widget').then(m => ({ default: m.SaraWidget })), { ssr: false });
-import { getFlagUrl, FLAG_ISO_MAP, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
+import { getFlagUrl, REGIONS, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 
 
 // ============================================================
@@ -211,7 +211,7 @@ function QuickToolCard({ icon, title, description, colorClass, onClick, badge }:
         </div>
         {badge && <Badge variant="secondary" className="text-[10px]">{badge}</Badge>}
       </div>
-      <h4 className="font-semibold mb-1">{title}</h4>
+      <div className="font-semibold mb-1">{title}</div>
       <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
     </button>
   );
@@ -251,15 +251,11 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <a
-              href={`/${toSlug(country.name)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="font-semibold text-sm truncate hover:text-emerald-600 transition-colors"
+            <span
+              className="font-semibold text-sm truncate"
             >
               {country.name}
-            </a>
+            </span>
             <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${vt.color}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${vt.dot}`} />
               {vt.label}
@@ -289,14 +285,14 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium transition-colors shadow-sm hover:shadow-md"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium transition-colors shadow-sm hover:shadow-md"
             >
               Apply for Visa <ArrowRight className="w-3 h-3" />
             </a>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
-            className="p-1.5 rounded-full hover:bg-muted transition-colors"
+            className="p-2.5 min-w-[44px] min-h-[44px] rounded-full hover:bg-muted transition-colors flex items-center justify-center"
             aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
           >
             <Heart className={`w-4 h-4 ${isFav ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
@@ -611,7 +607,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+              <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme" className="min-w-[44px] min-h-[44px]">
                 {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <Skeleton className="h-4 w-4 rounded" />}
               </Button>
             </div>
@@ -772,13 +768,13 @@ export default function HomeClient({ initialCountries, initialStats, children }:
                 <span className="sm:hidden">Account</span>
               </button>
             )}
-            <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
+            <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme" className="min-w-[44px] min-h-[44px]">
               {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <Skeleton className="h-4 w-4 rounded" />}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setActiveModal('pricing')} className="gap-1.5 text-xs">
               <Crown className="w-3 h-3 text-amber-500" /> Premium
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setActiveModal('help')} aria-label="Help">
+            <Button variant="ghost" size="icon" onClick={() => setActiveModal('help')} aria-label="Help" className="min-w-[44px] min-h-[44px]">
               <HelpCircle className="w-4 h-4" />
             </Button>
           </div>
@@ -984,7 +980,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
                   </div>
                 </a>
               </div>
-              <p className="text-[10px] text-muted-foreground/50 text-center mt-2">Trusted travel partners — we may earn a commission at no extra cost to you</p>
+              <p className="text-[10px] text-muted-foreground/80 text-center mt-2">Trusted travel partners — we may earn a commission at no extra cost to you</p>
             </div>
           </section>
 
@@ -993,7 +989,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
             <div className="max-w-6xl mx-auto">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <h2 className="text-sm font-bold uppercase tracking-wide">Visa Policy Alerts</h2>
+                <h3 className="text-sm font-bold uppercase tracking-wide">Visa Policy Alerts</h3>
               </div>
               <style>{`
                 @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
@@ -1017,7 +1013,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
                         <p className="font-semibold text-sm truncate">{alert.title}</p>
                         <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.source}</p>
                       </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0" />
                     </a>
                   ))}
                 </div>
@@ -1431,7 +1427,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
           {/* Affiliate Partners Bar */}
           <div className="border-b border-border">
             <div className="max-w-6xl mx-auto px-4 py-5">
-              <p className="text-center text-[10px] text-muted-foreground/70 font-medium uppercase tracking-widest mb-3">Trusted Travel Partners</p>
+              <p className="text-center text-xs text-muted-foreground/80 font-medium uppercase tracking-widest mb-3">Trusted Travel Partners</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <a
                   href={affiliateGo('ivisa', undefined, mounted)}

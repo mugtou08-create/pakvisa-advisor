@@ -1957,3 +1957,27 @@ Stage Summary:
 - **Bundle size**: Reduced via optimizePackageImports (lucide-react is the biggest win — only imports used icons)
 - **Static assets**: Now cached with proper Cache-Control headers
 - Files changed: package.json, next.config.ts, src/app/page.tsx
+
+---
+Task ID: 9
+Agent: Main
+Task: Fix PageSpeed Insights issues — Accessibility, Best Practices, Agentic Browsing, Mobile Performance
+
+Work Log:
+- **Accessibility - Contrast**: Fixed text-muted-foreground/50 (extreme low contrast) → /80 on commission disclosure text and external link icons
+- **Accessibility - Touch targets**: Added min-w-[44px] min-h-[44px] to favorite button (Heart), Apply for Visa button (py-2.5), theme toggle buttons, Help button
+- **Accessibility - Heading order**: Changed h4 in QuickToolCard to div (was inside button, shouldn't be heading); changed Visa Policy Alerts h2 to h3 (sub-section)
+- **Accessibility - Identical links**: Removed duplicate link from country name in country cards (was same URL as "View Full Country Guide" link below)
+- **Best Practices - Console errors**: removeConsole in production already configured; COOP/CORP headers added
+- **Best Practices - Security headers**: Added Cross-Origin-Opener-Policy: same-origin, Cross-Origin-Resource-Policy: same-origin
+- **Best Practices - Source maps**: Not applicable in production (Next.js standalone output)
+- **Agentic Browsing - llms.txt**: Created /public/llms.txt with full site documentation for AI agents
+- **Unused JS**: Removed unused imports (FLAG_ISO_MAP, MONTH_NAMES) from home-client.tsx
+- All changes pass lint cleanly
+
+Stage Summary:
+- Mobile performance should improve from 76 → 80+ after deploy (ISR + browserslist + optimizePackageImports)
+- Accessibility score should improve from 91 → 95+ (contrast, touch targets, headings, links all fixed)
+- Best Practices should improve from 96 → 98+ (COOP/CORP headers added)
+- Agentic Browsing should improve from 2/3 → 3/3 (llms.txt added)
+- Files changed: src/app/home-client.tsx, next.config.ts, public/llms.txt
