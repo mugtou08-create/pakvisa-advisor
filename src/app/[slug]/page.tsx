@@ -278,6 +278,8 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   const { slug: rawSlug } = await params;
   const slug = rawSlug.toLowerCase();
   const code = SLUG_TO_CODE[slug];
+  // Primary slug = shortest form (e.g. 'usa' not 'united-states') — used for image/asset paths
+  const primarySlug = code ? (CODE_TO_SLUG[code] || slug) : slug;
 
   if (!code) {
     return (
@@ -429,18 +431,18 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           </nav>
 
           {/* Hero Image Banner */}
-          {HERO_IMAGE_SLUGS.has(slug) && (
+          {HERO_IMAGE_SLUGS.has(primarySlug) && (
             <div className="max-w-5xl mx-auto px-4 pb-6">
               <div className="w-full sm:w-3/5 mx-auto relative rounded-xl overflow-hidden shadow-md aspect-video">
                 <Image
-                  src={`/country-heroes/${slug}.webp`}
+                  src={`/country-heroes/${primarySlug}.webp`}
                   alt={`${country.name} travel destination — Pakistani travelers guide`}
                   fill
                   sizes="(max-width: 640px) 100vw, 60vw"
                   quality={85}
                   priority
                   placeholder="blur"
-                  blurDataURL={HERO_BLUR_URLS[slug] || ''}
+                  blurDataURL={HERO_BLUR_URLS[primarySlug] || ''}
                   className="object-cover"
                 />
               </div>
