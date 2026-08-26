@@ -17,23 +17,21 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
     qualities: [75, 85],
   },
-  // Optimize package imports for smaller bundles
-  experimental: {
-    optimizePackageImports: [
-      'lucide-react',
-      'date-fns',
-      'recharts',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-popover',
-      '@radix-ui/react-tabs',
-      '@radix-ui/react-tooltip',
-      '@radix-ui/react-select',
-      '@radix-ui/react-accordion',
-      '@radix-ui/react-collapsible',
-      '@radix-ui/react-scroll-area',
-    ],
-  },
+  // Optimize package imports for smaller bundles (stable in Next.js 15.1+)
+  optimizePackageImports: [
+    'lucide-react',
+    'date-fns',
+    'recharts',
+    '@radix-ui/react-dialog',
+    '@radix-ui/react-dropdown-menu',
+    '@radix-ui/react-popover',
+    '@radix-ui/react-tabs',
+    '@radix-ui/react-tooltip',
+    '@radix-ui/react-select',
+    '@radix-ui/react-accordion',
+    '@radix-ui/react-collapsible',
+    '@radix-ui/react-scroll-area',
+  ],
   async headers() {
     return [
       {
@@ -45,7 +43,6 @@ const nextConfig: NextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
         ],
       },
       // Cache static assets aggressively
