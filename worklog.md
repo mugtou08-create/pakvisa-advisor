@@ -1981,3 +1981,25 @@ Stage Summary:
 - Best Practices should improve from 96 → 98+ (COOP/CORP headers added)
 - Agentic Browsing should improve from 2/3 → 3/3 (llms.txt added)
 - Files changed: src/app/home-client.tsx, next.config.ts, public/llms.txt
+
+---
+Task ID: Vercel Build Fix
+Agent: Main Agent
+Task: Fix Vercel deployment build failure (Error dc9d3f49)
+
+Work Log:
+- Investigated Vercel build logs: two issues found
+- **Issue 1 (Critical)**: `ReferenceError: mounted is not defined` at line 284 in home-client.tsx
+  - Root cause: `CountryResultCard` component referenced `mounted` state variable from parent `HomeClient` scope
+  - During SSR prerendering (ISR), `mounted` doesn't exist in `CountryResultCard`'s scope
+  - Fix: Removed `mounted` argument from `affiliateGo('ivisa', country.name, mounted)` → `affiliateGo('ivisa', country.name)`
+  - The `isMounted` param is optional; omitting it just skips localStorage sid tracking (acceptable for SSR)
+- **Issue 2 (Warning→Error risk)**: `optimizePackageImports` unrecognized key in next.config.ts
+  - Next.js 16.1.3 doesn't support this key at top level of config
+  - Fix: Removed the entire `optimizePackageImports` array from next.config.ts
+- Lint passes clean, committed and pushed to main
+
+Stage Summary:
+- Commit 9587415 pushed: 'fix: resolve Vercel build failure'
+- Vercel should auto-deploy from this push
+- Two files changed: home-client.tsx (1 line), next.config.ts (removed 15 lines)
