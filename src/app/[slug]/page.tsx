@@ -9,13 +9,13 @@ export const dynamic = 'force-dynamic';
 // Countries that have hero images — no DB column needed, just check this set.
 const HERO_IMAGE_SLUGS = new Set([
   'afghanistan','algeria','armenia','australia','austria','azerbaijan','bahrain','bangladesh',
-  'belgium','brazil','cambodia','canada','china','czechia','denmark','egypt','ethiopia',
+  'belgium','brazil','cambodia','canada','china','czechia','czech-republic','denmark','egypt','ethiopia',
   'france','georgia','germany','greece','hong-kong','hungary','iceland','india','indonesia',
   'iran','iraq','ireland','italy','japan','jordan','kenya','kuwait','lebanon','luxembourg',
   'malaysia','maldives','mexico','mongolia','morocco','nepal','netherlands','new-zealand',
   'nigeria','norway','oman','philippines','poland','portugal','qatar','romania','russia',
   'saudi-arabia','singapore','south-africa','south-korea','spain','sri-lanka','sweden',
-  'switzerland','tanzania','thailand','tunisia','turkmenistan','turkey','uae','uk','usa','vietnam',
+  'switzerland','tanzania','thailand','tunisia','turkmenistan','turkey','trkiye','uae','united-arab-emirates','uk','united-kingdom','usa','united-states','vietnam',
 ]);
 import Link from 'next/link';
 import {
@@ -31,7 +31,7 @@ import {
 const COUNTRY_SLUG_ENTRIES: [string, string][] = [
   ['afghanistan','Afghanistan'],['algeria','Algeria'],['armenia','Armenia'],['australia','Australia'],['austria','Austria'],
   ['azerbaijan','Azerbaijan'],['bahrain','Bahrain'],['bangladesh','Bangladesh'],['belgium','Belgium'],['brazil','Brazil'],
-  ['cambodia','Cambodia'],['canada','Canada'],['china','China'],['czechia','Czechia'],['denmark','Denmark'],
+  ['cambodia','Cambodia'],['canada','Canada'],['china','China'],['czech-republic','Czechia'],['czechia','Czechia'],['denmark','Denmark'],
   ['egypt','Egypt'],['ethiopia','Ethiopia'],['france','France'],['georgia','Georgia'],['germany','Germany'],
   ['greece','Greece'],['hong-kong','HongKong'],['hungary','Hungary'],['iceland','Iceland'],['india','India'],
   ['indonesia','Indonesia'],['iran','Iran'],['iraq','Iraq'],['ireland','Ireland'],['italy','Italy'],
@@ -42,12 +42,18 @@ const COUNTRY_SLUG_ENTRIES: [string, string][] = [
   ['qatar','Qatar'],['romania','Romania'],['russia','Russia'],['saudi-arabia','SaudiArabia'],['singapore','Singapore'],
   ['south-africa','SouthAfrica'],['south-korea','SouthKorea'],['spain','Spain'],['sri-lanka','SriLanka'],['sweden','Sweden'],
   ['switzerland','Switzerland'],['tanzania','Tanzania'],['thailand','Thailand'],['tunisia','Tunisia'],
-  ['turkmenistan','Turkmenistan'],['turkey','Turkey'],['uae','UAE'],['uk','UK'],
-  ['usa','USA'],['vietnam','Vietnam'],
+  ['turkmenistan','Turkmenistan'],['turkey','Turkey'],['trkiye','Turkey'],['uae','UAE'],['united-arab-emirates','UAE'],
+  ['uk','UK'],['united-kingdom','UK'],['usa','USA'],['united-states','USA'],['vietnam','Vietnam'],
 ];
 
 const SLUG_TO_CODE = Object.fromEntries(COUNTRY_SLUG_ENTRIES);
-const CODE_TO_SLUG = Object.fromEntries(COUNTRY_SLUG_ENTRIES.map(([s,c])=>[c,s]));
+// Prefer shorter slug for code→slug mapping (e.g. 'uae' over 'united-arab-emirates')
+const CODE_TO_SLUG: Record<string, string> = {};
+for (const [slug, code] of COUNTRY_SLUG_ENTRIES) {
+  if (!CODE_TO_SLUG[code] || slug.length < CODE_TO_SLUG[code].length) {
+    CODE_TO_SLUG[code] = slug;
+  }
+}
 
 // ============================================================
 // Inline data (server-safe, no 'use client')

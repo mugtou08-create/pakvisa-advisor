@@ -11,6 +11,7 @@ import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { CountryData } from '@/lib/types';
+import { CODE_TO_SLUG } from '@/lib/country-slug';
 import {
   EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES,
 } from '@/components/app/constants';
@@ -882,7 +883,7 @@ function DownloadCountryGuide({ country }: { country: CountryData }) {
     setGenerating(true);
     try {
       // Open the country page in a new tab for Print > Save as PDF
-      const url = `/${toSlug(country.name)}`;
+      const url = `/${CODE_TO_SLUG[country.code] || toSlug(country.name)}`;
       window.open(url, '_blank');
     } catch {
       // fallback: download text guide

@@ -6,7 +6,7 @@
 const COUNTRY_ENTRIES: [string, string][] = [
   ['afghanistan','Afghanistan'],['algeria','Algeria'],['armenia','Armenia'],['australia','Australia'],['austria','Austria'],
   ['azerbaijan','Azerbaijan'],['bahrain','Bahrain'],['bangladesh','Bangladesh'],['belgium','Belgium'],['brazil','Brazil'],
-  ['cambodia','Cambodia'],['canada','Canada'],['china','China'],['czechia','Czechia'],['denmark','Denmark'],
+  ['cambodia','Cambodia'],['canada','Canada'],['china','China'],['czech-republic','Czechia'],['czechia','Czechia'],['denmark','Denmark'],
   ['egypt','Egypt'],['ethiopia','Ethiopia'],['france','France'],['georgia','Georgia'],['germany','Germany'],
   ['greece','Greece'],['hong-kong','HongKong'],['hungary','Hungary'],['iceland','Iceland'],['india','India'],
   ['indonesia','Indonesia'],['iran','Iran'],['iraq','Iraq'],['ireland','Ireland'],['italy','Italy'],
@@ -17,17 +17,20 @@ const COUNTRY_ENTRIES: [string, string][] = [
   ['qatar','Qatar'],['romania','Romania'],['russia','Russia'],['saudi-arabia','SaudiArabia'],['singapore','Singapore'],
   ['south-africa','SouthAfrica'],['south-korea','SouthKorea'],['spain','Spain'],['sri-lanka','SriLanka'],['sweden','Sweden'],
   ['switzerland','Switzerland'],['tanzania','Tanzania'],['thailand','Thailand'],['tunisia','Tunisia'],
-  ['turkmenistan','Turkmenistan'],['turkey','Turkey'],['uae','UAE'],['uk','UK'],
-  ['usa','USA'],['vietnam','Vietnam'],
+  ['turkmenistan','Turkmenistan'],['turkey','Turkey'],['trkiye','Turkey'],['uae','UAE'],['united-arab-emirates','UAE'],
+  ['uk','UK'],['united-kingdom','UK'],['usa','USA'],['united-states','USA'],['vietnam','Vietnam'],
 ];
 
 // slug → DB code (e.g. 'malaysia' → 'Malaysia')
 export const SLUG_TO_CODE: Record<string, string> = Object.fromEntries(COUNTRY_ENTRIES);
 
-// DB code → slug (e.g. 'Malaysia' → 'malaysia')
-export const CODE_TO_SLUG: Record<string, string> = Object.fromEntries(
-  COUNTRY_ENTRIES.map(([slug, code]) => [code, slug])
-);
+// DB code → slug (e.g. 'Malaysia' → 'malaysia'). Prefers shorter slug for aliases.
+export const CODE_TO_SLUG: Record<string, string> = {};
+for (const [slug, code] of COUNTRY_ENTRIES) {
+  if (!CODE_TO_SLUG[code] || slug.length < CODE_TO_SLUG[code].length) {
+    CODE_TO_SLUG[code] = slug;
+  }
+}
 
 /** Convert a country name to a URL-safe slug */
 export function slugifyCountryName(name: string): string {

@@ -306,7 +306,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
       {expanded && (
         <div className="px-4 pb-3">
           <a
-            href={`/${toSlug(country.name)}`}
+            href={`/${CODE_TO_SLUG[country.code] || toSlug(country.name)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
