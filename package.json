@@ -74,6 +74,11 @@
     "zod": "^4.0.2",
     "zustand": "^5.0.6"
   },
+  "browserslist": [
+    "last 2 versions and not dead",
+    "> 0.3% in PK",
+    "not op_mini all"
+  ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^3.0.0",

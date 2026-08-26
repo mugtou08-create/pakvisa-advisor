@@ -3,9 +3,11 @@ import type { CountryData } from '@/lib/types';
 import HomeClient from './home-client';
 
 // ============================================================
-// Force dynamic rendering (queries the DB)
+// ISR: Revalidate every 5 minutes
+// Country visa data changes rarely — cache at the edge for speed.
+// First request renders from DB; subsequent requests served from cache.
 // ============================================================
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // 5 minutes
 
 // ============================================================
 // Main Server Component
@@ -103,8 +105,8 @@ export default async function HomePage() {
     embassyRequiredCount: countries.filter((c) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
   };
 
-  // Collect flag URLs for preloading (popular countries)
-  const POPULAR = ['UAE', 'Saudi Arabia', 'Turkey', 'Malaysia', 'Thailand', 'UK', 'USA', 'China'];
+  // Collect flag URLs for preloading (top 4 most popular — avoid bloating critical path)
+  const POPULAR = ['UAE', 'Saudi Arabia', 'Turkey', 'Malaysia'];
   const FLAG_ISO_MAP: Record<string, string> = {
     Afghanistan:'AF', Algeria:'DZ', Armenia:'AM', Australia:'AU', Austria:'AT',
     Azerbaijan:'AZ', Bahrain:'BH', Bangladesh:'BD', Belgium:'BE', Brazil:'BR',
