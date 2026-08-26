@@ -2003,3 +2003,27 @@ Stage Summary:
 - Commit 9587415 pushed: 'fix: resolve Vercel build failure'
 - Vercel should auto-deploy from this push
 - Two files changed: home-client.tsx (1 line), next.config.ts (removed 15 lines)
+
+---
+Task ID: PWA Installable App
+Agent: Main Agent
+Task: Make PakVisa Advisor installable as PWA on Android phones
+
+Work Log:
+- Chose PWA over native shortcut (highest impact: standalone mode, splash screen, no browser chrome, offline caching)
+- Generated AI app icon at 1024x1024 using z-ai image-gen, resized to 192, 512, 180 (apple) via sharp
+- Created public/manifest.json with: name, short_name, icons, display=standalone, theme_color, categories
+- Created public/sw.js service worker: cache-first for static assets, network-first for HTML pages
+- Created src/lib/use-pwa.ts hook: SW registration, beforeinstallprompt capture, online/offline tracking
+- Created src/components/app/pwa-install-prompt.tsx: slide-up install banner + offline detection banner
+- Updated layout.tsx: added manifest link, PWA meta tags (mobile-web-app-capable, apple-mobile-web-app-*), imported PwaInstallPrompt
+- Fixed strict lint rules: no direct setState in effect body, used lazy initializers
+- Lint passes clean, committed 2b58211 and pushed
+
+Stage Summary:
+- PakVisa Advisor is now a full PWA
+- Android users get "Add to Home Screen" prompt → installs with branded icon
+- Opens in standalone mode (no browser bar, fullscreen feel)
+- Service worker caches static assets for faster repeat visits
+- Offline banner shows when network drops
+- No Play Store needed — direct browser install
