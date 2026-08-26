@@ -43,13 +43,17 @@ import { getFlagUrl, FLAG_ISO_MAP, REGIONS, MONTH_NAMES, getRegion, SUCCESS_STOR
 // ============================================================
 // Helpers
 // ============================================================
-function getSid() { try { return localStorage.getItem('_pvsid') || ''; } catch { return ''; } }
-function affiliateGo(partner: string, country?: string) {
-  const sid = getSid();
+function affiliateGo(partner: string, country?: string, isMounted?: boolean) {
   const params = new URLSearchParams({ p: partner });
   if (country) params.set('c', country);
-  if (sid) params.set('sid', sid);
-  try { params.set('page', window.location.pathname); } catch {}
+  // Only include sid/page after mount to avoid hydration mismatch
+  if (isMounted) {
+    try {
+      const sid = localStorage.getItem('_pvsid') || '';
+      if (sid) params.set('sid', sid);
+      params.set('page', window.location.pathname);
+    } catch {}
+  }
   return `/api/go?${params.toString()}`;
 }
 const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -281,7 +285,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         <div className="flex items-center gap-2 shrink-0">
           {!country.visaFree && (
             <a
-              href={affiliateGo('ivisa', country.name)}
+              href={affiliateGo('ivisa', country.name, mounted)}
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}
@@ -757,9 +761,16 @@ export default function HomeClient({ initialCountries, initialStats, children }:
                 )}
               </div>
             ) : (
-              <Button variant="ghost" size="sm" onClick={() => setShowAuthModal(true)} className="gap-1.5 text-xs">
-                <LogIn className="w-3.5 h-3.5" /> Login / Sign Up
-              </Button>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="relative inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Login</span>
+                <span className="text-white/50">|</span>
+                <span className="hidden sm:inline">Sign Up</span>
+                <span className="sm:hidden">Account</span>
+              </button>
             )}
             <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
               {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <Skeleton className="h-4 w-4 rounded" />}
@@ -1423,7 +1434,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
               <p className="text-center text-[10px] text-muted-foreground/70 font-medium uppercase tracking-widest mb-3">Trusted Travel Partners</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <a
-                  href={affiliateGo('ivisa')}
+                  href={affiliateGo('ivisa', undefined, mounted)}
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:shadow-sm transition-all group"

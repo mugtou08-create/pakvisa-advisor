@@ -1917,3 +1917,22 @@ Stage Summary:
 - Sara widget toolbar is cleaner and more intuitive (Tools / Refer & Earn)
 - Airalo replaced with Holafly (better commission: 20-30% vs 10-15%)
 - All changes pass lint cleanly
+
+---
+Task ID: 7
+Agent: Main
+Task: Improve Login/Sign Up header button, fix hydration error, verify search bar position
+
+Work Log:
+- Diagnosed why user couldn't see auth modal changes: the trigger button in the header was a plain ghost button that looked unprofessional
+- Replaced `<Button variant="ghost">` Login/Sign Up with a styled gradient pill button (emerald-to-teal gradient, rounded-full, shadow, hover scale effect)
+- On mobile, shows "Account" instead of "Login | Sign Up" to save space
+- Verified search bar position: Hero → Search Bar → Stats Bar (correct order)
+- Found and fixed hydration error: `affiliateGo()` was reading `localStorage._pvsid` during SSR, causing mismatch when user had a previous session. Fixed by adding `isMounted` parameter — sid/page only included after mount.
+- All changes pass lint cleanly
+
+Stage Summary:
+- Login/Sign Up button now has a professional gradient emerald design that stands out in the header
+- Hydration error from affiliate links fixed (no more React hydration mismatch in dev mode)
+- Search bar position confirmed correct (between hero text and stats bar)
+- Files changed: src/app/home-client.tsx (button styling + hydration fix)
