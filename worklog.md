@@ -2157,3 +2157,26 @@ Stage Summary:
 - Fix: Full revert to original stable JSON request/response approach
 - Sara is now stable: 5 consecutive messages tested, no crashes
 - Trade-off: No streaming (slightly slower perceived speed) but 100% reliable
+---
+Task ID: 19
+Agent: Main Agent
+Task: Fix Sara mobile size, Share & Earn button, AI stability
+
+Work Log:
+- Read and analyzed sara-widget.tsx, assistant API route, chat API route, referral API
+- Fixed Sara chat window mobile sizing: max-w-[60vw] max-h-[60vh] on mobile, full size on sm+ breakpoint
+- Reduced Sara bubble button size on mobile (w-12 h-12 vs w-14 h-14 on desktop)
+- Fixed Share & Earn button: removed refCode dependency for panel visibility, added loading state panel
+- Renamed button from 'Refer & Earn' to 'Share & Earn' to match user's language
+- Removed dead Gemini models (gemini-2.5-flash, gemini-1.5-flash) from both API routes
+- Added 25-second server-side AbortController timeout on Gemini API calls
+- Verified via agent-browser: Share & Earn panel shows correctly, chat send/receive works
+- Removed unused XIcon import from sara-widget.tsx
+- Lint passes clean, dev server no errors
+- Pushed to GitHub (commit 61eee0b)
+
+Stage Summary:
+- 3 files changed: sara-widget.tsx, assistant/route.ts, chat/route.ts
+- Sara mobile window now 60% of viewport width and height
+- Share & Earn button works immediately with loading state
+- AI stability improved: single confirmed-working model, server timeout, no dead model retries
