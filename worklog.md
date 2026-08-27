@@ -2131,3 +2131,29 @@ Stage Summary:
 - Fix: TransformStream + background async pump (standard web streams pattern)
 - Both Sara (/api/assistant) and AI Visa Consultant (/api/chat) use the same gemini-stream.ts helper
 - Fix deployed to production - waiting for user to test on Vercel
+---
+Task ID: streaming-revert
+Agent: Main Agent
+Task: Fix Sara instability - full revert of streaming changes
+
+Work Log:
+- User reported intermittent "Application error: a client-side exception has occurred" after streaming changes
+- Investigated all 7 modified files from the streaming commit
+- Initially suspected ReadableStream pull() bug - rewrote with TransformStream (commit 73ce2d3)
+- Still broken - all Gemini models returning 404
+- Added /api/debug-gemini diagnostic endpoint to see exact errors
+- User shared diagnostics: ALL model names (gemini-1.5/2.0/2.5-flash) are deprecated/removed
+- Only gemini-3.6-flash works (the original first model that was accidentally removed)
+- Fixed model name but client-side crashes persisted
+- Tested with agent-browser: confirmed page crashes after multiple Sara messages on production
+- Decided to do full revert of ALL streaming changes back to stable JSON approach
+- Reverted 7 files to pre-streaming state (commit 20a7789^)
+- Removed gemini-stream.ts and debug-gemini endpoint
+- Kept gemini-3.6-flash as primary model
+- Tested thoroughly: 5 page reloads + 5 Sara messages - all stable
+
+Stage Summary:
+- Root causes: (1) gemini-3.6-flash was accidentally removed from model list, (2) streaming frontend code caused intermittent React crashes
+- Fix: Full revert to original stable JSON request/response approach
+- Sara is now stable: 5 consecutive messages tested, no crashes
+- Trade-off: No streaming (slightly slower perceived speed) but 100% reliable
