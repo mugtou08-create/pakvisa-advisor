@@ -2180,3 +2180,248 @@ Stage Summary:
 - Sara mobile window now 60% of viewport width and height
 - Share & Earn button works immediately with loading state
 - AI stability improved: single confirmed-working model, server timeout, no dead model retries
+
+---
+Task ID: audit-1
+Agent: Audit Agent
+Task: Comprehensive audit of Pro features listed in pricing modal vs actual implementation
+
+## EXECUTIVE SUMMARY
+
+The PricingModal lists 8 Pro features. Only 2 are fully built and properly gated. 2 are partially built but broken. 4 are completely unimplemented. There is also a critical code corruption issue across multiple files.
+
+---
+
+## FILE-BY-FILE AUDIT
+
+### 1. PricingModal (src/components/visa/modals.tsx, lines 14–158)
+
+Lists 8 Pro features at $14.90/mo or $99/yr:
+1. Document checklist for every country
+2. Step-by-step application guides
+3. Total cost calculator with hidden fees
+4. Visa policy change alerts via email
+5. Unlimited AI consultant queries
+6. PDF export of visa reports
+7. Application deadline tracker
+8. Save unlimited favorites & compare up to 5 countries
+
+No Free vs Pro comparison table exists — it's a single-plan modal with a feature checklist.
+
+### 2. CountryDetailPanel (src/components/visa/country-detail.tsx)
+
+**PDF Download Button (lines 870–953):**
+- Located at the very BOTTOM of the expanded country detail, rendered AFTER: Country Description, Live Clock, Currency Converter, Quick Glance badges, Key Requirements (5-item preview), Cost Breakdown, Travel Months, Visa Types, Safety Info, Weather, Travel Essentials, Emergency & Health, Embassy Contact.
+- Placed directly BEFORE the Affiliate Resources section (the very last thing).
+- Distance from requirements: The "Key Requirements" section is near the top (~line 640), while the PDF download is near the bottom (~line 761). They are separated by ~120 lines of JSX / ~8 sections of content.
+
+**"View detailed Visa Requirements" button:** DOES NOT EXIST. There is no such button anywhere in the codebase. The closest is:
+- "View Full Country Guide" link (home-client.tsx line 314) — links to /{slug}, NOT a Pro feature.
+- "Full Document Checklist" collapsible (country-detail.tsx lines 772–868) — IS Pro-gated, shows Lock+Crown for non-Pro users.
+
+**PDF Download Implementation:**
+- PRO GATED: Yes, checks real auth-store Pro status.
+- Actual behavior: Opens `/{slug}` in a new tab (for browser Print>Save as PDF). Fallback generates a .txt blob, NOT a PDF.
+- LABEL IS MISLEADING: Says "Download Country Guide (PDF)" but produces either a new tab or a .txt file.
+
+**Full Document Checklist:**
+- PRO GATED: Yes (lines 772–868), checks real auth-store.
+- Shows Lock icon + Crown badge for free users, triggers `open-pricing` event.
+- Expands to show all requirements grouped by category for Pro users.
+- STATUS: FULLY BUILT and properly gated.
+
+**Trip Cost Calculator (lines 444–489):**
+- NOT Pro-gated — available to all users.
+- Basic calculator: days input → visa fee + living cost.
+- Does NOT show hidden fees — only visaFeeUSD and totalMonthlyUSD from DB.
+
+### 3. AiChatPanel (src/components/visa/ai-chat-panel.tsx)
+
+- Full-screen AI Visa Consultant chat interface.
+- Uses `/api/chat` endpoint.
+- Free tier: 5 queries/day, shown as "{remainingFree}/5 queries left".
+- Pro detection: Uses `useAppStore((s) => s.isProUser)` — this is a FAKE demo flag, NOT the real auth Pro status.
+- "Try Pro Demo" button directly calls `useAppStore.getState().setIsProUser(true)` — any user can activate it.
+- Shows different suggestions for Pro vs Free.
+- STATUS: Rate limiting works, but Pro detection is FAKE (uses app store, not auth store).
+
+### 4. Sara API (src/app/api/assistant/route.ts)
+
+- Sara's personality: Warm, bilingual (English/Urdu), travel assistant.
+- NO Pro data injection — Sara has ZERO access to the database.
+- NO rate limiting — any user can send unlimited messages.
+- Smart signals system: tracks consultant queries used, time on site, referral data, current page.
+- Affiliate recommendations: iVisa, SafetyWing, Skyscanner, Booking.com, Wise, Holafly.
+- Pro upgrade suggestions: One per conversation max, at appropriate moments.
+- STATUS: Functional but NO Pro differentiation at all. Same experience for free and paid users.
+
+### 5. Visa Consultant API (src/app/api/chat/route.ts)
+
+- Full database integration for Pro users (lines 112–187).
+- When `proUser=true` AND a country is detected, fetches from DB: requirements, costProfile, visaTypes.
+- Injects verified data as context into Gemini prompt.
+- Returns `dataVerified: true` meta flag when DB data was used.
+- Rate limiting: Free=5/day (IP or DB), Pro=60/min.
+- Uses `getUserFromRequest()` for REAL auth-based Pro detection.
+- STATUS: FULLY BUILT with proper Pro/Free differentiation at the API level.
+
+### 6. Sara Widget (src/components/app/sara-widget.tsx)
+
+- Floating bubble chat widget (bottom-right, rose/pink themed).
+- Auto-opens after 18 seconds with bilingual greeting.
+- Uses `/api/assistant` endpoint (NO database access, NO Pro features).
+- Quick action buttons: 6 affiliate links (iVisa, Skyscanner, Booking, SafetyWing, Wise, Holafly).
+- Share & Earn panel: WhatsApp share with referral code, tiered rewards.
+- Pro detection: Uses `useAppStore((s) => s.isProUser)` — same FAKE demo flag.
+- `remainingFree` is hardcoded to `5` — never actually fetched from API.
+- NO rate limiting on Sara — users can send unlimited messages.
+- STATUS: Affiliate links and share program work. Pro detection is fake. No real Pro value.
+
+### 7. Auth Store (src/lib/auth-store.ts)
+
+- Zustand store with: user, token, isAuthenticated, latestProof.
+- User object includes: `role` ("free" or "pro") and `proExpiresAt`.
+- `checkAuth()` calls `/api/auth/me` with Bearer token.
+- Pro check pattern used across components: `isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date()`.
+- STATUS: Properly implemented. The issue is that some components use this correctly while others use the fake `useAppStore.isProUser`.
+
+### 8. App Store / Zustand (src/lib/store.ts)
+
+- `isProUser` is a boolean flag, intentionally EXCLUDED from persistence (runtime-only).
+- This means it resets on every page refresh.
+- `setIsProUser(true)` is called by the "Try Pro Demo" button in AiChatPanel.
+- CRITICAL BUG: Multiple identifiers have been corrupted by a bad find-and-replace. The following are replaced with single-letter "n":
+  - `favorites` → `n`
+  - `toggleFavorite` → `n`
+  - `isFavorite` → `n`
+  - `targetTravelDate` → `n`
+  - `setTargetTravelDate` → `n`
+  This corruption also appears in home-client.tsx, shared-components-1.tsx, shared-components-3.tsx, shared-components-4.tsx, shared-components-5.tsx, and questionnaire-tab.tsx.
+
+### 9. Dialogs (src/components/app/dialogs.tsx)
+
+- **FloatingChatWidget** (lines 497–635): Legacy chat widget using `/api/chat`. Has save-as-txt and save-as-PDF buttons for chat history. Uses amber theming (not rose like Sara). Appears to be from an older UI version.
+- **PremiumBadge** (line 1111): Simple badge component.
+- **QuickActionsToolbar** (line 1120): Not Pro-gated.
+- No other Pro-specific dialogs.
+
+### 10. Schengen Wizard (src/components/visa/schengen-wizard.tsx)
+
+- Multi-step wizard for Schengen visa preparation.
+- Collects: purpose, duration, employment, income, insurance, hotel bookings.
+- Generates: document checklist, cost breakdown in PKR, step-by-step application guide, tips.
+- PRO GATING: NONE. Completely free for all users.
+- STATUS: Fully built, NOT a Pro feature despite being premium-quality content.
+
+### 11. Visa Quiz Panel (src/components/visa/visa-quiz-panel.tsx)
+
+- 5-question quiz to recommend countries based on: purpose, budget, duration, ease preference, region.
+- Scores all countries and returns top 6 matches.
+- PRO GATING: NONE. Completely free.
+- STATUS: Fully built, NOT a Pro feature.
+
+### 12. Compare Panel (src/components/visa/compare-panel.tsx)
+
+- Side-by-side comparison of 2–5 countries.
+- PRO GATING: Yes. Free=2 countries, Pro=5 countries (line 24: `MAX_COMPARE = isProUser ? 5 : 2`).
+- Receives `isProUser` prop from home-client.tsx which uses REAL auth check.
+- Toast message when free users hit the limit: "Free accounts can compare up to 2 countries."
+- STATUS: PARTIALLY BUILT — compare limit works, but the empty state says "Select up to 4 countries" (line 171) which is inconsistent with the actual limit.
+
+### 13. Database Schema (prisma/schema.prisma)
+
+- **User model**: Has `role` ("free"/"pro") and `proExpiresAt` fields. Proper.
+- **AiUsageLog**: Tracks per-user AI usage for rate limiting. Working.
+- **PaymentProof**: Manual payment proof upload system (screenshot → admin review).
+- **No tables for**: Email alerts, deadline tracker, step-by-step guides, favorites sync, application tracking.
+- **Referral system**: `Referral` + `ReferralVisitor` models. Tiered rewards (1 friend=1 query, 3=5 queries, 5=1 day Pro). Working.
+- **NewsletterSubscriber**: Generic newsletter, NOT a visa policy alert system.
+
+---
+
+## PRO FEATURE MATRIX
+
+| # | Pricing Modal Claim | Actually Built? | Status | Notes |
+|---|---|---|---|---|
+| 1 | Document checklist for every country | YES | FULLY BUILT | Pro-gated in country-detail.tsx. Shows all requirements grouped by category. |
+| 2 | Step-by-step application guides | NO | NOT BUILT | Schengen Wizard has a guide but it's NOT Pro-gated and only covers Schengen. No per-country guides exist. |
+| 3 | Total cost calculator with hidden fees | PARTIAL | MISLEADING | TripCalculator exists but is NOT Pro-gated. Shows only basic visa fee + living cost. No "hidden fees" data. |
+| 4 | Visa policy change alerts via email | NO | NOT BUILT | Newsletter subscriber table exists but there's no policy alert system. No cron jobs, no diff detection, no targeted emails. |
+| 5 | Unlimited AI consultant queries | YES | FULLY BUILT | /api/chat has proper rate limiting: 5/day free, 60/min Pro. Verified data injection works for Pro. BUT Sara widget (/api/assistant) has NO rate limit at all. |
+| 6 | PDF export of visa reports | PARTIAL | FAKE | Button says "PDF" but opens a URL or generates a .txt file. No actual PDF generation. Pro-gated but misleading. |
+| 7 | Application deadline tracker | NO | NOT BUILT | A `targetTravelDate` field exists in the store but is corrupted (renamed to "n"). No deadline tracking, no reminders, no notifications. |
+| 8 | Save unlimited favorites & compare up to 5 | PARTIAL | BROKEN | Compare limit works (2 free / 5 Pro). But favorites have NO limit for anyone (free or Pro) — the store's toggleFavorite has no length check. Also, store code is corrupted by bad find-replace. |
+
+**SCORE: 2 fully built, 2 partially built (1 fake, 1 broken), 4 completely unimplemented.**
+
+---
+
+## CRITICAL ISSUES FOUND
+
+### Issue 1: Two Conflicting Pro Detection Systems
+- **Real Pro**: `useAuthStore` → checks `user.role === 'pro'` and `proExpiresAt`. Used by: CountryDetailPanel, PricingModal, home-client.tsx (compare panel, user menu).
+- **Fake Pro**: `useAppStore.isProUser` → runtime-only boolean, reset on refresh, activatable by clicking "Try Pro Demo". Used by: AiChatPanel, SaraWidget.
+- **Impact**: AiChatPanel and SaraWidget never check real Pro status. The "Try Pro Demo" button in the AI chat gives full Pro AI experience to anyone without authentication.
+
+### Issue 2: Sara Has No Pro Value Proposition
+- Sara uses `/api/assistant` which has NO database access, NO rate limiting, NO Pro data injection.
+- A Pro user chatting with Sara gets the EXACT SAME experience as a free user.
+- The only Pro mention in Sara's system prompt is "do NOT suggest Pro upgrade" — but there's nothing Pro to protect.
+- Sara is positioned as the main chat interface (floating widget, auto-opens) but has no Pro features.
+
+### Issue 3: Code Corruption from Bad Find-and-Replace
+Multiple files have identifiers replaced with "n":
+- `src/lib/store.ts`: favorites, toggleFavorite, isFavorite, targetTravelDate, setTargetTravelDate
+- `src/app/home-client.tsx`: favorites, toggleFavorite, isFavorite
+- `src/components/app/shared-components-1.tsx`, `-3.tsx`, `-4.tsx`, `-5.tsx`
+- `src/components/app/tabs/questionnaire-tab.tsx`
+- `src/components/visa/schengen-wizard.tsx`
+- `src/components/visa/modals.tsx`: "step-by-step" appears as just "n" in several places
+
+### Issue 4: PDF Download Is Misleading
+- Button labeled "Download Country Guide (PDF)" but never generates a PDF.
+- Primary action: opens `/{slug}` in a new tab (relies on browser's Print > Save as PDF).
+- Fallback: generates a .txt blob with plain text content.
+- Users paying for "PDF export" are getting neither a PDF nor an export.
+
+### Issue 5: FloatingChatWidget vs SaraWidget Coexistence
+- `dialogs.tsx` has a `FloatingChatWidget` (amber themed, uses `/api/chat`).
+- `sara-widget.tsx` has a `SaraWidget` (rose themed, uses `/api/assistant`).
+- Both are floating chat widgets. Both could be rendered simultaneously.
+- FloatingChatWidget has chat history save (txt/PDF) which SaraWidget lacks.
+
+---
+
+## PDF BUTTON PLACEMENT (Specific Question)
+
+In `country-detail.tsx`, the expanded country panel renders sections in this order:
+1. Country Description
+2. Live Clock + Currency Converter
+3. Quick Glance badges (language, plug, phone, halal, community)
+4. **Key Requirements** (first 5 items, free preview) ← This is the requirements section
+5. Cost Breakdown (visa fee, service fee, monthly total, rent, food, transport, insurance)
+6. Trip Calculator
+7. Best Travel Months
+8. Available Visa Types
+9. Safety Info
+10. Weather/Climate
+11. Travel Essentials Grid
+12. Emergency & Health
+13. Embassy Contact (embassy-required countries only)
+14. **Download Country Guide (PDF)** ← The PDF button is here
+15. Affiliate Resources (iVisa, Skyscanner, Booking, SafetyWing)
+
+The PDF download button is approximately 10 sections BELOW the requirements section — near the very bottom of the expanded panel, just above affiliate links. There is NO "View detailed Visa Requirements" button. The Full Document Checklist (which IS Pro-gated) appears immediately after the 5-item requirements preview.
+
+---
+
+## RECOMMENDATIONS (Priority Order)
+
+1. **Fix code corruption** — The "n" replacements need to be reverted across 8+ files. This is blocking favorites, travel date, and other features.
+2. **Unify Pro detection** — Migrate AiChatPanel and SaraWidget from `useAppStore.isProUser` to real auth-based Pro check.
+3. **Merge Sara + Visa Consultant** — Sara should use `/api/chat` (which has Pro data injection) instead of `/api/assistant` (which has nothing). Or add Pro data injection to `/api/assistant`.
+4. **Build or remove missing features** — Either implement step-by-step guides, email alerts, deadline tracker, and real PDF generation, or remove them from the pricing modal to avoid false advertising.
+5. **Add favorites limit** — Currently unlimited for everyone. Pricing promises "unlimited favorites" for Pro, implying free has a limit.
+6. **Fix PDF download** — Either integrate a real PDF library (jsPDF, @react-pdf/renderer) or relabel the button honestly ("Open Printable Guide").
+7. **Remove dead FloatingChatWidget** — Or merge its unique features (chat export) into SaraWidget.
+8. **Add rate limiting to Sara** — Currently unlimited messages with no cost tracking.
