@@ -27,40 +27,39 @@ function extractTextFromSSELine(line: string): string | null {
 
 /**
  * Tries streaming from a single Gemini model using TransformStream.
- * Returns the readable side if the connection succeeds (even if no text yet),
- * or null if the HTTP request itself fails.
+ * Returns the readable side if the HTTP connection succeeds (200 OK),
+ * or null if the HTTP request fails (non-200, network error, no body).
  */
 async function tryStreamModel(
   model: string,
-  url: string,
-  body: string
+  apiKey: string,
+  reqBody: string
 ): Promise<ReadableStream<Uint8Array> | null> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body,
+      body: reqBody,
     });
   } catch (err) {
-    console.error(`[Gemini] ${model} network error:`, err);
+    console.error(`[Gemini Stream] ${model} network error:`, err);
     return null;
   }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
-    console.error(`[Gemini] ${model} HTTP ${res.status}:`, errText.slice(0, 500));
+    console.error(`[Gemini Stream] ${model} HTTP ${res.status}:`, errText.slice(0, 300));
     return null;
   }
 
   if (!res.body) {
-    console.error(`[Gemini] ${model}: no response body`);
+    console.error(`[Gemini Stream] ${model}: no response body`);
     return null;
   }
 
   // Use TransformStream — the standard, reliable way to transform streams.
-  // A background async function reads SSE from Gemini and writes plain text
-  // chunks to the transform. The caller gets the readable side immediately.
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const writer = writable.getWriter();
   const upstreamReader = res.body.getReader();
@@ -69,7 +68,7 @@ async function tryStreamModel(
   let buffer = '';
   let totalChars = 0;
 
-  // Fire-and-forget background pump (the stream keeps the response alive)
+  // Background pump: reads SSE from Gemini, writes plain text to the transform
   (async () => {
     try {
       while (true) {
@@ -86,7 +85,7 @@ async function tryStreamModel(
           }
         }
       }
-      // Process any remaining buffer after stream ends
+      // Process remaining buffer
       if (buffer.trim()) {
         const text = extractTextFromSSELine(buffer);
         if (text) {
@@ -111,9 +110,7 @@ async function tryStreamModel(
 async function tryNonStreamModel(
   model: string,
   apiKey: string,
-  systemPrompt: string,
-  contents: { role: string; parts: { text: string }[] }[],
-  generationConfig: Record<string, unknown>
+  reqBody: string
 ): Promise<string | null> {
   try {
     const res = await fetch(
@@ -121,17 +118,13 @@ async function tryNonStreamModel(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents,
-          generationConfig,
-        }),
+        body: reqBody,
       }
     );
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      console.error(`[Gemini NonStream] ${model} HTTP ${res.status}:`, errText.slice(0, 500));
+      console.error(`[Gemini NonStream] ${model} HTTP ${res.status}:`, errText.slice(0, 300));
       return null;
     }
 
@@ -148,8 +141,30 @@ async function tryNonStreamModel(
 }
 
 /**
- * Creates a streaming response from Gemini. Tries streaming first,
- * falls back to non-streaming (converted to a single-chunk stream).
+ * Wraps a string as a single-chunk ReadableStream (no real streaming, but compatible interface).
+ */
+function textToStream(text: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode(text));
+      controller.close();
+    },
+  });
+}
+
+/**
+ * Creates a streaming response from Gemini.
+ *
+ * Strategy (designed for reliability over speed):
+ * 1. For each model, try NON-STREAMING first (proven reliable).
+ *    If it works, wrap in a stream and return immediately.
+ * 2. Only if ALL non-streaming calls fail, try streaming as last resort.
+ * 3. If everything fails, return an error message stream.
+ *
+ * Why non-streaming first: the original code used non-streaming and it worked.
+ * Streaming adds complexity (SSE parsing, TransformStream, background pump)
+ * and if the model rejects the streaming endpoint, we waste time + rate limit quota.
  */
 export async function createGeminiStream(options: StreamOptions): Promise<ReadableStream<Uint8Array>> {
   const { models, apiKey, systemPrompt, contents, generationConfig } = options;
@@ -160,37 +175,25 @@ export async function createGeminiStream(options: StreamOptions): Promise<Readab
     generationConfig: genConfig,
   });
 
-  // Phase 1: Try streaming for each model
+  // Phase 1: Try NON-STREAMING for each model (fast, reliable, no SSE parsing)
   for (const model of models) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-    const stream = await tryStreamModel(model, url, reqBody);
-    if (stream) return stream;
-  }
-
-  // Phase 2: All streaming failed — fall back to non-streaming
-  console.warn('[Gemini] All streaming attempts failed, falling back to non-streaming');
-  for (const model of models) {
-    const text = await tryNonStreamModel(model, apiKey, systemPrompt, contents, genConfig);
+    const text = await tryNonStreamModel(model, apiKey, reqBody);
     if (text) {
-      const encoder = new TextEncoder();
-      return new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(encoder.encode(text));
-          controller.close();
-        },
-      });
+      return textToStream(text);
     }
   }
 
+  // Phase 2: All non-streaming failed — try streaming as last resort
+  console.warn('[Gemini] All non-streaming failed, trying streaming as last resort');
+  for (const model of models) {
+    const stream = await tryStreamModel(model, apiKey, reqBody);
+    if (stream) return stream;
+  }
+
   // All models completely failed
-  console.error('[Gemini] ALL models failed (both streaming and non-streaming)');
+  console.error('[Gemini] ALL models failed (non-streaming + streaming)');
   const errorText = 'Sorry, I\'m having a little trouble right now. Please try again in a moment!';
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(new TextEncoder().encode(errorText));
-      controller.close();
-    },
-  });
+  return textToStream(errorText);
 }
 
 /**
