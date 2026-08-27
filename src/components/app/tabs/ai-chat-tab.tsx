@@ -194,15 +194,9 @@ export function AIChatTab() {
     if (!messageText.trim()) return;
     if (loading) return;
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: messageText, timestamp: new Date().toISOString() };
-    const prevMessages = [...messages, userMsg];
-    const botMsgIndex = prevMessages.length;
-    setMessages(prevMessages);
+    setMessages(prev => [...prev, userMsg]);
     if (!msgOverride) setInput('');
     setLoading(true);
-
-    // Add placeholder for bot response (streaming)
-    const botPlaceholder: ChatMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: new Date().toISOString() };
-    setMessages(prev => [...prev, botPlaceholder]);
 
     try {
       const res = await fetch('/api/chat', {
@@ -210,61 +204,18 @@ export function AIChatTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: messageText, context: { profile: userProfile } }),
       });
-
-      const contentType = res.headers.get('content-type') || '';
-
-      if (contentType.includes('application/json')) {
-        // Error or rate-limit response
-        const data = await res.json();
-        setLoading(false);
-        if (data.data) {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[botMsgIndex] = { ...updated[botMsgIndex], content: data.data };
-            return updated;
-          });
-        } else {
-          toast.error(data.error || 'Failed to get response');
-          // Remove placeholder
-          setMessages(prev => prev.slice(0, -1));
-        }
-        return;
-      }
-
-      // Streaming response
-      if (!res.body) {
-        setLoading(false);
-        toast.error('Failed to get response');
-        setMessages(prev => prev.slice(0, -1));
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[botMsgIndex] = { ...updated[botMsgIndex], content: accumulated };
-          return updated;
-        });
-      }
-
-      if (!accumulated.trim()) {
-        toast.error('Empty response received');
-        setMessages(prev => prev.slice(0, -1));
+      const data = await res.json();
+      if (data.data) {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(), role: 'assistant', content: data.data, timestamp: new Date().toISOString(),
+        }]);
+      } else {
+        toast.error(data.error || 'Failed to get response');
       }
     } catch {
-      setLoading(false);
       toast.error('Network error. Please try again.');
-      // Keep partial response if any
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
@@ -436,7 +387,7 @@ export function AIChatTab() {
               )}
             </div>
           ))}
-          {loading && messages.length > 0 && messages[messages.length - 1]?.content === '' && (
+          {loading && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
                 <Bot className="w-4 h-4 text-amber-600 animate-pulse" />

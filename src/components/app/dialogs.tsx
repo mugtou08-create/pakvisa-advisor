@@ -495,7 +495,7 @@ export function HelpCenterDialog({ open, onClose }: { open: boolean; onClose: ()
 
 // ============ FLOATING AI CHAT WIDGET =============
 export function FloatingChatWidget() {
-  const { chatOpen, setChatOpen, chatHistory, addChatMessage, updateLastChatMessage } = useAppStore();
+  const { chatOpen, setChatOpen, chatHistory, addChatMessage } = useAppStore();
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -509,7 +509,6 @@ export function FloatingChatWidget() {
     const msg = input.trim();
     setInput('');
     addChatMessage('user', msg);
-    addChatMessage('assistant', ''); // Placeholder for streaming
     setSending(true);
     try {
       const res = await fetch('/api/chat', {
@@ -517,47 +516,16 @@ export function FloatingChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg, history: chatHistory.slice(-6) }),
       });
-
-      const contentType = res.headers.get('content-type') || '';
-
-      if (contentType.includes('application/json')) {
-        const data = await res.json();
-        setSending(false);
-        if (data.success && data.data) {
-          updateLastChatMessage(data.data);
-        } else {
-          updateLastChatMessage(data.reply || data.message || data.data || 'Sorry, I could not process that.');
-        }
-        return;
-      }
-
-      // Streaming response
-      if (!res.body) {
-        setSending(false);
-        updateLastChatMessage('Network error. Please try again.');
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        updateLastChatMessage(accumulated);
-      }
-
-      if (!accumulated.trim()) {
-        updateLastChatMessage('Sorry, I could not process that. Please try again.');
+      const data = await res.json();
+      if (data.success && data.data) {
+        addChatMessage('assistant', data.data);
+      } else {
+        addChatMessage('assistant', data.reply || data.message || data.data || 'Sorry, I could not process that.');
       }
     } catch {
-      setSending(false);
-      updateLastChatMessage('Network error. Please try again.');
-    } finally {
-      setSending(false);
+      addChatMessage('assistant', 'Network error. Please try again.');
     }
+    setSending(false);
   };
 
   return (
@@ -635,7 +603,7 @@ export function FloatingChatWidget() {
                   </div>
                 </div>
               ))}
-              {sending && chatHistory.length > 0 && chatHistory[chatHistory.length - 1]?.content === '' && (
+              {sending && (
                 <div className="flex justify-start">
                   <div className="chat-bubble-bot">
                     <div className="typing-indicator"><span /><span /><span /></div>

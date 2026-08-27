@@ -167,20 +167,15 @@ export function SaraWidget() {
     if (!msg || isLoading) return;
 
     const userMsg: SaraMessage = { role: 'user', content: msg };
-    const updated = [...messages, userMsg];
-    const saraMsgIndex = updated.length; // Index where Sara's response will go
-    setMessages(updated);
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setShowQuickActions(false);
     setShowSharePanel(false);
     setIsLoading(true);
 
-    // Add a placeholder message for streaming
-    setMessages(prev => [...prev, { role: 'sara', content: '' }]);
-
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const res = await fetch('/api/assistant', {
         method: 'POST',
@@ -188,7 +183,7 @@ export function SaraWidget() {
         signal: controller.signal,
         body: JSON.stringify({
           message: msg,
-          history: updated.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
+          history: messages.map(m => ({ role: m.role, content: m.content })),
           signals: {
             consultantQueriesUsed: 0,
             consultantQueriesMax: 5,
@@ -201,81 +196,26 @@ export function SaraWidget() {
       });
       clearTimeout(timeoutId);
 
-      // Check if response is JSON (error) or stream (success)
-      const contentType = res.headers.get('content-type') || '';
-
-      if (contentType.includes('application/json')) {
-        // Error response — parse as JSON
-        const json = await res.json();
-        setIsLoading(false);
-        if (json.success && json.data) {
-          setMessages(prev => {
-            const updated2 = [...prev];
-            updated2[saraMsgIndex] = { role: 'sara', content: json.data };
-            return updated2;
-          });
-        } else {
-          console.error('Sara API error:', json.error);
-          // Remove placeholder and add error
-          setMessages(prev => prev.slice(0, -1).concat([{ role: 'sara', content: json.error || 'Something went wrong. Try again?' }]));
-        }
-        return;
+      let json: { success?: boolean; data?: string; error?: string };
+      try {
+        json = await res.json();
+      } catch {
+        console.error('Sara API: invalid JSON response, status:', res.status);
+        setMessages(prev => [...prev, { role: 'sara', content: 'Something went wrong on my end. Give me a moment and try again?' }]);
       }
 
-      // Streaming response — read chunks and update message progressively
-      if (!res.body) {
-        setIsLoading(false);
-        setMessages(prev => prev.slice(0, -1).concat([{ role: 'sara', content: 'Something went wrong on my end. Give me a moment and try again?' }]));
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        // Update the placeholder message with streamed text
-        setMessages(prev => {
-          const updated2 = [...prev];
-          updated2[saraMsgIndex] = { role: 'sara', content: accumulated };
-          return updated2;
-        });
-      }
-
-      // If stream produced no text, show error
-      if (!accumulated.trim()) {
-        setMessages(prev => {
-          const updated2 = [...prev];
-          updated2[saraMsgIndex] = { role: 'sara', content: 'Something went wrong on my end. Give me a moment and try again?' };
-          return updated2;
-        });
+      if (json.success && json.data) {
+        setMessages(prev => [...prev, { role: 'sara', content: json.data }]);
+      } else {
+        console.error('Sara API error:', json.error);
+        setMessages(prev => [...prev, { role: 'sara', content: json.error || 'Something went wrong. Try again?' }]);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setMessages(prev => {
-          const updated2 = [...prev];
-          // If placeholder has some text, keep it; otherwise show timeout message
-          const lastMsg = updated2[saraMsgIndex];
-          if (lastMsg?.content?.trim()) {
-            return updated2; // Keep partial response
-          }
-          updated2[saraMsgIndex] = { role: 'sara', content: 'That took too long. Try again — I\'ll be faster this time!' };
-          return updated2;
-        });
+        setMessages(prev => [...prev, { role: 'sara', content: 'That took too long. Try again — I\'ll be faster this time!' }]);
       } else {
         console.error('Sara fetch error:', err);
-        setMessages(prev => {
-          const updated2 = [...prev];
-          const lastMsg = updated2[saraMsgIndex];
-          if (lastMsg?.content?.trim()) {
-            return updated2; // Keep partial response
-          }
-          updated2[saraMsgIndex] = { role: 'sara', content: 'Having a little trouble connecting. Check your internet and try again?' };
-          return updated2;
-        });
+        setMessages(prev => [...prev, { role: 'sara', content: 'Having a little trouble connecting. Check your internet and try again?' }]);
       }
     } finally {
       setIsLoading(false);
@@ -402,22 +342,13 @@ export function SaraWidget() {
               ))
             )}
 
-            {/* Loading indicator — only show before first chunk arrives */}
-            {isLoading && (messages.length === 0 || messages[messages.length - 1]?.content === '') && (
+            {/* Loading */}
+            {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
                   <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
                   <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
-                </div>
-              </div>
-            )}
-
-            {/* Streaming cursor — show blinking cursor at end of streaming message */}
-            {isLoading && messages.length > 0 && messages[messages.length - 1]?.role === 'sara' && messages[messages.length - 1]?.content !== '' && (
-              <div className="flex justify-start">
-                <div className="bg-muted rounded-2xl rounded-bl-md px-3.5 py-2.5 text-[13px] leading-relaxed">
-                  <span className="inline-block w-1.5 h-4 bg-rose-500/70 animate-pulse rounded-sm" />
                 </div>
               </div>
             )}

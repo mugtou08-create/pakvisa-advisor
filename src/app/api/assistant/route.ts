@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createGeminiStream, createStreamResponse } from '@/lib/gemini-stream';
 
 function getClientIp(request: NextRequest): string {
   return (request.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
@@ -16,7 +15,10 @@ export async function POST(request: NextRequest) {
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
-      return NextResponse.json({ success: false, error: 'AI service is not configured.' }, { status: 503 });
+      return NextResponse.json(
+        { success: false, error: 'AI service is not configured.' },
+        { status: 503 }
+      );
     }
 
     // Smart signals from the frontend
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
       smartContext += `\nSMART SIGNAL - User is a Pro member. Do NOT suggest Pro upgrade. Focus on affiliate services and helpful tips.`;
     }
 
-    // Sara's system prompt (kept exactly the same as before)
+    // Sara's system prompt
     const systemPrompt = `You are Sara — a warm, friendly, and helpful travel assistant for PakVisa Advisor. You help Pakistani travelers plan their international trips.
 
 LANGUAGE RULES (very important):
@@ -168,16 +170,50 @@ ${smartContext}`;
       parts: [{ text: message }],
     });
 
-    // Create streaming response — text starts flowing immediately
-    const stream = await createGeminiStream({
-      models: ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'],
-      apiKey: GEMINI_API_KEY,
-      systemPrompt,
-      contents: geminiContents,
-      generationConfig: { temperature: 0.8, maxOutputTokens: 4096, topP: 0.9 },
-    });
+    // Gemini API call
+    const MODELS = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    let aiResponse: string | null = null;
+    let lastError = '';
 
-    return createStreamResponse(stream);
+    for (const model of MODELS) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents: geminiContents,
+              generationConfig: { temperature: 0.8, maxOutputTokens: 4096, topP: 0.9 },
+            }),
+          }
+        );
+
+        if (res.ok) {
+          const json = await res.json();
+          aiResponse = json?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+          if (aiResponse) break;
+        } else {
+          lastError = `${model}: ${res.status}`;
+        }
+      } catch (err) {
+        lastError = `${model}: ${String(err)}`;
+      }
+    }
+
+    if (!aiResponse) {
+      console.error('Sara AI failed:', lastError);
+      return NextResponse.json(
+        { success: false, error: 'Sara is temporarily unavailable. Please try again.' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: aiResponse,
+    });
   } catch (error) {
     console.error('Sara assistant error:', error);
     return NextResponse.json(
