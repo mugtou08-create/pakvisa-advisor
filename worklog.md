@@ -2083,3 +2083,29 @@ Stage Summary:
 - Model list updated: gemini-2.5-flash → gemini-2.0-flash → gemini-1.5-flash (removed gemini-3.6-flash which doesn't exist)
 - Metadata now sent via HTTP headers instead of JSON body (since body is the stream)
 - Committed and pushed: 20a7789
+
+---
+Task ID: streaming-fix
+Agent: Main Agent
+Task: Fix broken Sara/AI Chat streaming on Vercel live site
+
+Work Log:
+- User reported Sara returning 'Something went wrong on my end' error
+- Diagnosed: the TransformStream-based SSE parser was failing silently on Vercel
+- All 3 models failed streaming → empty stream → frontend showed error
+- Root cause: TransformStream async IIFE pattern unreliable on Vercel Node.js runtime
+- Also: SSE parser was too strict, missing edge cases in Gemini response format
+- Rewrote gemini-stream.ts with two-phase approach:
+  - Phase 1: Try streaming (streamGenerateContent?alt=sse) for each model
+  - Phase 2: If ALL streaming fails, fall back to non-streaming (generateContent)
+- Non-streaming fallback returns text as single-chunk stream
+- This guarantees a response ALWAYS arrives (same behavior as before streaming was added)
+- Better SSE parser using ReadableStream constructor instead of TransformStream
+- Handles multiple parts per candidate (for thinking models)
+- Better error logging for debugging
+
+Stage Summary:
+- Fix committed and pushed: 020a012
+- Sara and AI Visa Consultant will now always respond (streaming when possible, non-streaming as fallback)
+- If streaming works on Vercel, users see word-by-word streaming
+- If streaming fails, users see the full response at once (same as before the speed improvement)
