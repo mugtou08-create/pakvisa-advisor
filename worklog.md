@@ -2109,3 +2109,25 @@ Stage Summary:
 - Sara and AI Visa Consultant will now always respond (streaming when possible, non-streaming as fallback)
 - If streaming works on Vercel, users see word-by-word streaming
 - If streaming fails, users see the full response at once (same as before the speed improvement)
+---
+Task ID: streaming-fix-2
+Agent: Main Agent
+Task: Fix Sara streaming bug - empty responses
+
+Work Log:
+- Diagnosed the root cause: custom ReadableStream with pull() callback was unreliable in Next.js/Vercel server runtime
+- The pull() implementation read ALL upstream SSE data in a single pull() call and tried to enqueue everything, then close
+- This pattern can lose data or fail to deliver enqueued chunks to the client depending on how the runtime pipes streams
+- Rewrote gemini-stream.ts: replaced ReadableStream with pull() callback with TransformStream + background async pump
+- New approach: TransformStream is the standard, well-supported web API pattern for stream transformation
+- A fire-and-forget async IIFE reads SSE chunks from Gemini and writes plain text to the transform writable side
+- The readable side is returned immediately to the caller (Next.js response body)
+- Added logging for totalChars per model and non-streaming fallback
+- Verified locally: JSON error path (503 no API key) works correctly, page loads, Sara widget opens and sends messages
+- Lint passes, committed as 73ce2d3, pushed to main
+
+Stage Summary:
+- Root cause: ReadableStream with custom pull() is unreliable for SSE parsing in server-side Next.js
+- Fix: TransformStream + background async pump (standard web streams pattern)
+- Both Sara (/api/assistant) and AI Visa Consultant (/api/chat) use the same gemini-stream.ts helper
+- Fix deployed to production - waiting for user to test on Vercel
