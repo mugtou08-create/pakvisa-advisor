@@ -2425,3 +2425,186 @@ The PDF download button is approximately 10 sections BELOW the requirements sect
 6. **Fix PDF download** — Either integrate a real PDF library (jsPDF, @react-pdf/renderer) or relabel the button honestly ("Open Printable Guide").
 7. **Remove dead FloatingChatWidget** — Or merge its unique features (chat export) into SaraWidget.
 8. **Add rate limiting to Sara** — Currently unlimited messages with no cost tracking.
+
+---
+Task ID: 1-flag-fix
+Agent: Flag Research Agent
+Task: Investigate why Czech Republic and Cambodia don't have flag images
+
+Work Log:
+- Analyzed all flag rendering paths across the codebase
+- Checked prisma schema: Country model has `code`, `flagEmoji`, and `flagUrl` fields
+- Verified seed data: Cambodia (code="Cambodia", flagEmoji="🇰🇭") and Czech Republic (code="Czechia", name="Czech Republic", flagEmoji="🇨🇿") are correct
+- Verified FLAG_ISO_MAP in constants.ts contains correct mappings: Cambodia→KH, Czechia→CZ
+- Verified flagcdn.com URLs resolve correctly for both: kh.png and cz.png
+- Verified emoji codepoints are valid: Cambodia=U+1F1F0+U+1F1ED, Czechia=U+1F1E8+U+1F1FF
+- Confirmed database flagUrl field is EMPTY ("") for ALL 57 countries — never populated by seed or any script
+- Identified TWO different flag rendering approaches in the codebase
+- Confirmed no other countries would have this specific issue (all 57 have FLAG_ISO_MAP entries)
+
+Root Cause:
+- The `CountryResultCard` in home-client.tsx (line 244) checks `country.flagUrl` directly from the DB
+- Since `flagUrl` is always empty, it falls back to `country.flagEmoji` for ALL countries
+- This means the accordion country list shows emoji flags, NOT flag images, for every country
+- The `FlagImage` component (used in explore tab, shared components) correctly falls back to `getFlagUrl(code)` → flagcdn.com images work fine
+- The inconsistency: CountryResultCard uses `country.flagUrl` only (no getFlagUrl fallback), while FlagImage uses `flagUrl || getFlagUrl(code)`
+- Same pattern bug exists in shared-components-4.tsx at lines 216, 292, and 533
+
+Recommended Fix:
+- In home-client.tsx line 244: Change `{country.flagUrl ?` to `{(country.flagUrl || getFlagUrl(country.code)) ?` and use the resolved URL for the img src
+- In shared-components-4.tsx lines 216, 292, 533: Same pattern — add `getFlagUrl()` fallback when flagUrl is empty
+- Alternatively: populate `flagUrl` in the database during seed using FLAG_ISO_MAP for all 57 countries
+
+Files Affected:
+- src/app/home-client.tsx (line 244) — CountryResultCard flag rendering
+- src/components/app/shared-components-4.tsx (lines 216, 292, 533) — same pattern
+- src/components/app/constants.ts — FLAG_ISO_MAP (correct, no change needed)
+- prisma/seed.ts — never sets flagUrl (could be fixed here)
+
+Stage Summary:
+- Czech Republic and Cambodia data is CORRECT in all respects (code, emoji, ISO mapping)
+- The bug is a code-level inconsistency: CountryResultCard doesn't use getFlagUrl() fallback
+- This affects ALL countries equally in the accordion list view, not just these two
+- The user likely noticed these two because emoji flags render as letters (CZ, KH) on Windows/non-color-emoji platforms
+
+---
+Task ID: 2-sara-merge
+Agent: Main Agent
+Task: Major Sara Travel Assistant Overhaul
+
+Work Log:
+
+Part A — Sara Widget Rewrite (sara-widget.tsx):
+1. Replaced boolean `isOpen` with 3-state `widgetState`: 'closed' | 'minimized' | 'open'
+   - Floating bubble only shows when state is 'closed'
+   - Minimized state shows a pill with Sparkles icon + "Sara" text
+   - Minimize button (Minus icon) added to header; close clears messages, minimize preserves them
+2. Added chat save/load for Pro users:
+   - Save button (Bookmark icon) in header, visible only for Pro users
+   - POST to /api/sara-chat/save on click, toast on success/failure via sonner
+   - On mount, Pro users GET /api/sara-chat/load to restore saved messages
+   - Pro check: isAuthenticated && user?.role === 'pro' && user.proExpiresAt > now
+3. Rewrote renderSaraText with 3-stage URL handling:
+   - Stage 1: Affiliate name matching (iVisa, SafetyWing, etc.) — priority
+   - Stage 2: Markdown links [text](url) — with ExternalLink icon for external
+   - Stage 3: Bare URLs https://... — truncated to 40 chars with ExternalLink
+   - Internal links (/country/...) render without target blank
+4. Added remaining queries counter in header subtitle:
+   - Free users: "X/5 free questions today"
+   - Pro users: "X/20 questions today"
+   - Count fetched from API response `remainingQueries` field
+5. Removed Quick Actions panel entirely:
+   - Removed QUICK_ACTIONS array, handleQuickAction, Tools toggle button, and panel rendering
+   - Kept Share & Earn toggle and panel
+
+Part B — Sara API Rewrite (assistant/route.ts):
+1. Added rate limiting (same pattern as chat/route.ts):
+   - Free users: 5/day (IP-based anonymous, DB-based authenticated)
+   - Pro users: 20/day (DB-based via aiUsageLog)
+   - Returns { code: 'LIMIT_REACHED', remainingQueries: 0 } when limit hit
+   - Every successful response includes remainingQueries count
+2. Added Pro data injection:
+   - Imports detectCountries from @/lib/country-detect
+   - When Pro user asks about a country, fetches verified data from DB
+   - Injects country data (visa types, requirements, costs) into smart context
+   - Adds proDataInstruction for verified or non-verified data
+3. Rewrote system prompt with new personality and features:
+   - Direct, concise tone (no unnecessary praise)
+   - URL formatting instructions (markdown links, country page links)
+   - Anti-scam messaging and disclaimer sections
+   - Affiliate services with markdown links in prompt
+   - Pro upgrade and share program instructions
+
+Part C — Sara Chat Save/Load API (sara-chat/route.ts):
+- Created new API at /api/sara-chat
+- GET: Load last saved chat for Pro user (auth + pro check required)
+- POST: Save/update chat messages for Pro user (JSON stringified array)
+- Uses new SaraChat Prisma model (userId, messages, timestamps)
+- Added SaraChat model to prisma/schema.prisma with User relation
+- Added saraChats relation to User model
+- Ran db:push to sync schema
+
+Lint: Clean (0 errors)
+Dev server: Compiling successfully
+
+Stage Summary:
+- Sara widget now has 3-state lifecycle (closed/minimized/open) with message persistence on minimize
+- Pro users can save and restore chat sessions
+- Sara renders clickable URLs (markdown links, bare URLs, internal links) with proper styling
+- Rate limiting enforced: 5/day free, 20/day Pro, with remaining count displayed in UI
+- Quick Actions panel removed; cleaner, more focused chat experience
+- Sara API now has country detection + verified data injection for Pro users
+- New system prompt is more direct, concise, and includes anti-scam messaging + disclaimers
+
+---
+Task ID: 5-pricing-pdf
+Agent: Main Agent
+Task: Fix Pricing Modal (remove fake features) and implement real PDF download
+
+Work Log:
+- Fixed PricingModal in src/components/visa/modals.tsx:
+  - REMOVED 4 fake features: Step-by-Step Application Guides, Email Alerts for Policy Changes, Application Deadline Tracker, Hidden Fees Calculator
+  - REMOVED vague "Unlimited AI consultant queries" (replaced with accurate "20 queries/day")
+  - KEPT 6 real working features, organized into 3 logical groups:
+    - Sara AI Assistant: 20 AI queries/day, Save & revisit chat history, Verified embassy data from database
+    - Documents & Downloads: Full document checklist for every country, Download visa requirements as PDF
+    - Planning Tools: Save unlimited favorites & compare countries
+  - Used clean check-mark list with category headers
+- Installed jspdf (v4.2.1) for server-side PDF generation
+- Created /api/pdf/visa POST endpoint (src/app/api/pdf/visa/route.ts):
+  - Accepts { code: string } matching the database country code
+  - Fetches country data with visaTypes, requirements (sorted by category), costProfiles
+  - Generates a properly formatted A4 PDF with:
+    - Header: PakVisa Advisor branding, country name with flag emoji, generation date
+    - Visa Status section: type, processing time, safety rating, travel months, timezone
+    - Available Visa Types section with descriptions and durations
+    - Document Requirements section grouped by category (required/optional labeling)
+    - Cost Breakdown table with USD and PKR columns (7 cost items)
+    - Embassy in Islamabad section (only for embassy-required countries)
+    - Disclaimer footer
+  - Returns PDF with Content-Type: application/pdf and proper Content-Disposition
+  - Auto-paging when content exceeds page height
+- Updated DownloadCountryGuide component in country-detail.tsx:
+  - Replaced fake PDF download (was opening a slug URL, fallback to .txt blob)
+  - Now POSTs to /api/pdf/visa with country code
+  - Creates download link from PDF blob response
+  - Proper error handling with JSON error parsing
+- Cleaned up unused imports (CODE_TO_SLUG, toSlug) from country-detail.tsx
+- Fixed DB code lookup: removed .toUpperCase() since DB stores mixed-case codes ("Turkey", "UAE", etc.)
+
+Verified:
+- Lint passes clean
+- PDF generation tested: UAE (12KB, 2 pages), Turkey (12KB, 2 pages), Malaysia (11KB, 2 pages)
+- All PDFs are valid PDF 1.3 documents
+- Dev server compiles and serves the API correctly (200 responses)
+
+Stage Summary:
+- Pricing modal now shows only 6 real, working Pro features organized in 3 categories
+- PDF download generates actual PDF files (not .txt) via server-side jsPDF
+- Clean, professional PDF layout with auto-paging support
+
+---
+Task ID: 20
+Agent: Main Agent
+Task: Major Sara overhaul, merge AI Consultant, fix flags, PDF, pricing, Pro gates
+
+Work Log:
+- Fixed flag images for ALL countries in country list (was using emoji fallback, now uses flagcdn.com via getFlagUrl)
+- Merged AI Visa Consultant into Sara: removed from Quick Tools, moved Pro data injection to Sara API
+- Added rate limiting to Sara API: 5 free/day (IP/DB), 20 Pro/day (DB)
+- Rewrote Sara system prompt: natural personality, no repetitive praise, anti-scam messaging, disclaimer, clickable links
+- Added URL detection in renderSaraText: markdown links, bare URLs, internal links
+- Added 3-state widget (closed/minimized/open) with minimize button
+- Added chat save/load for Pro users via new /api/sara-chat API and SaraChat Prisma model
+- Installed jsPDF, created /api/pdf/visa route for real PDF generation
+- Removed 4 fake Pro features from pricing modal (guides, alerts, tracker, calculator)
+- Added Pro gates: favorites and compare now open pricing modal for non-Pro users
+- Removed Quick Actions panel from Sara (6 affiliate buttons)
+- Verified all changes with agent-browser: flags load, minimize works, Share & Earn works, pricing shows real features only, favorites Pro gate works
+- Lint clean, pushed as commit 370cd49
+
+Stage Summary:
+- 8 files changed, 904 insertions, 325 deletions
+- Sara is now the single AI assistant with merged capabilities
+- All Pro features in pricing are real and working
+- Flags, PDF, minimize, chat save all functional
