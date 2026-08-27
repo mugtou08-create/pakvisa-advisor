@@ -78,43 +78,53 @@ export function PricingModal({ onClose, onOpenPaymentProof }: { onClose: () => v
             </p>
           </div>
 
-          {/* Feature list */}
-          <ul className="space-y-3 mb-6">
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">Document checklist for every country</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">Step-by-step application guides</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">Total cost calculator with hidden fees</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">Visa policy change alerts via email</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">Unlimited AI consultant queries</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">PDF export of visa reports</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">Application deadline tracker</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-              <span className="text-sm">
-                Save unlimited favorites &amp; compare up to 5 countries
-              </span>
-            </li>
-          </ul>
+          {/* Feature list — grouped by category */}
+          <div className="space-y-4 mb-6">
+            {/* Sara AI features */}
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Sara AI Assistant</p>
+              <ul className="space-y-2.5">
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-sm">20 AI queries per day with Sara</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-sm">Save &amp; revisit chat history with Sara</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-sm">Verified embassy data from our database</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Documents & Downloads */}
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Documents &amp; Downloads</p>
+              <ul className="space-y-2.5">
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-sm">Full document checklist for every country</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-sm">Download visa requirements as PDF</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Planning Tools */}
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Planning Tools</p>
+              <ul className="space-y-2.5">
+                <li className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                  <span className="text-sm">Save unlimited favorites &amp; compare countries</span>
+                </li>
+              </ul>
+            </div>
+          </div>
 
           {/* CTA Button */}
           {isAlreadyPro ? (

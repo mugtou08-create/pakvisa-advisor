@@ -11,16 +11,10 @@ import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { CountryData } from '@/lib/types';
-import { CODE_TO_SLUG } from '@/lib/country-slug';
 import {
   EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES,
 } from '@/components/app/constants';
 import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
-
-// ============================================================
-// Helpers
-// ============================================================
-const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
 // ============================================================
 // Live Clock Component
@@ -882,38 +876,26 @@ function DownloadCountryGuide({ country }: { country: CountryData }) {
     }
     setGenerating(true);
     try {
-      // Open the country page in a new tab for Print > Save as PDF
-      const url = `/${CODE_TO_SLUG[country.code] || toSlug(country.name)}`;
-      window.open(url, '_blank');
-    } catch {
-      // fallback: download text guide
-      const lines = [
-        `PakVisa Advisor — ${country.name} Visa Guide`,
-        `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
-        '',
-        `Visa Status: ${country.visaFree ? 'Visa Free' : country.visaOnArrival ? 'Visa on Arrival' : country.etaAvailable ? 'e-Visa' : 'Embassy Required'}`,
-        `Processing Time: ${country.processingDaysMin}-${country.processingDaysMax} days`,
-        `Safety Rating: ${country.safetyRating}/5`,
-        `Best Travel Months: ${country.bestTravelMonths || 'N/A'}`,
-        '',
-        '--- Visa Types ---',
-        ...(country.visaTypes?.map(v => `${v.type}: ${v.description} (${v.maxDuration})`) || []),
-        '',
-        '--- Key Requirements ---',
-        ...(country.requirements?.map(r => `[${r.mandatory ? 'Required' : 'Optional'}] ${r.requirement}: ${r.description || ''}`) || []),
-        '',
-        '--- Cost Breakdown ---',
-        country.costProfile ? `Visa Fee: $${country.costProfile.visaFeeUSD} (≈ PKR ${Math.round(country.costProfile.visaFeeUSD * 278.5).toLocaleString()})` : 'N/A',
-        country.costProfile ? `Monthly Living: $${country.costProfile.monthlyLivingUSD}` : '',
-        '',
-        'Disclaimer: This guide is for informational purposes only. Always verify with the official embassy.',
-      ];
-      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `pakvisa-${country.name.replace(/\s+/g, '-').toLowerCase()}-guide.txt`;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      const res = await fetch('/api/pdf/visa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: country.code }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to generate PDF');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pakvisa-${country.name.replace(/\s+/g, '-').toLowerCase()}-guide.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF download error:', err);
     }
     setGenerating(false);
   };

@@ -1,96 +1,194 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  MessageCircle, X, Send, Sparkles, ChevronDown, ExternalLink,
-  Plane, Hotel, Shield, CreditCard, Smartphone, FileText, Gift, Crown, Users,
-  Zap, Share2,
+  MessageCircle, X, Send, Sparkles, ExternalLink,
+  Minus, Bookmark, Gift, Crown, Share2,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
 import { AFFILIATE_CONFIG } from '@/lib/affiliate-config';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+type WidgetState = 'closed' | 'minimized' | 'open';
 
 interface SaraMessage {
   role: 'user' | 'sara';
   content: string;
 }
 
-// Quick action buttons (zero-cost affiliate links)
-const QUICK_ACTIONS = [
-  { icon: FileText, label: 'Apply for e-Visa', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400', partner: 'ivisa' },
-  { icon: Plane, label: 'Find Cheap Flights', color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/30 dark:text-sky-400', partner: 'skyscanner' },
-  { icon: Hotel, label: 'Book a Hotel', color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/30 dark:text-violet-400', partner: 'booking' },
-  { icon: Shield, label: 'Travel Insurance', color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400', partner: 'safetywing' },
-  { icon: CreditCard, label: 'Send Money Abroad', color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/30 dark:text-teal-400', partner: 'wise' },
-  { icon: Smartphone, label: 'Travel eSIM', color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-400', partner: 'holafly' },
-];
-
 function renderSaraText(text: string): React.ReactNode {
   if (!text) return text;
-  // Match affiliate service names and make them clickable
-  const pattern = /(iVisa|SafetyWing|Skyscanner|Booking\.com|Wise|Holafly)/gi;
-  const parts = text.split(pattern);
-  if (parts.length <= 1) return <>{text}</>;
 
-  const getUrl = (match: string): string | null => {
-    const lower = match.toLowerCase();
-    if (lower.includes('ivisa')) return '/api/go?p=ivisa';
-    if (lower.includes('safetywing')) return AFFILIATE_CONFIG.safetyWing.getUrl();
-    if (lower.includes('skyscanner')) return 'https://www.skyscanner.net/';
-    if (lower.includes('booking.com')) return AFFILIATE_CONFIG.booking.getCountryUrl('');
-    if (lower.includes('wise')) return AFFILIATE_CONFIG.wise.getUrl();
-    if (lower.includes('holafly')) return AFFILIATE_CONFIG.holafly.getUrl();
-    return null;
-  };
+  // Step 1: Match affiliate service names and make them clickable
+  const affiliatePattern = /(iVisa|SafetyWing|Skyscanner|Booking\.com|Wise|Holafly)/gi;
+  const affiliateParts = text.split(affiliatePattern);
 
+  // If no affiliate matches, process URLs directly
+  if (affiliateParts.length <= 1) {
+    return <>{processUrls(affiliateParts[0])}</>;
+  }
+
+  // Process each part — affiliate names stay as links, other parts get URL processing
   return (
     <>
-      {parts.map((part, i) => {
-        const url = getUrl(part);
-        if (url) {
+      {affiliateParts.map((part, i) => {
+        const affiliateUrl = getAffiliateUrl(part);
+        if (affiliateUrl) {
           return (
-            <a key={i} href={url} target="_blank" rel="noopener noreferrer sponsored"
+            <a key={i} href={affiliateUrl} target="_blank" rel="noopener noreferrer sponsored"
                className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
               {part}
               <ExternalLink className="w-3 h-3 inline" />
             </a>
           );
         }
-        return <span key={i}>{part}</span>;
+        return <span key={i}>{processUrls(part)}</span>;
       })}
     </>
   );
 }
 
+function getAffiliateUrl(match: string): string | null {
+  const lower = match.toLowerCase();
+  if (lower.includes('ivisa')) return '/api/go?p=ivisa';
+  if (lower.includes('safetywing')) return AFFILIATE_CONFIG.safetyWing.getUrl();
+  if (lower.includes('skyscanner')) return 'https://www.skyscanner.net/';
+  if (lower.includes('booking.com')) return AFFILIATE_CONFIG.booking.getCountryUrl('');
+  if (lower.includes('wise')) return AFFILIATE_CONFIG.wise.getUrl();
+  if (lower.includes('holafly')) return AFFILIATE_CONFIG.holafly.getUrl();
+  return null;
+}
+
+function processUrls(text: string): React.ReactNode {
+  if (!text) return text;
+
+  // Split by markdown links [text](url) first
+  const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mdLinkRegex.exec(text)) !== null) {
+    // Process text before this match
+    if (match.index > lastIndex) {
+      parts.push(<span key={`pre-${lastIndex}`}>{processBareUrls(text.slice(lastIndex, match.index))}</span>);
+    }
+    const linkText = match[1];
+    const url = match[2];
+    const isInternal = url.startsWith('/');
+    parts.push(
+      <a key={`md-${match.index}`}
+         href={url}
+         {...(isInternal ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+         className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
+        {linkText}
+        {!isInternal && <ExternalLink className="w-3 h-3 inline" />}
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (parts.length === 0) {
+    return <>{processBareUrls(text)}</>;
+  }
+
+  // Process remaining text after last match
+  if (lastIndex < text.length) {
+    parts.push(<span key={`post-${lastIndex}`}>{processBareUrls(text.slice(lastIndex))}</span>);
+  }
+
+  return <>{parts}</>;
+}
+
+function processBareUrls(text: string): React.ReactNode {
+  if (!text) return text;
+
+  const urlRegex = /(https?:\/\/[^\s)\]]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(<span key={`bpre-${lastIndex}`}>{text.slice(lastIndex, match.index)}</span>);
+    }
+    const url = match[1];
+    const displayUrl = url.length > 40 ? `${url.slice(0, 40)}...` : url;
+    parts.push(
+      <a key={`url-${match.index}`}
+         href={url}
+         target="_blank"
+         rel="noopener noreferrer"
+         className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
+        {displayUrl}
+        <ExternalLink className="w-3 h-3 inline" />
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (parts.length === 0) return <>{text}</>;
+
+  if (lastIndex < text.length) {
+    parts.push(<span key={`bpost-${lastIndex}`}>{text.slice(lastIndex)}</span>);
+  }
+
+  return <>{parts}</>;
+}
+
 export function SaraWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [widgetState, setWidgetState] = useState<WidgetState>('closed');
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [messages, setMessages] = useState<SaraMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showQuickActions, setShowQuickActions] = useState(true);
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [refCode, setRefCode] = useState('');
-  const [referralStatus, setReferralStatus] = useState<any>(null);
+  const [referralStatus, setReferralStatus] = useState<Record<string, unknown> | null>(null);
   const [siteEntryTime] = useState(Date.now());
   const [unreadCount, setUnreadCount] = useState(0);
+  const [remainingQueries, setRemainingQueries] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isProUser = useAppStore((s) => s.isProUser);
-  const remainingFree = 5; // Will be fetched from signals
+  const { isAuthenticated, user, checkAuth } = useAuthStore();
 
-  // Auto-open after 18 seconds (smart trigger)
+  // Check auth on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Check if user is Pro via auth store
+  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+
+  // Load saved chat for Pro users on mount
+  useEffect(() => {
+    if (!isPro) return;
+    fetch('/api/sara-chat', {
+      headers: isAuthenticated && user ? { 'Authorization': `Bearer ${localStorage.getItem('user_token')}` } : {},
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data?.messages?.length > 0) {
+          setMessages(res.data.messages as SaraMessage[]);
+        }
+      })
+      .catch(() => {});
+  }, [isPro, isAuthenticated, user]);
+
+  // Auto-open after 18 seconds
   useEffect(() => {
     if (hasAutoOpened) return;
     const timer = setTimeout(() => {
       setHasAutoOpened(true);
-      setIsOpen(true);
+      setWidgetState('open');
       setUnreadCount(1);
-      // Add Sara's greeting
       setMessages([{
         role: 'sara',
-        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. Which language would you prefer?'
+        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. Which language would you prefer?',
       }]);
     }, 18000);
     return () => clearTimeout(timer);
@@ -103,11 +201,11 @@ export function SaraWidget() {
 
   // Focus input when opened
   useEffect(() => {
-    if (isOpen) {
+    if (widgetState === 'open') {
       setTimeout(() => inputRef.current?.focus(), 300);
       setUnreadCount(0);
     }
-  }, [isOpen]);
+  }, [widgetState]);
 
   // Fetch/create referral code on mount
   useEffect(() => {
@@ -149,18 +247,39 @@ export function SaraWidget() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refCode: ref }),
-      }).then(r => r.json()).then(res => {
-        if (res.success && res.data.newReward) {
-          // The referrer earned a reward, but we can't notify them directly.
-          // The referrer will see it on their next status poll.
-        }
-        // Clean URL
+      }).then(r => r.json()).then(() => {
         window.history.replaceState({}, '', window.location.pathname);
       }).catch(() => {});
     }
   }, []);
 
   const getTimeOnSite = useCallback(() => Math.floor((Date.now() - siteEntryTime) / 1000), [siteEntryTime]);
+
+  const handleSaveChat = async () => {
+    if (isSaving || messages.length === 0) return;
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem('user_token');
+      const res = await fetch('/api/sara-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ messages }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success('Chat saved!');
+      } else {
+        toast.error(json.error || 'Failed to save chat');
+      }
+    } catch {
+      toast.error('Failed to save chat');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSend = async (text?: string) => {
     const msg = (text || input).trim();
@@ -169,7 +288,6 @@ export function SaraWidget() {
     const userMsg: SaraMessage = { role: 'user', content: msg };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setShowQuickActions(false);
     setShowSharePanel(false);
     setIsLoading(true);
 
@@ -185,8 +303,6 @@ export function SaraWidget() {
           message: msg,
           history: messages.map(m => ({ role: m.role, content: m.content })),
           signals: {
-            consultantQueriesUsed: 0,
-            consultantQueriesMax: 5,
             currentPage: typeof window !== 'undefined' ? window.location.pathname : '',
             timeOnSite: getTimeOnSite(),
             referralData: referralStatus,
@@ -196,7 +312,7 @@ export function SaraWidget() {
       });
       clearTimeout(timeoutId);
 
-      let json: { success?: boolean; data?: string; error?: string };
+      let json: { success?: boolean; data?: string; error?: string; remainingQueries?: number; code?: string };
       try {
         json = await res.json();
       } catch {
@@ -204,8 +320,13 @@ export function SaraWidget() {
         setMessages(prev => [...prev, { role: 'sara', content: 'Something went wrong on my end. Give me a moment and try again?' }]);
       }
 
+      // Update remaining queries from response
+      if (json.remainingQueries !== undefined) {
+        setRemainingQueries(json.remainingQueries);
+      }
+
       if (json.success && json.data) {
-        setMessages(prev => [...prev, { role: 'sara', content: json.data }]);
+        setMessages(prev => [...prev, { role: 'sara', content: json.data! }]);
       } else {
         console.error('Sara API error:', json.error);
         setMessages(prev => [...prev, { role: 'sara', content: json.error || 'Something went wrong. Try again?' }]);
@@ -220,11 +341,6 @@ export function SaraWidget() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQuickAction = (partner: string) => {
-    // Direct affiliate link (zero AI cost)
-    window.open(`/api/go?p=${partner}`, '_blank');
   };
 
   const handleWhatsAppShare = () => {
@@ -245,50 +361,60 @@ export function SaraWidget() {
   };
 
   const toggleChat = () => {
-    setIsOpen(prev => !prev);
-    if (!isOpen && messages.length === 0) {
+    setWidgetState(prev => prev === 'open' ? 'closed' : 'open');
+    if (widgetState !== 'open' && messages.length === 0) {
       setMessages([{
         role: 'sara',
-        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. Which language would you prefer?'
+        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. Which language would you prefer?',
       }]);
     }
   };
 
+  const handleMinimize = () => {
+    setWidgetState('minimized');
+  };
+
+  const handleClose = () => {
+    setWidgetState('closed');
+    setMessages([]);
+    setUnreadCount(0);
+  };
+
   const getNextTier = () => {
-    if (!referralStatus || referralStatus.rewardTier >= 5) return null;
-    const count = referralStatus.visitorCount;
-    if (count < 1) return { needed: 1, reward: '1 extra AI query', icon: '🎯' };
-    if (count < 3) return { needed: 3 - count, reward: '5 extra AI queries', icon: '⭐' };
-    if (count < 5) return { needed: 5 - count, reward: '1 day FREE Pro', icon: '👑' };
+    if (!referralStatus) return null;
+    const rewardTier = referralStatus.rewardTier as number;
+    const visitorCount = referralStatus.visitorCount as number;
+    if (rewardTier >= 5) return null;
+    if (visitorCount < 1) return { needed: 1, reward: '1 extra AI query', icon: '🎯' };
+    if (visitorCount < 3) return { needed: 3 - visitorCount, reward: '5 extra AI queries', icon: '⭐' };
+    if (visitorCount < 5) return { needed: 5 - visitorCount, reward: '1 day FREE Pro', icon: '👑' };
     return null;
   };
 
   const nextTier = getNextTier();
   const isEmpty = messages.length === 0 && !isLoading;
+  const maxQueries = isPro ? 20 : 5;
+  const displayRemaining = remainingQueries !== null ? remainingQueries : maxQueries;
 
   return (
     <>
-      {/* Floating Bubble Button */}
-      {!isOpen && (
+      {/* Floating Bubble Button — only show when closed */}
+      {widgetState === 'closed' && (
         <button
           onClick={toggleChat}
           className="fixed bottom-4 right-4 z-50 group sm:bottom-6 sm:right-6"
           aria-label="Open Sara travel assistant"
         >
           <div className="relative">
-            {/* Pulse ring */}
             <span className="absolute inset-0 rounded-full bg-rose-500/20 animate-ping" />
-            {/* Main bubble */}
             <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 shadow-lg shadow-rose-500/25 flex items-center justify-center group-hover:shadow-xl group-hover:shadow-rose-500/30 group-hover:scale-105 transition-all duration-300">
               <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            {/* Unread badge */}
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-bounce">
                 {unreadCount}
               </span>
             )}
-            {/* Tooltip */}
             <div className="absolute bottom-full right-0 mb-3 px-3 py-2 bg-popover text-popover-foreground rounded-lg shadow-lg border border-border text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               Chat with Sara
               <div className="absolute top-full right-5 w-2 h-2 bg-popover border-r border-b border-border rotate-45 -mt-1" />
@@ -297,8 +423,22 @@ export function SaraWidget() {
         </button>
       )}
 
+      {/* Minimized Pill */}
+      {widgetState === 'minimized' && (
+        <button
+          onClick={() => setWidgetState('open')}
+          className="fixed bottom-4 right-4 z-50 group sm:bottom-6 sm:right-6"
+          aria-label="Expand Sara chat"
+        >
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 shadow-lg shadow-rose-500/25 text-white group-hover:shadow-xl group-hover:shadow-rose-500/30 transition-all duration-300">
+            <Sparkles className="w-4 h-4" />
+            <span className="text-sm font-medium">Sara</span>
+          </div>
+        </button>
+      )}
+
       {/* Chat Window */}
-      {isOpen && (
+      {widgetState === 'open' && (
         <div className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[60vw] h-[560px] max-h-[60vh] sm:max-w-[calc(100vw-2rem)] sm:max-h-[calc(100vh-6rem)] sm:bottom-6 sm:right-6 rounded-2xl shadow-2xl border border-border bg-background flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
 
           {/* Header */}
@@ -309,12 +449,41 @@ export function SaraWidget() {
               </div>
               <div>
                 <p className="text-sm font-semibold leading-tight">Sara</p>
-                <p className="text-[11px] text-white/80">Your travel assistant</p>
+                <p className="text-[11px] text-white/80">
+                  {isPro ? `${displayRemaining}/${maxQueries} questions today` : `${displayRemaining}/${maxQueries} free questions today`}
+                </p>
               </div>
             </div>
-            <button onClick={toggleChat} className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors" aria-label="Close">
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Save button — Pro only */}
+              {isPro && (
+                <button
+                  onClick={handleSaveChat}
+                  disabled={isSaving}
+                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors disabled:opacity-50"
+                  aria-label="Save chat"
+                  title="Save chat"
+                >
+                  <Bookmark className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {/* Minimize button */}
+              <button
+                onClick={handleMinimize}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                aria-label="Minimize"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              {/* Close button */}
+              <button
+                onClick={handleClose}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -353,32 +522,6 @@ export function SaraWidget() {
               </div>
             )}
 
-            {/* Quick Actions Panel */}
-            {showQuickActions && messages.length <= 1 && (
-              <div className="space-y-2.5 pt-1">
-                <div className="flex items-center gap-1.5 px-0.5">
-                  <Zap className="w-3.5 h-3.5 text-muted-foreground" />
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Travel Services</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {QUICK_ACTIONS.map((action) => (
-                    <button
-                      key={action.partner}
-                      onClick={() => handleQuickAction(action.partner)}
-                      className={`flex items-center gap-2.5 px-3 py-3 rounded-xl text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-border/60 ${action.color}`}
-                    >
-                      <div className={cn(
-                        'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-white/60 dark:bg-black/20'
-                      )}>
-                        <action.icon className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="leading-tight">{action.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Share & Earn Panel */}
             {showSharePanel && (
               <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3.5 border border-emerald-200 dark:border-emerald-800">
@@ -405,9 +548,9 @@ export function SaraWidget() {
                     {nextTier.icon} You need {nextTier.needed} more friend{nextTier.needed > 1 ? 's' : ''} to visit for: {nextTier.reward}
                   </p>
                 )}
-                {referralStatus && referralStatus.visitorCount > 0 && (
+                {referralStatus && (referralStatus.visitorCount as number) > 0 && (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-2">
-                    {referralStatus.visitorCount} friend{referralStatus.visitorCount > 1 ? 's' : ''} visited so far! Keep sharing.
+                    {referralStatus.visitorCount as number} friend{(referralStatus.visitorCount as number) > 1 ? 's' : ''} visited so far! Keep sharing.
                   </p>
                 )}
                 <button
@@ -439,22 +582,10 @@ export function SaraWidget() {
 
           {/* Bottom Bar */}
           <div className="shrink-0 border-t border-border/60 bg-background">
-            {/* Toggle buttons — cleaner pill design with icons */}
+            {/* Toggle buttons */}
             <div className="flex items-center gap-2 px-3 pt-2 pb-1.5 overflow-x-auto scrollbar-none">
               <button
-                onClick={() => { setShowQuickActions(!showQuickActions); setShowSharePanel(false); }}
-                className={cn(
-                  'flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all shrink-0',
-                  showQuickActions
-                    ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                )}
-              >
-                <Zap className={cn('w-3 h-3', showQuickActions && 'text-rose-500')} />
-                Tools
-              </button>
-              <button
-                onClick={() => { setShowSharePanel(!showSharePanel); setShowQuickActions(false); }}
+                onClick={() => setShowSharePanel(!showSharePanel)}
                 className={cn(
                   'flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all shrink-0',
                   showSharePanel
@@ -465,14 +596,14 @@ export function SaraWidget() {
                 <Gift className={cn('w-3 h-3', showSharePanel && 'text-emerald-500')} />
                 Share & Earn
               </button>
-              {referralStatus && referralStatus.bonusQueries > 0 && (
+              {referralStatus && (referralStatus.bonusQueries as number) > 0 && (
                 <span className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-semibold shrink-0 ring-1 ring-amber-200/50 dark:ring-amber-800/30">
-                  +{referralStatus.bonusQueries} queries
+                  +{referralStatus.bonusQueries as number} queries
                 </span>
               )}
-              {referralStatus && referralStatus.proDaysEarned > 0 && (
+              {referralStatus && (referralStatus.proDaysEarned as number) > 0 && (
                 <span className="text-[11px] px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 font-semibold shrink-0 flex items-center gap-1 ring-1 ring-purple-200/50 dark:ring-purple-800/30">
-                  <Crown className="w-3 h-3" /> {referralStatus.proDaysEarned}d Pro
+                  <Crown className="w-3 h-3" /> {referralStatus.proDaysEarned as number}d Pro
                 </span>
               )}
             </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  Globe, Search, Sun, Moon, HelpCircle, Sparkles, MessageSquare,
+  Globe, Search, Sun, Moon, HelpCircle, Sparkles,
   BarChart3, ClipboardList, Shield, Clock, DollarSign, Plane,
   ChevronDown, ChevronUp, Heart, X, ArrowRight, Check, Lock,
   Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
@@ -24,7 +24,7 @@ import dynamic from 'next/dynamic';
 // Lazy-load heavy components — they only render on user interaction.
 const CountryDetailPanel = dynamic(() => import('@/components/visa/country-detail').then(m => ({ default: m.CountryDetailPanel })), { loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
 const AuthModal = dynamic(() => import('@/components/visa/auth-modal').then(m => ({ default: m.AuthModal })), { ssr: false });
-const AiChatPanel = dynamic(() => import('@/components/visa/ai-chat-panel').then(m => ({ default: m.AiChatPanel })), { ssr: false });
+
 const VisaQuizPanel = dynamic(() => import('@/components/visa/visa-quiz-panel').then(m => ({ default: m.VisaQuizPanel })), { ssr: false });
 const ComparePanel = dynamic(() => import('@/components/visa/compare-panel').then(m => ({ default: m.ComparePanel })), { ssr: false });
 const PricingModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.PricingModal })), { ssr: false });
@@ -243,9 +243,14 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
           {country.flagUrl ? (
             <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} />
-          ) : (
-            <span className="text-lg">{country.flagEmoji}</span>
-          )}
+          ) : (() => {
+            const flagSrc = getFlagUrl(country.code);
+            return flagSrc ? (
+              <img src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} />
+            ) : (
+              <span className="text-lg">{country.flagEmoji}</span>
+            );
+          })()}
         </div>
 
         {/* Info */}
@@ -582,7 +587,6 @@ export default function HomeClient({ initialCountries, initialStats, children }:
   }, [countries]);
 
   const renderToolPanel = () => {
-    if (activeTool === 'ai') return <AiChatPanel onClose={closeTool} />;
     if (activeTool === 'quiz') return <VisaQuizPanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
     if (activeTool === 'compare') return <ComparePanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} isProUser={!!isUserPro} />;
     return null;
@@ -1118,7 +1122,10 @@ export default function HomeClient({ initialCountries, initialStats, children }:
                           expanded={expandedCountry === c.code}
                           onToggle={() => setExpandedCountry((prev) => prev === c.code ? null : c.code)}
                           isFav={favorites.includes(c.code)}
-                          onToggleFav={() => toggleFavorite(c.code)}
+                          onToggleFav={() => {
+                            if (!isUserPro) { setActiveModal('pricing'); return; }
+                            toggleFavorite(c.code);
+                          }}
                         />
                       </div>
                     ))}
@@ -1189,15 +1196,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
           <section className="px-4 pb-10">
             <div className="max-w-6xl mx-auto">
               <h2 className="text-xl font-bold mb-4">Quick Tools</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <QuickToolCard
-                  icon={<MessageSquare className="w-5 h-5 text-emerald-600" />}
-                  title="AI Visa Consultant"
-                  description="Ask any visa question and get instant, personalized answers."
-                  colorClass="hover:border-emerald-200"
-                  onClick={() => setActiveTool('ai')}
-                  badge="Free"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <QuickToolCard
                   icon={<ClipboardList className="w-5 h-5 text-amber-600" />}
                   title="Free Visa Quiz"
@@ -1211,7 +1210,8 @@ export default function HomeClient({ initialCountries, initialStats, children }:
                   title="Compare Countries"
                   description="Compare visa requirements, fees, and costs side by side."
                   colorClass="hover:border-sky-200"
-                  onClick={() => setActiveTool('compare')}
+                  onClick={() => { if (!isUserPro) { setActiveModal('pricing'); return; } setActiveTool('compare'); }}
+                  badge="Pro"
                 />
               </div>
             </div>
