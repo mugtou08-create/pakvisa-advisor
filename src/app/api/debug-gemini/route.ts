@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: 'GEMINI_API_KEY is not set in environment' }, { status: 500 });
   }
 
-  const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+  const models = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   const results: Record<string, { status: number; statusText: string; body: string }> = {};
 
   for (const model of models) {
