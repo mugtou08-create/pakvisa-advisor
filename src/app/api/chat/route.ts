@@ -289,50 +289,47 @@ ${proContextInstruction}`;
       }],
     });
 
-    // Try models in order of preference (fallback if one is unavailable)
-    const MODELS = [
-      'gemini-3.6-flash',
-      'gemini-2.5-flash',
-      'gemini-1.5-flash',
-    ];
-
+    // Only use gemini-3.6-flash — other models return 404 for this API key
+    const MODEL = 'gemini-3.6-flash';
     let aiResponse: string | null = null;
     let lastError = '';
 
-    for (const model of MODELS) {
-      try {
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              system_instruction: {
-                parts: [{ text: systemPrompt }],
-              },
-              contents: geminiContents,
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 2048,
-                topP: 0.9,
-              },
-            }),
-          }
-        );
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-        if (geminiRes.ok) {
-          const geminiJson = await geminiRes.json();
-          aiResponse = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-          if (aiResponse) break;
-        } else {
-          const errText = await geminiRes.text().catch(() => '');
-          lastError = `${model}: ${geminiRes.status} ${errText.slice(0, 200)}`;
-          console.error('Gemini model failed:', lastError);
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: systemPrompt }],
+            },
+            contents: geminiContents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2048,
+              topP: 0.9,
+            },
+          }),
         }
-      } catch (err) {
-        lastError = `${model}: ${String(err)}`;
-        console.error('Gemini model error:', lastError);
+      );
+      clearTimeout(timeoutId);
+
+      if (geminiRes.ok) {
+        const geminiJson = await geminiRes.json();
+        aiResponse = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+      } else {
+        const errText = await geminiRes.text().catch(() => '');
+        lastError = `${MODEL}: ${geminiRes.status} ${errText.slice(0, 200)}`;
+        console.error('Gemini model failed:', lastError);
       }
+    } catch (err) {
+      lastError = `${MODEL}: ${String(err)}`;
+      console.error('Gemini model error:', lastError);
     }
 
     if (!aiResponse) {

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   MessageCircle, X, Send, Sparkles, ChevronDown, ExternalLink,
   Plane, Hotel, Shield, CreditCard, Smartphone, FileText, Gift, Crown, Users,
-  Zap, Share2, XIcon,
+  Zap, Share2,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { useAuthStore } from '@/lib/auth-store';
@@ -272,15 +272,15 @@ export function SaraWidget() {
       {!isOpen && (
         <button
           onClick={toggleChat}
-          className="fixed bottom-6 right-6 z-50 group"
+          className="fixed bottom-4 right-4 z-50 group sm:bottom-6 sm:right-6"
           aria-label="Open Sara travel assistant"
         >
           <div className="relative">
             {/* Pulse ring */}
             <span className="absolute inset-0 rounded-full bg-rose-500/20 animate-ping" />
             {/* Main bubble */}
-            <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 shadow-lg shadow-rose-500/25 flex items-center justify-center group-hover:shadow-xl group-hover:shadow-rose-500/30 group-hover:scale-105 transition-all duration-300">
-              <MessageCircle className="w-6 h-6 text-white" />
+            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 shadow-lg shadow-rose-500/25 flex items-center justify-center group-hover:shadow-xl group-hover:shadow-rose-500/30 group-hover:scale-105 transition-all duration-300">
+              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             {/* Unread badge */}
             {unreadCount > 0 && (
@@ -299,7 +299,7 @@ export function SaraWidget() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] rounded-2xl shadow-2xl border border-border bg-background flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="fixed bottom-4 right-4 z-50 w-[380px] max-w-[60vw] h-[560px] max-h-[60vh] sm:max-w-[calc(100vw-2rem)] sm:max-h-[calc(100vh-6rem)] sm:bottom-6 sm:right-6 rounded-2xl shadow-2xl border border-border bg-background flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white shrink-0">
@@ -380,7 +380,7 @@ export function SaraWidget() {
             )}
 
             {/* Share & Earn Panel */}
-            {showSharePanel && refCode && (
+            {showSharePanel && (
               <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3.5 border border-emerald-200 dark:border-emerald-800">
                 <div className="flex items-center gap-2 mb-2">
                   <Gift className="w-4 h-4 text-emerald-600" />
@@ -419,6 +419,20 @@ export function SaraWidget() {
                 </button>
               </div>
             )}
+            {showSharePanel && !refCode && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3.5 border border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gift className="w-4 h-4 text-emerald-600" />
+                  <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Share & Earn Rewards</p>
+                </div>
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 mb-3">Loading your referral link...</p>
+                <div className="flex items-center justify-center gap-1.5 py-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0ms]" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:150ms]" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:300ms]" />
+                </div>
+              </div>
+            )}
 
             <div ref={messagesEndRef} />
           </div>
@@ -449,7 +463,7 @@ export function SaraWidget() {
                 )}
               >
                 <Gift className={cn('w-3 h-3', showSharePanel && 'text-emerald-500')} />
-                Refer & Earn
+                Share & Earn
               </button>
               {referralStatus && referralStatus.bonusQueries > 0 && (
                 <span className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-semibold shrink-0 ring-1 ring-amber-200/50 dark:ring-amber-800/30">

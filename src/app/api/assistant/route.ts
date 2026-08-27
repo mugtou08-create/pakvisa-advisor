@@ -171,35 +171,39 @@ ${smartContext}`;
     });
 
     // Gemini API call
-    const MODELS = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    // Only use gemini-3.6-flash — other models return 404 for this API key
+    const MODEL = 'gemini-3.6-flash';
     let aiResponse: string | null = null;
     let lastError = '';
 
-    for (const model of MODELS) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              system_instruction: { parts: [{ text: systemPrompt }] },
-              contents: geminiContents,
-              generationConfig: { temperature: 0.8, maxOutputTokens: 4096, topP: 0.9 },
-            }),
-          }
-        );
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-        if (res.ok) {
-          const json = await res.json();
-          aiResponse = json?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-          if (aiResponse) break;
-        } else {
-          lastError = `${model}: ${res.status}`;
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: geminiContents,
+            generationConfig: { temperature: 0.8, maxOutputTokens: 4096, topP: 0.9 },
+          }),
         }
-      } catch (err) {
-        lastError = `${model}: ${String(err)}`;
+      );
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const json = await res.json();
+        aiResponse = json?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+      } else {
+        const errText = await res.text().catch(() => '');
+        lastError = `${MODEL}: ${res.status} ${errText.slice(0, 200)}`;
       }
+    } catch (err) {
+      lastError = `${MODEL}: ${String(err)}`;
     }
 
     if (!aiResponse) {
