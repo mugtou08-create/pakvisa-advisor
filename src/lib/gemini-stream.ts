@@ -7,13 +7,34 @@ export interface StreamOptions {
 }
 
 /**
- * Calls a single Gemini model with streaming. Returns the stream or null.
+ * Extracts text from a single SSE line like "data: {json}"
+ */
+function extractTextFromSSELine(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('data: ')) return null;
+  const data = trimmed.slice(6).trim();
+  if (!data || data === '[DONE]') return null;
+  try {
+    const json = JSON.parse(data);
+    const text = json?.candidates?.[0]?.content?.parts
+      ?.map((p: { text?: string }) => p.text || '')
+      .join('') || null;
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Tries streaming from a single Gemini model using TransformStream.
+ * Returns the readable side if the connection succeeds (even if no text yet),
+ * or null if the HTTP request itself fails.
  */
 async function tryStreamModel(
   model: string,
   url: string,
   body: string
-): Promise<{ stream: ReadableStream<Uint8Array>; res: Response } | null> {
+): Promise<ReadableStream<Uint8Array> | null> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -28,7 +49,7 @@ async function tryStreamModel(
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
-    console.error(`[Gemini] ${model} HTTP ${res.status}:`, errText.slice(0, 300));
+    console.error(`[Gemini] ${model} HTTP ${res.status}:`, errText.slice(0, 500));
     return null;
   }
 
@@ -37,106 +58,51 @@ async function tryStreamModel(
     return null;
   }
 
-  // Build a ReadableStream that parses Gemini SSE events
-  const reader = res.body.getReader();
+  // Use TransformStream — the standard, reliable way to transform streams.
+  // A background async function reads SSE from Gemini and writes plain text
+  // chunks to the transform. The caller gets the readable side immediately.
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  const upstreamReader = res.body.getReader();
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   let buffer = '';
   let totalChars = 0;
 
-  return {
-    res,
-    stream: new ReadableStream<Uint8Array>({
-      async pull(controller) {
-        try {
-          // Keep reading until we have text to emit
-          while (totalChars === 0) {
-            const { done, value } = await reader.read();
-            if (done) {
-              controller.close();
-              return;
-            }
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-            for (const line of lines) {
-              const text = extractTextFromSSELine(line);
-              if (text) {
-                controller.enqueue(encoder.encode(text));
-                totalChars += text.length;
-              }
-            }
+  // Fire-and-forget background pump (the stream keeps the response alive)
+  (async () => {
+    try {
+      while (true) {
+        const { done, value } = await upstreamReader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const text = extractTextFromSSELine(line);
+          if (text) {
+            await writer.write(encoder.encode(text));
+            totalChars += text.length;
           }
-
-          // First chunk sent — now read the rest
-          // Process any leftover buffer lines first
-          const leftoverLines = buffer.split('\n');
-          buffer = leftoverLines.pop() || '';
-          for (const line of leftoverLines) {
-            const text = extractTextFromSSELine(line);
-            if (text) {
-              controller.enqueue(encoder.encode(text));
-              totalChars += text.length;
-            }
-          }
-
-          // Read more chunks from upstream
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const moreLines = buffer.split('\n');
-            buffer = moreLines.pop() || '';
-            for (const line of moreLines) {
-              const text = extractTextFromSSELine(line);
-              if (text) {
-                controller.enqueue(encoder.encode(text));
-                totalChars += text.length;
-              }
-            }
-          }
-
-          // Process final buffer
-          if (buffer.trim()) {
-            const text = extractTextFromSSELine(buffer);
-            if (text) {
-              controller.enqueue(encoder.encode(text));
-              totalChars += text.length;
-            }
-          }
-
-          console.log(`[Gemini Stream] ${model}: done, ${totalChars} chars`);
-          controller.close();
-        } catch (err) {
-          console.error(`[Gemini Stream] ${model} read error:`, err);
-          controller.close();
         }
-      },
-      cancel() {
-        reader.cancel().catch(() => {});
-      },
-    }),
-  };
-}
+      }
+      // Process any remaining buffer after stream ends
+      if (buffer.trim()) {
+        const text = extractTextFromSSELine(buffer);
+        if (text) {
+          await writer.write(encoder.encode(text));
+          totalChars += text.length;
+        }
+      }
+      console.log(`[Gemini Stream] ${model}: done, ${totalChars} chars`);
+    } catch (err) {
+      console.error(`[Gemini Stream] ${model} pump error:`, err);
+    } finally {
+      await writer.close();
+    }
+  })();
 
-/**
- * Extracts text from a single SSE line like "data: {json}"
- */
-function extractTextFromSSELine(line: string): string | null {
-  const trimmed = line.trim();
-  if (!trimmed.startsWith('data: ')) return null;
-  const data = trimmed.slice(6).trim();
-  if (!data || data === '[DONE]') return null;
-  try {
-    const json = JSON.parse(data);
-    // Handle both streaming chunks and non-streaming responses
-    const text = json?.candidates?.[0]?.content?.parts
-      ?.map((p: { text?: string }) => p.text || '')
-      .join('') || null;
-    return text || null;
-  } catch {
-    return null;
-  }
+  return readable;
 }
 
 /**
@@ -165,7 +131,7 @@ async function tryNonStreamModel(
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      console.error(`[Gemini NonStream] ${model} HTTP ${res.status}:`, errText.slice(0, 300));
+      console.error(`[Gemini NonStream] ${model} HTTP ${res.status}:`, errText.slice(0, 500));
       return null;
     }
 
@@ -173,6 +139,7 @@ async function tryNonStreamModel(
     const text = json?.candidates?.[0]?.content?.parts
       ?.map((p: { text?: string }) => p.text || '')
       .join('') || null;
+    console.log(`[Gemini NonStream] ${model}: ${text ? text.length + ' chars' : 'empty'}`);
     return text;
   } catch (err) {
     console.error(`[Gemini NonStream] ${model} error:`, err);
@@ -196,8 +163,8 @@ export async function createGeminiStream(options: StreamOptions): Promise<Readab
   // Phase 1: Try streaming for each model
   for (const model of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-    const result = await tryStreamModel(model, url, reqBody);
-    if (result) return result.stream;
+    const stream = await tryStreamModel(model, url, reqBody);
+    if (stream) return stream;
   }
 
   // Phase 2: All streaming failed — fall back to non-streaming
@@ -205,18 +172,18 @@ export async function createGeminiStream(options: StreamOptions): Promise<Readab
   for (const model of models) {
     const text = await tryNonStreamModel(model, apiKey, systemPrompt, contents, genConfig);
     if (text) {
-      // Return as a single-chunk stream (no streaming effect, but response works)
       const encoder = new TextEncoder();
       return new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(encoder.encode(text));
-      controller.close();
-    },
-  });
+        start(controller) {
+          controller.enqueue(encoder.encode(text));
+          controller.close();
+        },
+      });
     }
   }
 
   // All models completely failed
+  console.error('[Gemini] ALL models failed (both streaming and non-streaming)');
   const errorText = 'Sorry, I\'m having a little trouble right now. Please try again in a moment!';
   return new ReadableStream<Uint8Array>({
     start(controller) {
