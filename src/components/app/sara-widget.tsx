@@ -153,7 +153,6 @@ export function SaraWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isProUser = useAppStore((s) => s.isProUser);
   const { isAuthenticated, user, checkAuth } = useAuthStore();
 
   // Check auth on mount
@@ -306,7 +305,7 @@ export function SaraWidget() {
             currentPage: typeof window !== 'undefined' ? window.location.pathname : '',
             timeOnSite: getTimeOnSite(),
             referralData: referralStatus,
-            isProUser,
+            isProUser: isPro,
           },
         }),
       });
@@ -393,7 +392,7 @@ export function SaraWidget() {
 
   const nextTier = getNextTier();
   const isEmpty = messages.length === 0 && !isLoading;
-  const maxQueries = isPro ? 20 : 5;
+  const maxQueries = isPro ? 25 : 5;
   const displayRemaining = remainingQueries !== null ? remainingQueries : maxQueries;
 
   return (

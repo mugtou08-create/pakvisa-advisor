@@ -2608,3 +2608,83 @@ Stage Summary:
 - Sara is now the single AI assistant with merged capabilities
 - All Pro features in pricing are real and working
 - Flags, PDF, minimize, chat save all functional
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Rewrite PricingModal component with new pricing tiers, PKR conversions, anti-scam comparison
+
+Work Log:
+- Read full modals.tsx file (895 lines) to understand structure and imports
+- Replaced PricingModal function (lines 14-169) with new implementation
+- Added strikethrough "Normally $39.99/month" + "Your first year: only $19.99/month" deal banner
+- Added 4 plan cards in 2x2 mobile / 4-col desktop grid (Monthly, 3 Months, 6 Months, 1 Year)
+- Added PKR conversions (rate 278.5) under each plan price
+- 1 Year plan highlighted with amber border, ring, and "Best Value" Badge
+- Updated Sara AI features: 25/day 200/month, chat history, 70+ countries, English/Urdu
+- Kept Documents & Downloads (checklist + PDF) and Planning Tools (favorites/compare)
+- Removed fake features (Step-by-Step Guides, Email Alerts, Deadline Tracker, Hidden Fees Calculator)
+- Added anti-scam comparison card: Visa Consultant (red ✕) vs PakVisa Pro (green ✓) side by side
+- Kept same CTA logic: Login to Get Pro / Upload Payment Proof / already Pro green card
+- Kept Free Plan link and Escape key handler
+- Widened modal from max-w-lg to max-w-2xl, max-h from 85vh to 90vh
+- Verified lint passes with no errors
+- Verified dev server compiles successfully
+
+Stage Summary:
+- Complete PricingModal rewrite with transparent pricing, PKR conversions, and anti-scam comparison
+- All existing modals (HelpModal, etc.) left untouched
+- No new imports needed — all icons and components already imported
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Move Download PDF button next to View Full Country Guide link
+
+Work Log:
+- Added CountryPdfButton component in home-client.tsx before CountryResultCard
+- Compact button shows Download icon for Pro users, Crown icon for free users
+- Pro users: fetches /api/pdf/visa POST with country code, triggers blob download
+- Free users: dispatches 'open-pricing' CustomEvent to show pricing modal
+- Button placed inline next to "View Full Country Guide" link using flex layout
+- Removed <DownloadCountryGuide country={country} /> usage from country-detail.tsx (kept function definition)
+- No new imports needed — useAuthStore, Button, Download, Crown already imported
+- Lint passes cleanly, dev server compiles without errors
+
+Stage Summary:
+- PDF download now accessible directly in the country card expansion footer
+- Eliminated redundant full-width download section from CountryDetailPanel
+- Cleaner UX: both guide link and PDF download side by side
+
+---
+Task ID: 8-10
+Agent: Main Agent
+Task: Remove fake isProUser gates, delete old Visa Consultant files, clean up references
+
+Work Log:
+- TASK 8: Verified isProUser store state is correct — isProUser/setIsProUser kept in store.ts, excluded from persistence (runtime-only), synced from real auth at lines 422-431 in home-client.tsx
+- TASK 8: Verified favorites toggle gate (line 1188) uses real `isUserPro` from auth store, not `useAppStore.isProUser`
+- TASK 8: Verified compare tool gate (line 1275) uses real `isUserPro` from auth store
+- TASK 9: Deleted /src/app/api/chat/route.ts (old Visa Consultant API route)
+- TASK 9: Deleted /src/components/visa/ai-chat-panel.tsx (old Visa Consultant UI component)
+- TASK 9: Removed empty /src/app/api/chat/ directory
+- TASK 10a: Deleted FloatingChatWidget function (140 lines) from dialogs.tsx — dead code, not imported anywhere
+- TASK 10b: Replaced 6 instances of "AI Visa Consultant" in modals.tsx HelpModal:
+  - Quick Start step 4: "Open Sara AI Assistant for personalized Q&A"
+  - Glossary term: renamed to "Sara AI"
+  - Use case steps (Umrah, Schengen, Study Abroad, Family Visit): all updated to "Sara AI"
+- TASK 10b: Replaced "AI Visa Consultant" in dialogs.tsx AboutDialog ("What We Offer" section) → "Sara AI Assistant"
+- TASK 10b: Fixed admin suggest-reply API route: "AI Visa Consultant chat" → "Sara AI Assistant"
+- TASK 10b: Fixed admin-dialog.tsx quick reply: "AI Visa Consultant chat" → "Sara AI"
+- TASK 10b: Fixed [slug]/page.tsx footer link: "AI Visa Consultant" → "Sara AI Assistant"
+- TASK 10c: Verified home-client.tsx has no AiChatPanel, ai-chat-panel, chatOpen, or setChatOpen references
+- TASK 10d: Final sweep — only remaining "AI Visa Consultant" is in dead code file ai-chat-tab.tsx (not imported anywhere)
+- Lint passes cleanly, dev server compiles without errors
+
+Stage Summary:
+- 6 files changed: 2 deleted, 4 edited
+- All Pro gates verified to use real auth-based `isUserPro`, not store `isProUser`
+- Old Visa Consultant API route and UI component fully removed
+- All user-facing "AI Visa Consultant" references renamed to "Sara AI" or "Sara AI Assistant"
+- FloatingChatWidget dead code removed from dialogs.tsx
+- chatOpen/setChatOpen remain in store.ts (harmless, avoids breaking persisted state for existing users)

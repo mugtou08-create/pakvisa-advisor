@@ -885,7 +885,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 <ul className="space-y-1 text-muted-foreground text-xs">
                   <li><Link href="/" className="hover:text-foreground transition-colors">Home</Link></li>
                   <li><Link href="/" className="hover:text-foreground transition-colors">All Countries</Link></li>
-                  <li><Link href="/" className="hover:text-foreground transition-colors">AI Visa Consultant</Link></li>
+                  <li><Link href="/" className="hover:text-foreground transition-colors">Sara AI Assistant</Link></li>
                 </ul>
               </div>
               <div>

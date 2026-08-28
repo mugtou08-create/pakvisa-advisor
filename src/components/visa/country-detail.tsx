@@ -751,9 +751,6 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
       {/* Embassy Contact (only for embassy-required countries) */}
       {isEmbassyRequired && <EmbassyContact countryCode={country.code} />}
 
-      {/* Download Country Guide (Pro Feature) */}
-      <DownloadCountryGuide country={country} />
-
       {/* Affiliate: Prepare Your Trip (always last) */}
       <AffiliateResources country={country} />
     </div>

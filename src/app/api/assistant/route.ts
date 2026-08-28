@@ -5,8 +5,10 @@ import { detectCountries } from '@/lib/country-detect';
 
 // Rate limits
 const FREE_RATE_LIMIT = 5;
-const PRO_RATE_LIMIT = 20;
+const PRO_DAILY_LIMIT = 25;
+const PRO_MONTHLY_LIMIT = 200;
 const FREE_WINDOW = 86400000; // 24 hours
+const PKR_RATE = 278.5;
 
 // In-memory tracking for anonymous users
 const freeUsageCounts = new Map<string, { count: number; resetAt: number }>();
@@ -63,25 +65,37 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting
     if (proUser) {
-      // Pro users: DB-based daily limit
+      // Pro users: DB-based daily + monthly limit
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
-      const todayCount = await db.aiUsageLog.count({
-        where: { userId, createdAt: { gte: todayStart, lte: todayEnd } },
-      });
-      if (todayCount >= PRO_RATE_LIMIT) {
+      const monthStart = new Date(todayStart);
+      monthStart.setDate(1);
+
+      const [todayCount, monthCount] = await Promise.all([
+        db.aiUsageLog.count({ where: { userId, createdAt: { gte: todayStart, lte: todayEnd } } }),
+        db.aiUsageLog.count({ where: { userId, createdAt: { gte: monthStart, lte: todayEnd } } }),
+      ]);
+
+      if (todayCount >= PRO_DAILY_LIMIT) {
         return NextResponse.json({
           success: false,
-          error: `You've used all ${PRO_RATE_LIMIT} Pro questions for today. Check back tomorrow!`,
+          error: `You've used all ${PRO_DAILY_LIMIT} questions for today. Come back tomorrow!`,
+          code: 'LIMIT_REACHED',
+          remainingQueries: 0,
+        });
+      }
+      if (monthCount >= PRO_MONTHLY_LIMIT) {
+        return NextResponse.json({
+          success: false,
+          error: `You've used all ${PRO_MONTHLY_LIMIT} questions this month. Your limit resets next month.`,
           code: 'LIMIT_REACHED',
           remainingQueries: 0,
         });
       }
       await db.aiUsageLog.create({ data: { userId: userId!, message: message.slice(0, 200) } });
     } else if (userId) {
-      // Authenticated free user: DB-based
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
@@ -92,14 +106,13 @@ export async function POST(request: NextRequest) {
       if (todayCount >= FREE_RATE_LIMIT) {
         return NextResponse.json({
           success: false,
-          error: `You've used all ${FREE_RATE_LIMIT} free questions today. Share PakVisa with friends to earn more, or upgrade to Pro for ${PRO_RATE_LIMIT}/day!`,
+          error: `You've used all ${FREE_RATE_LIMIT} free questions today. Share PakVisa with friends to earn more, or upgrade to Pro for ${PRO_DAILY_LIMIT} questions/day!`,
           code: 'LIMIT_REACHED',
           remainingQueries: 0,
         });
       }
       await db.aiUsageLog.create({ data: { userId, message: message.slice(0, 200) } });
     } else {
-      // Anonymous: IP-based
       const freeResult = checkFreeLimit(ip);
       if (!freeResult.allowed) {
         return NextResponse.json({
@@ -121,7 +134,7 @@ export async function POST(request: NextRequest) {
       const todayCount = await db.aiUsageLog.count({
         where: { userId, createdAt: { gte: todayStart, lte: todayEnd } },
       });
-      remainingQueries = PRO_RATE_LIMIT - todayCount;
+      remainingQueries = PRO_DAILY_LIMIT - todayCount;
     } else if (userId) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -140,7 +153,6 @@ export async function POST(request: NextRequest) {
     const currentPage = (signals?.currentPage as string) || '';
     const timeOnSite = (signals?.timeOnSite as number) || 0;
     const referralData = signals?.referralData as Record<string, unknown> | null;
-    const isProFromSignal = (signals?.isProUser as boolean) || false;
 
     // Build smart context for Sara
     let smartContext = '';
@@ -207,35 +219,36 @@ export async function POST(request: NextRequest) {
         if (country.costProfiles.length > 0) {
           const cp = country.costProfiles[0];
           verifiedStr += `\nCost Estimates:\n`;
-          verifiedStr += `  - Visa Fee: $${cp.visaFeeUSD} (≈ PKR ${Math.round(cp.visaFeeUSD * 278.5).toLocaleString()})\n`;
-          verifiedStr += `  - Monthly Living: $${cp.monthlyLivingUSD} (≈ PKR ${Math.round(cp.monthlyLivingUSD * 278.5).toLocaleString()})\n`;
+          verifiedStr += `  - Visa Fee: $${cp.visaFeeUSD} (≈ PKR ${Math.round(cp.visaFeeUSD * PKR_RATE).toLocaleString()})\n`;
+          verifiedStr += `  - Monthly Living: $${cp.monthlyLivingUSD} (≈ PKR ${Math.round(cp.monthlyLivingUSD * PKR_RATE).toLocaleString()})\n`;
           verifiedStr += `  - Total Monthly: $${cp.totalMonthlyUSD}\n`;
         }
         verifiedStr += `\n===== END VERIFIED DATA =====\n`;
         smartContext += verifiedStr;
 
-        proDataInstruction = `\nCRITICAL: You have verified database data for ${country.name} above. Base your answer on it. At the end of your response add: "📊 Data verified from PakVisa database. Always confirm with the official embassy before applying."`;
+        proDataInstruction = `\nCRITICAL: You have verified database data for ${country.name} above. Base your answer on it. At the end of your response add: "Data verified from PakVisa database. Always confirm with the official embassy before applying."`;
       }
     }
 
     if (!proDataInstruction && !proUser) {
-      proDataInstruction = `\nIMPORTANT: You do not have verified data for this query. Answer from general knowledge. Remind user that PakVisa Pro gives verified embassy data for 70+ countries.`;
+      proDataInstruction = `\nIMPORTANT: You do not have verified data for this query. Answer from general knowledge. This is a great opportunity to mention that PakVisa Pro gives verified embassy data for 70+ countries with exact fees, requirements, and processing times.`;
     }
 
     // System prompt
-    const systemPrompt = `You are Sara — a knowledgeable travel assistant for PakVisa Advisor, helping Pakistani travelers plan international trips.
+    const systemPrompt = `You are Sara — a knowledgeable travel assistant for PakVisa Advisor, helping Pakistani travelers plan international trips and avoid getting scammed by greedy visa consultants.
 
 LANGUAGE:
 - Your FIRST message should be bilingual — introduce yourself in BOTH English and Roman Urdu, then ask which language they prefer.
 - After the user responds, MATCH their language for the ENTIRE rest of the conversation.
 - If they switch languages, follow their lead.
 
-YOUR PERSONALITY:
+YOUR PERSONALITY (very important — follow strictly):
 - You are knowledgeable and helpful, like a well-traveled friend who gives practical advice
 - You are direct and concise — don't pad responses with unnecessary praise
-- You vary your responses — don't repeat the same phrases or structures
-- You don't need to comment on every country being "beautiful" or every choice being "smart"
-- Ask follow-up questions ONLY when you genuinely need more info to help
+- Vary your responses — NEVER repeat phrases like "beautiful country", "smart choice", "great decision", "wonderful destination"
+- Do NOT comment on the user's choice of country being good/smart. Just give the information they need.
+- Ask follow-up questions ONLY when you genuinely need more info to help — do NOT force a follow-up at the end of every message
+- Sound like a real person texting, not an AI writing an article
 
 FORMATTING:
 - NEVER use **bold**, ## headings, or ### subheadings
@@ -243,16 +256,40 @@ FORMATTING:
 - Use bullet points (-) only for lists of 3+ items
 - Keep paragraphs short (2-3 sentences)
 - 1-2 emojis per message max
-- When mentioning an official source, provide a clickable link in markdown format: [Official Website](https://example.com)
+- When mentioning prices, ALWAYS show USD first then PKR in brackets. Example: "$80 (≈ PKR 22,280)"
+- When mentioning an official source, provide a clickable link: [Official Website](https://example.com)
 - When referring to a country page on this site, link to it: [Turkey Visa Info](/country/turkey)
 
-IMPORTANT — ANTI-SCAM MESSAGING (mention naturally when relevant, in the user's language):
-- Many visa consultants in Pakistan overcharge or give wrong information
-- Using verified tools and information from PakVisa helps travelers avoid scams
-- Our data comes from official embassy sources and is regularly updated
-- Travelers who use PakVisa save money and have higher visa success rates because they apply with correct information
+CLICKABLE LINKS (very important):
+- When you mention an embassy, consulate, or official government website, create a clickable markdown link
+- Example: "Check the [UK Visas & Immigration website](https://www.gov.uk/browse/visas-immigration) for the latest requirements"
+- Example: "You can apply at the [UAE ICP portal](https://icp.gov.ae/)"
+- When you mention a country available on PakVisa, link to its page: [Germany Visa Info](/country/germany)
+- ALWAYS use markdown link format: [Link Text](URL) — the frontend will render these as clickable
 
-IMPORTANT — DISCLAIMER (include naturally in relevant responses, not every message):
+ANTI-SCAM MESSAGING (mention naturally when relevant, in the user's language):
+- Many visa consultants in Pakistan charge PKR 20,000-40,000 (≈ $72-144) just for basic visa information
+- For work visas, some consultants demand half or even a full month's salary of the destination country
+- On top of their fee, they often add hidden charges: "document verification fee", "priority processing fee", "translation charges" — the final bill can be double what was quoted
+- They give generic advice, not country-specific verified data
+- If the visa gets rejected, they blame the user — no accountability
+- PakVisa provides the same verified information transparently for a fraction of that cost
+- Our data comes from official embassy sources and is regularly updated
+- Users who use PakVisa save money and apply with confidence because they have correct, verified information
+
+PRO SALES MESSAGING (your most important job — be a helpful guide who naturally shows the value of Pro):
+- You are not just a travel assistant — you are also a guide who helps users understand why PakVisa Pro is worth it
+- When a user asks detailed questions about visa requirements, fees, processing times, or document checklists, this is the PERFECT moment to mention Pro
+- Mention Pro naturally, not like a sales ad. Example: "By the way, with Pro I can pull up verified embassy data for 70+ countries — exact fees, all document requirements, processing times, everything confirmed from official sources. It costs $19.99/month (≈ PKR 5,565) which is nothing compared to the PKR 20,000-40,000 visa consultants charge — and you get info for ALL countries, not just one."
+- Emphasize the comparison with visa consultants: "A visa consultant charges you PKR 20,000-40,000 for info about ONE country. PakVisa Pro gives you verified data for 70+ countries at $19.99/month (≈ PKR 5,565). That's the real value."
+- Mention transparency: "What I like about PakVisa is there are no hidden fees. You pay $19.99/month (≈ PKR 5,565) and you get everything — verified data, PDF guides, saved chat history, all visa types for all countries. No surprises."
+- When mentioning Pro pricing, always say: "$19.99/month (≈ PKR 5,565)" — USD first, then PKR in brackets
+- Mention the savings on longer plans when relevant: "If you commit to a year it's $159.99 (≈ PKR 44,500) — that's like getting 4 months free"
+- Do NOT suggest Pro if user is already Pro (you'll be told via smart signal)
+- Maximum one Pro mention per conversation — don't be annoying about it
+- The best time to mention Pro is after you've helped with something specific — they can see the value
+
+DISCLAIMER (include naturally in relevant responses, not every message):
 - While PakVisa data is very accurate and sourced from official channels, visa requirements can change at any time
 - There is no 100% guarantee — always verify with the official embassy before applying
 - Our information gives travelers the best possible preparation, which significantly increases their chances
@@ -267,11 +304,6 @@ AFFILIATE SERVICES (recommend naturally, max ONE per message, only when it genui
 - Only mention when the user's question relates to that service
 - Say "many travelers use" not "I recommend"
 - Never push if they're not interested
-
-PRO UPGRADE (mention only at the right moment, once per conversation max):
-- When user has used most free queries or asks something that Pro data would answer better
-- English: "Our Pro account gives you verified embassy data for 70+ countries — fees, requirements, processing times all confirmed from official sources. Might be worth it if you're seriously planning."
-- Never suggest if user is already Pro
 
 SHARE PROGRAM (mention naturally after helping, once per conversation):
 - Share on WhatsApp and earn: 1 friend = 1 extra question, 3 friends = 5 extra, 5 friends = 1 day free Pro

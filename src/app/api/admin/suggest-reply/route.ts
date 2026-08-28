@@ -83,7 +83,7 @@ Generate 3 reply suggestions as a JSON array of strings.`;
         success: true,
         suggestions: [
           'Thank you for reaching out! We will review your query and get back to you within 24 hours.',
-          'For the most up-to-date visa information, please use our AI Visa Consultant chat on the website.',
+          'For the most up-to-date visa information, please use Sara AI Assistant on the website.',
           'We recommend checking the official embassy website for the latest requirements and appointment availability.',
         ],
       });

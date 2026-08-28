@@ -103,7 +103,7 @@ type MessageFilter = 'all' | 'unread' | 'replied';
 
 const QUICK_REPLIES = [
   'Thank you for reaching out! We will review your query and get back to you within 24 hours.',
-  'For the most up-to-date visa information, please check our website or use the AI Visa Consultant chat.',
+  'For the most up-to-date visa information, please check our website or use Sara AI.',
   'We recommend checking the official embassy/consulate website for the latest requirements and appointment availability.',
   'Your question has been noted. For urgent visa matters, please contact the relevant embassy directly.',
 ];

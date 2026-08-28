@@ -218,6 +218,67 @@ function QuickToolCard({ icon, title, description, colorClass, onClick, badge }:
 }
 
 // ============================================================
+// Compact PDF Download Button (used inside CountryResultCard)
+// ============================================================
+function CountryPdfButton({ code, name }: { code: string; name: string }) {
+  const { user, isAuthenticated } = useAuthStore();
+  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const [generating, setGenerating] = useState(false);
+
+  const handleDownload = async () => {
+    if (!isPro) {
+      window.dispatchEvent(new CustomEvent('open-pricing'));
+      return;
+    }
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/pdf/visa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to generate PDF');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pakvisa-${name.replace(/\s+/g, '-').toLowerCase()}-guide.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF download error:', err);
+    }
+    setGenerating(false);
+  };
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className={isPro
+        ? 'h-7 gap-1.5 text-xs border-emerald-300 dark:border-emerald-700 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'
+        : 'h-7 gap-1.5 text-xs border-amber-300 dark:border-amber-700 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20'
+      }
+      onClick={handleDownload}
+      disabled={generating}
+    >
+      {generating ? (
+        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : isPro ? (
+        <><Download className="w-3 h-3" /> PDF</>
+      ) : (
+        <><Crown className="w-3 h-3" /> PDF</>
+      )}
+    </Button>
+  );
+}
+
+// ============================================================
 // Country Result Card
 // ============================================================
 function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: {
@@ -309,7 +370,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
       {/* Expanded Details - Full Info Panel */}
       {expanded && <CountryDetailPanel country={country} />}
       {expanded && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-3 flex items-center gap-3 flex-wrap">
           <a
             href={`/${CODE_TO_SLUG[country.code] || toSlug(country.name)}`}
             target="_blank"
@@ -318,6 +379,7 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
           >
             View Full Country Guide <ExternalLink className="w-3.5 h-3.5" />
           </a>
+          <CountryPdfButton code={country.code} name={country.name} />
         </div>
       )}
     </Card>
