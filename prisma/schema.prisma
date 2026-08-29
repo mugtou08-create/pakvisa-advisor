@@ -94,13 +94,17 @@ model VisaType {
   maxDuration String   @default("")
   extensions  Boolean  @default(false)
   multipleEntry Boolean @default(false)
+  processingDaysMin Int @default(0)
+  processingDaysMax Int @default(0)
   sourceUrl   String   @default("")
+  verifiedTill String   @default("")
   fetchTimestamp DateTime @default(now())
   parserConfidence Float @default(0.8)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   requirements VisaRequirement[]
+  costProfiles  CostProfile[]
 }
 
 model VisaRequirement {
@@ -131,9 +135,15 @@ model CostProfile {
   id               String   @id @default(cuid())
   countryId        String
   country          Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  visaTypeId       String?
+  visaType         VisaType? @relation(fields: [visaTypeId], references: [id], onDelete: Cascade)
+  @@index([visaTypeId])
+  visaTypeName     String   @default("")
   visaFeeUSD       Float    @default(0)
   serviceFeeUSD    Float    @default(0)
   processingDays   Int      @default(10)
+  processingDaysMin Int     @default(0)
+  processingDaysMax Int     @default(0)
   monthlyLivingUSD Float    @default(1000)
   monthlyRentUSD   Float    @default(500)
   monthlyFoodUSD   Float    @default(300)
@@ -142,6 +152,7 @@ model CostProfile {
   totalMonthlyUSD  Float    @default(1000)
   currency         String   @default("")
   sourceUrl        String   @default("")
+  verifiedTill     String   @default("")
   fetchTimestamp   DateTime @default(now())
   parserConfidence Float    @default(0.8)
   createdAt        DateTime @default(now())
