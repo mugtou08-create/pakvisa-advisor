@@ -38,8 +38,25 @@ export interface VisaTypeData {
   maxDuration: string;
   extensions: boolean;
   multipleEntry: boolean;
+  processingDaysMin: number;
+  processingDaysMax: number;
   sourceUrl: string;
+  verifiedTill: string;
   parserConfidence: number;
+  // Per-visa-type nested data (populated from API)
+  costProfile?: VisaTypeCostData | null;
+  requirements?: VisaRequirementData[];
+}
+
+export interface VisaTypeCostData {
+  id: string;
+  visaFeeUSD: number;
+  serviceFeeUSD: number;
+  processingDaysMin: number;
+  processingDaysMax: number;
+  totalMonthlyUSD: number;
+  currency: string;
+  verifiedTill: string;
 }
 
 export interface VisaRequirementData {

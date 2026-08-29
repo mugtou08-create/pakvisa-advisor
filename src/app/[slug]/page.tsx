@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
+import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
+import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 
 // Force dynamic rendering — pages query the database at request time.
 export const dynamic = 'force-dynamic';
@@ -21,7 +23,7 @@ import Link from 'next/link';
 import {
   Clock, DollarSign, Shield, Calendar, Plane, FileText, Building,
   CheckCircle2, ArrowRight, Globe, Home, ChevronRight, ExternalLink,
-  Thermometer, UtensilsCrossed, Phone, Mail, MapPin, AlertTriangle,
+  Thermometer, UtensilsCrossed, Phone, Mail, MapPin, AlertTriangle, Crown,
 } from 'lucide-react';
 
 // ============================================================
@@ -203,15 +205,33 @@ type CostProfileData = {
   totalMonthlyUSD: number;
 };
 
+type VisaTypeCostData = {
+  visaFeeUSD: number;
+  serviceFeeUSD: number;
+  processingDaysMin: number;
+  processingDaysMax: number;
+  totalMonthlyUSD: number;
+  currency: string;
+  verifiedTill: string;
+};
+
 type VisaTypeData = {
+  id: string;
   type: string;
   description: string;
   maxDuration: string;
   extensions: boolean;
   multipleEntry: boolean;
+  processingDaysMin: number;
+  processingDaysMax: number;
+  sourceUrl: string;
+  verifiedTill: string;
+  costProfile: VisaTypeCostData | null;
+  requirements: VisaRequirementData[];
 };
 
 type VisaRequirementData = {
+  id: string;
   category: string;
   requirement: string;
   mandatory: boolean;
@@ -298,7 +318,13 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   const country = await db.country.findUnique({
     where: { code },
     include: {
-      visaTypes: true,
+      visaTypes: {
+        include: {
+          costProfiles: true,
+          requirements: { orderBy: { category: 'asc' } },
+        },
+        orderBy: { type: 'asc' },
+      },
       costProfiles: true,
       requirements: { orderBy: { category: 'asc' } },
     },
@@ -323,7 +349,34 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   const visaDotClass = getVisaDotClass(country);
   const flagUrl = getFlagUrl(country.code);
   const costProfile = country.costProfiles[0] as CostProfileData | undefined;
-  const visaTypes = country.visaTypes as VisaTypeData[];
+  const visaTypes = (country.visaTypes || []).map((vt: any) => ({
+    id: vt.id,
+    type: vt.type,
+    description: vt.description || '',
+    maxDuration: vt.maxDuration || '',
+    extensions: vt.extensions || false,
+    multipleEntry: vt.multipleEntry || false,
+    processingDaysMin: vt.processingDaysMin || 0,
+    processingDaysMax: vt.processingDaysMax || 0,
+    sourceUrl: vt.sourceUrl || '',
+    verifiedTill: vt.verifiedTill || '',
+    costProfile: vt.costProfiles?.length > 0 ? {
+      visaFeeUSD: vt.costProfiles[0].visaFeeUSD || 0,
+      serviceFeeUSD: vt.costProfiles[0].serviceFeeUSD || 0,
+      processingDaysMin: vt.costProfiles[0].processingDaysMin || 0,
+      processingDaysMax: vt.costProfiles[0].processingDaysMax || 0,
+      totalMonthlyUSD: vt.costProfiles[0].totalMonthlyUSD || 0,
+      currency: vt.costProfiles[0].currency || '',
+      verifiedTill: vt.costProfiles[0].verifiedTill || '',
+    } : null,
+    requirements: (vt.requirements || []).map((r: any) => ({
+      id: r.id,
+      category: r.category || 'Other',
+      requirement: r.requirement || '',
+      mandatory: r.mandatory || false,
+      description: r.description || '',
+    })),
+  })) as VisaTypeData[];
   const requirements = country.requirements as VisaRequirementData[];
   const embassyInfo = EMBASSY_DATA[country.code];
   const isEmbassyRequired = !country.visaFree && !country.visaOnArrival && !country.etaAvailable;
@@ -547,32 +600,33 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
             <section className="max-w-5xl mx-auto px-4 pb-8">
               <SectionTitle icon={<FileText className="w-5 h-5" />} title="Available Visa Types" />
               <div className="grid gap-4 sm:grid-cols-2">
-                {visaTypes.map((vt, i) => (
-                  <div key={i} className="border rounded-lg p-4 bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Plane className="w-4 h-4 text-emerald-600" />
-                      <h3 className="font-semibold">{vt.type}</h3>
-                    </div>
-                    {vt.description && <p className="text-sm text-muted-foreground mb-3">{vt.description}</p>}
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {vt.maxDuration && (
-                        <span className="inline-flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                          <Clock className="w-3 h-3" /> {vt.maxDuration}
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                        {vt.multipleEntry ? 'Multiple Entry' : 'Single Entry'}
-                      </span>
-                      {vt.extensions && (
-                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-1 rounded">
-                          Extensions Available
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                {visaTypes.map((vt) => (
+                  <VisaTypeCard
+                    key={vt.id}
+                    id={vt.id}
+                    type={vt.type}
+                    description={vt.description}
+                    maxDuration={vt.maxDuration}
+                    extensions={vt.extensions}
+                    multipleEntry={vt.multipleEntry}
+                    processingDaysMin={vt.processingDaysMin}
+                    processingDaysMax={vt.processingDaysMax}
+                    sourceUrl={vt.sourceUrl}
+                    verifiedTill={vt.verifiedTill}
+                    isTourist={isTouristVisa(vt.type)}
+                    category={getVisaCategoryLabel(vt.type)}
+                    categoryColor={getVisaCategoryColor(vt.type)}
+                    costProfile={vt.costProfile}
+                    requirements={vt.requirements}
+                  />
                 ))}
               </div>
             </section>
+          )}
+
+          {/* Pro Upgrade Banner — shown when there are non-tourist visa types */}
+          {visaTypes.some((vt) => !isTouristVisa(vt.type)) && (
+            <VisaProBanner />
           )}
 
           {/* Requirements Section */}

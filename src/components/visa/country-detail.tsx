@@ -15,6 +15,22 @@ import {
   EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES,
 } from '@/components/app/constants';
 import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
+import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
+
+/** Map visa category to a CSS color for the left border accent */
+const CATEGORY_BORDER_COLORS: Record<string, string> = {
+  'Tourist': '#34d399',
+  'Work': '#60a5fa',
+  'Study': '#a78bfa',
+  'Business': '#fbbf24',
+  'Family': '#f472b6',
+  'Digital Nomad': '#22d3ee',
+  'Residence': '#fb923c',
+  'Job Seeker': '#2dd4bf',
+  'Transit': '#9ca3af',
+  'Religious': '#a3e635',
+};
+
 
 // ============================================================
 // Live Clock Component
@@ -578,7 +594,9 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
   const travelMonths = country.bestTravelMonths
     ? country.bestTravelMonths.split(',').map((m: string) => m.trim())
     : [];
-  const visaTypes = country.visaTypes?.slice(0, 4) || [];
+  const visaTypes = country.visaTypes || [];
+  const { user, isAuthenticated } = useAuthStore();
+  const isPro = isAuthenticated && user?.role === 'pro' && !!user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
 
   // Parse monthlyTemps safely (may arrive as JSON string from API)
   const parsedMonthlyTemps: Record<string, number> = useMemo(() => {
@@ -721,16 +739,124 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
       {visaTypes.length > 0 && (
         <div>
           <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Available Visa Types</h5>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-2">
             {visaTypes.map((vt2) => {
-              const durationText = vt2.maxDuration ? ' (' + vt2.maxDuration + ')' : '';
+              const isTourist = isTouristVisa(vt2.type);
+              const showFull = isTourist || isPro;
+              const catLabel = getVisaCategoryLabel(vt2.type);
+              const catColor = getVisaCategoryColor(vt2.type);
+
+              // Processing time
+              const pMin = vt2.processingDaysMin || vt2.costProfile?.processingDaysMin;
+              const pMax = vt2.processingDaysMax || vt2.costProfile?.processingDaysMax;
+              const hasProcessing = (pMin && pMin > 0) || (pMax && pMax > 0);
+              const processingText = hasProcessing
+                ? (pMin && pMax && pMin !== pMax
+                    ? `${pMin}–${pMax} days`
+                    : `${pMin || pMax} days`)
+                : '';
+
+              // Fee
+              const feeUSD = vt2.costProfile?.visaFeeUSD;
+              const feeText = feeUSD ? `$${feeUSD} ≈ PKR ${(feeUSD * 278.5).toLocaleString()}` : '';
+
+              // Verified
+              const verifiedTill = vt2.verifiedTill || vt2.costProfile?.verifiedTill;
+
+              const borderColor = CATEGORY_BORDER_COLORS[catLabel] || '#94a3b8';
+
               return (
-              <Badge key={vt2.id} variant="outline" className="text-xs font-normal">
-                {vt2.type}{durationText}
-              </Badge>
+                <div
+                  key={vt2.id}
+                  className={
+                    'rounded-lg border p-2.5 border-l-2' +
+                    (!showFull ? ' cursor-pointer hover:bg-muted/50 transition-colors' : '')
+                  }
+                  style={{ borderLeftColor: borderColor }}
+                  onClick={!showFull ? () => window.dispatchEvent(new CustomEvent('open-pricing')) : undefined}
+                >
+                  {/* Row 1: Name + Duration + Category */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-medium text-xs">{vt2.type}</span>
+                    {vt2.maxDuration && (
+                      <span className="text-[10px] text-muted-foreground">({vt2.maxDuration})</span>
+                    )}
+                    <span className={
+                      'text-[9px] px-1.5 py-0 rounded-full font-medium ' +
+                      catColor
+                    }>
+                      {catLabel}
+                    </span>
+                    {!showFull && (
+                      <>
+                        <Lock className="w-3 h-3 text-muted-foreground ml-auto" />
+                        <span className="flex items-center gap-0.5 text-[9px] text-amber-600 dark:text-amber-400 font-medium ml-1">
+                          <Crown className="w-3 h-3" /> Pro
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {showFull ? (
+                    <>
+                      {/* Row 2: Description */}
+                      {vt2.description && (
+                        <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
+                          {vt2.description.length > 100
+                            ? vt2.description.slice(0, 100) + '…'
+                            : vt2.description}
+                        </p>
+                      )}
+                      {/* Row 3: Processing + Fee */}
+                      {(hasProcessing || feeText) && (
+                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                          {hasProcessing && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              {processingText}
+                            </span>
+                          )}
+                          {feeText && (
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="w-2.5 h-2.5" />
+                              {feeText}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {/* Verified till */}
+                      {verifiedTill && (
+                        <p className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Verified till {verifiedTill}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    /* Locked teaser */
+                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                      Detailed requirements, fees & processing info
+                    </p>
+                  )}
+                </div>
               );
             })}
           </div>
+          {/* Pro upgrade banner */}
+          {visaTypes.some((vt2) => !isTouristVisa(vt2.type)) && !isPro && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-2.5">
+              <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-xs text-amber-800 dark:text-amber-300 font-medium flex-1">
+                Unlock all visa details
+              </span>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-pricing'))}
+                className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-800/50 px-2 py-1 rounded-md hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+              >
+                Upgrade to Pro
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList, Send, User, Loader2, Upload, LogIn } from 'lucide-react';
+import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList, Send, User, Loader2, Upload, LogIn, Lock } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -32,31 +32,44 @@ export function PricingModal({ onClose, onOpenPaymentProof }: { onClose: () => v
     }
   };
 
-  const plans = [
-    { label: 'MONTHLY', price: '$19.99/mo', pkr: '≈ PKR 5,565', highlight: false },
-    { label: '3 MONTHS', price: '$49.99 total', pkr: '≈ PKR 13,919', save: 'Save $10 vs monthly!', highlight: false },
-    { label: '6 MONTHS', price: '$89.99 total', pkr: '≈ PKR 25,058', save: 'Save $30 vs monthly!', highlight: false },
-    { label: '1 YEAR', price: '$159.99 total', pkr: '≈ PKR 44,554', save: 'Save $79.89 — Best Value! ⭐', highlight: true },
+  const PKR = (usd: number) => `PKR ${(usd * 278.5).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+
+  const proFeatures = [
+    { icon: Globe, text: 'All visa types unlocked (Work, Study, Business, Family, Nomad)' },
+    { icon: FileText, text: 'Per-visa-type requirements, fees & processing times' },
+    { icon: MessageCircle, text: 'Unlimited AI chat with Sara' },
+    { icon: ClipboardList, text: 'Full document checklists' },
+    { icon: BarChart3, text: 'Country comparison tool' },
+    { icon: Lock, text: 'Visa rule change alerts (coming soon)', disabled: true },
   ];
+
+  const guideFeatures = [
+    { icon: BookOpen, text: 'Full guide for 1 country only' },
+    { icon: Globe, text: 'All visa types for that country' },
+    { icon: ClipboardList, text: 'Document checklist' },
+    { icon: MessageCircle, text: '5 AI chat messages' },
+  ];
+
+  const ctaLabel = isAuthenticated ? 'Upload Payment Proof' : 'Login to Get Pro';
+  const CtaIcon = isAuthenticated ? Upload : LogIn;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
 
       {/* Card */}
-      <div className="relative w-full max-w-2xl bg-card rounded-2xl border flex flex-col max-h-[90vh]">
-        {/* Header with close button */}
+      <div className="relative w-full max-w-4xl bg-card rounded-2xl border flex flex-col max-h-[90vh]">
+        {/* Header */}
         <div className="flex items-center justify-between p-5 pb-3 shrink-0 border-b">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-amber-500/10">
               <Crown className="h-5 w-5 text-amber-500" />
             </div>
-            <h2 className="text-lg font-bold">PakVisa Pro</h2>
+            <div>
+              <h2 className="text-lg font-bold leading-tight">Choose Your Plan</h2>
+              <p className="text-xs text-muted-foreground">Unlock premium visa advisory features</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -68,166 +81,156 @@ export function PricingModal({ onClose, onOpenPaymentProof }: { onClose: () => v
         </div>
 
         {/* Scrollable content */}
-        <div className="overflow-y-auto p-5 pt-4 space-y-6">
-          {/* Intro text */}
-          <p className="text-sm text-muted-foreground text-center">
-            Everything you need for stress-free visa applications
-          </p>
-
-          {/* Price deal banner */}
-          <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-center">
-            <p className="text-sm text-muted-foreground line-through">Normally $39.99/month</p>
-            <p className="text-base font-bold text-amber-700 dark:text-amber-400 mt-1">
-              Your first year: only <span className="text-2xl">$19.99/month</span>
-            </p>
-          </div>
-
-          {/* Plan cards grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {plans.map((plan) => (
-              <div
-                key={plan.label}
-                className={`rounded-xl border p-3 text-center transition-all ${
-                  plan.highlight
-                    ? 'border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/20 ring-2 ring-amber-400/50 relative'
-                    : 'border-border hover:border-amber-300 dark:hover:border-amber-700'
-                }`}
-              >
-                {plan.highlight && (
-                  <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] px-2 py-0.5 shadow-sm">
-                    Best Value
-                  </Badge>
-                )}
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                  {plan.label}
+        <div className="overflow-y-auto p-5 pt-4">
+          {/* Already Pro Banner */}
+          {isAlreadyPro && (
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 mb-6 flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-emerald-700 dark:text-emerald-400">You are already a Pro member!</p>
+                <p className="text-sm text-muted-foreground">
+                  Expires on {user?.proExpiresAt ? new Date(user.proExpiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
                 </p>
-                <p className={`text-lg font-bold ${plan.highlight ? 'text-amber-700 dark:text-amber-400' : ''}`}>
-                  {plan.price}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{plan.pkr}</p>
-                {plan.save && (
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-                    {plan.save}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Feature list */}
-          <div className="space-y-4">
-            {/* Sara AI features */}
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Sara AI Assistant</p>
-              <ul className="space-y-2.5">
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="text-sm">25 AI questions per day, 200 per month with Sara</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="text-sm">Save &amp; revisit chat history</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="text-sm">Verified embassy data for 70+ countries</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="text-sm">Natural conversation in English and Urdu</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Documents & Downloads */}
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Documents &amp; Downloads</p>
-              <ul className="space-y-2.5">
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="text-sm">Full document checklist for every country</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="text-sm">Download visa requirements as PDF</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Planning Tools */}
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Planning Tools</p>
-              <ul className="space-y-2.5">
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                  <span className="text-sm">Save unlimited favorites &amp; compare countries</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Anti-scam comparison */}
-          <div className="rounded-xl border p-4">
-            <p className="text-sm font-semibold text-center mb-3">Visa Consultant vs PakVisa Pro</p>
-            <div className="grid grid-cols-2 gap-3">
-              {/* Consultant column */}
-              <div className="space-y-2.5">
-                <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider">Visa Consultant</p>
-                <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5 shrink-0">✕</span> PKR 20,000–40,000 per country</li>
-                  <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5 shrink-0">✕</span> Hidden fees common</li>
-                  <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5 shrink-0">✕</span> Generic advice</li>
-                  <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5 shrink-0">✕</span> No accountability</li>
-                  <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5 shrink-0">✕</span> Office hours only</li>
-                </ul>
-              </div>
-              {/* PakVisa Pro column */}
-              <div className="space-y-2.5">
-                <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">PakVisa Pro</p>
-                <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" /> $19.99/month (≈ PKR 5,565) for ALL countries</li>
-                  <li className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" /> No hidden fees</li>
-                  <li className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" /> Verified official data</li>
-                  <li className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" /> Self-service anytime</li>
-                  <li className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" /> 24/7 access with Sara AI</li>
-                </ul>
               </div>
             </div>
-          </div>
-
-          {/* CTA Button */}
-          {isAlreadyPro ? (
-            <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <span className="font-semibold text-emerald-700 dark:text-emerald-400">You are already a Pro member!</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Your Pro access expires on {user?.proExpiresAt ? new Date(user.proExpiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
-              </p>
-              <Button className="mt-3" variant="outline" onClick={onClose}>Close</Button>
-            </div>
-          ) : (
-            <>
-              <Button className="w-full" size="lg" onClick={handleGetPro}>
-                {isAuthenticated ? (
-                  <><Upload className="h-4 w-4 mr-2" /> Upload Payment Proof</>
-                ) : (
-                  <><LogIn className="h-4 w-4 mr-2" /> Login to Get Pro</>
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                {isAuthenticated
-                  ? 'Upload your bank transfer screenshot. We\'ll verify and activate Pro within 24 hours.'
-                  : 'Create a free account first, then upload your payment proof to get Pro.'}
-              </p>
-            </>
           )}
 
-          {/* Free plan link */}
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+            {/* Pro Monthly */}
+            <div className="relative rounded-xl border bg-card p-5 flex flex-col">
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-semibold">Pro Monthly</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Billed monthly, cancel anytime</p>
+              </div>
+
+              <div className="mb-5">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold">$9.99</span>
+                  <span className="text-sm text-muted-foreground">/month</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">≈ {PKR(9.99)}/month</p>
+              </div>
+
+              <ul className="space-y-2.5 mb-6 flex-1">
+                {proFeatures.map((f) => (
+                  <li key={f.text} className="flex items-start gap-2.5">
+                    <f.icon className={`h-4 w-4 mt-0.5 shrink-0 ${f.disabled ? 'text-muted-foreground/40' : 'text-emerald-500'}`} />
+                    <span className={`text-sm ${f.disabled ? 'text-muted-foreground/60' : ''}`}>{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={handleGetPro}
+                disabled={isAlreadyPro}
+              >
+                {isAlreadyPro ? 'Active' : <><CtaIcon className="h-4 w-4 mr-2" />{ctaLabel}</>}
+              </Button>
+            </div>
+
+            {/* Pro Annual — Highlighted */}
+            <div className="relative rounded-xl border-2 border-emerald-500 dark:border-emerald-400 bg-card p-5 flex flex-col shadow-lg shadow-emerald-500/10 dark:shadow-emerald-400/5">
+              {/* Ribbon */}
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                  <Star className="h-3 w-3 mr-1" />
+                  Most Popular
+                </Badge>
+              </div>
+
+              <div className="mb-4 mt-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Crown className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm font-semibold">Pro Annual</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Billed once per year</p>
+              </div>
+
+              <div className="mb-5">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold">$79.99</span>
+                  <span className="text-sm text-muted-foreground">/year</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs text-muted-foreground">≈ {PKR(79.99)}/year</p>
+                  <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
+                    Save 33%
+                  </Badge>
+                </div>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">Effective $6.66/mo</p>
+              </div>
+
+              <ul className="space-y-2.5 mb-6 flex-1">
+                {proFeatures.map((f) => (
+                  <li key={f.text} className="flex items-start gap-2.5">
+                    <f.icon className={`h-4 w-4 mt-0.5 shrink-0 ${f.disabled ? 'text-muted-foreground/40' : 'text-emerald-500'}`} />
+                    <span className={`text-sm ${f.disabled ? 'text-muted-foreground/60' : ''}`}>{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleGetPro}
+                disabled={isAlreadyPro}
+              >
+                {isAlreadyPro ? 'Active' : <><CtaIcon className="h-4 w-4 mr-2" />{ctaLabel}</>}
+              </Button>
+            </div>
+
+            {/* Country Guide — One-Time */}
+            <div className="relative rounded-xl border bg-card p-5 flex flex-col">
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <BookOpen className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-semibold">Country Guide</span>
+                </div>
+                <p className="text-xs text-muted-foreground">One-time purchase, no subscription</p>
+              </div>
+
+              <div className="mb-5">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold">$4.99</span>
+                  <span className="text-sm text-muted-foreground">one-time</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">≈ {PKR(4.99)}</p>
+              </div>
+
+              <ul className="space-y-2.5 mb-6 flex-1">
+                {guideFeatures.map((f) => (
+                  <li key={f.text} className="flex items-start gap-2.5">
+                    <f.icon className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
+                    <span className="text-sm">{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={handleGetPro}
+              >
+                <><CtaIcon className="h-4 w-4 mr-2" />{ctaLabel}</>
+              </Button>
+            </div>
+          </div>
+
+          {/* Bottom note */}
+          <p className="text-xs text-muted-foreground text-center mt-5">
+            {isAuthenticated
+              ? 'Upload your bank transfer screenshot. We\'ll verify and activate within 24 hours.'
+              : 'Create a free account first, then choose a plan and upload your payment proof.'}
+          </p>
+
           <button
             onClick={onClose}
-            className="block mx-auto text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+            className="block mx-auto mt-3 text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
           >
             Continue with Free Plan
           </button>
@@ -246,7 +249,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
     { num: 1, title: 'Search or Browse Countries', desc: 'Use the search bar at the top to type any country name, or scroll down to browse all 70+ destinations in the country list.', icon: Search },
     { num: 2, title: 'Apply Filters', desc: 'Use the Region filter (Asia, Middle East, Europe, etc.) and the Access Type filter (Visa Free, Visa on Arrival, e-Visa, Embassy) to narrow results. Use Sort to order by name, cost, speed, or safety.', icon: BarChart3 },
     { num: 3, title: 'Expand a Country Card', desc: 'Click any country row to reveal detailed info: visa types available, document requirements, processing time, visa fee, monthly living cost, embassy contact, and best travel months.', icon: Globe },
-    { num: 4, title: 'Use Quick Tools', desc: 'Open Sara AI Assistant for personalized Q&A, the Visa Quiz for tailored recommendations, or Compare Countries to see up to 3 destinations side by side.', icon: Zap },
+    { num: 4, title: 'Use Quick Tools', desc: 'Open AI Visa Consultant for personalized Q&A, the Visa Quiz for tailored recommendations, or Compare Countries to see up to 3 destinations side by side.', icon: Zap },
     { num: 5, title: 'Save Favorites', desc: 'Click the heart icon on any country card to save it to your favorites. Use the Favorites filter to see your saved list anytime.', icon: Heart },
   ];
 
@@ -265,7 +268,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
     { term: 'Region Filter', icon: MapPin, color: 'text-indigo-500', definition: 'Groups countries by geographic area: Asia, Middle East, Africa, Europe, Americas, and Oceania. Select a region to see only countries in that area.' },
     { term: 'Favorites', icon: Heart, color: 'text-rose-500', definition: 'A personal bookmark system. Click the heart icon on any country to add/remove it from your favorites list. Favorites are saved in your browser and persist across sessions.' },
     { term: 'Compare Tool', icon: BarChart3, color: 'text-cyan-500', definition: 'A feature that lets you select up to 3 countries and view their visa requirements, fees, processing times, safety ratings, and costs side by side in a comparison table.' },
-    { term: 'Sara AI', icon: MessageCircle, color: 'text-violet-500', definition: 'An AI-powered chat assistant that can answer your specific visa questions, explain requirements, suggest countries based on your preferences, and guide you through the application process.' },
+    { term: 'AI Visa Consultant', icon: MessageCircle, color: 'text-violet-500', definition: 'An AI-powered chat assistant that can answer your specific visa questions, explain requirements, suggest countries based on your preferences, and guide you through the application process.' },
     { term: 'Visa Quiz', icon: ClipboardList, color: 'text-lime-500', definition: 'A short questionnaire that asks about your travel purpose, budget, timeline, and preferences, then recommends the best countries and visa options for your specific situation.' },
     { term: 'Schengen Area', icon: Globe, color: 'text-blue-500', definition: 'A zone of 27 European countries with a single visa policy. One Schengen visa allows travel across all member states. Pakistani citizens must apply for a Schengen visa at the embassy of their main destination.' },
     { term: 'Passport Power Ranking', icon: Award, color: 'text-amber-500', definition: 'A global ranking (Henley Passport Index) that scores passports based on the number of destinations their holders can visit without a visa. Pakistan is currently ranked around #106 globally.' },
@@ -298,7 +301,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         'Click the Saudi Arabia card to expand details. You\'ll see it offers an <b>e-Visa</b> for tourism/Umrah.',
         'Review the document requirements listed (passport photos, bank statements, travel itinerary).',
         'Check the <b>visa fee</b> (shown in USD with PKR conversion) and <b>processing time</b> (typically 3–7 days).',
-        'For personalized guidance, open <b>Sara AI</b> and ask "What documents do I need for Saudi e-Visa as a Pakistani?"',
+        'For personalized guidance, open the <b>AI Visa Consultant</b> and ask "What documents do I need for Saudi e-Visa as a Pakistani?"',
       ],
       tip: 'Apply for the Saudi e-Visa at least 2 weeks before your planned travel date. The e-Visa portal is official and straightforward.'
     },
@@ -312,7 +315,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         'Click any European country card (e.g., Germany, France, Spain) to see <b>embassy contact details</b>, processing times, and requirements.',
         'Note the <b>processing time</b> (usually 15–30 days) and plan to apply at least 6 weeks in advance.',
         'Review the full requirements list including bank statements, employment letter, travel insurance, and hotel bookings.',
-        'Use <b>Sara AI</b> to ask specific questions like "What is the Schengen visa process for Pakistanis?"',
+        'Use the <b>AI Visa Consultant</b> to ask specific questions like "What is the Schengen visa process for Pakistanis?"',
       ],
       tip: 'A single Schengen visa lets you visit 27 European countries. Apply at the embassy of the country where you\'ll spend the most time.'
     },
@@ -340,7 +343,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         'Search for specific countries (e.g., UK, Australia, Germany) and review their embassy requirements for student/work visas.',
         'Check <b>processing times</b> carefully — student visas for countries like Australia or Canada can take 30–60 days.',
         'Click expanded country cards to find <b>embassy addresses in Islamabad</b>, phone numbers, and official websites for applications.',
-        'Ask <b>Sara AI</b> specific questions like "What are the requirements for a UK student visa as a Pakistani?" for detailed guidance.',
+        'Ask the <b>AI Visa Consultant</b> specific questions like "What are the requirements for a UK student visa as a Pakistani?" for detailed guidance.',
       ],
       tip: 'For study visas, always verify requirements directly with the embassy website — requirements change frequently and vary by program.',
     },
@@ -382,7 +385,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         'Click the country card and review the <b>embassy details</b> — address in Islamabad, phone, and official appointment link.',
         'Check <b>processing time</b> carefully — countries like USA/UK can take 4–8 weeks. Plan well in advance.',
         'Review the <b>document requirements</b> — family visits typically need an invitation letter, sponsor documents, and proof of relationship.',
-        'Use <b>Sara AI</b> and ask: "What documents do I need for a family visit visa to [country] as a Pakistani?"',
+        'Use the <b>AI Visa Consultant</b> and ask: "What documents do I need for a family visit visa to [country] as a Pakistani?"',
       ],
       tip: 'For family visit visas, a formal invitation letter from your host and proof of their legal status in the destination country are usually mandatory.',
     },

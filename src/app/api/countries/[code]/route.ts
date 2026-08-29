@@ -18,8 +18,14 @@ export async function GET(
     const country = await db.country.findUnique({
       where: { code: code.toUpperCase() },
       include: {
-        visaTypes: true,
-        requirements: true,
+        visaTypes: {
+          include: {
+            costProfiles: true,
+            requirements: { orderBy: { category: 'asc' } },
+          },
+          orderBy: { type: 'asc' },
+        },
+        requirements: { orderBy: { category: 'asc' } },
         costProfiles: true,
       },
     });
@@ -38,9 +44,48 @@ export async function GET(
     } catch {
       monthlyTemps = country.monthlyTemps;
     }
+
+    // Attach per-visa-type cost and requirements
+    const visaTypesFormatted = country.visaTypes.map((vt) => ({
+      id: vt.id,
+      type: vt.type,
+      description: vt.description,
+      maxDuration: vt.maxDuration,
+      extensions: vt.extensions,
+      multipleEntry: vt.multipleEntry,
+      processingDaysMin: vt.processingDaysMin,
+      processingDaysMax: vt.processingDaysMax,
+      sourceUrl: vt.sourceUrl,
+      verifiedTill: vt.verifiedTill,
+      parserConfidence: vt.parserConfidence,
+      costProfile: vt.costProfiles.length > 0 ? {
+        id: vt.costProfiles[0].id,
+        visaFeeUSD: vt.costProfiles[0].visaFeeUSD,
+        serviceFeeUSD: vt.costProfiles[0].serviceFeeUSD,
+        processingDaysMin: vt.costProfiles[0].processingDaysMin,
+        processingDaysMax: vt.costProfiles[0].processingDaysMax,
+        totalMonthlyUSD: vt.costProfiles[0].totalMonthlyUSD,
+        currency: vt.costProfiles[0].currency,
+        verifiedTill: vt.costProfiles[0].verifiedTill,
+      } : null,
+      requirements: vt.requirements.map((r) => ({
+        id: r.id,
+        category: r.category,
+        requirement: r.requirement,
+        mandatory: r.mandatory,
+        description: r.description,
+        scoringWeight: r.scoringWeight,
+        sourceUrl: r.sourceUrl,
+        parserConfidence: r.parserConfidence,
+        needsReview: r.needsReview,
+      })),
+    }));
+
     const formattedCountry = {
       ...country,
       monthlyTemps,
+      visaTypes: visaTypesFormatted,
+      costProfile: country.costProfiles.length > 0 ? country.costProfiles[0] : null,
     };
 
     return NextResponse.json({
