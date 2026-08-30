@@ -2767,3 +2767,28 @@ Stage Summary:
 Unresolved:
 - Need to fix Turkey 'Tourist Visa' (34ch, no reqs) — incomplete data entry
 - Need to fix Thailand 'Visa on Arrival' (22ch, no reqs) — incomplete data entry
+---
+Task ID: visa-detail-sidebar-fix
+Agent: Main Agent
+Task: Fix visa type detailed info display and pricing in sidebar panel
+
+Work Log:
+- Identified root cause: page.tsx loaded visa types with `visaTypes: true` (flat) instead of including nested costProfiles and requirements
+- Fixed page.tsx: Changed include to `visaTypes: { include: { costProfiles: true, requirements: { orderBy: { category: 'asc' } } }, orderBy: { type: 'asc' } }`
+- Added processingDaysMin/Max, verifiedTill, costProfile, requirements to visa type mapping in page.tsx
+- Rewrote visa type rendering in country-detail.tsx:
+  - Added expandable "Details" button per visa type (Eye/EyeOff icons)
+  - Expanded view shows: full description, info grid (processing, visa fee, service fee, monthly cost), verified date, document checklist grouped by category with Required/Optional badges, official source link
+  - Non-Pro users see blur/lock overlay with "Pro Feature" CTA and "View from $4.99" button
+  - Non-tourist types for non-Pro users show Lock + Pro badge, clicking dispatches open-pricing event
+- Updated Pro upgrade banner with correct pricing: "from $4.99", "Pro: $9.99/mo · Annual: $79.99/yr (save 33%)"
+- Verified pricing modal shows correct tiers: $9.99/mo, $79.99/yr, $4.99 country guide
+- Verified admin (pakvisa-admin-token) gets full Pro access - no Lock/Pro badges, full details visible
+- Verified non-Pro users see Pro gating with blur overlay and pricing CTA
+
+Stage Summary:
+- Server-side data loading now includes all per-visa-type data
+- Sidebar visa type cards are fully interactive with expand/collapse
+- Pro gating works correctly for both admin and free users
+- Pricing consistently shows $9.99/mo, $79.99/yr, $4.99 across all touchpoints
+- Committed and pushed as 3d76d51
