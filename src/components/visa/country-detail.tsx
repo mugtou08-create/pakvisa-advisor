@@ -759,10 +759,15 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
               // Fee
               const feeUSD = vt2.costProfile?.visaFeeUSD;
-              const feeText = feeUSD ? `$${feeUSD} ≈ PKR ${(feeUSD * 278.5).toLocaleString()}` : '';
+              const feeText = feeUSD ? `$${feeUSD} (≈ PKR ${Math.round(feeUSD * 278.5).toLocaleString()})` : '';
+              const monthlyLiving = vt2.costProfile?.totalMonthlyUSD;
 
               // Verified
               const verifiedTill = vt2.verifiedTill || vt2.costProfile?.verifiedTill;
+
+              // Per-visa-type requirements
+              const vtReqs = vt2.requirements || [];
+              const mandatoryReqs = vtReqs.filter(r => r.mandatory).length;
 
               const borderColor = CATEGORY_BORDER_COLORS[catLabel] || '#94a3b8';
 
@@ -800,12 +805,10 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
                   {showFull ? (
                     <>
-                      {/* Row 2: Description */}
+                      {/* Row 2: Description — full for Pro/admin */}
                       {vt2.description && (
-                        <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
-                          {vt2.description.length > 100
-                            ? vt2.description.slice(0, 100) + '…'
-                            : vt2.description}
+                        <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                          {showFull ? vt2.description : (vt2.description.length > 100 ? vt2.description.slice(0, 100) + '…' : vt2.description)}
                         </p>
                       )}
                       {/* Row 3: Processing + Fee */}
@@ -828,9 +831,29 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
                       {/* Verified till */}
                       {verifiedTill && (
                         <p className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <ShieldCheck className="w-2.5 h-2.5" />
                           Verified till {verifiedTill}
                         </p>
+                      )}
+                      {/* Monthly living cost */}
+                      {showFull && monthlyLiving && monthlyLiving > 0 && (
+                        <p className="text-[9px] text-muted-foreground mt-1 flex items-center gap-1">
+                          <DollarSign className="w-2.5 h-2.5" />
+                          Est. ${monthlyLiving}/month (≈ PKR {Math.round(monthlyLiving * 278.5).toLocaleString()})
+                        </p>
+                      )}
+                      {/* Requirement count */}
+                      {showFull && vtReqs.length > 0 && (
+                        <p className="text-[9px] text-muted-foreground mt-1 flex items-center gap-1">
+                          <ClipboardList className="w-2.5 h-2.5" />
+                          {mandatoryReqs} required{vtReqs.length > mandatoryReqs ? `, ${vtReqs.length - mandatoryReqs} optional` : ''} documents
+                        </p>
+                      )}
+                      {/* Source link */}
+                      {showFull && vt2.sourceUrl && (
+                        <a href={vt2.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[9px] text-muted-foreground hover:text-foreground mt-1 inline-flex items-center gap-0.5 transition-colors">
+                          Source <ExternalLink className="w-2 h-2" />
+                        </a>
                       )}
                     </>
                   ) : (
