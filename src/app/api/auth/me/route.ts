@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'User not found or inactive' }, { status: 401 });
     }
 
-    // Auto-downgrade expired pro
+    // Auto-downgrade expired pro (admin role is never downgraded — admins use separate login)
     let currentRole = user.role;
     let currentProExpiresAt = user.proExpiresAt;
     if (user.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) < new Date()) {

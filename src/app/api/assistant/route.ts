@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
     } catch { /* continue as anonymous */ }
 
     // Rate limiting
-    if (proUser) {
+    const isAdmin = authUser?.role === 'admin';
+    if (isAdmin) {
+      // Admin: no rate limits, no usage logging needed
+    } else if (proUser) {
       // Pro users: DB-based daily + monthly limit
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -126,7 +129,9 @@ export async function POST(request: NextRequest) {
 
     // Calculate remaining queries
     let remainingQueries = 0;
-    if (proUser) {
+    if (isAdmin) {
+      remainingQueries = -1; // -1 = unlimited
+    } else if (proUser) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
@@ -174,15 +179,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (proUser) {
-      smartContext += `\nSMART SIGNAL - User is a Pro member. Do NOT suggest Pro upgrade. Focus on helpful tips and affiliate services.`;
+    if (proUser || isAdmin) {
+      smartContext += `\nSMART SIGNAL - User is a ${isAdmin ? 'site admin' : 'Pro member'}. Do NOT suggest Pro upgrade. Focus on helpful tips and affiliate services.`;
     }
 
     // Country detection + Pro data injection
     let proDataInstruction = '';
     const detectedCountries = detectCountries(message);
 
-    if (proUser && detectedCountries.length > 0) {
+    if ((proUser || isAdmin) && detectedCountries.length > 0) {
       const countryCode = detectedCountries[0];
       const country = await db.country.findUnique({
         where: { code: countryCode },
@@ -230,7 +235,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!proDataInstruction && !proUser) {
+    if (!proDataInstruction && !proUser && !isAdmin) {
       proDataInstruction = `\nIMPORTANT: You do not have verified data for this query. Answer from general knowledge. This is a great opportunity to mention that PakVisa Pro gives verified embassy data for 70+ countries with exact fees, requirements, and processing times.`;
     }
 

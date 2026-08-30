@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
     }
 
+    // Auto-downgrade expired pro (admin role is never downgraded — handled by getUserFromRequest for API calls, and admins use a separate login system)
     let currentRole = user.role;
     let currentProExpiresAt = user.proExpiresAt;
     if (user.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) < new Date()) {
