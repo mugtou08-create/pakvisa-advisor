@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { X, Crown, Check, CheckCircle2, Globe, Shield, Mail, MessageCircle, HelpCircle, BookOpen, Compass, Lightbulb, Keyboard, Plane, DollarSign, Clock, Star, MapPin, Heart, ArrowRight, Search, BarChart3, Zap, Building, FileText, Award, ClipboardList, Send, User, Loader2, Upload, LogIn, Lock } from 'lucide-react';
-import { useAuthStore } from '@/lib/auth-store';
+import { useAuthStore, isProUser } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 
 export function PricingModal({ onClose, onOpenPaymentProof }: { onClose: () => void; onOpenPaymentProof?: () => void }) {
   const { isAuthenticated, user } = useAuthStore();
-  const isAlreadyPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const isAlreadyPro = isProUser(user);
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };

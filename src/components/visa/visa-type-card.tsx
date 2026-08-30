@@ -15,7 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@/lib/auth-store';
+import { useAuthStore, isProUser } from '@/lib/auth-store';
 import type { VisaTypeCostData, VisaRequirementData } from '@/lib/types';
 
 const PKR_RATE = 278.5;
@@ -68,8 +68,8 @@ export function VisaTypeCard({
   requirements,
 }: VisaTypeCardProps) {
   const [reqsExpanded, setReqsExpanded] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
-  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const { user } = useAuthStore();
+  const isPro = isProUser(user);
   const showProOverlay = !isTourist && !isPro;
 
   const hasProcessing = processingDaysMin > 0 || processingDaysMax > 0;
@@ -289,8 +289,8 @@ export function VisaTypeCard({
 }
 
 export function VisaProBanner() {
-  const { isAuthenticated, user } = useAuthStore();
-  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const { user } = useAuthStore();
+  const isPro = isProUser(user);
 
   if (isPro) return null;
 

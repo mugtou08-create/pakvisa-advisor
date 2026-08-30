@@ -16,6 +16,7 @@ import {
 } from '@/components/app/constants';
 import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
+import { isProUser } from '@/lib/auth-store';
 
 /** Map visa category to a CSS color for the left border accent */
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
@@ -595,8 +596,8 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
     ? country.bestTravelMonths.split(',').map((m: string) => m.trim())
     : [];
   const visaTypes = country.visaTypes || [];
-  const { user, isAuthenticated } = useAuthStore();
-  const isPro = isAuthenticated && user?.role === 'pro' && !!user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const { user } = useAuthStore();
+  const isPro = isProUser(user);
 
   // Parse monthlyTemps safely (may arrive as JSON string from API)
   const parsedMonthlyTemps: Record<string, number> = useMemo(() => {
@@ -893,9 +894,9 @@ function FullDocumentChecklist({
   requirements: { id: string; category: string; requirement: string; mandatory: boolean; description?: string }[];
   countryName: string;
 }) {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
   const [expanded, setExpanded] = useState(false);
-  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const isPro = isProUser(user);
 
   // Group requirements by category
   const grouped = useMemo(() => {
@@ -988,8 +989,8 @@ function FullDocumentChecklist({
 // Download Country Guide (Pro Feature)
 // ============================================================
 function DownloadCountryGuide({ country }: { country: CountryData }) {
-  const { user, isAuthenticated } = useAuthStore();
-  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const { user } = useAuthStore();
+  const isPro = isProUser(user);
   const [generating, setGenerating] = useState(false);
 
   const handleDownload = async () => {

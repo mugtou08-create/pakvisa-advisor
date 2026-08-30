@@ -16,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from 'next-themes';
 import { useAppStore } from '@/lib/store';
-import { useAuthStore } from '@/lib/auth-store';
+import { useAuthStore, isProUser } from '@/lib/auth-store';
 import type { CountryData, CostProfileData } from '@/lib/types';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
 import dynamic from 'next/dynamic';
@@ -221,8 +221,8 @@ function QuickToolCard({ icon, title, description, colorClass, onClick, badge }:
 // Compact PDF Download Button (used inside CountryResultCard)
 // ============================================================
 function CountryPdfButton({ code, name }: { code: string; name: string }) {
-  const { user, isAuthenticated } = useAuthStore();
-  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const { user } = useAuthStore();
+  const isPro = isProUser(user);
   const [generating, setGenerating] = useState(false);
 
   const handleDownload = async () => {
@@ -423,7 +423,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
   const setIsProUser = useAppStore((s) => s.setIsProUser);
   useEffect(() => {
     if (isAuthenticated && user) {
-      const isPro = !!(user.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date());
+      const isPro = isProUser(user);
       setIsProUser(isPro);
     } else {
       setIsProUser(false);
@@ -457,7 +457,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   // Back to top
-  const isUserPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const isUserPro = isProUser(user);
   const [showBackToTop, setShowBackToTop] = useState(false);
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 600);

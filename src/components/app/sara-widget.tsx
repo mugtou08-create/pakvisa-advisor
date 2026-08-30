@@ -5,7 +5,7 @@ import {
   Minus, Bookmark, Gift, Crown, Share2,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
-import { useAuthStore } from '@/lib/auth-store';
+import { useAuthStore, isProUser } from '@/lib/auth-store';
 import { AFFILIATE_CONFIG } from '@/lib/affiliate-config';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -161,7 +161,7 @@ export function SaraWidget() {
   }, [checkAuth]);
 
   // Check if user is Pro via auth store
-  const isPro = isAuthenticated && user?.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  const isPro = isProUser(user);
 
   // Load saved chat for Pro users on mount
   useEffect(() => {

@@ -50,3 +50,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+/**
+ * Check if the current user has Pro-level access.
+ * Returns true if:
+ *  - An admin session exists (owner/admin always has full access)
+ *  - The user object has role 'admin'
+ *  - The user object has role 'pro' AND proExpiresAt is a future date
+ */
+export function isProUser(user: AuthState['user']): boolean {
+  // Check for admin panel session (separate auth system)
+  if (typeof window !== 'undefined' && localStorage.getItem('pakvisa-admin-token')) {
+    return true;
+  }
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return user.role === 'pro' && !!user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+}

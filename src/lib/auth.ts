@@ -6,7 +6,7 @@ export interface AuthUser {
   email: string;
   fullName: string;
   phone: string;
-  role: 'free' | 'pro';
+  role: 'free' | 'pro' | 'admin';
   proExpiresAt: string | null;
 }
 
@@ -51,5 +51,6 @@ export async function getUserFromRequest(request?: Request): Promise<AuthUser | 
 
 export function isProUser(user: AuthUser | null): boolean {
   if (!user) return false;
-  return user.role === 'pro' && user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  if (user.role === 'admin') return true;
+  return user.role === 'pro' && !!user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
 }
