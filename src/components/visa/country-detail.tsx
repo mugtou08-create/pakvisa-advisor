@@ -5,7 +5,7 @@ import {
   Clock, Globe, DollarSign, Languages, Plug, Phone, Droplets, UtensilsCrossed,
   Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
   Calculator, ChevronDown, ChevronUp, AlertTriangle, Banknote, ArrowRightLeft,
-  FileText, Plane, Lock, Crown, CheckCircle2, ClipboardList, Download,
+  FileText, Plane, Lock, Crown, CheckCircle2, ClipboardList, Download, Eye, EyeOff,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
@@ -598,6 +598,7 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
   const visaTypes = country.visaTypes || [];
   const { user } = useAuthStore();
   const isPro = isProUser(user);
+  const [expandedVisa, setExpandedVisa] = useState<string | null>(null);
 
   // Parse monthlyTemps safely (may arrive as JSON string from API)
   const parsedMonthlyTemps: Record<string, number> = useMemo(() => {
@@ -744,6 +745,7 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
             {visaTypes.map((vt2) => {
               const isTourist = isTouristVisa(vt2.type);
               const showFull = isTourist || isPro;
+              const isExpanded = expandedVisa === vt2.id;
               const catLabel = getVisaCategoryLabel(vt2.type);
               const catColor = getVisaCategoryColor(vt2.type);
 
@@ -759,7 +761,9 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
               // Fee
               const feeUSD = vt2.costProfile?.visaFeeUSD;
+              const serviceFeeUSD = vt2.costProfile?.serviceFeeUSD;
               const feeText = feeUSD ? `$${feeUSD} (≈ PKR ${Math.round(feeUSD * 278.5).toLocaleString()})` : '';
+              const serviceFeeText = serviceFeeUSD ? `$${serviceFeeUSD}` : '';
               const monthlyLiving = vt2.costProfile?.totalMonthlyUSD;
 
               // Verified
@@ -771,18 +775,35 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
               const borderColor = CATEGORY_BORDER_COLORS[catLabel] || '#94a3b8';
 
+              // Group requirements by category
+              const reqByCategory = vtReqs.reduce<Record<string, typeof vtReqs>>((acc, r) => {
+                const cat = r.category || 'Other';
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(r);
+                return acc;
+              }, {});
+
               return (
                 <div
                   key={vt2.id}
                   className={
-                    'rounded-lg border p-2.5 border-l-2' +
-                    (!showFull ? ' cursor-pointer hover:bg-muted/50 transition-colors' : '')
+                    'rounded-lg border border-l-2 transition-all' +
+                    (isExpanded ? ' ring-1 ring-primary/20' : '') +
+                    (!showFull && !isExpanded ? ' cursor-pointer hover:bg-muted/50' : '')
                   }
                   style={{ borderLeftColor: borderColor }}
-                  onClick={!showFull ? () => window.dispatchEvent(new CustomEvent('open-pricing')) : undefined}
                 >
-                  {/* Row 1: Name + Duration + Category */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Compact header row — always visible */}
+                  <div
+                    className="flex items-center gap-1.5 flex-wrap p-2.5"
+                    onClick={() => {
+                      if (!showFull) {
+                        window.dispatchEvent(new CustomEvent('open-pricing'));
+                        return;
+                      }
+                      setExpandedVisa(isExpanded ? null : vt2.id);
+                    }}
+                  >
                     <span className="font-medium text-xs">{vt2.type}</span>
                     {vt2.maxDuration && (
                       <span className="text-[10px] text-muted-foreground">({vt2.maxDuration})</span>
@@ -793,74 +814,183 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
                     }>
                       {catLabel}
                     </span>
-                    {!showFull && (
+                    {/* Quick inline: processing + fee for Pro */}
+                    {showFull && hasProcessing && (
+                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                        <Clock className="w-2.5 h-2.5" />{processingText}
+                      </span>
+                    )}
+                    {showFull && feeText && (
+                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                        <DollarSign className="w-2.5 h-2.5" />{feeText}
+                      </span>
+                    )}
+                    {/* Spacer */}
+                    <span className="flex-1" />
+                    {!showFull ? (
                       <>
-                        <Lock className="w-3 h-3 text-muted-foreground ml-auto" />
-                        <span className="flex items-center gap-0.5 text-[9px] text-amber-600 dark:text-amber-400 font-medium ml-1">
+                        <Lock className="w-3 h-3 text-muted-foreground" />
+                        <span className="flex items-center gap-0.5 text-[9px] text-amber-600 dark:text-amber-400 font-medium">
                           <Crown className="w-3 h-3" /> Pro
                         </span>
                       </>
+                    ) : (
+                      <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                        {isExpanded ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        {isExpanded ? 'Hide' : 'Details'}
+                      </span>
                     )}
                   </div>
 
-                  {showFull ? (
-                    <>
-                      {/* Row 2: Description — full for Pro/admin */}
+                  {/* Expanded detailed view — only for Pro/admin or tourist */}
+                  {isExpanded && showFull && (
+                    <div className="px-2.5 pb-2.5 space-y-2.5 border-t border-border/50 pt-2.5">
+                      {/* Description */}
                       {vt2.description && (
-                        <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                          {showFull ? vt2.description : (vt2.description.length > 100 ? vt2.description.slice(0, 100) + '…' : vt2.description)}
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {vt2.description}
                         </p>
                       )}
-                      {/* Row 3: Processing + Fee */}
-                      {(hasProcessing || feeText) && (
-                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+
+                      {/* Info grid: Processing, Fee, Service Fee, Monthly */}
+                      {(hasProcessing || feeUSD || serviceFeeUSD || monthlyLiving) && (
+                        <div className="grid grid-cols-2 gap-1.5">
                           {hasProcessing && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-2.5 h-2.5" />
-                              {processingText}
-                            </span>
+                            <div className="rounded-md bg-muted/50 px-2 py-1.5">
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Processing</p>
+                              <p className="text-xs font-medium flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3 text-sky-500" />{processingText}
+                              </p>
+                            </div>
                           )}
-                          {feeText && (
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="w-2.5 h-2.5" />
-                              {feeText}
-                            </span>
+                          {feeUSD != null && feeUSD > 0 && (
+                            <div className="rounded-md bg-muted/50 px-2 py-1.5">
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Visa Fee</p>
+                              <p className="text-xs font-medium flex items-center gap-1 mt-0.5">
+                                <DollarSign className="w-3 h-3 text-emerald-500" />${feeUSD}
+                                <span className="text-[9px] text-muted-foreground font-normal">
+                                  (≈ PKR {Math.round(feeUSD * 278.5).toLocaleString()})
+                                </span>
+                              </p>
+                            </div>
+                          )}
+                          {serviceFeeUSD != null && serviceFeeUSD > 0 && (
+                            <div className="rounded-md bg-muted/50 px-2 py-1.5">
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Service Fee</p>
+                              <p className="text-xs font-medium flex items-center gap-1 mt-0.5">
+                                <DollarSign className="w-3 h-3 text-amber-500" />${serviceFeeUSD}
+                                <span className="text-[9px] text-muted-foreground font-normal">
+                                  (≈ PKR {Math.round(serviceFeeUSD * 278.5).toLocaleString()})
+                                </span>
+                              </p>
+                            </div>
+                          )}
+                          {monthlyLiving && monthlyLiving > 0 && (
+                            <div className="rounded-md bg-muted/50 px-2 py-1.5">
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Est. Monthly Cost</p>
+                              <p className="text-xs font-medium flex items-center gap-1 mt-0.5">
+                                <DollarSign className="w-3 h-3 text-pink-500" />${monthlyLiving}
+                                <span className="text-[9px] text-muted-foreground font-normal">
+                                  (≈ PKR {Math.round(monthlyLiving * 278.5).toLocaleString()})
+                                </span>
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
+
                       {/* Verified till */}
                       {verifiedTill && (
-                        <p className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                        <p className="text-[9px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <ShieldCheck className="w-2.5 h-2.5" />
                           Verified till {verifiedTill}
                         </p>
                       )}
-                      {/* Monthly living cost */}
-                      {showFull && monthlyLiving && monthlyLiving > 0 && (
-                        <p className="text-[9px] text-muted-foreground mt-1 flex items-center gap-1">
-                          <DollarSign className="w-2.5 h-2.5" />
-                          Est. ${monthlyLiving}/month (≈ PKR {Math.round(monthlyLiving * 278.5).toLocaleString()})
-                        </p>
+
+                      {/* Document Checklist — grouped by category */}
+                      {vtReqs.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-semibold text-foreground mb-1.5 flex items-center gap-1">
+                            <ClipboardList className="w-3 h-3" />
+                            Document Checklist ({mandatoryReqs} required{vtReqs.length > mandatoryReqs ? `, ${vtReqs.length - mandatoryReqs} optional` : ''})
+                          </p>
+                          <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                            {Object.entries(reqByCategory).map(([cat, reqs]) => (
+                              <div key={cat}>
+                                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">{cat}</p>
+                                {reqs.map((r) => (
+                                  <div key={r.id} className="flex items-start gap-1.5 py-0.5">
+                                    <CheckCircle2 className={`w-3 h-3 mt-0.5 shrink-0 ${r.mandatory ? 'text-emerald-500' : 'text-muted-foreground/40'}`} />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[10px] leading-snug">
+                                        {r.requirement}
+                                        <span className={`ml-1 text-[8px] px-1 py-0 rounded ${r.mandatory ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
+                                          {r.mandatory ? 'Required' : 'Optional'}
+                                        </span>
+                                      </p>
+                                      {r.description && (
+                                        <p className="text-[9px] text-muted-foreground mt-0.5 leading-relaxed">{r.description}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                      {/* Requirement count */}
-                      {showFull && vtReqs.length > 0 && (
-                        <p className="text-[9px] text-muted-foreground mt-1 flex items-center gap-1">
-                          <ClipboardList className="w-2.5 h-2.5" />
-                          {mandatoryReqs} required{vtReqs.length > mandatoryReqs ? `, ${vtReqs.length - mandatoryReqs} optional` : ''} documents
-                        </p>
-                      )}
+
                       {/* Source link */}
-                      {showFull && vt2.sourceUrl && (
-                        <a href={vt2.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[9px] text-muted-foreground hover:text-foreground mt-1 inline-flex items-center gap-0.5 transition-colors">
-                          Source <ExternalLink className="w-2 h-2" />
+                      {vt2.sourceUrl && (
+                        <a
+                          href={vt2.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[9px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 transition-colors"
+                        >
+                          <ExternalLink className="w-2 h-2" /> Official Source
                         </a>
                       )}
-                    </>
-                  ) : (
-                    /* Locked teaser */
-                    <p className="text-[10px] text-muted-foreground mt-1.5">
-                      Detailed requirements, fees & processing info
-                    </p>
+                    </div>
+                  )}
+
+                  {/* Non-Pro: blurred overlay teaser + CTA */}
+                  {isExpanded && !showFull && (
+                    <div className="px-2.5 pb-2.5 border-t border-border/50 pt-2.5">
+                      <div className="relative">
+                        {/* Blurred fake content to hint at what's available */}
+                        <div className="space-y-2 blur-sm select-none pointer-events-none">
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            {vt2.description || 'Detailed visa information including processing steps, required documents, and fee breakdown.'}
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <div className="h-8 rounded-md bg-muted/50" />
+                            <div className="h-8 rounded-md bg-muted/50" />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="h-3 w-40 rounded bg-muted/30" />
+                            <div className="h-3 w-48 rounded bg-muted/30" />
+                            <div className="h-3 w-36 rounded bg-muted/30" />
+                          </div>
+                        </div>
+                        {/* Overlay CTA */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[1px] rounded">
+                          <Lock className="w-5 h-5 text-amber-500 mb-1.5" />
+                          <p className="text-xs font-semibold text-foreground">Pro Feature</p>
+                          <p className="text-[10px] text-muted-foreground mb-2">Unlock full visa details</p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.dispatchEvent(new CustomEvent('open-pricing'));
+                            }}
+                            className="text-[10px] font-semibold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
+                          >
+                            <Crown className="w-3 h-3" />
+                            View from $4.99
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               );
@@ -870,14 +1000,19 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
           {visaTypes.some((vt2) => !isTouristVisa(vt2.type)) && !isPro && (
             <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-2.5">
               <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span className="text-xs text-amber-800 dark:text-amber-300 font-medium flex-1">
-                Unlock all visa details
-              </span>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                  Unlock all visa details — from $4.99
+                </span>
+                <p className="text-[9px] text-amber-600/70 dark:text-amber-400/70 mt-0.5">
+                  Pro: $9.99/mo · Annual: $79.99/yr (save 33%)
+                </p>
+              </div>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-pricing'))}
-                className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-800/50 px-2 py-1 rounded-md hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+                className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-800/50 px-2.5 py-1.5 rounded-md hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors shrink-0"
               >
-                Upgrade to Pro
+                Upgrade
               </button>
             </div>
           )}
