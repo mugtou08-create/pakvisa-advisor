@@ -300,6 +300,13 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         className="w-full text-left p-4 flex items-center gap-4 cursor-pointer select-none"
         aria-expanded={expanded}
       >
+        {/* Hidden SEO link — Googlebot needs real <a> tags to discover country pages */}
+        <a
+          href={`/${CODE_TO_SLUG[country.code] || toSlug(country.name)}`}
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+        >{country.name} visa guide for Pakistani citizens</a>
         {/* Flag */}
         <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
           {country.flagUrl ? (

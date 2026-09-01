@@ -5,8 +5,9 @@ import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 
-// Force dynamic rendering — pages query the database at request time.
-export const dynamic = 'force-dynamic';
+// ISR: Pre-render all country pages at build time, revalidate every 24 hours.
+// This lets Googlebot receive fast, pre-rendered HTML instead of waiting for DB queries.
+export const revalidate = 86400; // 24 hours
 
 // Countries that have hero images — no DB column needed, just check this set.
 const HERO_IMAGE_SLUGS = new Set([
@@ -171,10 +172,21 @@ function safetyStars(rating: number): string {
 }
 
 // ============================================================
-// Static Params
+// Static Params — Pre-generate all country pages at build time.
+// This is critical for SEO: Googlebot gets instant HTML responses.
 // ============================================================
 
-// generateStaticParams removed — page is fully dynamic (force-dynamic).
+export async function generateStaticParams() {
+  // Deduplicate: multiple slugs may point to the same country code.
+  // Prefer the shortest slug (primary) for each country.
+  const best: Record<string, string> = {};
+  for (const [slug, code] of COUNTRY_SLUG_ENTRIES) {
+    if (!best[code] || slug.length < best[code].length) {
+      best[code] = slug;
+    }
+  }
+  return Object.values(best).map((slug) => ({ slug }));
+}
 
 // ============================================================
 // Metadata

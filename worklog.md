@@ -2821,3 +2821,31 @@ Stage Summary:
 - All "Premium" subscription branding replaced with "Pro" across 4 files
 - PricingModal already had correct prices ($9.99/mo, $79.99/yr, $4.99) — no dollar amount changes needed
 - The "old pricing model" issue was the Premium→Pro naming inconsistency, not incorrect dollar amounts
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix Google indexing — 70 country pages "Discovered - currently not indexed"
+
+Work Log:
+- Audited entire SEO setup: sitemap, robots.txt, meta tags, structured data, internal linking
+- Identified 6 critical issues preventing Google from indexing country pages
+- Deleted conflicting `public/sitemap.xml` (only had homepage, wrong domain pakvisaadvisor.com)
+- Deleted conflicting `public/robots.txt` (pointed sitemap to wrong domain)
+- Improved `src/app/sitemap.ts`: higher priority (0.9) for popular countries (UAE, Turkey, etc.)
+- **CRITICAL FIX**: Changed `src/app/[slug]/page.tsx` from `force-dynamic` to ISR with `revalidate = 86400` (24h)
+- Added `generateStaticParams()` to pre-generate all 70 country pages at build time (deduplicated by shortest slug)
+- Added hidden `<a>` tags with `sr-only` class in every country card on homepage for Googlebot crawlability
+- Verified JSON-LD structured data already existed (FAQPage, WebPage, BreadcrumbList)
+- Verified Popular Destinations section already had real `<a>` links to country pages
+- Verified related countries on country pages already use `<Link>` for internal linking
+- ESLint passes with zero errors
+- Tested sitemap.xml serves all 70+ URLs with correct domain
+- Tested robots.txt serves correctly and points to sitemap
+
+Stage Summary:
+- Root cause of "Discovered - not indexed": `force-dynamic` made Googlebot wait for DB on every crawl → too slow → Google skipped indexing
+- Fix: ISR + generateStaticParams = pre-rendered HTML served instantly to Googlebot
+- Secondary cause: conflicting static sitemap.xml/robots.txt in public/ with wrong domain
+- Fix: Deleted static files, dynamic App Router versions now serve correctly
+- Third cause: No crawlable `<a>` links from homepage to country pages
+- Fix: Added sr-only `<a>` tags in every country card
