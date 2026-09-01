@@ -23,7 +23,7 @@ import { FlagImage, PrintReportDialog, ColorProgress } from '../shared-component
 import { ApplicationTimelineTracker, AnimatedScoreNumber, RadialGauge, MicroSparkline, ScoringHistoryPanel } from '../shared-components-2';
 import { ScoreHistoryChart } from '../shared-components-3';
 import { WhatIfSimulator, SmartChecklist } from './compare-tab';
-import { PremiumBadge } from '../dialogs';
+import { ProBadge } from '../dialogs';
 
 export function ReportsTab() {
   const { scoreResults, userProfile, addScoreResult, setActiveTab } = useAppStore();
@@ -125,7 +125,7 @@ export function ReportsTab() {
           {reportsView === 'reports' && (
             <div className="flex items-center gap-2 print:hidden">
               <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="gap-1">
-                <Download className="w-4 h-4 mr-1" /> Export <PremiumBadge />
+                <Download className="w-4 h-4 mr-1" /> Export <ProBadge />
               </Button>
               <Button variant="outline" size="sm" onClick={handleCopyToClipboard} className="gap-1">
                 <Copy className="w-4 h-4 mr-1" /> Copy Summary

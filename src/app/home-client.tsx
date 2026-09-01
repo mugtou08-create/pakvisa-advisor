@@ -838,7 +838,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
               {mounted ? (theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <Skeleton className="h-4 w-4 rounded" />}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setActiveModal('pricing')} className="gap-1.5 text-xs">
-              <Crown className="w-3 h-3 text-amber-500" /> Premium
+              <Crown className="w-3 h-3 text-amber-500" /> Pro
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setActiveModal('help')} aria-label="Help" className="min-w-[44px] min-h-[44px]">
               <HelpCircle className="w-4 h-4" />
@@ -1431,7 +1431,7 @@ export default function HomeClient({ initialCountries, initialStats, children }:
                     <p className="text-sm text-muted-foreground mt-1">Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</p>
                   </div>
                   <Button onClick={() => setActiveModal('pricing')} className="gap-1.5" disabled={!!isUserPro}>
-                    {isUserPro ? "You're a Pro Member ✓" : 'View Premium Plans'}
+                    {isUserPro ? "You're a Pro Member ✓" : 'View Pro Plans'}
                   </Button>
                 </div>
               </Card>

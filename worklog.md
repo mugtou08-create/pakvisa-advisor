@@ -2792,3 +2792,32 @@ Stage Summary:
 - Pro gating works correctly for both admin and free users
 - Pricing consistently shows $9.99/mo, $79.99/yr, $4.99 across all touchpoints
 - Committed and pushed as 3d76d51
+---
+Task ID: 1
+Agent: Main Agent
+Task: Replace all old "Premium" branding with "Pro" to match the new pricing model
+
+Work Log:
+- Searched entire codebase for old pricing references ($ amounts, "Premium" branding)
+- Verified pricing modal (modals.tsx) already has correct prices: $9.99/mo, $79.99/yr, $4.99
+- Verified sidebar banner (country-detail.tsx) shows correct pricing
+- Verified FAQ in home-client.tsx has correct pricing
+- Verified assistant API route (route.ts) has correct pricing in system prompt
+- Found 7 instances of old "Premium" branding that should be "Pro":
+  - home-client.tsx line 841: Header button "Premium" → "Pro"
+  - home-client.tsx line 1434: "View Premium Plans" → "View Pro Plans"
+  - modals.tsx line 717: "Premium Users:" → "Pro Users:"
+  - modals.tsx line 750: "Premium subscriptions" → "Pro subscriptions"
+  - modals.tsx line 802: "Free vs. Premium Features" → "Free vs. Pro Features"
+  - modals.tsx line 805: "Premium:" → "Pro:"
+  - modals.tsx line 807: "Premium subscriptions" → "Pro subscriptions"
+- Found PremiumBadge component in dialogs.tsx, renamed to ProBadge
+- Updated all 2 import sites: reports-tab.tsx, shared-components-2.tsx
+- Confirmed 2 remaining "Premium" refs are travel budget levels (not subscription), left as-is
+- ESLint passes with no errors
+- Dev server compiles and serves correctly (verified with curl)
+
+Stage Summary:
+- All "Premium" subscription branding replaced with "Pro" across 4 files
+- PricingModal already had correct prices ($9.99/mo, $79.99/yr, $4.99) — no dollar amount changes needed
+- The "old pricing model" issue was the Premium→Pro naming inconsistency, not incorrect dollar amounts

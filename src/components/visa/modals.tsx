@@ -714,7 +714,7 @@ export function PrivacyModal({ onClose }: { onClose: () => void }) {
           <ul className="list-disc list-inside space-y-1 ml-2">
             <li><span className="text-foreground font-medium">Usage Data:</span> Search queries and country views are anonymized and used only to improve our service.</li>
             <li><span className="text-foreground font-medium">AI Queries:</span> When using the AI consultant, your questions are processed to generate responses. Questions are not stored permanently.</li>
-            <li><span className="text-foreground font-medium">Premium Users:</span> Email address and payment info are handled securely by our payment processor. We never store credit card details.</li>
+            <li><span className="text-foreground font-medium">Pro Users:</span> Email address and payment info are handled securely by our payment processor. We never store credit card details.</li>
           </ul>
         </div>
 
@@ -747,7 +747,7 @@ export function PrivacyModal({ onClose }: { onClose: () => void }) {
           <h3 className="text-foreground font-semibold text-sm">Your Rights</h3>
           <p>
             You may request deletion of your account and all associated data at any time by
-            contacting us. Premium subscriptions can be cancelled instantly from your account settings.
+            contacting us. Pro subscriptions can be cancelled instantly from your account settings.
           </p>
         </div>
 
@@ -799,12 +799,12 @@ export function TermsModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-2">
-          <h3 className="text-foreground font-semibold text-sm">4. Free vs. Premium Features</h3>
+          <h3 className="text-foreground font-semibold text-sm">4. Free vs. Pro Features</h3>
           <ul className="list-disc list-inside space-y-1 ml-2">
             <li><span className="text-foreground font-medium">Free:</span> Visa search, basic requirements, and limited AI queries.</li>
-            <li><span className="text-foreground font-medium">Premium:</span> Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</li>
+            <li><span className="text-foreground font-medium">Pro:</span> Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</li>
           </ul>
-          <p>Premium subscriptions auto-renew unless cancelled. Refunds are handled on a case-by-case basis.</p>
+          <p>Pro subscriptions auto-renew unless cancelled. Refunds are handled on a case-by-case basis.</p>
         </div>
 
         <div className="space-y-2">

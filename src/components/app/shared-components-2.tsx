@@ -34,7 +34,7 @@ import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem, VisaDocChecklistItem } from '@/lib/types';
 import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, QUICK_FILTERS, EXCHANGE_RATES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES, RECENT_SEARCHES_KEY, REGIONS, getRegion, TIMELINE_STAGES } from './constants';
 import { FlagImage, AnimatedCounter, ScoreCircle, SafetyDots, ColorProgress, ConfettiDot, QuickScoreInline, TravelChecklist, getScoreGradient, VisaFeeEstimator, VisaSuccessIndicator } from './shared-components-1';
-import { PremiumBadge } from './dialogs';
+import { ProBadge } from './dialogs';
 import { TravelWeatherWidget } from './shared-components-3';
 
 export function CountryDetailDialog({ country, open, onClose }: { country: CountryData | null; open: boolean; onClose: () => void }) {
@@ -115,7 +115,7 @@ export function CountryDetailDialog({ country, open, onClose }: { country: Count
             </div>
             <div className="flex gap-1.5">
               <Button variant="outline" size="sm" className="text-xs gap-1" onClick={handlePrintReport}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Report <PremiumBadge />
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print Report <ProBadge />
               </Button>
               <Button variant="outline" size="sm" className="text-xs" onClick={() => { navigator.clipboard.writeText(`${window.location.origin} — ${country.name} Visa Guide for Pakistani Passport`); toast.success('Link copied to clipboard!'); }}>
                 <Share2 className="w-3.5 h-3.5 mr-1" /> Share
