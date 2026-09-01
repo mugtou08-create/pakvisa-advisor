@@ -9,14 +9,6 @@ import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 // This lets Googlebot receive fast, pre-rendered HTML instead of waiting for DB queries.
 export const revalidate = 86400; // 24 hours
 
-// Pre-build all 70 country pages at build time so they are instantly available.
-// Without this, Next.js uses on-demand ISR which means Googlebot must trigger
-// page generation on first crawl — this is the #1 cause of "Discovered - not indexed".
-export async function generateStaticParams() {
-  const uniqueSlugs = [...new Set(COUNTRY_SLUG_ENTRIES.map(([slug]) => slug))];
-  return uniqueSlugs.map((slug) => ({ slug }));
-}
-
 // Countries that have hero images — no DB column needed, just check this set.
 const HERO_IMAGE_SLUGS = new Set([
   'afghanistan','algeria','armenia','australia','austria','azerbaijan','bahrain','bangladesh',
