@@ -5,9 +5,14 @@ import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 
-// ISR: Pre-render all country pages at build time, revalidate every 24 hours.
-// This lets Googlebot receive fast, pre-rendered HTML instead of waiting for DB queries.
+// ISR: Revalidate every 24 hours. Pages are generated on first request and cached.
+// At build time, Vercel uses an empty dummy DB, so we cannot pre-render country pages.
+// Instead, Googlebot triggers on-demand generation which is served instantly via ISR.
+// The real SEO fix is internal <a> links from homepage + service worker bot bypass.
 export const revalidate = 86400; // 24 hours
+
+// Allow any slug to be rendered on-demand (not just pre-generated ones).
+export const dynamicParams = true;
 
 // Countries that have hero images — no DB column needed, just check this set.
 const HERO_IMAGE_SLUGS = new Set([
@@ -171,22 +176,6 @@ function safetyStars(rating: number): string {
   return '\u2605'.repeat(clamped) + '\u2606'.repeat(5 - clamped);
 }
 
-// ============================================================
-// Static Params — Pre-generate all country pages at build time.
-// This is critical for SEO: Googlebot gets instant HTML responses.
-// ============================================================
-
-export async function generateStaticParams() {
-  // Deduplicate: multiple slugs may point to the same country code.
-  // Prefer the shortest slug (primary) for each country.
-  const best: Record<string, string> = {};
-  for (const [slug, code] of COUNTRY_SLUG_ENTRIES) {
-    if (!best[code] || slug.length < best[code].length) {
-      best[code] = slug;
-    }
-  }
-  return Object.values(best).map((slug) => ({ slug }));
-}
 
 // ============================================================
 // Metadata
