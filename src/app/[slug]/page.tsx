@@ -238,8 +238,8 @@ type VisaTypeData = {
   processingDaysMax: number;
   sourceUrl: string;
   verifiedTill: string;
-  costProfile: VisaTypeCostData | null;
-  requirements: VisaRequirementData[];
+  costProfile: VisaTypeCostData | null | undefined;
+  requirements: VisaRequirementData[] | undefined;
 };
 
 type VisaRequirementData = {
