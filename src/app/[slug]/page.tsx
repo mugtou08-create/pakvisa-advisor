@@ -5,11 +5,10 @@ import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 
-// ISR: Revalidate every 24 hours. Pages are generated on first request and cached.
-// At build time, Vercel uses an empty dummy DB, so we cannot pre-render country pages.
-// Instead, Googlebot triggers on-demand generation which is served instantly via ISR.
-// The real SEO fix is internal <a> links from homepage + service worker bot bypass.
-export const revalidate = 86400; // 24 hours
+// Force dynamic rendering — Vercel build uses a fresh empty SQLite DB that
+// lacks recently-added schema columns. At runtime, the real DB has the full schema.
+// Pages are generated on first request and cached for 24 hours via ISR.
+export const dynamic = 'force-dynamic';
 
 // Allow any slug to be rendered on-demand (not just pre-generated ones).
 export const dynamicParams = true;

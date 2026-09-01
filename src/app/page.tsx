@@ -4,11 +4,13 @@ import { CODE_TO_SLUG } from '@/lib/country-slug';
 import HomeClient from './home-client';
 
 // ============================================================
-// ISR: Revalidate every 5 minutes
-// Country visa data changes rarely — cache at the edge for speed.
-// First request renders from DB; subsequent requests served from cache.
+// Force dynamic rendering — Vercel build creates a fresh empty SQLite DB
+// which lacks columns added in recent schema migrations (visaTypeId,
+// processingDaysMin, etc.). At runtime, the real database has the full
+// schema. This prevents build-time prerendering errors while keeping
+// ISR caching via the route handler cache.
 // ============================================================
-export const revalidate = 300; // 5 minutes
+export const dynamic = 'force-dynamic';
 
 // ============================================================
 // Main Server Component
