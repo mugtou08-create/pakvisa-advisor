@@ -2849,3 +2849,33 @@ Stage Summary:
 - Fix: Deleted static files, dynamic App Router versions now serve correctly
 - Third cause: No crawlable `<a>` links from homepage to country pages
 - Fix: Added sr-only `<a>` tags in every country card
+---
+Task ID: SEO Fix - Google Indexing for 70 Country Pages
+Agent: Main Agent
+Task: Fix Google Search Console "Discovered - currently not indexed" for 70 [slug] country pages
+
+Work Log:
+- Diagnosed root cause: 3 critical SEO issues found
+  1. Missing `generateStaticParams()` - pages were on-demand ISR only, Googlebot had to trigger generation
+  2. No internal `<a>` links from homepage to country pages - Google could only find them via sitemap.xml, treating them as orphan pages
+  3. Service worker was caching HTML pages, potentially serving stale content to crawlers
+- Added `generateStaticParams()` to `[slug]/page.tsx` - pre-builds all 70 country pages at build time
+- Added hidden HTML sitemap (sr-only nav with 70 `<a>` links) to homepage `page.tsx` - gives Google internal link equity
+- Fixed service worker `sw.js` v2 to detect and bypass Googlebot/Bingbot (never serve cached pages to bots)
+- Added `Link` import and "View Full Guide" button to `country-detail.tsx` sidebar - creates `<a>` links from sidebar panels
+- Enhanced `sitemap.ts` with image entries for countries with hero images
+- Added Article structured data (JSON-LD) to country pages for richer search results
+
+Files Modified:
+- `src/app/[slug]/page.tsx` - Added generateStaticParams(), Article schema
+- `src/app/page.tsx` - Added hidden HTML sitemap with 70 country links
+- `public/sw.js` - Bot detection bypass, cache version bump to v2
+- `src/components/visa/country-detail.tsx` - Added Link import, "View Full Guide" button
+- `src/app/sitemap.ts` - Enhanced with image entries, fixed changeFrequency
+
+Stage Summary:
+- All 70 country pages will now be pre-rendered at build time (generateStaticParams)
+- Googlebot can discover all country pages via internal links (not just sitemap.xml)
+- Service worker no longer interferes with search engine crawlers
+- 4 types of structured data per country page: FAQPage, WebPage, BreadcrumbList, Article
+- Lint passes clean

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Clock, Globe, DollarSign, Languages, Plug, Phone, Droplets, UtensilsCrossed,
   Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
@@ -17,6 +18,7 @@ import {
 import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { isProUser } from '@/lib/auth-store';
+import { CODE_TO_SLUG } from '@/lib/country-slug';
 
 /** Map visa category to a CSS color for the left border accent */
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
@@ -620,6 +622,15 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
       {travel.description && (
         <p className="text-xs text-muted-foreground leading-relaxed italic">{travel.description}</p>
       )}
+
+      {/* SEO: Link to full country page — gives crawlers an <a> path from sidebar */}
+      <Link
+        href={`/${CODE_TO_SLUG[country.code] || country.code.toLowerCase()}`}
+        className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+      >
+        <FileText className="w-3.5 h-3.5" />
+        View Full {country.name} Visa Guide
+      </Link>
 
       {/* Row 1: Live Clock + Currency Converter (side by side on larger screens) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

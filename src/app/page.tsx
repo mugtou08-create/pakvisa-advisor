@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import type { CountryData } from '@/lib/types';
+import { CODE_TO_SLUG } from '@/lib/country-slug';
 import HomeClient from './home-client';
 
 // ============================================================
@@ -175,6 +176,30 @@ export default async function HomePage() {
       <HomeClient initialCountries={countries} initialStats={stats}>
         {null}
       </HomeClient>
+
+      {/* SEO: Hidden HTML sitemap with real <a> links to all 70 country pages.
+          Googlebot discovers these links during crawl, giving each country page
+          strong internal link equity. Without this, country pages are only found
+          via sitemap.xml — Google treats them as low-priority orphan pages. */}
+      <nav aria-label="All Countries" className="sr-only">
+        <h2>All Countries Visa Guide for Pakistani Citizens</h2>
+        <ul>
+          {countries.map((c) => {
+            const slug = CODE_TO_SLUG[c.code] || c.code.toLowerCase();
+            const visaLabel = c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'Visa on Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy Visa Required';
+            return (
+              <li key={c.code}>
+                <a
+                  href={`/${slug}`}
+                  title={`${c.name} Visa for Pakistani Citizens - ${visaLabel} - Requirements, Fees & Guide 2026`}
+                >
+                  {c.name} Visa for Pakistani Citizens
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </>
   );
 }
