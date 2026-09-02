@@ -50,23 +50,24 @@ export function deduplicateRequirements<T extends ReqItem>(reqs: T[]): T[] {
   const result: T[] = [];
 
   for (const item of reqs) {
+    let processed = item as T;
     // Fix category typo
-    if (item.category === 'ealth') {
-      item = { ...item, category: 'health' } as T;
+    if (processed.category === 'ealth') {
+      processed = { ...processed, category: 'health' } as T;
     }
 
     // Check if this is a duplicate of anything already kept
-    const isDupe = result.some(kept => isSimilar(kept.requirement, item.requirement));
+    const isDupe = result.some(kept => isSimilar(kept.requirement, processed.requirement));
     if (isDupe) {
       // If the new item is MORE descriptive than the existing one, replace it
-      const existingIdx = result.findIndex(kept => isSimilar(kept.requirement, item.requirement));
-      if (existingIdx >= 0 && score(item) > score(result[existingIdx])) {
-        result[existingIdx] = item;
+      const existingIdx = result.findIndex(kept => isSimilar(kept.requirement, processed.requirement));
+      if (existingIdx >= 0 && score(processed) > score(result[existingIdx])) {
+        result[existingIdx] = processed;
       }
       continue;
     }
 
-    result.push(item);
+    result.push(processed);
   }
 
   return result;
