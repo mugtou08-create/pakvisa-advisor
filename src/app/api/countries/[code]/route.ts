@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getStaticCountry } from '@/lib/static-countries';
 
 export async function GET(
   request: NextRequest,
@@ -10,74 +11,73 @@ export async function GET(
 
     if (!code) {
       return NextResponse.json(
-        { success: false, error: 'Country code is required' },
+        { success: false, error: 'Country code is required', _hint: 'Provide a country code like UAE, USA, Turkey' },
         { status: 400 }
       );
     }
 
-    const country = await db.country.findUnique({
-      where: { code: code.toUpperCase() },
-      include: {
-        visaTypes: {
-          include: {
-            costProfiles: true,
-            requirements: { orderBy: { category: 'asc' } },
+    // ── Try DB first ──
+    let country: any = null;
+    let usedFallback = false;
+
+    try {
+      country = await db.country.findUnique({
+        where: { code: code.toUpperCase() },
+        include: {
+          visaTypes: {
+            include: { costProfiles: true, requirements: { orderBy: { category: 'asc' } } },
+            orderBy: { type: 'asc' },
           },
-          orderBy: { type: 'asc' },
+          requirements: { orderBy: { category: 'asc' } },
+          costProfiles: true,
         },
-        requirements: { orderBy: { category: 'asc' } },
-        costProfiles: true,
-      },
-    });
+      });
+    } catch (dbError) {
+      const msg = dbError instanceof Error ? dbError.message : String(dbError);
+      console.warn(`[/api/countries/${code}] DB query failed, trying static fallback: ${msg}`);
+    }
+
+    // ── Static fallback ──
+    if (!country) {
+      country = getStaticCountry(code.toUpperCase()) || getStaticCountry(code);
+      usedFallback = !!country;
+      if (country) {
+        console.log(`[/api/countries/${code}] Using static fallback for ${country.name}`);
+      }
+    }
 
     if (!country) {
       return NextResponse.json(
-        { success: false, error: `Country with code '${code}' not found` },
+        { success: false, error: `Country '${code}' not found`, _hint: 'Check the country code. Examples: UAE, USA, Turkey, Malaysia' },
         { status: 404 }
       );
     }
 
-    // Parse monthlyTemps from JSON string to object
+    // Parse monthlyTemps
     let monthlyTemps: any;
     try {
-      monthlyTemps = JSON.parse(country.monthlyTemps);
+      monthlyTemps = typeof country.monthlyTemps === 'string'
+        ? JSON.parse(country.monthlyTemps)
+        : country.monthlyTemps || {};
     } catch {
-      monthlyTemps = country.monthlyTemps;
+      monthlyTemps = country.monthlyTemps || {};
     }
 
-    // Attach per-visa-type cost and requirements
-    const visaTypesFormatted = country.visaTypes.map((vt) => ({
-      id: vt.id,
-      type: vt.type,
-      description: vt.description,
-      maxDuration: vt.maxDuration,
-      extensions: vt.extensions,
+    // Format visa types
+    const visaTypesFormatted = (country.visaTypes || []).map((vt: any) => ({
+      id: vt.id, type: vt.type, description: vt.description,
+      maxDuration: vt.maxDuration, extensions: vt.extensions,
       multipleEntry: vt.multipleEntry,
       processingDaysMin: vt.processingDaysMin,
       processingDaysMax: vt.processingDaysMax,
-      sourceUrl: vt.sourceUrl,
-      verifiedTill: vt.verifiedTill,
+      sourceUrl: vt.sourceUrl, verifiedTill: vt.verifiedTill,
       parserConfidence: vt.parserConfidence,
-      costProfile: vt.costProfiles.length > 0 ? {
-        id: vt.costProfiles[0].id,
-        visaFeeUSD: vt.costProfiles[0].visaFeeUSD,
-        serviceFeeUSD: vt.costProfiles[0].serviceFeeUSD,
-        processingDaysMin: vt.costProfiles[0].processingDaysMin,
-        processingDaysMax: vt.costProfiles[0].processingDaysMax,
-        totalMonthlyUSD: vt.costProfiles[0].totalMonthlyUSD,
-        currency: vt.costProfiles[0].currency,
-        verifiedTill: vt.costProfiles[0].verifiedTill,
-      } : null,
-      requirements: vt.requirements.map((r) => ({
-        id: r.id,
-        category: r.category,
-        requirement: r.requirement,
-        mandatory: r.mandatory,
-        description: r.description,
-        scoringWeight: r.scoringWeight,
-        sourceUrl: r.sourceUrl,
-        parserConfidence: r.parserConfidence,
-        needsReview: r.needsReview,
+      costProfile: (vt.costProfiles?.length > 0 ? vt.costProfiles[0] : vt.costProfile) || null,
+      requirements: (vt.requirements || []).map((r: any) => ({
+        id: r.id, category: r.category, requirement: r.requirement,
+        mandatory: r.mandatory, description: r.description,
+        scoringWeight: r.scoringWeight, sourceUrl: r.sourceUrl,
+        parserConfidence: r.parserConfidence, needsReview: r.needsReview,
       })),
     }));
 
@@ -85,17 +85,30 @@ export async function GET(
       ...country,
       monthlyTemps,
       visaTypes: visaTypesFormatted,
-      costProfile: country.costProfiles.length > 0 ? country.costProfiles[0] : null,
+      costProfile: (country.costProfiles?.length > 0 ? country.costProfiles[0] : null) || country.costProfile || null,
     };
 
     return NextResponse.json({
       success: true,
       data: formattedCountry,
+      ...(usedFallback ? { _fallback: true } : {}),
     });
   } catch (error) {
-    console.error('Error fetching country:', error);
+    const msg = error instanceof Error ? error.message : String(error);
+    const code = error instanceof Error && 'code' in error ? (error as any).code : 'UNKNOWN';
+    console.error(`[/api/countries/${await params.then(p => p.code)}] UNHANDLED: code:${code} msg:${msg}`, error);
+
+    // Last-resort static fallback
+    try {
+      const { code: c } = await params;
+      const staticCountry = getStaticCountry(c?.toUpperCase());
+      if (staticCountry) {
+        return NextResponse.json({ success: true, data: staticCountry, _fallback: true, _error: msg });
+      }
+    } catch {}
+
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch country', ...(process.env.NODE_ENV !== 'production' ? { details: String(error) } : {}) },
+      { success: false, error: 'Failed to fetch country', _debug: { code, message: msg } },
       { status: 500 }
     );
   }

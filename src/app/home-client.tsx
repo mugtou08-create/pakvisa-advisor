@@ -38,6 +38,7 @@ const AdminDialog = dynamic(() => import('@/components/app/admin-dialog').then(m
 const WhatsAppButton = dynamic(() => import('@/components/app/whatsapp-button').then(m => ({ default: m.WhatsAppButton })), { ssr: false });
 const SaraWidget = dynamic(() => import('@/components/app/sara-widget').then(m => ({ default: m.SaraWidget })), { ssr: false });
 import { getFlagUrl, REGIONS, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
+import { intelligentSearch, resolveSearchToCountry } from '@/lib/search-intelligence';
 
 
 // ============================================================
@@ -583,10 +584,9 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
       result = result.filter((c) => getPrimaryAccess(c) === filters.access);
     }
 
-    // Text search
+    // Text search — uses intelligent search (city→country, aliases, fuzzy)
     if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      result = result.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
+      result = intelligentSearch(searchQuery, result);
     }
 
     // Sort
@@ -960,9 +960,18 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search any country..."
+                  placeholder="Search country, city, or alias (e.g. Dubai, UAE, USA)..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const match = resolveSearchToCountry(searchQuery, countries);
+                      if (match) {
+                        setExpandedCountry(match.code);
+                        setSearchQuery('');
+                      }
+                    }
+                  }}
                   className="w-full h-11 pl-10 pr-10 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
                 />
                 {searchQuery && (

@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { rateLimit } from '@/lib/rate-limit';
 import { fetchAndCache } from '@/lib/api-cache';
+import { getStaticCountries } from '@/lib/static-countries';
+import type { CountryData } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,11 +42,27 @@ export async function GET(request: NextRequest) {
     const data = await queryCountries({ search, continent, visaFree, visaOnArrival, sortBy, sortOrder, limit, offset });
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching countries:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch countries' },
-      { status: 500 }
-    );
+    // Structured error for debugging
+    const msg = error instanceof Error ? error.message : String(error);
+    const code = error instanceof Error && 'code' in error ? (error as any).code : 'UNKNOWN';
+    console.error(`[GET /api/countries] UNHANDLED ERROR — code:${code} msg:${msg}`, error);
+
+    // Last-resort: return static data
+    try {
+      const staticData = getStaticCountries();
+      return NextResponse.json({
+        success: true,
+        data: staticData,
+        pagination: { total: staticData.length, limit: 500, offset: 0, returned: staticData.length },
+        _fallback: true,
+        _error: msg,
+      });
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch countries', _debug: { code, message: msg } },
+        { status: 500 }
+      );
+    }
   }
 }
 
@@ -86,14 +104,10 @@ async function queryCountries(params: {
   // Build orderBy clause
   const orderByField = (() => {
     switch (sortBy) {
-      case 'name':
-        return 'name';
-      case 'safetyRating':
-        return 'safetyRating';
-      case 'visaFee':
-        return 'costProfiles';
-      default:
-        return 'name';
+      case 'name': return 'name';
+      case 'safetyRating': return 'safetyRating';
+      case 'visaFee': return 'costProfiles';
+      default: return 'name';
     }
   })();
 
@@ -110,72 +124,111 @@ async function queryCountries(params: {
     } as Prisma.CountryOrderByWithRelationInput;
   }
 
-  // Fetch countries with related data
-  const countries = await db.country.findMany({
-    where,
-    orderBy,
-    skip: offset,
-    take: limit,
-    include: {
-      visaTypes: {
-        include: {
-          costProfiles: true,
-          requirements: true,
+  // ── Try DB query ──
+  let countries: any[] = [];
+  let total = 0;
+  let usedFallback = false;
+
+  try {
+    const dbCountries = await db.country.findMany({
+      where,
+      orderBy,
+      skip: offset,
+      take: limit,
+      include: {
+        visaTypes: {
+          include: { costProfiles: true, requirements: true },
+          orderBy: { type: 'asc' },
         },
-        orderBy: { type: 'asc' },
+        requirements: true,
+        costProfiles: true,
       },
-      requirements: true,
-      costProfiles: true,
-    },
-  });
+    });
 
-  // Get total count for pagination
-  const total = await db.country.count({ where });
+    if (dbCountries && dbCountries.length > 0) {
+      countries = dbCountries;
+      total = await db.country.count({ where });
+    }
+  } catch (dbError) {
+    const dbMsg = dbError instanceof Error ? dbError.message : String(dbError);
+    console.warn(`[api/countries] DB query failed, using static fallback: ${dbMsg}`);
+  }
 
-  // Format response with parsed monthlyTemps and costProfile singular
+  // ── Static fallback if DB returned nothing ──
+  if (countries.length === 0) {
+    try {
+      const staticAll = getStaticCountries() as CountryData[];
+      let filtered = staticAll;
+
+      // Apply filters on static data
+      if (search) {
+        const q = search.toLowerCase();
+        filtered = filtered.filter(c =>
+          c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+        );
+      }
+      if (continent) {
+        filtered = filtered.filter(c => c.continent.toLowerCase().includes(continent.toLowerCase()));
+      }
+      if (visaFree !== null && visaFree !== undefined && visaFree !== '') {
+        filtered = filtered.filter(c => c.visaFree === (visaFree === 'true'));
+      }
+      if (visaOnArrival !== null && visaOnArrival !== undefined && visaOnArrival !== '') {
+        filtered = filtered.filter(c => c.visaOnArrival === (visaOnArrival === 'true'));
+      }
+
+      // Sort
+      filtered.sort((a, b) => {
+        let cmp = 0;
+        if (sortBy === 'safetyRating') {
+          cmp = a.safetyRating - b.safetyRating;
+        } else if (sortBy === 'visaFee') {
+          cmp = (a.costProfile?.visaFeeUSD ?? 9999) - (b.costProfile?.visaFeeUSD ?? 9999);
+        } else {
+          cmp = a.name.localeCompare(b.name);
+        }
+        return sortOrder === 'desc' ? -cmp : cmp;
+      });
+
+      total = filtered.length;
+      countries = filtered.slice(offset, offset + limit);
+      usedFallback = true;
+      console.log(`[api/countries] Static fallback returned ${countries.length} countries (total: ${total})`);
+    } catch (staticError) {
+      console.error('[api/countries] Static fallback FAILED:', staticError);
+    }
+  }
+
+  // Format response
   const formattedCountries = countries.map((country) => {
     let monthlyTemps: any;
     try {
-      monthlyTemps = JSON.parse(country.monthlyTemps);
+      monthlyTemps = typeof country.monthlyTemps === 'string'
+        ? JSON.parse(country.monthlyTemps)
+        : country.monthlyTemps || {};
     } catch {
-      monthlyTemps = country.monthlyTemps;
+      monthlyTemps = country.monthlyTemps || {};
     }
     return {
       ...country,
       monthlyTemps,
-      costProfile: country.costProfiles.length > 0 ? country.costProfiles[0] : null,
-      visaTypes: country.visaTypes.map((vt) => ({
-        id: vt.id,
-        type: vt.type,
-        description: vt.description,
-        maxDuration: vt.maxDuration,
-        extensions: vt.extensions,
+      costProfile: country.costProfiles?.length > 0
+        ? country.costProfiles[0]
+        : country.costProfile || null,
+      visaTypes: (country.visaTypes || []).map((vt: any) => ({
+        id: vt.id, type: vt.type, description: vt.description,
+        maxDuration: vt.maxDuration, extensions: vt.extensions,
         multipleEntry: vt.multipleEntry,
         processingDaysMin: vt.processingDaysMin,
         processingDaysMax: vt.processingDaysMax,
-        sourceUrl: vt.sourceUrl,
-        verifiedTill: vt.verifiedTill,
+        sourceUrl: vt.sourceUrl, verifiedTill: vt.verifiedTill,
         parserConfidence: vt.parserConfidence,
-        costProfile: vt.costProfiles.length > 0 ? {
-          id: vt.costProfiles[0].id,
-          visaFeeUSD: vt.costProfiles[0].visaFeeUSD,
-          serviceFeeUSD: vt.costProfiles[0].serviceFeeUSD,
-          processingDaysMin: vt.costProfiles[0].processingDaysMin,
-          processingDaysMax: vt.costProfiles[0].processingDaysMax,
-          totalMonthlyUSD: vt.costProfiles[0].totalMonthlyUSD,
-          currency: vt.costProfiles[0].currency,
-          verifiedTill: vt.costProfiles[0].verifiedTill,
-        } : null,
-        requirements: vt.requirements.map((r) => ({
-          id: r.id,
-          category: r.category,
-          requirement: r.requirement,
-          mandatory: r.mandatory,
-          description: r.description,
-          scoringWeight: r.scoringWeight,
-          sourceUrl: r.sourceUrl,
-          parserConfidence: r.parserConfidence,
-          needsReview: r.needsReview,
+        costProfile: (vt.costProfiles?.length > 0 ? vt.costProfiles[0] : vt.costProfile) || null,
+        requirements: (vt.requirements || []).map((r: any) => ({
+          id: r.id, category: r.category, requirement: r.requirement,
+          mandatory: r.mandatory, description: r.description,
+          scoringWeight: r.scoringWeight, sourceUrl: r.sourceUrl,
+          parserConfidence: r.parserConfidence, needsReview: r.needsReview,
         })),
       })),
     };
@@ -184,11 +237,7 @@ async function queryCountries(params: {
   return {
     success: true,
     data: formattedCountries,
-    pagination: {
-      total,
-      limit,
-      offset,
-      returned: formattedCountries.length,
-    },
+    pagination: { total, limit, offset, returned: formattedCountries.length },
+    ...(usedFallback ? { _fallback: true } : {}),
   };
 }
