@@ -186,6 +186,8 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
   }>>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+  // Backup download state
+  const [backupDownloading, setBackupDownloading] = useState(false);
 
   // Visitors state
   const [visitorData, setVisitorData] = useState<{
@@ -550,6 +552,37 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
     } catch { toast.error('Connection error'); }
     finally { setSavingWhatsapp(false); }
   }, [token, whatsappDigits]);
+
+  // ===== BACKUP DOWNLOAD HANDLER =====
+  const handleDownloadBackup = useCallback(async () => {
+    if (!token) return;
+    setBackupDownloading(true);
+    try {
+      const res = await fetch(`/api/download-backup?key=${encodeURIComponent(token)}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.error || 'Backup download failed');
+        return;
+      }
+      const blob = await res.blob();
+      const now = new Date();
+      const dateStr = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pakvisa-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Backup downloaded successfully!');
+    } catch (err) {
+      console.error('Backup download error:', err);
+      toast.error('Failed to download backup');
+    } finally {
+      setBackupDownloading(false);
+    }
+  }, [token]);
 
   // ===== DATA SYNC HANDLERS =====
   const handleStartResearch = useCallback(async () => {
@@ -1918,6 +1951,36 @@ export function AdminDialog({ open, onClose, aiEnabled, setAiEnabled }: AdminDia
                 {/* ====== DATA SYNC TAB ====== */}
                 {activeSection === 'data-sync' && (
                   <div className="space-y-5">
+                    {/* Database Backup Card */}
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"><Download className="w-5 h-5 text-blue-600" /></div>
+                            <div>
+                              <CardTitle className="text-base">Database Backup</CardTitle>
+                              <CardDescription>Download a full backup of all database tables as JSON</CardDescription>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline" size="sm"
+                            className="gap-2"
+                            onClick={handleDownloadBackup}
+                            disabled={backupDownloading}
+                          >
+                            {backupDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                            {backupDownloading ? 'Downloading...' : 'Download Backup'}
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-xs text-muted-foreground">
+                          Exports all countries, visa types, requirements, cost profiles, and site settings.
+                          The backup file will be named with the current date and time.
+                        </p>
+                      </CardContent>
+                    </Card>
+
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold flex items-center gap-2"><ArrowRightLeft className="w-5 h-5 text-emerald-500" /> Database Sync</h3>
                       <Button

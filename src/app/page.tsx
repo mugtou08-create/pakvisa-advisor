@@ -4,11 +4,11 @@ import { CODE_TO_SLUG } from '@/lib/country-slug';
 import HomeClient from './home-client';
 
 // ============================================================
-// ISR: Revalidate every 5 minutes.
-// Build-time query may fail on Vercel (fresh dummy DB) — try-catch
-// handles this gracefully. At runtime, the real DB has full data.
+// force-dynamic: Always render at request time, never at build.
+// Vercel's build-time DB is empty (dummy.db). At runtime, the
+// real Turso DB has all 70 countries with full data.
 // ============================================================
-export const revalidate = 300; // 5 minutes
+export const dynamic = 'force-dynamic';
 
 // ============================================================
 // Main Server Component
@@ -143,9 +143,7 @@ export default async function HomePage() {
 
     serverDataLoaded = true;
   } catch (error) {
-    // Build-time DB (dummy.db) may lack schema columns — that's OK.
-    // At runtime, the real DB has the full schema and this won't trigger.
-    console.error('[HomePage] DB query failed (expected at build time):', error);
+    console.error('[HomePage] DB query failed:', error);
   }
 
   // Collect flag URLs for preloading (top 4 most popular)
@@ -185,14 +183,13 @@ export default async function HomePage() {
         <link key={url} rel="preload" as="image" href={url} />
       ))}
 
-      <HomeClient initialCountries={countries} initialStats={stats}>
+      <HomeClient initialCountries={countries} initialStats={stats} serverDataLoaded={serverDataLoaded}>
         {null}
       </HomeClient>
 
       {/* SEO: Hidden HTML sitemap with real <a> links to all 70 country pages.
           Googlebot discovers these links during crawl, giving each country page
-          strong internal link equity. Without this, country pages are only found
-          via sitemap.xml — Google treats them as low-priority orphan pages. */}
+          strong internal link equity. */}
       {serverDataLoaded && (
         <nav aria-label="All Countries" className="sr-only">
           <h2>All Countries Visa Guide for Pakistani Citizens</h2>

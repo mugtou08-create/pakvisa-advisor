@@ -22,7 +22,7 @@ import { CODE_TO_SLUG } from '@/lib/country-slug';
 import dynamic from 'next/dynamic';
 
 // Lazy-load heavy components — they only render on user interaction.
-const CountryDetailPanel = dynamic(() => import('@/components/visa/country-detail').then(m => ({ default: m.CountryDetailPanel })), { loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
+const CountryDetailPanel = dynamic(() => import('@/components/visa/country-detail').then(m => ({ default: m.CountryDetailPanel })), { ssr: false, loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
 const AuthModal = dynamic(() => import('@/components/visa/auth-modal').then(m => ({ default: m.AuthModal })), { ssr: false });
 
 const VisaQuizPanel = dynamic(() => import('@/components/visa/visa-quiz-panel').then(m => ({ default: m.VisaQuizPanel })), { ssr: false });
@@ -401,15 +401,45 @@ const ITEMS_PER_PAGE = 8;
 // ============================================================
 // Main Component
 // ============================================================
-export default function HomeClient({ initialCountries, initialStats, children }: {
+export default function HomeClient({ initialCountries, initialStats, serverDataLoaded, children }: {
   initialCountries: CountryData[];
   initialStats: StatsData;
+  serverDataLoaded?: boolean;
   children?: React.ReactNode;
 }) {
   // Theme
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Client-side data fallback: if server data is empty, fetch from API
+  const [clientCountries, setClientCountries] = useState<CountryData[] | null>(null);
+  const [clientStats, setClientStats] = useState<StatsData | null>(null);
+  useEffect(() => {
+    if (!serverDataLoaded && initialCountries.length === 0 && mounted) {
+      (async () => {
+        try {
+          const res = await fetch('/api/countries?limit=500');
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.data?.length > 0) {
+              const data = json.data as CountryData[];
+              setClientCountries(data);
+              setClientStats({
+                totalCountries: data.length,
+                visaFreeCount: data.filter((c: CountryData) => c.visaFree).length,
+                visaOnArrivalCount: data.filter((c: CountryData) => !c.visaFree && c.visaOnArrival).length,
+                eVisaCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
+                embassyRequiredCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
+              });
+            }
+          }
+        } catch (e) {
+          console.error('[HomeClient] Client-side data fetch failed:', e);
+        }
+      })();
+    }
+  }, [serverDataLoaded, initialCountries.length, mounted]);
 
   // Store
   const favorites = useAppStore((s) => s.favorites);
@@ -456,9 +486,9 @@ export default function HomeClient({ initialCountries, initialStats, children }:
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
 
-  // Data — initialized from props (no API fetch needed)
-  const countries = initialCountries;
-  const stats = initialStats;
+  // Data — from server props, or client-side fallback
+  const countries = clientCountries || initialCountries;
+  const stats = clientStats || initialStats;
 
   // FAQ
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);

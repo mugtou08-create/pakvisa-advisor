@@ -5,11 +5,9 @@ import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 
-// ISR: Revalidate every 24 hours. At build time, Vercel creates a fresh
-// empty DB that may lack schema columns — that's OK because without
-// generateStaticParams, no country pages are pre-rendered at build.
-// At runtime (first request), the real DB has the full schema.
-export const revalidate = 86400;
+// force-dynamic: Always render at request time. Vercel's build-time DB is empty.
+// At runtime, the real Turso DB has full country data.
+export const dynamic = 'force-dynamic';
 
 // Allow any slug to be rendered on-demand.
 export const dynamicParams = true;
