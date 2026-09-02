@@ -44,6 +44,17 @@ function score(r: ReqItem): number {
  * This is O(n²) but requirements arrays are small (typically <30 items).
  * For production safety, this runs at EVERY data access point.
  */
+/**
+ * Shared utility for normalizing safety ratings.
+ * DB stores ratings on a 0-10 scale; UI always displays /5.
+ * Returns 0 if the rating is invalid.
+ */
+export function normalizeSafetyRating(rating: any): number {
+  if (typeof rating !== 'number' || isNaN(rating) || rating <= 0) return 0;
+  const raw = rating > 5 ? rating / 2 : rating;
+  return Math.round(Math.min(raw, 5) * 10) / 10;
+}
+
 export function deduplicateRequirements<T extends ReqItem>(reqs: T[]): T[] {
   if (!reqs || reqs.length === 0) return [];
 

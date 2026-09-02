@@ -20,7 +20,7 @@ import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { isProUser } from '@/lib/auth-store';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
-import { deduplicateRequirements } from '@/lib/dedup-requirements';
+import { deduplicateRequirements, normalizeSafetyRating } from '@/lib/dedup-requirements';
 
 /** Map visa category to a CSS color for the left border accent */
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
@@ -378,7 +378,7 @@ function EmbassyContact({ countryCode }: { countryCode: string }) {
 // Safety Info Section
 // ============================================================
 function SafetyInfo({ rating, summary }: { rating: number; summary: string }) {
-  const displayRating = Math.min(Math.max(rating, 0), 5);
+  const displayRating = normalizeSafetyRating(rating);
   return (
     <div>
       <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Safety Overview</h5>

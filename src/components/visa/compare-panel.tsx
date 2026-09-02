@@ -229,9 +229,11 @@ export function ComparePanel({ countries, onClose, onSelectCountry, isProUser }:
                     icon={<Clock className="w-3.5 h-3.5" />}
                     countries={easyFirst}
                     render={c => {
-                      const min = c.processingDaysMin;
-                      const max = c.processingDaysMax;
-                      return min === max ? `${min} days` : `${min}–${max} days`;
+                      if (c.visaFree || c.visaOnArrival || c.etaAvailable) return <span className="text-emerald-600 font-medium">Instant</span>;
+                      const min = c.processingDaysMin || 0;
+                      const max = c.processingDaysMax || 0;
+                      if (min > 0 || max > 0) return <span>{min === max ? `${min} days` : `${min}–${max} days`}</span>;
+                      return <span className="text-muted-foreground">Varies</span>;
                     }}
                   />
                   {/* Continent */}
@@ -247,7 +249,8 @@ export function ComparePanel({ countries, onClose, onSelectCountry, isProUser }:
                     icon={<Shield className="w-3.5 h-3.5" />}
                     countries={easyFirst}
                     render={c => {
-                      const r = c.safetyRating;
+                      const r = c.safetyRating || 0;
+                      if (r <= 0) return <span className="text-muted-foreground">—</span>;
                       const color = r >= 7 ? 'text-emerald-600' : r >= 5 ? 'text-amber-600' : 'text-red-500';
                       return <span className={`font-medium ${color}`}>{r}/10 {r >= 7 && 'Safe'}</span>;
                     }}

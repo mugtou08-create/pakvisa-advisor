@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { getStaticCountries, getStaticCountry } from '@/lib/static-countries';
-import { deduplicateRequirements } from '@/lib/dedup-requirements';
+import { deduplicateRequirements, normalizeSafetyRating } from '@/lib/dedup-requirements';
 import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
@@ -171,8 +171,13 @@ function usdToPkr(usd: number): string {
   return Math.round(usd * 278.5).toLocaleString();
 }
 
+/**
+ * Alias for shared normalizeSafetyRating from data utils.
+ */
+const normalizeSafety = normalizeSafetyRating;
+
 function safetyStars(rating: number): string {
-  const clamped = Math.min(Math.max(rating, 0), 5);
+  const clamped = Math.min(Math.max(Math.round(rating), 0), 5);
   return '\u2605'.repeat(clamped) + '\u2606'.repeat(5 - clamped);
 }
 
@@ -671,12 +676,12 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 value={costProfile && costProfile.visaFeeUSD > 0 ? `$${costProfile.visaFeeUSD}` : 'Free'}
                 subtext={costProfile && costProfile.visaFeeUSD > 0 ? `≈ PKR ${usdToPkr(costProfile.visaFeeUSD)}` : 'No fee required'}
               />
-              {(typeof country.safetyRating === 'number' && !isNaN(country.safetyRating) && country.safetyRating > 0) ? (
+              {(() => { const sr = normalizeSafety(country.safetyRating); return sr > 0 ? (
               <InfoCard
                 icon={<Shield className="w-5 h-5 text-amber-600" />}
                 label="Safety Rating"
-                value={`${Math.min(country.safetyRating, 5)}/5`}
-                subtext={safetyStars(country.safetyRating)}
+                value={`${sr}/5`}
+                subtext={safetyStars(sr)}
               />
               ) : (
               <InfoCard
@@ -685,7 +690,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 value={visaLabel}
                 subtext={visaBadgeClass.includes('emerald') ? 'Favorable for Pakistanis' : visaBadgeClass.includes('red') ? 'Restricted' : 'Check requirements'}
               />
-              )}
+              ); })()}
               <InfoCard
                 icon={<Calendar className="w-5 h-5 text-purple-600" />}
                 label="Best Travel Months"
@@ -871,20 +876,20 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           </section>
 
           {/* Safety Overview — only show when we have valid data */}
-          {(typeof country.safetyRating === 'number' && !isNaN(country.safetyRating) && country.safetyRating > 0) && (
+          {(() => { const sr = normalizeSafety(country.safetyRating); return sr > 0 && (
             <section className="max-w-5xl mx-auto px-4 pb-8">
               <SectionTitle icon={<Shield className="w-5 h-5" />} title="Safety Overview" />
               <div className="border rounded-lg p-4 bg-card">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">{safetyStars(country.safetyRating)}</span>
-                  <span className="text-lg font-semibold">{Math.min(country.safetyRating, 5)}/5</span>
+                  <span className="text-2xl">{safetyStars(sr)}</span>
+                  <span className="text-lg font-semibold">{sr}/5</span>
                 </div>
                 {country.safetySummary && (
                   <p className="text-sm text-muted-foreground leading-relaxed">{country.safetySummary}</p>
                 )}
               </div>
             </section>
-          )}
+          ); })()}
 
           {/* Temperature & Climate */}
           {Object.keys(monthlyTemps).length > 0 && (
@@ -1178,9 +1183,7 @@ function generateFAQs(
   });
 
   // Q4: Safety — only include when we have valid rating data
-  const safeRating = (typeof country.safetyRating === 'number' && !isNaN(country.safetyRating) && country.safetyRating > 0)
-    ? Math.min(country.safetyRating, 5)
-    : 0;
+  const safeRating = normalizeSafety(country.safetyRating);
   if (safeRating > 0) {
     faqs.push({
       q: `Is ${country.name} safe for Pakistani tourists?`,

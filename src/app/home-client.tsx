@@ -39,6 +39,7 @@ const WhatsAppButton = dynamic(() => import('@/components/app/whatsapp-button').
 const SaraWidget = dynamic(() => import('@/components/app/sara-widget').then(m => ({ default: m.SaraWidget })), { ssr: false });
 import { getFlagUrl, REGIONS, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 import { intelligentSearch, resolveSearchToCountry, getSearchMatchInfo } from '@/lib/search-intelligence';
+import { normalizeSafetyRating } from '@/lib/dedup-requirements';
 
 
 // ============================================================
@@ -341,10 +342,17 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
             ) : country.costProfile?.visaFeeUSD ? (
               <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />${country.costProfile.visaFeeUSD}</span>
             ) : null}
-            {country.visaFree ? null : (
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{country.processingDaysMin}-{country.processingDaysMax}d</span>
+            {country.visaFree || country.visaOnArrival || country.etaAvailable ? null : (
+              (() => {
+                const pMin = country.processingDaysMin || 0;
+                const pMax = country.processingDaysMax || 0;
+                if (pMin > 0 || pMax > 0) return <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{pMin}-{pMax}d</span>;
+                return null;
+              })()
             )}
-            <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{Math.min(country.safetyRating, 5)}/5</span>
+            {(() => { const sr = normalizeSafetyRating(country.safetyRating); return sr > 0 ? (
+              <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{sr}/5</span>
+            ) : null; })()}
             {country.currencyCode && (
               <span className="flex items-center gap-1 hidden sm:flex"><Globe className="w-3 h-3" />{country.currencyCode}</span>
             )}
