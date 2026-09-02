@@ -8,7 +8,7 @@ import {
   Star, Zap, Crown, MapPin, FileText, Download, ExternalLink, SearchX,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
   CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building, Mail,
-  ArrowUp, LogIn, LogOut, User as UserIcon, Upload,
+  ArrowUp, LogIn, LogOut, User as UserIcon, Upload, ArrowRightLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,7 @@ const AdminDialog = dynamic(() => import('@/components/app/admin-dialog').then(m
 const WhatsAppButton = dynamic(() => import('@/components/app/whatsapp-button').then(m => ({ default: m.WhatsAppButton })), { ssr: false });
 const SaraWidget = dynamic(() => import('@/components/app/sara-widget').then(m => ({ default: m.SaraWidget })), { ssr: false });
 import { getFlagUrl, REGIONS, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
-import { intelligentSearch, resolveSearchToCountry } from '@/lib/search-intelligence';
+import { intelligentSearch, resolveSearchToCountry, getSearchMatchInfo } from '@/lib/search-intelligence';
 
 
 // ============================================================
@@ -1233,6 +1233,31 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                     </button>
                   </div>
                 )}
+
+                {/* Search context hint — shows city→country or alias info */}
+                {searchQuery.trim() && (() => {
+                  const info = getSearchMatchInfo(searchQuery);
+                  if (!info.matchType) return null;
+                  const firstResult = filteredCountries[0];
+                  if (!firstResult) return null;
+                  if (info.matchType === 'city' && info.cityName) {
+                    return (
+                      <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm">
+                        <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span><strong className="capitalize">{info.cityName}</strong> is a major city of <strong>{firstResult.name}</strong> {firstResult.flagEmoji} — showing results for {firstResult.name}</span>
+                      </div>
+                    );
+                  }
+                  if (info.matchType === 'alias' && info.aliasName) {
+                    return (
+                      <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 text-sm">
+                        <ArrowRightLeft className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span>"<strong className="capitalize">{info.aliasName}</strong>" is an alternative name for <strong>{firstResult.name}</strong> {firstResult.flagEmoji}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* Country list */}
                 {paginatedCountries.length === 0 ? (

@@ -6,8 +6,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  let countryCode: string | undefined;
   try {
     const { code } = await params;
+    countryCode = code;
 
     if (!code) {
       return NextResponse.json(
@@ -95,20 +97,20 @@ export async function GET(
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    const code = error instanceof Error && 'code' in error ? (error as any).code : 'UNKNOWN';
-    console.error(`[/api/countries/${await params.then(p => p.code)}] UNHANDLED: code:${code} msg:${msg}`, error);
+    console.error(`[/api/countries/${countryCode || 'unknown'}] UNHANDLED: ${msg}`, error);
 
     // Last-resort static fallback
-    try {
-      const { code: c } = await params;
-      const staticCountry = getStaticCountry(c?.toUpperCase());
-      if (staticCountry) {
-        return NextResponse.json({ success: true, data: staticCountry, _fallback: true, _error: msg });
-      }
-    } catch {}
+    if (countryCode) {
+      try {
+        const staticCountry = getStaticCountry(countryCode.toUpperCase());
+        if (staticCountry) {
+          return NextResponse.json({ success: true, data: staticCountry, _fallback: true, _error: msg });
+        }
+      } catch {}
+    }
 
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch country', _debug: { code, message: msg } },
+      { success: false, error: 'Failed to fetch country', _debug: { code: countryCode, message: msg } },
       { status: 500 }
     );
   }

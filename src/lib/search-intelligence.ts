@@ -378,6 +378,40 @@ export function intelligentSearch(
 }
 
 /**
+ * Returns match metadata for a query — used by the UI to show context hints
+ * like "Showing UAE (Dubai is a major city of UAE)".
+ */
+export function getSearchMatchInfo(query: string): { matchType: 'city' | 'alias' | null; cityName: string | null; aliasName: string | null } {
+  if (!query.trim()) return { matchType: null, cityName: null, aliasName: null };
+  const q = query.trim().toLowerCase();
+
+  // Check direct city match
+  if (CITY_TO_COUNTRY[q]) {
+    return { matchType: 'city', cityName: query.trim(), aliasName: null };
+  }
+
+  // Check multi-word city (e.g. "new york")
+  if (q.includes(' ') && CITY_TO_COUNTRY[q]) {
+    return { matchType: 'city', cityName: query.trim(), aliasName: null };
+  }
+
+  // Check individual words for city matches
+  const words = q.split(/\s+/);
+  for (const word of words) {
+    if (CITY_TO_COUNTRY[word]) {
+      return { matchType: 'city', cityName: word.charAt(0).toUpperCase() + word.slice(1), aliasName: null };
+    }
+  }
+
+  // Check alias match (but only if it's NOT also a direct country name match)
+  if (COUNTRY_ALIASES[q]) {
+    return { matchType: 'alias', cityName: null, aliasName: query.trim() };
+  }
+
+  return { matchType: null, cityName: null, aliasName: null };
+}
+
+/**
  * Resolves a query string to a single country (for search box behavior).
  * Returns null if no match found.
  */

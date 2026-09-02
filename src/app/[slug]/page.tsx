@@ -238,6 +238,18 @@ type VisaRequirementData = {
   description: string;
 };
 
+// Safe date-to-string helper — handles Date objects, ISO strings, and missing values.
+function safeDateString(val: any): string | null {
+  if (!val) return null;
+  try {
+    const d = val instanceof Date ? val : new Date(val);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().split('T')[0];
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug: rawSlug } = await params;
   const slug = rawSlug.toLowerCase();
@@ -475,7 +487,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
       '@type': 'Country',
       name: country.name,
     },
-    dateModified: country.updatedAt?.toISOString().split('T')[0] || '2026-01-01',
+    dateModified: safeDateString(country.updatedAt) || '2026-01-01',
   };
 
   const breadcrumbSchema = {
@@ -495,8 +507,8 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
     description: `Complete ${country.name} visa guide for Pakistani passport holders. ${visaLabel} access, updated for 2026.`,
     url: `https://pakvisa-advisor.vercel.app/${slug}`,
     image: HERO_IMAGE_SLUGS.has(primarySlug) ? `https://pakvisa-advisor.vercel.app/country-heroes/${primarySlug}.webp` : 'https://pakvisa-advisor.vercel.app/og-image.png',
-    datePublished: country.createdAt?.toISOString().split('T')[0] || '2025-01-01',
-    dateModified: country.updatedAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+    datePublished: safeDateString(country.createdAt) || '2025-01-01',
+    dateModified: safeDateString(country.updatedAt) || new Date().toISOString().split('T')[0],
     author: { '@type': 'Organization', name: 'PakVisa Advisor', url: 'https://pakvisa-advisor.vercel.app' },
     publisher: { '@type': 'Organization', name: 'PakVisa Advisor', url: 'https://pakvisa-advisor.vercel.app', logo: { '@type': 'ImageObject', url: 'https://pakvisa-advisor.vercel.app/og-image.png' } },
     mainEntityOfPage: `https://pakvisa-advisor.vercel.app/${slug}`,
