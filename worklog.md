@@ -2951,3 +2951,27 @@ Stage Summary:
 - Countries will ALWAYS show now — static JSON is embedded in the server bundle
 - Search handles: Dubai→UAE, Brussels→Belgium, US/USA/United States, fuzzy typos
 - Pushed as commit 6b28d89
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix server-side exception on /thailand and all country pages, enhance search UX
+
+Work Log:
+- Diagnosed the root cause: `country.createdAt?.toISOString()` in [slug]/page.tsx crashes when static fallback data is used (createdAt is a string, not a Date object)
+- Added `safeDateString()` helper function in [slug]/page.tsx that handles both Date objects and ISO strings
+- Replaced all 3 unsafe `.toISOString()` calls with `safeDateString()` in JSON-LD schemas
+- Fixed `/api/countries/[code]/route.ts` catch block: removed shadowed `code` variable, eliminated double-await of params Promise
+- Added `safeISO()` helper to page.tsx for defensive date handling on homepage
+- Added `getSearchMatchInfo()` function to search-intelligence.ts for UI context hints
+- Added search context hint banner in home-client.tsx showing city→country mapping (e.g. "Dubai is a major city of UAE")
+- Added `ArrowRightLeft` icon import to home-client.tsx
+- Added sandbox IP to `allowedDevOrigins` in next.config.ts
+- Ran lint: 0 errors
+- Committed and pushed all changes
+
+Stage Summary:
+- ALL country pages (/thailand, /uae, /usa, etc.) now safely handle both DB data (Date objects) and static fallback data (ISO strings)
+- Search now shows helpful context: "Dubai is a major city of UAE 🇦🇪" when user types a city name
+- Alias search shows: "US is an alternative name for USA 🇺🇸"
+- 3 commits pushed to main: 79346bb, 249e24d, 84792dd
