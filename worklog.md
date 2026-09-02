@@ -2906,3 +2906,24 @@ Stage Summary:
 - 3 security-critical debug endpoints removed from codebase
 - Admin backup download with timestamped filename now available in Data Sync tab
 - All 70 country pages, sitemap, robots.txt verified working
+
+---
+Task ID: Fix 0 countries showing in webapp
+Agent: Main Agent
+Task: User reported no countries showing in the webapp preview
+
+Work Log:
+- Investigated: server returns 200 with 1.1MB HTML containing 70 countries in RSC payload
+- Found cross-origin warning: 'Blocked cross-origin request from 127.0.0.1 to /_next/* resource'
+- Found X-Frame-Options: DENY and Cross-Origin-Opener-Policy: same-origin headers blocking preview panel
+- Made HomeClient always fetch from /api/countries on mount (not just fallback when server data empty)
+- Added defensive guards: countries/stats default to empty values if undefined
+- Fixed allowedDevOrigins with specific dev origins in next.config.ts
+- Removed X-Frame-Options and COOP headers in dev mode only
+- Verified: API returns 70 countries, homepage returns 200 with 1.1MB
+- Committed as 595a915 and pushed to GitHub
+
+Stage Summary:
+- Root cause: combination of cross-origin headers blocking preview panel + potential RSC deserialization issues
+- Fix: client-side API fetch on mount ensures data loads regardless of server props
+- Dev-mode security headers (X-Frame-Options, COOP) removed to allow preview panel to render
