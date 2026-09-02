@@ -13,6 +13,11 @@ export const dynamic = 'force-dynamic';
 // ============================================================
 // Helpers
 // ============================================================
+function safeISO(val: any): string | undefined {
+  if (!val) return undefined;
+  try { return (val instanceof Date ? val : new Date(val)).toISOString(); } catch { return undefined; }
+}
+
 function computeStats(countries: CountryData[]) {
   return {
     totalCountries: countries.length,
@@ -93,7 +98,7 @@ export default async function HomePage() {
           processingDaysMin: c.processingDaysMin,
           processingDaysMax: c.processingDaysMax,
           sourceUrl: c.sourceUrl,
-          fetchTimestamp: c.fetchTimestamp.toISOString(),
+          fetchTimestamp: safeISO(c.fetchTimestamp),
           fetchHash: c.fetchHash,
           parserVersion: c.parserVersion,
           parserConfidence: c.parserConfidence,
@@ -144,7 +149,7 @@ export default async function HomePage() {
             scoringWeight: r.scoringWeight, sourceUrl: r.sourceUrl,
             parserConfidence: r.parserConfidence, needsReview: r.needsReview,
           })),
-          createdAt: c.createdAt?.toISOString(),
+          createdAt: safeISO(c.createdAt),
         };
       });
       stats = computeStats(countries);

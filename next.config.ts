@@ -10,9 +10,11 @@ const nextConfig: NextConfig = {
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://21.0.16.85:3000',
+    'http://21.0.12.221:3000',
     'https://localhost:3000',
     'https://127.0.0.1:3000',
     'https://21.0.16.85:3000',
+    'https://21.0.12.221:3000',
   ],
   // Target modern browsers — no legacy polyfills
   compiler: {
