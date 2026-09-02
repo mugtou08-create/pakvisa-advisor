@@ -3047,3 +3047,29 @@ Stage Summary:
 - Even if data has duplicates, the UI will NEVER show them
 - Shared utility ensures consistent behavior across all access points
 - Lint passes, all files compile cleanly
+---
+Task ID: 1
+Agent: main
+Task: Full audit and fix of webapp data integrity issues
+
+Work Log:
+- Checked dev server logs - no errors on homepage
+- Audited database: 70 countries, 179 visa types, 153 cost profiles
+- Found 59 countries with safetyRating > 5 (stored on 0-10 scale, UI showed /5)
+- Found 5 countries with 0/0 processing time (VOA/ETA - actually correct)
+- Found 70 countries in static JSON missing safetyRating entirely
+- Found 70 countries in static JSON missing processingDaysMin/processingDaysMax
+- Created shared normalizeSafetyRating() utility in dedup-requirements.ts
+- Fixed [slug]/page.tsx: all 7 safety/processing references now use normalizeSafety + guards
+- Fixed home-client.tsx: homepage cards now show normalized safety rating + guarded processing time
+- Fixed country-detail.tsx: SafetyInfo component uses shared normalizeSafetyRating
+- Fixed compare-panel.tsx: processing time handles undefined, safety handles 0
+- Fixed static-countries.ts: patchCountry derives processing from visa types, defaults safetyRating to 0
+- Verified via curl: API /api/countries/Malaysia returns correct data (3-30 days, safetyRating=0, no duplicates)
+- Lint passes clean
+
+Stage Summary:
+- Safety rating 0-10 scale now normalized to 0-5 across all views (homepage, country page, compare panel, sidebar)
+- Processing time: no more 'undefined-undefined days' anywhere (homepage, country page, compare panel, FAQ, metadata)
+- Shared normalizeSafetyRating() utility ensures consistent behavior
+- Static fallback correctly derives processing time from visa type data
