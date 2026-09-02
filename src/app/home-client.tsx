@@ -342,17 +342,12 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
             ) : country.costProfile?.visaFeeUSD ? (
               <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />${country.costProfile.visaFeeUSD}</span>
             ) : null}
-            {country.visaFree || country.visaOnArrival || country.etaAvailable ? null : (
-              (() => {
-                const pMin = country.processingDaysMin || 0;
-                const pMax = country.processingDaysMax || 0;
-                if (pMin > 0 || pMax > 0) return <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{pMin}-{pMax}d</span>;
-                return null;
-              })()
+            {!country.visaFree && !country.visaOnArrival && !country.etaAvailable && (country.processingDaysMin > 0 || country.processingDaysMax > 0) && (
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{country.processingDaysMin || 0}-{country.processingDaysMax || 0}d</span>
             )}
-            {(() => { const sr = normalizeSafetyRating(country.safetyRating); return sr > 0 ? (
-              <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{sr}/5</span>
-            ) : null; })()}
+            {typeof country.safetyRating === 'number' && country.safetyRating > 0 && (
+              <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{normalizeSafetyRating(country.safetyRating)}/5</span>
+            )}
             {country.currencyCode && (
               <span className="flex items-center gap-1 hidden sm:flex"><Globe className="w-3 h-3" />{country.currencyCode}</span>
             )}

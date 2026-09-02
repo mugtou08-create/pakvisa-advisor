@@ -661,13 +661,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               <InfoCard
                 icon={<Clock className="w-5 h-5 text-sky-600" />}
                 label="Processing Time"
-                value={(() => {
-                  if (country.visaFree || country.visaOnArrival || country.etaAvailable) return 'Instant';
-                  const min = country.processingDaysMin || 0;
-                  const max = country.processingDaysMax || 0;
-                  if (min > 0 || max > 0) return `${min}–${max} days`;
-                  return 'Varies';
-                })()}
+                value={country.visaFree || country.visaOnArrival || country.etaAvailable ? 'Instant' : (country.processingDaysMin > 0 || country.processingDaysMax > 0) ? `${country.processingDaysMin}–${country.processingDaysMax} days` : 'Varies'}
                 subtext={country.visaFree || country.visaOnArrival || country.etaAvailable ? 'No processing needed' : 'Business days'}
               />
               <InfoCard
@@ -676,12 +670,12 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 value={costProfile && costProfile.visaFeeUSD > 0 ? `$${costProfile.visaFeeUSD}` : 'Free'}
                 subtext={costProfile && costProfile.visaFeeUSD > 0 ? `≈ PKR ${usdToPkr(costProfile.visaFeeUSD)}` : 'No fee required'}
               />
-              {(() => { const sr = normalizeSafety(country.safetyRating); return sr > 0 ? (
+              {normalizeSafety(country.safetyRating) > 0 ? (
               <InfoCard
                 icon={<Shield className="w-5 h-5 text-amber-600" />}
                 label="Safety Rating"
-                value={`${sr}/5`}
-                subtext={safetyStars(sr)}
+                value={`${normalizeSafety(country.safetyRating)}/5`}
+                subtext={safetyStars(normalizeSafety(country.safetyRating))}
               />
               ) : (
               <InfoCard
@@ -690,7 +684,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 value={visaLabel}
                 subtext={visaBadgeClass.includes('emerald') ? 'Favorable for Pakistanis' : visaBadgeClass.includes('red') ? 'Restricted' : 'Check requirements'}
               />
-              ); })()}
+              )}
               <InfoCard
                 icon={<Calendar className="w-5 h-5 text-purple-600" />}
                 label="Best Travel Months"
@@ -876,20 +870,20 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           </section>
 
           {/* Safety Overview — only show when we have valid data */}
-          {(() => { const sr = normalizeSafety(country.safetyRating); return sr > 0 && (
+          {normalizeSafety(country.safetyRating) > 0 && (
             <section className="max-w-5xl mx-auto px-4 pb-8">
               <SectionTitle icon={<Shield className="w-5 h-5" />} title="Safety Overview" />
               <div className="border rounded-lg p-4 bg-card">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="text-2xl">{safetyStars(sr)}</span>
-                  <span className="text-lg font-semibold">{sr}/5</span>
+                  <span className="text-2xl">{safetyStars(normalizeSafety(country.safetyRating))}</span>
+                  <span className="text-lg font-semibold">{normalizeSafety(country.safetyRating)}/5</span>
                 </div>
                 {country.safetySummary && (
                   <p className="text-sm text-muted-foreground leading-relaxed">{country.safetySummary}</p>
                 )}
               </div>
             </section>
-          ); })()}
+          )}
 
           {/* Temperature & Climate */}
           {Object.keys(monthlyTemps).length > 0 && (
