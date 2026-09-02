@@ -5,12 +5,13 @@ import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 
-// Force dynamic rendering — Vercel build uses a fresh empty SQLite DB that
-// lacks recently-added schema columns. At runtime, the real DB has the full schema.
-// Pages are generated on first request and cached for 24 hours via ISR.
-export const dynamic = 'force-dynamic';
+// ISR: Revalidate every 24 hours. At build time, Vercel creates a fresh
+// empty DB that may lack schema columns — that's OK because without
+// generateStaticParams, no country pages are pre-rendered at build.
+// At runtime (first request), the real DB has the full schema.
+export const revalidate = 86400;
 
-// Allow any slug to be rendered on-demand (not just pre-generated ones).
+// Allow any slug to be rendered on-demand.
 export const dynamicParams = true;
 
 // Countries that have hero images — no DB column needed, just check this set.

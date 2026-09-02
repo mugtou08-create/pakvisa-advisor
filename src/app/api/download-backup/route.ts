@@ -21,13 +21,14 @@ export async function GET(request: NextRequest) {
 
     const siteSettings = await db.siteSettings.findMany();
 
+    const now = new Date();
+    const dateStr = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `pakvisa-backup-${dateStr}.json`;
+
     const backup = {
-      exportedAt: new Date().toISOString(),
+      exportedAt: now.toISOString(),
       version: '1.0',
-      tables: {
-        countries,
-        siteSettings,
-      },
+      tables: { countries, siteSettings },
     };
 
     const json = JSON.stringify(backup, null, 2);
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': 'attachment; filename="pakvisa-advisor-backup.json"',
+        'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-cache',
       },
     });

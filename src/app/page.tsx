@@ -4,89 +4,120 @@ import { CODE_TO_SLUG } from '@/lib/country-slug';
 import HomeClient from './home-client';
 
 // ============================================================
-// Force dynamic rendering — Vercel build creates a fresh empty SQLite DB
-// which lacks columns added in recent schema migrations (visaTypeId,
-// processingDaysMin, etc.). At runtime, the real database has the full
-// schema. This prevents build-time prerendering errors while keeping
-// ISR caching via the route handler cache.
+// ISR: Revalidate every 5 minutes.
+// Build-time query may fail on Vercel (fresh dummy DB) — try-catch
+// handles this gracefully. At runtime, the real DB has full data.
 // ============================================================
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // 5 minutes
 
 // ============================================================
 // Main Server Component
 // ============================================================
 export default async function HomePage() {
-  // Fetch all countries from DB (full data for client-side filtering)
-  const dbCountries = await db.country.findMany({
-    include: {
-      visaTypes: {
-        include: {
-          costProfiles: true,
-          requirements: { orderBy: { category: 'asc' } },
-        },
-        orderBy: { type: 'asc' },
-      },
-      requirements: { orderBy: { category: 'asc' } },
-      costProfiles: true,
-    },
-  });
+  let countries: CountryData[] = [];
+  let stats = { totalCountries: 0, visaFreeCount: 0, visaOnArrivalCount: 0, eVisaCount: 0, embassyRequiredCount: 0 };
+  let serverDataLoaded = false;
 
-  // Format to CountryData[]
-  const countries: CountryData[] = dbCountries.map((c) => {
-    let monthlyTemps: Record<string, number>;
-    try {
-      monthlyTemps = JSON.parse(c.monthlyTemps || '{}');
-    } catch {
-      monthlyTemps = {};
-    }
-    return {
-      id: c.id,
-      code: c.code,
-      name: c.name,
-      flagEmoji: c.flagEmoji,
-      flagUrl: c.flagUrl || '',
-      continent: c.continent,
-      currency: c.currency,
-      currencyCode: c.currencyCode,
-      timezone: c.timezone,
-      visaFree: c.visaFree,
-      visaOnArrival: c.visaOnArrival,
-      etaAvailable: c.etaAvailable,
-      safetyRating: c.safetyRating,
-      safetySummary: c.safetySummary,
-      bestTravelMonths: c.bestTravelMonths,
-      avgTempC: c.avgTempC,
-      monthlyTemps,
-      processingDaysMin: c.processingDaysMin,
-      processingDaysMax: c.processingDaysMax,
-      sourceUrl: c.sourceUrl,
-      fetchTimestamp: c.fetchTimestamp.toISOString(),
-      fetchHash: c.fetchHash,
-      parserVersion: c.parserVersion,
-      parserConfidence: c.parserConfidence,
-      visaTypes: c.visaTypes.map((vt) => ({
-        id: vt.id,
-        type: vt.type,
-        description: vt.description,
-        maxDuration: vt.maxDuration,
-        extensions: vt.extensions,
-        multipleEntry: vt.multipleEntry,
-        processingDaysMin: vt.processingDaysMin,
-        processingDaysMax: vt.processingDaysMax,
-        sourceUrl: vt.sourceUrl,
-        verifiedTill: vt.verifiedTill,
-        parserConfidence: vt.parserConfidence,
-        costProfile: vt.costProfiles && vt.costProfiles.length > 0 ? {
-          id: vt.costProfiles[0].id,
-          visaFeeUSD: vt.costProfiles[0].visaFeeUSD,
-          serviceFeeUSD: vt.costProfiles[0].serviceFeeUSD,
-          processingDaysMin: vt.costProfiles[0].processingDaysMin,
-          processingDaysMax: vt.costProfiles[0].processingDaysMax,
-          totalMonthlyUSD: vt.costProfiles[0].totalMonthlyUSD,
-          currency: vt.costProfiles[0].currency,
-          verifiedTill: vt.costProfiles[0].verifiedTill,
-        } : null,
-        requirements: vt.requirements ? vt.requirements.map((r) => ({
+  try {
+    // Fetch all countries from DB (full data for client-side filtering)
+    const dbCountries = await db.country.findMany({
+      include: {
+        visaTypes: {
+          include: {
+            costProfiles: true,
+            requirements: { orderBy: { category: 'asc' } },
+          },
+          orderBy: { type: 'asc' },
+        },
+        requirements: { orderBy: { category: 'asc' } },
+        costProfiles: true,
+      },
+    });
+
+    // Format to CountryData[]
+    countries = dbCountries.map((c) => {
+      let monthlyTemps: Record<string, number>;
+      try {
+        monthlyTemps = JSON.parse(c.monthlyTemps || '{}');
+      } catch {
+        monthlyTemps = {};
+      }
+      return {
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        flagEmoji: c.flagEmoji,
+        flagUrl: c.flagUrl || '',
+        continent: c.continent,
+        currency: c.currency,
+        currencyCode: c.currencyCode,
+        timezone: c.timezone,
+        visaFree: c.visaFree,
+        visaOnArrival: c.visaOnArrival,
+        etaAvailable: c.etaAvailable,
+        safetyRating: c.safetyRating,
+        safetySummary: c.safetySummary,
+        bestTravelMonths: c.bestTravelMonths,
+        avgTempC: c.avgTempC,
+        monthlyTemps,
+        processingDaysMin: c.processingDaysMin,
+        processingDaysMax: c.processingDaysMax,
+        sourceUrl: c.sourceUrl,
+        fetchTimestamp: c.fetchTimestamp.toISOString(),
+        fetchHash: c.fetchHash,
+        parserVersion: c.parserVersion,
+        parserConfidence: c.parserConfidence,
+        visaTypes: c.visaTypes.map((vt) => ({
+          id: vt.id,
+          type: vt.type,
+          description: vt.description,
+          maxDuration: vt.maxDuration,
+          extensions: vt.extensions,
+          multipleEntry: vt.multipleEntry,
+          processingDaysMin: vt.processingDaysMin,
+          processingDaysMax: vt.processingDaysMax,
+          sourceUrl: vt.sourceUrl,
+          verifiedTill: vt.verifiedTill,
+          parserConfidence: vt.parserConfidence,
+          costProfile: vt.costProfiles && vt.costProfiles.length > 0 ? {
+            id: vt.costProfiles[0].id,
+            visaFeeUSD: vt.costProfiles[0].visaFeeUSD,
+            serviceFeeUSD: vt.costProfiles[0].serviceFeeUSD,
+            processingDaysMin: vt.costProfiles[0].processingDaysMin,
+            processingDaysMax: vt.costProfiles[0].processingDaysMax,
+            totalMonthlyUSD: vt.costProfiles[0].totalMonthlyUSD,
+            currency: vt.costProfiles[0].currency,
+            verifiedTill: vt.costProfiles[0].verifiedTill,
+          } : null,
+          requirements: vt.requirements ? vt.requirements.map((r) => ({
+            id: r.id,
+            category: r.category,
+            requirement: r.requirement,
+            mandatory: r.mandatory,
+            description: r.description,
+            scoringWeight: r.scoringWeight,
+            sourceUrl: r.sourceUrl,
+            parserConfidence: r.parserConfidence,
+            needsReview: r.needsReview,
+          })) : [],
+        })),
+        costProfile: c.costProfiles.length > 0
+          ? {
+              id: c.costProfiles[0].id,
+              visaFeeUSD: c.costProfiles[0].visaFeeUSD,
+              serviceFeeUSD: c.costProfiles[0].serviceFeeUSD,
+              processingDays: c.costProfiles[0].processingDays,
+              monthlyLivingUSD: c.costProfiles[0].monthlyLivingUSD,
+              monthlyRentUSD: c.costProfiles[0].monthlyRentUSD,
+              monthlyFoodUSD: c.costProfiles[0].monthlyFoodUSD,
+              monthlyTransportUSD: c.costProfiles[0].monthlyTransportUSD,
+              healthInsuranceUSD: c.costProfiles[0].healthInsuranceUSD,
+              totalMonthlyUSD: c.costProfiles[0].totalMonthlyUSD,
+              currency: c.costProfiles[0].currency,
+              parserConfidence: c.costProfiles[0].parserConfidence,
+            }
+          : null,
+        requirements: c.requirements.map((r) => ({
           id: r.id,
           category: r.category,
           requirement: r.requirement,
@@ -96,49 +127,28 @@ export default async function HomePage() {
           sourceUrl: r.sourceUrl,
           parserConfidence: r.parserConfidence,
           needsReview: r.needsReview,
-        })) : [],
-      })),
-      costProfile: c.costProfiles.length > 0
-        ? {
-            id: c.costProfiles[0].id,
-            visaFeeUSD: c.costProfiles[0].visaFeeUSD,
-            serviceFeeUSD: c.costProfiles[0].serviceFeeUSD,
-            processingDays: c.costProfiles[0].processingDays,
-            monthlyLivingUSD: c.costProfiles[0].monthlyLivingUSD,
-            monthlyRentUSD: c.costProfiles[0].monthlyRentUSD,
-            monthlyFoodUSD: c.costProfiles[0].monthlyFoodUSD,
-            monthlyTransportUSD: c.costProfiles[0].monthlyTransportUSD,
-            healthInsuranceUSD: c.costProfiles[0].healthInsuranceUSD,
-            totalMonthlyUSD: c.costProfiles[0].totalMonthlyUSD,
-            currency: c.costProfiles[0].currency,
-            parserConfidence: c.costProfiles[0].parserConfidence,
-          }
-        : null,
-      requirements: c.requirements.map((r) => ({
-        id: r.id,
-        category: r.category,
-        requirement: r.requirement,
-        mandatory: r.mandatory,
-        description: r.description,
-        scoringWeight: r.scoringWeight,
-        sourceUrl: r.sourceUrl,
-        parserConfidence: r.parserConfidence,
-        needsReview: r.needsReview,
-      })),
-      createdAt: c.createdAt?.toISOString(),
+        })),
+        createdAt: c.createdAt?.toISOString(),
+      };
+    });
+
+    // Compute stats
+    stats = {
+      totalCountries: countries.length,
+      visaFreeCount: countries.filter((c) => c.visaFree).length,
+      visaOnArrivalCount: countries.filter((c) => !c.visaFree && c.visaOnArrival).length,
+      eVisaCount: countries.filter((c) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
+      embassyRequiredCount: countries.filter((c) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
     };
-  });
 
-  // Compute stats (exclusive classification: visaFree > visaOnArrival > eVisa > embassy)
-  const stats = {
-    totalCountries: countries.length,
-    visaFreeCount: countries.filter((c) => c.visaFree).length,
-    visaOnArrivalCount: countries.filter((c) => !c.visaFree && c.visaOnArrival).length,
-    eVisaCount: countries.filter((c) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
-    embassyRequiredCount: countries.filter((c) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
-  };
+    serverDataLoaded = true;
+  } catch (error) {
+    // Build-time DB (dummy.db) may lack schema columns — that's OK.
+    // At runtime, the real DB has the full schema and this won't trigger.
+    console.error('[HomePage] DB query failed (expected at build time):', error);
+  }
 
-  // Collect flag URLs for preloading (top 4 most popular — avoid bloating critical path)
+  // Collect flag URLs for preloading (top 4 most popular)
   const POPULAR = ['UAE', 'Saudi Arabia', 'Turkey', 'Malaysia'];
   const FLAG_ISO_MAP: Record<string, string> = {
     Afghanistan:'AF', Algeria:'DZ', Armenia:'AM', Australia:'AU', Austria:'AT',
@@ -183,25 +193,27 @@ export default async function HomePage() {
           Googlebot discovers these links during crawl, giving each country page
           strong internal link equity. Without this, country pages are only found
           via sitemap.xml — Google treats them as low-priority orphan pages. */}
-      <nav aria-label="All Countries" className="sr-only">
-        <h2>All Countries Visa Guide for Pakistani Citizens</h2>
-        <ul>
-          {countries.map((c) => {
-            const slug = CODE_TO_SLUG[c.code] || c.code.toLowerCase();
-            const visaLabel = c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'Visa on Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy Visa Required';
-            return (
-              <li key={c.code}>
-                <a
-                  href={`/${slug}`}
-                  title={`${c.name} Visa for Pakistani Citizens - ${visaLabel} - Requirements, Fees & Guide 2026`}
-                >
-                  {c.name} Visa for Pakistani Citizens
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {serverDataLoaded && (
+        <nav aria-label="All Countries" className="sr-only">
+          <h2>All Countries Visa Guide for Pakistani Citizens</h2>
+          <ul>
+            {countries.map((c) => {
+              const slug = CODE_TO_SLUG[c.code] || c.code.toLowerCase();
+              const visaLabel = c.visaFree ? 'Visa Free' : c.visaOnArrival ? 'Visa on Arrival' : c.etaAvailable ? 'e-Visa' : 'Embassy Visa Required';
+              return (
+                <li key={c.code}>
+                  <a
+                    href={`/${slug}`}
+                    title={`${c.name} Visa for Pakistani Citizens - ${visaLabel} - Requirements, Fees & Guide 2026`}
+                  >
+                    {c.name} Visa for Pakistani Citizens
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )}
     </>
   );
 }
