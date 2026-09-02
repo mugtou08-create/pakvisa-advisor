@@ -412,36 +412,53 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Client-side data: fetch from API on mount as primary data source
-  // Server props are used as initial render, but API fetch ensures reliability
+  // Client-side data: fetch from API on mount with retry logic.
+  // Server props (initialCountries) provide SSR data; this fetch
+  // ensures fresh data after hydration and serves as a fallback if SSR failed.
   const [clientCountries, setClientCountries] = useState<CountryData[] | null>(null);
   const [clientStats, setClientStats] = useState<StatsData | null>(null);
   const [dataFetched, setDataFetched] = useState(false);
   useEffect(() => {
     if (!mounted) return;
+    let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch('/api/countries?limit=500');
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data?.length > 0) {
-            const data = json.data as CountryData[];
-            setClientCountries(data);
-            setClientStats({
-              totalCountries: data.length,
-              visaFreeCount: data.filter((c: CountryData) => c.visaFree).length,
-              visaOnArrivalCount: data.filter((c: CountryData) => !c.visaFree && c.visaOnArrival).length,
-              eVisaCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
-              embassyRequiredCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
-            });
+      // If SSR already provided data, we still try to fetch fresh data
+      // but don't block the UI waiting for it.
+      const maxRetries = initialCountries && initialCountries.length > 0 ? 1 : 3;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        if (cancelled) break;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), attempt > 1 ? 15000 : 10000);
+          const res = await fetch('/api/countries?limit=500', { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (cancelled) break;
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.data?.length > 0) {
+              const data = json.data as CountryData[];
+              setClientCountries(data);
+              setClientStats({
+                totalCountries: data.length,
+                visaFreeCount: data.filter((c: CountryData) => c.visaFree).length,
+                visaOnArrivalCount: data.filter((c: CountryData) => !c.visaFree && c.visaOnArrival).length,
+                eVisaCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
+                embassyRequiredCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
+              });
+              break; // Success — no more retries
+            }
+          }
+        } catch (e) {
+          if (cancelled) break;
+          console.warn('[HomeClient] Fetch attempt', attempt, 'failed:', e instanceof Error ? e.message : e);
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 1000 * attempt)); // Backoff: 1s, 2s
           }
         }
-      } catch (e) {
-        console.error('[HomeClient] Client-side data fetch failed:', e);
-      } finally {
-        setDataFetched(true);
       }
+      if (!cancelled) setDataFetched(true);
     })();
+    return () => { cancelled = true; };
   }, [mounted]);
 
   // Store

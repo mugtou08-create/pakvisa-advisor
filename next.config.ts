@@ -33,9 +33,10 @@ const nextConfig: NextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           // Only set COOP/COEP in production (breaks dev preview panel cross-origin)
+          // COOP removed — it was causing 'Failed to fetch' errors
+          // when combined with the service worker in production.
           ...(process.env.NODE_ENV === 'production' ? [
             { key: 'X-Frame-Options', value: 'DENY' },
-            { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           ] : []),
         ],
       },

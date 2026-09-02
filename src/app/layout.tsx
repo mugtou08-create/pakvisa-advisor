@@ -110,6 +110,14 @@ export default function RootLayout({
         <link rel="icon" href="/icon.png?v=2" sizes="32x32" type="image/png" />
         <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" type="image/x-icon" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+        {/* Force-unregister any existing service worker that may be cached
+            in users' browsers from a previous version. The SW was causing
+            'TypeError: Failed to fetch' errors on API routes. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(reg){reg.unregister()})})}`,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
