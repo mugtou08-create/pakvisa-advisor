@@ -434,8 +434,26 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   // Parse best travel months
   const bestMonths = country.bestTravelMonths ? country.bestTravelMonths.split(',').map((m: string) => m.trim()).filter(Boolean) : [];
 
+  // Deduplicate requirements (safety net — normalizes text and removes near-duplicates within each category)
+  function normalizeReq(s: string): string {
+    return s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function isReqDuplicate(a: string, b: string): boolean {
+    const na = normalizeReq(a);
+    const nb = normalizeReq(b);
+    if (na === nb) return true;
+    const wa = new Set(na.split(' ').filter(w => w.length > 2));
+    const wb = new Set(nb.split(' ').filter(w => w.length > 2));
+    if (wa.size === 0 || wb.size === 0) return false;
+    const inter = [...wa].filter(w => wb.has(w));
+    return inter.length >= Math.max(wa.size, wb.size) * 0.6;
+  }
+  const dedupedRequirements = requirements.filter((r, i) => {
+    return !requirements.slice(0, i).some(prev => isReqDuplicate(prev.requirement, r.requirement));
+  });
+
   // Group requirements by category
-  const groupedRequirements = requirements.reduce((acc, r) => {
+  const groupedRequirements = dedupedRequirements.reduce((acc, r) => {
     const cat = r.category || 'Other';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(r);

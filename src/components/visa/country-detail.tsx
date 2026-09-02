@@ -839,8 +839,19 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
               const borderColor = CATEGORY_BORDER_COLORS[catLabel] || '#94a3b8';
 
+              // Deduplicate per-visa-type requirements (safety net)
+              const normVt = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+              const dedupedVtReqs = vtReqs.filter((r, i) => !vtReqs.slice(0, i).some(prev => {
+                const na = normVt(prev.requirement), nb = normVt(r.requirement);
+                if (na === nb) return true;
+                const wa = new Set(na.split(' ').filter(w => w.length > 2));
+                const wb = new Set(nb.split(' ').filter(w => w.length > 2));
+                if (wa.size === 0 || wb.size === 0) return false;
+                return [...wa].filter(w => wb.has(w)).length >= Math.max(wa.size, wb.size) * 0.6;
+              }));
+
               // Group requirements by category
-              const reqByCategory = vtReqs.reduce<Record<string, typeof vtReqs>>((acc, r) => {
+              const reqByCategory = dedupedVtReqs.reduce<Record<string, typeof dedupedVtReqs>>((acc, r) => {
                 const cat = r.category || 'Other';
                 if (!acc[cat]) acc[cat] = [];
                 acc[cat].push(r);
@@ -972,11 +983,11 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
                       )}
 
                       {/* Document Checklist — grouped by category */}
-                      {vtReqs.length > 0 && (
+                      {dedupedVtReqs.length > 0 && (
                         <div>
                           <p className="text-[10px] font-semibold text-foreground mb-1.5 flex items-center gap-1">
                             <ClipboardList className="w-3 h-3" />
-                            Document Checklist ({mandatoryReqs} required{vtReqs.length > mandatoryReqs ? `, ${vtReqs.length - mandatoryReqs} optional` : ''})
+                            Document Checklist ({dedupedVtReqs.filter(r => r.mandatory).length} required{dedupedVtReqs.length > dedupedVtReqs.filter(r => r.mandatory).length ? `, ${dedupedVtReqs.length - dedupedVtReqs.filter(r => r.mandatory).length} optional` : ''})
                           </p>
                           <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
                             {Object.entries(reqByCategory).map(([cat, reqs]) => (
@@ -1123,19 +1134,33 @@ function FullDocumentChecklist({
   const [expanded, setExpanded] = useState(false);
   const isPro = isProUser(user);
 
+  // Deduplicate requirements (safety net)
+  const dedupedReqs = useMemo(() => {
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    const similar = (a: string, b: string) => {
+      const na = norm(a), nb = norm(b);
+      if (na === nb) return true;
+      const wa = new Set(na.split(' ').filter(w => w.length > 2));
+      const wb = new Set(nb.split(' ').filter(w => w.length > 2));
+      if (wa.size === 0 || wb.size === 0) return false;
+      return [...wa].filter(w => wb.has(w)).length >= Math.max(wa.size, wb.size) * 0.6;
+    };
+    return requirements.filter((r, i) => !requirements.slice(0, i).some(prev => similar(prev.requirement, r.requirement)));
+  }, [requirements]);
+
   // Group requirements by category
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof requirements>();
-    for (const r of requirements) {
+    const map = new Map<string, typeof dedupedReqs>();
+    for (const r of dedupedReqs) {
       const cat = r.category || 'Other';
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(r);
     }
     return Array.from(map.entries());
-  }, [requirements]);
+  }, [dedupedReqs]);
 
-  const mandatoryCount = requirements.filter(r => r.mandatory).length;
-  const optionalCount = requirements.length - mandatoryCount;
+  const mandatoryCount = dedupedReqs.filter(r => r.mandatory).length;
+  const optionalCount = dedupedReqs.length - mandatoryCount;
 
   return (
     <div className="mt-3 border rounded-lg overflow-hidden">

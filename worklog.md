@@ -2994,3 +2994,29 @@ Stage Summary:
 - Search for Dubai, Bangkok, New York, US, USA, United States of America, Brussels, etc. now ALWAYS works
 - Every expanded country card shows a Visa Policy Alert with link to official immigration website
 - Pushed commit bc284b0
+
+---
+Task ID: Deduplicate Requirements
+Agent: Main Agent
+Task: Fix duplicate/redundant requirements displayed across all countries (user reported Malaysia showing 4 passport requirements)
+
+Work Log:
+- Audited all 70 countries: found 27 countries with 239 duplicate requirement pairs
+- Built 3-pass deduplication pipeline:
+  - Pass 1: Within-category dedup (164 duplicates removed from DB)
+  - Pass 2: Cross-category + aggressive dedup (41 duplicates removed from DB) + ealth→health category fix
+  - Pass 3: Final cleanup pass (52 duplicates removed from DB, 3 manual fixes for Italy/Canada/Thailand)
+- Total DB duplicates removed: ~260 requirements across 30 countries
+- Deduplicated static-countries.json: 197 + 70 = 267 duplicates removed (1016 → 749 requirements)
+- Fixed ealth→health category typo in static JSON
+- Merged Malaysia 3 accommodation duplicates → 1 in static JSON
+- Added UI-level dedup safety nets in:
+  - src/app/[slug]/page.tsx: dedup before grouping for Requirements section
+  - src/components/visa/country-detail.tsx: dedup in FullDocumentChecklist + per-visa-type Document Checklist
+- Per-visa-type requirements were clean (0 duplicates)
+
+Stage Summary:
+- Malaysia: 23 → 14 requirements (DB), 16 → 13 (static)
+- All countries: avg 10.8 requirements per country (down from ~15+)
+- 3-layer protection: DB cleanup + static JSON cleanup + UI safety net
+- No duplicate/redundant requirements remain in any country
