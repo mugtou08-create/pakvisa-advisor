@@ -279,7 +279,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const visaLabel = getVisaLabel(country);
   const costProfile = country.costProfiles[0];
   const visaFee = costProfile ? `$${costProfile.visaFeeUSD} (≈ PKR ${usdToPkr(costProfile.visaFeeUSD)})` : 'Free';
-  const processing = country.visaFree ? 'No processing required' : `${country.processingDaysMin}-${country.processingDaysMax} business days`;
+  const pMin = country.processingDaysMin || 0;
+  const pMax = country.processingDaysMax || 0;
+  const processing = country.visaFree || country.visaOnArrival || country.etaAvailable
+    ? 'No processing required'
+    : (pMin > 0 || pMax > 0) ? `${pMin}-${pMax} business days`
+    : 'Varies by visa type';
   const title = `${country.name} Visa for Pakistani Citizens - Requirements, Fees & Guide 2026`;
   const description = `Complete ${country.name} visa guide for Pakistani passport holders. ${visaLabel} access, ${visaFee} fee, ${processing} processing. Updated for 2026 with requirements, costs, and embassy details.`;
 
@@ -651,8 +656,14 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
               <InfoCard
                 icon={<Clock className="w-5 h-5 text-sky-600" />}
                 label="Processing Time"
-                value={country.visaFree ? 'Instant' : `${country.processingDaysMin}-${country.processingDaysMax} days`}
-                subtext={country.visaFree ? 'No processing needed' : 'Business days'}
+                value={(() => {
+                  if (country.visaFree || country.visaOnArrival || country.etaAvailable) return 'Instant';
+                  const min = country.processingDaysMin || 0;
+                  const max = country.processingDaysMax || 0;
+                  if (min > 0 || max > 0) return `${min}–${max} days`;
+                  return 'Varies';
+                })()}
+                subtext={country.visaFree || country.visaOnArrival || country.etaAvailable ? 'No processing needed' : 'Business days'}
               />
               <InfoCard
                 icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
@@ -660,12 +671,21 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 value={costProfile && costProfile.visaFeeUSD > 0 ? `$${costProfile.visaFeeUSD}` : 'Free'}
                 subtext={costProfile && costProfile.visaFeeUSD > 0 ? `≈ PKR ${usdToPkr(costProfile.visaFeeUSD)}` : 'No fee required'}
               />
+              {(typeof country.safetyRating === 'number' && !isNaN(country.safetyRating) && country.safetyRating > 0) ? (
               <InfoCard
                 icon={<Shield className="w-5 h-5 text-amber-600" />}
                 label="Safety Rating"
                 value={`${Math.min(country.safetyRating, 5)}/5`}
                 subtext={safetyStars(country.safetyRating)}
               />
+              ) : (
+              <InfoCard
+                icon={<Plane className="w-5 h-5 text-purple-600" />}
+                label="Visa Status"
+                value={visaLabel}
+                subtext={visaBadgeClass.includes('emerald') ? 'Favorable for Pakistanis' : visaBadgeClass.includes('red') ? 'Restricted' : 'Check requirements'}
+              />
+              )}
               <InfoCard
                 icon={<Calendar className="w-5 h-5 text-purple-600" />}
                 label="Best Travel Months"
@@ -850,8 +870,8 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
             </a>
           </section>
 
-          {/* Safety Overview */}
-          {country.safetyRating > 0 && (
+          {/* Safety Overview — only show when we have valid data */}
+          {(typeof country.safetyRating === 'number' && !isNaN(country.safetyRating) && country.safetyRating > 0) && (
             <section className="max-w-5xl mx-auto px-4 pb-8">
               <SectionTitle icon={<Shield className="w-5 h-5" />} title="Safety Overview" />
               <div className="border rounded-lg p-4 bg-card">
@@ -1118,6 +1138,9 @@ function generateFAQs(
   const faqs: { q: string; a: string }[] = [];
 
   // Q1: Do Pakistani citizens need a visa?
+  const q1PMin = country.processingDaysMin || 0;
+  const q1PMax = country.processingDaysMax || 0;
+  const q1ProcText = (q1PMin > 0 || q1PMax > 0) ? `Processing typically takes ${q1PMin}–${q1PMax} business days.` : 'Processing times vary by visa type.';
   faqs.push({
     q: `Do Pakistani citizens need a visa for ${country.name}?`,
     a: country.visaFree
@@ -1125,8 +1148,8 @@ function generateFAQs(
       : country.visaOnArrival
         ? `Pakistani citizens can get a visa on arrival at ${country.name}. Simply present your valid Pakistani passport at the immigration counter upon arrival. Processing is usually instant.`
         : country.etaAvailable
-          ? `Yes, Pakistani citizens need an e-Visa to visit ${country.name}. The e-Visa can be applied for online through the official government portal. Processing typically takes ${country.processingDaysMin}-${country.processingDaysMax} business days.`
-          : `Yes, Pakistani citizens need a visa to visit ${country.name}. You must apply at the embassy or consulate. The application process typically takes ${country.processingDaysMin}-${country.processingDaysMax} business days.`,
+          ? `Yes, Pakistani citizens need an e-Visa to visit ${country.name}. The e-Visa can be applied for online through the official government portal. ${q1ProcText}`
+          : `Yes, Pakistani citizens need a visa to visit ${country.name}. You must apply at the embassy or consulate. ${q1ProcText}`,
   });
 
   // Q2: What is the visa fee?
@@ -1140,22 +1163,37 @@ function generateFAQs(
   });
 
   // Q3: Processing time
+  const faqPMin = country.processingDaysMin || 0;
+  const faqPMax = country.processingDaysMax || 0;
+  const procText = country.visaFree
+    ? `No processing time is needed as ${country.name} offers visa-free entry to Pakistani passport holders. You can travel immediately.`
+    : country.visaOnArrival || country.etaAvailable
+      ? `The ${country.etaAvailable ? 'e-Visa/ETA' : 'visa on arrival'} for ${country.name} is processed instantly at the airport or border crossing. The entire process typically takes 5-15 minutes.`
+      : (faqPMin > 0 || faqPMax > 0)
+        ? `${country.name} visa processing typically takes ${faqPMin}–${faqPMax} business days for Pakistani citizens. It is recommended to apply at least 2-3 weeks before your planned travel date.`
+        : `${country.name} visa processing time varies by visa type. It is recommended to apply at least 2-4 weeks before your planned travel date to account for any delays.`;
   faqs.push({
     q: `How long does it take to get a ${country.name} visa?`,
-    a: country.visaFree
-      ? `No processing time is needed as ${country.name} offers visa-free entry to Pakistani passport holders. You can travel immediately.`
-      : country.visaOnArrival
-        ? `The visa on arrival for ${country.name} is processed instantly at the airport or border crossing. The entire process typically takes 5-15 minutes.`
-        : `${country.name} visa processing typically takes ${country.processingDaysMin}-${country.processingDaysMax} business days for Pakistani citizens. It is recommended to apply at least 2-3 weeks before your planned travel date.`,
+    a: procText,
   });
 
-  // Q4: Safety
-  faqs.push({
-    q: `Is ${country.name} safe for Pakistani tourists?`,
-    a: country.safetySummary
-      ? `${country.name} has a safety rating of ${Math.min(country.safetyRating, 5)}/5. ${country.safetySummary}`
-      : `${country.name} has a safety rating of ${Math.min(country.safetyRating, 5)}/5. As with any travel destination, exercise standard precautions, keep your belongings secure, and follow local laws and customs.`,
-  });
+  // Q4: Safety — only include when we have valid rating data
+  const safeRating = (typeof country.safetyRating === 'number' && !isNaN(country.safetyRating) && country.safetyRating > 0)
+    ? Math.min(country.safetyRating, 5)
+    : 0;
+  if (safeRating > 0) {
+    faqs.push({
+      q: `Is ${country.name} safe for Pakistani tourists?`,
+      a: country.safetySummary
+        ? `${country.name} has a safety rating of ${safeRating}/5. ${country.safetySummary}`
+        : `${country.name} has a safety rating of ${safeRating}/5. As with any travel destination, exercise standard precautions, keep your belongings secure, and follow local laws and customs.`,
+    });
+  } else {
+    faqs.push({
+      q: `Is ${country.name} safe for Pakistani tourists?`,
+      a: `While specific safety ratings are not yet available for ${country.name}, general travel safety guidelines apply: keep your belongings secure, be aware of your surroundings, follow local laws and customs, and register with the Pakistani embassy upon arrival. Always check the latest travel advisories before your trip.`,
+    });
+  }
 
   // Q5: Best time to visit or documents required
   if (country.bestTravelMonths) {

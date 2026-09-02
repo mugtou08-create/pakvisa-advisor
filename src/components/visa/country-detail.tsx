@@ -1087,8 +1087,8 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
         </div>
       )}
 
-      {/* Safety Info */}
-      {(country.safetyRating > 0 || country.safetySummary) && (
+      {/* Safety Info — only when valid numeric rating exists */}
+      {(typeof country.safetyRating === 'number' && !isNaN(country.safetyRating) && country.safetyRating > 0) && (
         <SafetyInfo rating={country.safetyRating} summary={country.safetySummary} />
       )}
 
