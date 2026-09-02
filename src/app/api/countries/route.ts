@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { rateLimit } from '@/lib/rate-limit';
 import { fetchAndCache } from '@/lib/api-cache';
 import { getStaticCountries } from '@/lib/static-countries';
+import { deduplicateRequirements } from '@/lib/dedup-requirements';
 import type { CountryData } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
@@ -212,6 +213,7 @@ async function queryCountries(params: {
     return {
       ...country,
       monthlyTemps,
+      requirements: deduplicateRequirements(country.requirements || []),
       costProfile: country.costProfiles?.length > 0
         ? country.costProfiles[0]
         : country.costProfile || null,
@@ -224,12 +226,12 @@ async function queryCountries(params: {
         sourceUrl: vt.sourceUrl, verifiedTill: vt.verifiedTill,
         parserConfidence: vt.parserConfidence,
         costProfile: (vt.costProfiles?.length > 0 ? vt.costProfiles[0] : vt.costProfile) || null,
-        requirements: (vt.requirements || []).map((r: any) => ({
+        requirements: deduplicateRequirements((vt.requirements || []).map((r: any) => ({
           id: r.id, category: r.category, requirement: r.requirement,
           mandatory: r.mandatory, description: r.description,
           scoringWeight: r.scoringWeight, sourceUrl: r.sourceUrl,
           parserConfidence: r.parserConfidence, needsReview: r.needsReview,
-        })),
+        }))),
       })),
     };
   });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getStaticCountry } from '@/lib/static-countries';
+import { deduplicateRequirements } from '@/lib/dedup-requirements';
 
 export async function GET(
   request: NextRequest,
@@ -75,17 +76,24 @@ export async function GET(
       sourceUrl: vt.sourceUrl, verifiedTill: vt.verifiedTill,
       parserConfidence: vt.parserConfidence,
       costProfile: (vt.costProfiles?.length > 0 ? vt.costProfiles[0] : vt.costProfile) || null,
-      requirements: (vt.requirements || []).map((r: any) => ({
+      requirements: deduplicateRequirements((vt.requirements || []).map((r: any) => ({
         id: r.id, category: r.category, requirement: r.requirement,
         mandatory: r.mandatory, description: r.description,
         scoringWeight: r.scoringWeight, sourceUrl: r.sourceUrl,
         parserConfidence: r.parserConfidence, needsReview: r.needsReview,
-      })),
+      }))),
     }));
+
+    // Deduplicate country-level requirements
+    const dedupedReqs = deduplicateRequirements((country.requirements || []).map((r: any) => ({
+      id: r.id, category: r.category, requirement: r.requirement,
+      mandatory: r.mandatory, description: r.description,
+    })));
 
     const formattedCountry = {
       ...country,
       monthlyTemps,
+      requirements: dedupedReqs,
       visaTypes: visaTypesFormatted,
       costProfile: (country.costProfiles?.length > 0 ? country.costProfiles[0] : null) || country.costProfile || null,
     };

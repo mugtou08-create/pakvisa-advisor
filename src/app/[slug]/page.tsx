@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { getStaticCountries, getStaticCountry } from '@/lib/static-countries';
+import { deduplicateRequirements } from '@/lib/dedup-requirements';
 import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
@@ -415,13 +416,13 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
       currency: vt.costProfiles[0].currency || '',
       verifiedTill: vt.costProfiles[0].verifiedTill || '',
     } : null,
-    requirements: (vt.requirements || []).map((r: any) => ({
+    requirements: deduplicateRequirements((vt.requirements || []).map((r: any) => ({
       id: r.id,
       category: r.category || 'Other',
       requirement: r.requirement || '',
       mandatory: r.mandatory || false,
       description: r.description || '',
-    })),
+    }))),
   })) as VisaTypeData[];
   const requirements = country.requirements as VisaRequirementData[];
   const embassyInfo = EMBASSY_DATA[country.code];
@@ -434,23 +435,8 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   // Parse best travel months
   const bestMonths = country.bestTravelMonths ? country.bestTravelMonths.split(',').map((m: string) => m.trim()).filter(Boolean) : [];
 
-  // Deduplicate requirements (safety net — normalizes text and removes near-duplicates within each category)
-  function normalizeReq(s: string): string {
-    return s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-  function isReqDuplicate(a: string, b: string): boolean {
-    const na = normalizeReq(a);
-    const nb = normalizeReq(b);
-    if (na === nb) return true;
-    const wa = new Set(na.split(' ').filter(w => w.length > 2));
-    const wb = new Set(nb.split(' ').filter(w => w.length > 2));
-    if (wa.size === 0 || wb.size === 0) return false;
-    const inter = [...wa].filter(w => wb.has(w));
-    return inter.length >= Math.max(wa.size, wb.size) * 0.6;
-  }
-  const dedupedRequirements = requirements.filter((r, i) => {
-    return !requirements.slice(0, i).some(prev => isReqDuplicate(prev.requirement, r.requirement));
-  });
+  // Deduplicate requirements using shared utility (safety net)
+  const dedupedRequirements = deduplicateRequirements(requirements);
 
   // Group requirements by category
   const groupedRequirements = dedupedRequirements.reduce((acc, r) => {

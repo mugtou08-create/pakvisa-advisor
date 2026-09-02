@@ -3020,3 +3020,30 @@ Stage Summary:
 - All countries: avg 10.8 requirements per country (down from ~15+)
 - 3-layer protection: DB cleanup + static JSON cleanup + UI safety net
 - No duplicate/redundant requirements remain in any country
+
+---
+Task ID: Bulletproof Dedup Pipeline
+Agent: Main Agent
+Task: Fix duplicate requirements visible to user + make data pipeline bulletproof
+
+Work Log:
+- User reported still seeing duplicates for Malaysia (4 passport, 3 travel, 3 financial, 3 accommodation, 2 photograph)
+- Root cause: Previous session's DB cleanup was local-only; user viewing Vercel deployment with old data
+- Rebuilt static-countries.json entirely from clean DB (70 countries, 754 total requirements)
+- Created shared dedup utility: src/lib/dedup-requirements.ts
+  - normalize + word-overlap similarity (60% threshold)
+  - Keeps most descriptive version when duplicates found
+  - Fixes 'ealth' category typo automatically
+- Applied dedup at EVERY data access point (5 layers of defense):
+  1. src/lib/static-countries.ts: dedup at static JSON load time
+  2. src/app/api/countries/route.ts: dedup country-level + per-visa-type reqs in list API
+  3. src/app/api/countries/[code]/route.ts: dedup in single country API
+  4. src/app/[slug]/page.tsx: dedup country-level + per-visa-type reqs in page server component
+  5. src/components/visa/country-detail.tsx: dedup in FullDocumentChecklist + per-visa-type Document Checklist
+- Verified: 70 countries, 754 requirements, 0 duplicates caught by safety net
+
+Stage Summary:
+- 5-layer dedup defense: static loader → list API → single API → page component → client component
+- Even if data has duplicates, the UI will NEVER show them
+- Shared utility ensures consistent behavior across all access points
+- Lint passes, all files compile cleanly

@@ -20,6 +20,7 @@ import { getTravelInfo, type TravelInfo } from '@/components/app/travel-info';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { isProUser } from '@/lib/auth-store';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
+import { deduplicateRequirements } from '@/lib/dedup-requirements';
 
 /** Map visa category to a CSS color for the left border accent */
 const CATEGORY_BORDER_COLORS: Record<string, string> = {
@@ -839,16 +840,8 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
               const borderColor = CATEGORY_BORDER_COLORS[catLabel] || '#94a3b8';
 
-              // Deduplicate per-visa-type requirements (safety net)
-              const normVt = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-              const dedupedVtReqs = vtReqs.filter((r, i) => !vtReqs.slice(0, i).some(prev => {
-                const na = normVt(prev.requirement), nb = normVt(r.requirement);
-                if (na === nb) return true;
-                const wa = new Set(na.split(' ').filter(w => w.length > 2));
-                const wb = new Set(nb.split(' ').filter(w => w.length > 2));
-                if (wa.size === 0 || wb.size === 0) return false;
-                return [...wa].filter(w => wb.has(w)).length >= Math.max(wa.size, wb.size) * 0.6;
-              }));
+              // Deduplicate per-visa-type requirements using shared utility (safety net)
+              const dedupedVtReqs = deduplicateRequirements(vtReqs);
 
               // Group requirements by category
               const reqByCategory = dedupedVtReqs.reduce<Record<string, typeof dedupedVtReqs>>((acc, r) => {
@@ -1134,19 +1127,8 @@ function FullDocumentChecklist({
   const [expanded, setExpanded] = useState(false);
   const isPro = isProUser(user);
 
-  // Deduplicate requirements (safety net)
-  const dedupedReqs = useMemo(() => {
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-    const similar = (a: string, b: string) => {
-      const na = norm(a), nb = norm(b);
-      if (na === nb) return true;
-      const wa = new Set(na.split(' ').filter(w => w.length > 2));
-      const wb = new Set(nb.split(' ').filter(w => w.length > 2));
-      if (wa.size === 0 || wb.size === 0) return false;
-      return [...wa].filter(w => wb.has(w)).length >= Math.max(wa.size, wb.size) * 0.6;
-    };
-    return requirements.filter((r, i) => !requirements.slice(0, i).some(prev => similar(prev.requirement, r.requirement)));
-  }, [requirements]);
+  // Deduplicate requirements using shared utility (safety net)
+  const dedupedReqs = useMemo(() => deduplicateRequirements(requirements), [requirements]);
 
   // Group requirements by category
   const grouped = useMemo(() => {

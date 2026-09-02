@@ -3,11 +3,13 @@
 // Generated from the production database.
 
 import type { CountryData } from './types';
+import { deduplicateRequirements } from './dedup-requirements';
 import staticJson from '@/data/static-countries.json';
 
 /**
  * Patches raw JSON to conform to the full CountryData interface.
  * Adds missing optional fields with safe defaults.
+ * Deduplicates requirements at load time using shared utility.
  */
 function patchCountry(raw: any): CountryData {
   return {
@@ -15,6 +17,11 @@ function patchCountry(raw: any): CountryData {
     parserVersion: '1.0.0',
     createdAt: raw.fetchTimestamp || new Date().toISOString(),
     ...raw,
+    requirements: deduplicateRequirements(raw.requirements || []),
+    visaTypes: (raw.visaTypes || []).map((vt: any) => ({
+      ...vt,
+      requirements: deduplicateRequirements(vt.requirements || []),
+    })),
   };
 }
 
