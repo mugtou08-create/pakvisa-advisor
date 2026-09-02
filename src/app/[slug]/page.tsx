@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { db } from '@/lib/db';
+import { getStaticCountries, getStaticCountry } from '@/lib/static-countries';
 import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
@@ -243,12 +244,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const code = SLUG_TO_CODE[slug];
   if (!code) return { title: 'Country Not Found | PakVisa Advisor' };
 
-  const country = await db.country.findUnique({
-    where: { code },
-    include: { costProfiles: true, visaTypes: true },
-  });
-
+  let country: any = null;
+  try {
+    country = await db.country.findUnique({
+      where: { code },
+      include: { costProfiles: true, visaTypes: true },
+    });
+  } catch (e) {
+    console.warn(`[generateMetadata /${slug}] DB failed, using static fallback:`, e instanceof Error ? e.message : e);
+  }
+  if (!country) {
+    country = getStaticCountry(code);
+  }
   if (!country) return { title: 'Country Not Found | PakVisa Advisor' };
+
+  // Normalize: static data uses costProfile (singular), DB uses costProfiles (array)
+  if (!country.costProfiles || !Array.isArray(country.costProfiles)) {
+    country.costProfiles = country.costProfile ? [country.costProfile] : [];
+  }
 
   const visaLabel = getVisaLabel(country);
   const costProfile = country.costProfiles[0];
@@ -314,20 +327,29 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
     );
   }
 
-  const country = await db.country.findUnique({
-    where: { code },
-    include: {
-      visaTypes: {
-        include: {
-          costProfiles: true,
-          requirements: { orderBy: { category: 'asc' } },
+  // ── Fetch country data: DB first, static fallback ──
+  let country: any = null;
+  try {
+    country = await db.country.findUnique({
+      where: { code },
+      include: {
+        visaTypes: {
+          include: {
+            costProfiles: true,
+            requirements: { orderBy: { category: 'asc' } },
+          },
+          orderBy: { type: 'asc' },
         },
-        orderBy: { type: 'asc' },
+        costProfiles: true,
+        requirements: { orderBy: { category: 'asc' } },
       },
-      costProfiles: true,
-      requirements: { orderBy: { category: 'asc' } },
-    },
-  });
+    });
+  } catch (e) {
+    console.warn(`[/${slug}] DB query failed, using static fallback:`, e instanceof Error ? e.message : e);
+  }
+  if (!country) {
+    country = getStaticCountry(code);
+  }
 
   if (!country) {
     return (
@@ -341,6 +363,19 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
         </div>
       </div>
     );
+  }
+
+  // ── Normalize data shape (static fallback has different structure than DB) ──
+  if (!country.costProfiles || !Array.isArray(country.costProfiles)) {
+    country.costProfiles = country.costProfile ? [country.costProfile] : [];
+  }
+  if (country.visaTypes && Array.isArray(country.visaTypes)) {
+    country.visaTypes = country.visaTypes.map((vt: any) => {
+      if (!vt.costProfiles || !Array.isArray(vt.costProfiles)) {
+        vt.costProfiles = vt.costProfile ? [vt.costProfile] : [];
+      }
+      return vt;
+    });
   }
 
   const visaLabel = getVisaLabel(country);
@@ -398,13 +433,25 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   // Generate FAQ based on country data
   const faqs = generateFAQs(country, costProfile, visaLabel, isEmbassyRequired);
 
-  // Related countries from same continent
-  const relatedCountries = await db.country.findMany({
-    where: { continent: country.continent, code: { not: country.code } },
-    take: 6,
-    orderBy: { name: 'asc' },
-    select: { code: true, name: true, flagUrl: true, flagEmoji: true, visaFree: true, visaOnArrival: true, etaAvailable: true },
-  });
+  // Related countries from same continent (DB first, static fallback)
+  let relatedCountries: any[] = [];
+  try {
+    relatedCountries = await db.country.findMany({
+      where: { continent: country.continent, code: { not: country.code } },
+      take: 6,
+      orderBy: { name: 'asc' },
+      select: { code: true, name: true, flagUrl: true, flagEmoji: true, visaFree: true, visaOnArrival: true, etaAvailable: true },
+    });
+  } catch (e) {
+    console.warn(`[/${slug}] Related countries DB failed, using static fallback`);
+  }
+  if (relatedCountries.length === 0) {
+    const allStatic = getStaticCountries();
+    relatedCountries = allStatic
+      .filter((c) => c.continent === country.continent && c.code !== country.code)
+      .slice(0, 6)
+      .map((c) => ({ code: c.code, name: c.name, flagUrl: c.flagUrl, flagEmoji: c.flagEmoji, visaFree: c.visaFree, visaOnArrival: c.visaOnArrival, etaAvailable: c.etaAvailable }));
+  }
 
   // JSON-LD structured data
   const faqSchema = {
