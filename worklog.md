@@ -2927,3 +2927,27 @@ Stage Summary:
 - Root cause: combination of cross-origin headers blocking preview panel + potential RSC deserialization issues
 - Fix: client-side API fetch on mount ensures data loads regardless of server props
 - Dev-mode security headers (X-Frame-Options, COOP) removed to allow preview panel to render
+
+---
+Task ID: 1
+Agent: Main
+Task: Fix countries not showing on production + intelligent search
+
+Work Log:
+- Diagnosed root cause: On production (Vercel), if Turso DB is not configured or empty, both SSR and API return empty → no countries
+- Also found service worker was causing 'TypeError: Failed to fetch' on API routes
+- Exported all 70 countries from local DB via API to create static fallback
+- Created src/data/static-countries.json (615KB, all 70 countries with full data)
+- Created src/lib/static-countries.ts (typed accessor with field patching)
+- Modified page.tsx: DB → static JSON fallback chain for SSR
+- Modified /api/countries/route.ts: DB → static JSON fallback with filtering/sorting
+- Modified /api/countries/[code]/route.ts: DB → static JSON fallback for individual country
+- Created src/lib/search-intelligence.ts with city→country, aliases, fuzzy matching
+- Updated home-client.tsx search to use intelligent search module
+- Added Enter key handler to open country detail from search
+- Improved error handling with structured debug info
+
+Stage Summary:
+- Countries will ALWAYS show now — static JSON is embedded in the server bundle
+- Search handles: Dubai→UAE, Brussels→Belgium, US/USA/United States, fuzzy typos
+- Pushed as commit 6b28d89
