@@ -412,34 +412,37 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Client-side data fallback: if server data is empty, fetch from API
+  // Client-side data: fetch from API on mount as primary data source
+  // Server props are used as initial render, but API fetch ensures reliability
   const [clientCountries, setClientCountries] = useState<CountryData[] | null>(null);
   const [clientStats, setClientStats] = useState<StatsData | null>(null);
+  const [dataFetched, setDataFetched] = useState(false);
   useEffect(() => {
-    if (!serverDataLoaded && initialCountries.length === 0 && mounted) {
-      (async () => {
-        try {
-          const res = await fetch('/api/countries?limit=500');
-          if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.data?.length > 0) {
-              const data = json.data as CountryData[];
-              setClientCountries(data);
-              setClientStats({
-                totalCountries: data.length,
-                visaFreeCount: data.filter((c: CountryData) => c.visaFree).length,
-                visaOnArrivalCount: data.filter((c: CountryData) => !c.visaFree && c.visaOnArrival).length,
-                eVisaCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
-                embassyRequiredCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
-              });
-            }
+    if (!mounted) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/countries?limit=500');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data?.length > 0) {
+            const data = json.data as CountryData[];
+            setClientCountries(data);
+            setClientStats({
+              totalCountries: data.length,
+              visaFreeCount: data.filter((c: CountryData) => c.visaFree).length,
+              visaOnArrivalCount: data.filter((c: CountryData) => !c.visaFree && c.visaOnArrival).length,
+              eVisaCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
+              embassyRequiredCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
+            });
           }
-        } catch (e) {
-          console.error('[HomeClient] Client-side data fetch failed:', e);
         }
-      })();
-    }
-  }, [serverDataLoaded, initialCountries.length, mounted]);
+      } catch (e) {
+        console.error('[HomeClient] Client-side data fetch failed:', e);
+      } finally {
+        setDataFetched(true);
+      }
+    })();
+  }, [mounted]);
 
   // Store
   const favorites = useAppStore((s) => s.favorites);
@@ -487,8 +490,8 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
   const [expandedCountry, setExpandedCountry] = useState<string | null>(null);
 
   // Data — from server props, or client-side fallback
-  const countries = clientCountries || initialCountries;
-  const stats = clientStats || initialStats;
+  const countries = clientCountries || initialCountries || [];
+  const stats = clientStats || initialStats || { totalCountries: 0, visaFreeCount: 0, visaOnArrivalCount: 0, eVisaCount: 0, embassyRequiredCount: 0 };
 
   // FAQ
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);

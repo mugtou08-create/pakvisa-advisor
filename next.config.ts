@@ -7,7 +7,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   output: 'standalone',
   allowedDevOrigins: [
-    '*.space-z.ai',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://21.0.16.85:3000',
+    'https://localhost:3000',
+    'https://127.0.0.1:3000',
+    'https://21.0.16.85:3000',
   ],
   // Target modern browsers — no legacy polyfills
   compiler: {
@@ -23,12 +28,15 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          // Only set COOP/COEP in production (breaks dev preview panel cross-origin)
+          ...(process.env.NODE_ENV === 'production' ? [
+            { key: 'X-Frame-Options', value: 'DENY' },
+            { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          ] : []),
         ],
       },
       // Cache static assets aggressively
