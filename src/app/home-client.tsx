@@ -426,6 +426,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
       // If SSR already provided data, we still try to fetch fresh data
       // but don't block the UI waiting for it.
       const maxRetries = initialCountries && initialCountries.length > 0 ? 1 : 3;
+      let success = false;
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         if (cancelled) break;
         try {
@@ -446,6 +447,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                 eVisaCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
                 embassyRequiredCount: data.filter((c: CountryData) => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
               });
+              success = true;
               break; // Success — no more retries
             }
           }
@@ -455,6 +457,24 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
           if (attempt < maxRetries) {
             await new Promise(r => setTimeout(r, 1000 * attempt)); // Backoff: 1s, 2s
           }
+        }
+      }
+      // NUCLEAR FALLBACK: if API failed AND SSR had no data, use embedded fallback
+      if (!success && !cancelled && (!initialCountries || initialCountries.length === 0)) {
+        try {
+          const { getClientFallbackCountries } = await import('@/lib/client-fallback-countries');
+          const fallback = getClientFallbackCountries();
+          setClientCountries(fallback);
+          setClientStats({
+            totalCountries: fallback.length,
+            visaFreeCount: fallback.filter(c => c.visaFree).length,
+            visaOnArrivalCount: fallback.filter(c => !c.visaFree && c.visaOnArrival).length,
+            eVisaCount: fallback.filter(c => !c.visaFree && !c.visaOnArrival && c.etaAvailable).length,
+            embassyRequiredCount: fallback.filter(c => !c.visaFree && !c.visaOnArrival && !c.etaAvailable).length,
+          });
+          console.warn('[HomeClient] Using embedded client fallback:', fallback.length, 'countries');
+        } catch (fbErr) {
+          console.error('[HomeClient] Client fallback also failed:', fbErr);
         }
       }
       if (!cancelled) setDataFetched(true);

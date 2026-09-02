@@ -7,6 +7,7 @@ import {
   Car, ShieldCheck, Syringe, Heart, Wifi, Thermometer, Building2, ExternalLink,
   Calculator, ChevronDown, ChevronUp, AlertTriangle, Banknote, ArrowRightLeft,
   FileText, Plane, Lock, Crown, CheckCircle2, ClipboardList, Download, Eye, EyeOff,
+  Info,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
@@ -589,8 +590,60 @@ function AffiliateResources({ country }: { country: CountryData }) {
 }
 
 // ============================================================
-// Main Country Detail Panel
+// Visa Policy Alert & Official Sources
 // ============================================================
+function VisaPolicyAlert({ country }: { country: CountryData }) {
+  // Determine visa status description
+  const getVisaStatusText = () => {
+    if (country.visaFree) return `Pakistani citizens can travel Visa-Free to ${country.name}. Verify requirements before travel.`;
+    if (country.visaOnArrival) return `Pakistani citizens can get Visa on Arrival for ${country.name}. Verify requirements before travel.`;
+    if (country.etaAvailable) return `Pakistani citizens can apply for an e-Visa/ETA for ${country.name}. Verify requirements before travel.`;
+    return `Pakistani citizens require a visa for ${country.name}. Check the official source for the latest requirements.`;
+  };
+
+  // Extract domain name from source URL
+  const getDomainName = (url: string) => {
+    try {
+      const hostname = new URL(url).hostname;
+      return hostname.replace(/^www\./, '');
+    } catch {
+      return url;
+    }
+  };
+
+  const domainName = country.sourceUrl ? getDomainName(country.sourceUrl) : null;
+
+  if (!country.sourceUrl) return null;
+
+  return (
+    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3">
+      <div className="flex items-start gap-2.5">
+        <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0 space-y-2">
+          <h5 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Visa Policy Alert</h5>
+          <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
+            {getVisaStatusText()}
+          </p>
+          {domainName && (
+            <a
+              href={country.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+            >
+              Official Source: {domainName}
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-amber-600/70 dark:text-amber-400/60 leading-relaxed">
+        Last verified: As of September 2026. Visa policies may change. Always verify with the official source before making travel plans.
+      </p>
+    </div>
+  );
+}
+
 export function CountryDetailPanel({ country }: { country: CountryData }) {
   const travel = getTravelInfo(country.code);
   const reqs = country.requirements?.slice(0, 5) || [];
@@ -1049,6 +1102,9 @@ export function CountryDetailPanel({ country }: { country: CountryData }) {
 
       {/* Affiliate: Prepare Your Trip (always last) */}
       <AffiliateResources country={country} />
+
+      {/* Visa Policy Alert & Official Sources */}
+      <VisaPolicyAlert country={country} />
     </div>
   );
 }
