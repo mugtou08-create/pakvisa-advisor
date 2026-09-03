@@ -766,7 +766,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
         </main>
 
         {/* Footer (always visible) */}
-        <footer className="border-t bg-muted/30 mt-auto">
+        <footer className="border-t bg-muted/30 mt-auto pb-20">
           <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-3">
               <p>&copy; {new Date().getFullYear()} PakVisa Advisor. All rights reserved.</p>
@@ -1147,11 +1147,18 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                 <h3 className="text-sm font-bold uppercase tracking-wide">Visa Policy Alerts</h3>
               </div>
               <style>{`
-                @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-                .alert-carousel-track { animation: scroll-left 30s linear infinite; }
+                @keyframes alert-scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                .alert-carousel-track {
+                  animation: alert-scroll-left 30s linear infinite;
+                  width: max-content;
+                }
                 .alert-carousel-track:hover { animation-play-state: paused; }
+                @media (prefers-reduced-motion: reduce) {
+                  .alert-carousel-track { animation: none; }
+                  .alert-carousel-overflow { overflow-x: auto; }
+                }
               `}</style>
-              <div className="overflow-hidden">
+              <div className="alert-carousel-overflow overflow-hidden">
                 <div className="alert-carousel-track flex gap-3">
                   {[...VISA_ALERTS, ...VISA_ALERTS].map((alert, idx) => (
                     <a
@@ -1310,7 +1317,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="mt-6 pb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <p className="text-xs text-muted-foreground">
                       Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredCountries.length)} of {filteredCountries.length} destinations
                     </p>
@@ -1488,7 +1495,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
           </section>
 
           {/* ==================== SECTION 11: FAQ ==================== */}
-          <section className="px-4 pb-10">
+          <section className="px-4 pb-10 relative z-10">
             <div className="max-w-6xl mx-auto">
               <h2 className="text-xl font-bold mb-4">Frequently Asked Questions</h2>
               <div className="space-y-2">
@@ -1599,7 +1606,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
         </main>
 
         {/* ==================== SECTION 16: FOOTER ==================== */}
-        <footer className="border-t bg-muted/30 mt-auto">
+        <footer className="border-t bg-muted/30 mt-auto pb-20">
           {/* Affiliate Partners Bar */}
           <div className="border-b border-border">
             <div className="max-w-6xl mx-auto px-4 py-5">

@@ -3073,3 +3073,56 @@ Stage Summary:
 - Processing time: no more 'undefined-undefined days' anywhere (homepage, country page, compare panel, FAQ, metadata)
 - Shared normalizeSafetyRating() utility ensures consistent behavior
 - Static fallback correctly derives processing time from visa type data
+
+---
+Task ID: Dashboard Audit & Bug Fixes
+Agent: Main Agent
+Task: Complete audit of the Dashboard, identify working/broken features, fix all issues
+
+Work Log:
+- Opened the dashboard in agent-browser and performed comprehensive feature-by-feature audit
+- Tested: Search, Region/Type filters, Sort, Pagination, Country cards, FAQ, Login, Theme, Sara Chat, Admin, Visa Quiz, Compare, Alerts, Footer
+- Found 5 bugs/issues and fixed all of them
+- Verified fixes with agent-browser after each change
+- Ran lint - all clean
+
+### Audit Results Summary
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Search bar | WORKING | Filters correctly, alias search (Dubai→UAE) works |
+| Region filters | WORKING | All 6 regions filter correctly |
+| Visa type filters | WORKING | Visa Free, VOA, e-Visa, Embassy all work |
+| Sort dropdown | WORKING | A→Z, Cheapest, Fastest, Safest all work |
+| Pagination | WORKING | Next/prev/first/last all work |
+| Country card expand | WORKING | Shows CountryDetailPanel with details |
+| FAQ accordion | WORKING | Was blocked by overlay, fixed with z-index |
+| Login modal | WORKING | Email/password form opens correctly |
+| Theme toggle | WORKING | Dark/light mode switches properly |
+| Visa Quiz | WORKING | All 5 steps + results work |
+| Admin Dashboard | WORKING | Opens with password dialog |
+| Sara Chat | PARTIAL | Shows friendly error when AI not configured (fixed) |
+| Compare Countries | PARTIAL | Requires Pro/login, opens pricing modal |
+| Favorites | PARTIAL | Requires Pro, redirects to pricing |
+| Visa Policy Alerts | FIXED | Carousel animation improved, reduced-motion support added |
+| Footer/Bottom coverage | FIXED | Added pb-20 to footer, pb-4 to pagination |
+| WhatsApp position | FIXED | Moved to bottom-20/left-4, z-40 to not overlap Sara |
+
+### Bugs Found & Fixed
+
+1. **Sara Chat Error Message** - Was showing raw "AI service is not configured." error to users. Fixed: Now shows friendly contextual messages ("I'm currently offline for maintenance...") based on error type.
+
+2. **Visa Policy Alerts Carousel** - Animation keyframe name could conflict, no reduced-motion support, and width not set properly. Fixed: Renamed keyframe to `alert-scroll-left`, added `width: max-content`, added `prefers-reduced-motion` media query that shows horizontal scroll instead.
+
+3. **Bottom Floating Buttons Covering Pagination** - Sara widget (fixed bottom-4 right-4 z-50) and WhatsApp button (fixed bottom-6 left-6 z-50) were covering pagination and footer. Fixed: Added `pb-20` to both footers, `pb-4` to pagination area.
+
+4. **WhatsApp Button Overlap** - WhatsApp button at bottom-6 left-6 overlapped with Sara widget. Fixed: Moved WhatsApp to `bottom-20 left-4 z-40` so it sits above footer but below Sara.
+
+5. **FAQ Section Covered by Overlays** - FAQ accordion buttons were covered by other elements (promo cards, floating buttons). Fixed: Added `relative z-10` to FAQ section for proper stacking.
+
+Stage Summary:
+- All 5 bugs fixed and verified
+- Lint passes clean
+- Dashboard fully functional with no console errors
+- Mobile responsive layout confirmed working
+- Sara chat gracefully handles AI service unavailability

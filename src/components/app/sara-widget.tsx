@@ -328,7 +328,17 @@ export function SaraWidget() {
         setMessages(prev => [...prev, { role: 'sara', content: json.data! }]);
       } else {
         console.error('Sara API error:', json.error);
-        setMessages(prev => [...prev, { role: 'sara', content: json.error || 'Something went wrong. Try again?' }]);
+        // Show friendly messages instead of raw API errors
+        const rawError = json.error || '';
+        let friendlyMsg = 'Something went wrong. Try again?';
+        if (rawError.includes('not configured') || rawError.includes('AI service')) {
+          friendlyMsg = "I'm currently offline for maintenance. Please try again later, or use the Visa Quiz and Compare tools in the meantime!";
+        } else if (rawError.includes('rate limit') || rawError.includes('too many')) {
+          friendlyMsg = "You're asking a lot of questions! Give me a minute and try again.";
+        } else if (rawError) {
+          friendlyMsg = "I hit a small snag. Could you rephrase your question?";
+        }
+        setMessages(prev => [...prev, { role: 'sara', content: friendlyMsg }]);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
