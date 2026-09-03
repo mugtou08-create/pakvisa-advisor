@@ -9,6 +9,7 @@ import {
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertTriangle,
   CheckCircle2, Info, Users, Award, TrendingUp, Share2, Phone, Building, Mail,
   ArrowUp, LogIn, LogOut, User as UserIcon, Upload, ArrowRightLeft,
+  ListChecks, MessageSquare, Route,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ const AuthModal = dynamic(() => import('@/components/visa/auth-modal').then(m =>
 
 const VisaQuizPanel = dynamic(() => import('@/components/visa/visa-quiz-panel').then(m => ({ default: m.VisaQuizPanel })), { ssr: false });
 const ComparePanel = dynamic(() => import('@/components/visa/compare-panel').then(m => ({ default: m.ComparePanel })), { ssr: false });
+const VisaTimelineTracker = dynamic(() => import('@/components/visa/visa-timeline-tracker').then(m => ({ default: m.VisaTimelineTracker })), { ssr: false, loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
 const PricingModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.PricingModal })), { ssr: false });
 const HelpModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.HelpModal })), { ssr: false });
 const AboutModal = dynamic(() => import('@/components/visa/modals').then(m => ({ default: m.AboutModal })), { ssr: false });
@@ -731,6 +733,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
   const renderToolPanel = () => {
     if (activeTool === 'quiz') return <VisaQuizPanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} />;
     if (activeTool === 'compare') return <ComparePanel countries={countries} onClose={closeTool} onSelectCountry={selectCountryFromTool} isProUser={!!isUserPro} />;
+    if (activeTool === 'timeline') return <VisaTimelineTracker countries={countries} onClose={closeTool} isProUser={!!isUserPro} />;
     return null;
   };
 
@@ -1379,7 +1382,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
           <section className="px-4 pb-10">
             <div className="max-w-6xl mx-auto">
               <h2 className="text-xl font-bold mb-4">Quick Tools</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <QuickToolCard
                   icon={<ClipboardList className="w-5 h-5 text-amber-600" />}
                   title="Free Visa Quiz"
@@ -1394,6 +1397,14 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                   description="Compare visa requirements, fees, and costs side by side."
                   colorClass="hover:border-sky-200"
                   onClick={() => { if (!isUserPro) { setActiveModal('pricing'); return; } setActiveTool('compare'); }}
+                  badge="Pro"
+                />
+                <QuickToolCard
+                  icon={<Route className="w-5 h-5 text-green-600" />}
+                  title="Visa Process Tracker"
+                  description="Step-by-step timeline with WhatsApp reminders. Never miss a deadline."
+                  colorClass="hover:border-green-200"
+                  onClick={() => setActiveTool('timeline')}
                   badge="Pro"
                 />
               </div>
@@ -1539,21 +1550,80 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
             </div>
           </section>
 
-          {/* ==================== SECTION 13: PREMIUM CTA ==================== */}
+          {/* ==================== SECTION 13: PREMIUM CTA — VISA TRACKER PRO ==================== */}
           <section className="px-4 pb-10">
             <div className="max-w-6xl mx-auto">
-              <Card className="p-6 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/10 border-amber-200 dark:border-amber-800">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/40">
-                    <Crown className="w-6 h-6 text-amber-600" />
+              <Card className="overflow-hidden border-0 shadow-lg">
+                {/* Gradient header */}
+                <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-700 p-6 sm:p-8 text-white">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+                      <Route className="w-8 h-8" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-xl">Visa Process Tracker + WhatsApp Reminders</h3>
+                        <Badge className="bg-amber-400 text-amber-900 text-[10px] font-bold">PRO</Badge>
+                      </div>
+                      <p className="text-white/80 text-sm leading-relaxed">
+                        Never miss a visa deadline again. Get a step-by-step roadmap for your entire visa journey — from gathering documents to receiving your visa — with timely WhatsApp reminders at every stage.
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 text-center sm:text-left">
-                    <h3 className="font-bold text-lg">Get the Full Experience</h3>
-                    <p className="text-sm text-muted-foreground mt-1">Document checklists, step-by-step guides, PDF reports, and unlimited AI access.</p>
+                </div>
+                {/* Feature highlights */}
+                <div className="p-6 bg-gradient-to-b from-muted/50 to-background space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
+                        <ListChecks className="w-5 h-5 text-sky-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Step-by-Step Timeline</p>
+                        <p className="text-xs text-muted-foreground">See every step from start to finish with tips and required documents</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">WhatsApp Nudges</p>
+                        <p className="text-xs text-muted-foreground">98% open rate — you&apos;ll never miss a reminder on your phone</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                        <Shield className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Never Miss a Deadline</p>
+                        <p className="text-xs text-muted-foreground">Overdue warnings, smart estimates, and weekly progress digests</p>
+                      </div>
+                    </div>
                   </div>
-                  <Button onClick={() => setActiveModal('pricing')} className="gap-1.5" disabled={!!isUserPro}>
-                    {isUserPro ? "You're a Pro Member ✓" : 'View Pro Plans'}
-                  </Button>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                    <Button
+                      size="lg"
+                      onClick={() => setActiveTool('timeline')}
+                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Route className="w-4 h-4" /> Try Visa Tracker
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setActiveModal('pricing')}
+                      className="gap-1.5"
+                      disabled={!!isUserPro}
+                    >
+                      {isUserPro ? (
+                        <><Crown className="w-4 h-4" /> You&apos;re Pro ✓</>
+                      ) : (
+                        <><Crown className="w-4 h-4" /> View Pro Plans — Rs. 500/app</>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </div>

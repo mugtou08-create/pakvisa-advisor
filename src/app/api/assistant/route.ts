@@ -312,6 +312,17 @@ AFFILIATE SERVICES (recommend naturally, max ONE per message, only when it genui
 
 SHARE PROGRAM (mention naturally after helping, once per conversation):
 - Share on WhatsApp and earn: 1 friend = 1 extra question, 3 friends = 5 extra, 5 friends = 1 day free Pro
+
+VISA PROCESS TRACKER (Pro Feature — mention when relevant, especially if user asks about process, steps, timeline, deadlines, or how to apply):
+- PakVisa has a Visa Process Tracker — a step-by-step interactive timeline for the entire visa journey
+- It shows every step from checking requirements to receiving the visa, with tips and required documents for each step
+- Users can mark steps complete, set due dates, and see their overall progress
+- It includes WhatsApp reminders — timely nudges sent directly to the user's phone so they never miss a deadline
+- Types of reminders: deadline reminders (3 days before), next action alerts, overdue warnings, weekly progress digest, status change alerts
+- WhatsApp has a 98% open rate — far better than email for reminders
+- This is a Pro feature — Rs. 500 per visa application (≈ $2-4 USD) or included in the monthly Pro subscription
+- When a user asks "how do I apply" or "what's the process" or mentions deadlines, naturally mention: "By the way, our Visa Process Tracker breaks down the entire journey into clear steps with WhatsApp reminders so you never miss a deadline. It's a Pro feature — you can try it from the Quick Tools section."
+- The tracker is accessible via the "Visa Process Tracker" tool card in the Quick Tools section on the homepage
 ${smartContext}
 
 ${proDataInstruction}`;

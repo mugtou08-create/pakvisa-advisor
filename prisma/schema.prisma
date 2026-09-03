@@ -23,6 +23,7 @@ model User {
   aiUsageLogs   AiUsageLog[]
   paymentProofs PaymentProof[]
   saraChats    SaraChat[]
+  visaTimelines VisaTimeline[]
 }
 
 model AiUsageLog {
@@ -410,4 +411,60 @@ model SaraChat {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model VisaTimeline {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  countryCode         String
+  countryName         String
+  startDate           String   @default("")
+  whatsappNumber      String   @default("")
+  whatsappVerified    Boolean  @default(false)
+  reminderFrequency   String   @default("2days")   // "daily", "2days", "weekly"
+  isActive            Boolean  @default(true)
+  completedAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  steps               TimelineStep[]
+  reminders           WhatsAppReminder[]
+}
+
+model TimelineStep {
+  id              String   @id @default(cuid())
+  timelineId      String
+  timeline        VisaTimeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  @@index([timelineId])
+  stepKey         String                    // e.g. "check-req", "gather-docs"
+  title           String
+  description     String   @default("")
+  typicalDaysMin  Int      @default(0)
+  typicalDaysMax  Int      @default(0)
+  isCompleted     Boolean  @default(false)
+  completedDate   String   @default("")
+  dueDate         String   @default("")
+  tips            String   @default("[]")       // JSON array of strings
+  requiredDocs    String   @default("[]")       // JSON array of strings
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model WhatsAppReminder {
+  id              String   @id @default(cuid())
+  userId          String
+  @@index([userId])
+  timelineId      String
+  timeline        VisaTimeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  @@index([timelineId])
+  stepKey         String
+  reminderType    String                     // "deadline", "next_action", "overdue", "weekly_digest", "status_change"
+  message         String   @default("")
+  scheduledFor    DateTime
+  isSent          Boolean  @default(false)
+  sentAt          DateTime?
+  createdAt       DateTime @default(now())
 }

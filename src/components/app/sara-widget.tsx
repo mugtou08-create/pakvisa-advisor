@@ -187,7 +187,7 @@ export function SaraWidget() {
       setUnreadCount(1);
       setMessages([{
         role: 'sara',
-        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. Which language would you prefer?',
+        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. By the way, have you tried our Visa Process Tracker? It gives you a step-by-step timeline for your visa journey plus WhatsApp reminders so you never miss a deadline. Ask me about it! Which language would you prefer?',
       }]);
     }, 18000);
     return () => clearTimeout(timer);
@@ -374,7 +374,7 @@ export function SaraWidget() {
     if (widgetState !== 'open' && messages.length === 0) {
       setMessages([{
         role: 'sara',
-        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. Which language would you prefer?',
+        content: 'Assalam o Alaikum! / Hello! I\'m Sara, your travel assistant at PakVisa. Main aapki kisi bhi trip ki planning mein madad kar sakti hoon. You can chat with me in English ya Urdu (Roman script) — jo aapko acha lage. By the way, try our Visa Process Tracker — a step-by-step timeline with WhatsApp reminders! Ask me about it. Which language would you prefer?',
       }]);
     }
   };
