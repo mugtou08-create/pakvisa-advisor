@@ -52,18 +52,49 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 }));
 
 /**
+ * Store referral-earned Pro expiry timestamp in localStorage.
+ * Called when the referral API returns proUnlocked=true.
+ * The timestamp is the current time + proDaysEarned days.
+ */
+export function setReferralProExpiry(proDaysEarned: number) {
+  if (typeof window === 'undefined') return;
+  const until = Date.now() + proDaysEarned * 24 * 60 * 60 * 1000;
+  localStorage.setItem('referral_pro_until', String(until));
+}
+
+/**
  * Check if the current user has Pro-level access.
- * Returns true if:
+ * Returns true if ANY of:
  *  - An admin session exists (owner/admin always has full access)
  *  - The user object has role 'admin'
  *  - The user object has role 'pro' AND proExpiresAt is a future date
+ *  - Referral-earned Pro is still valid (stored in localStorage)
  */
 export function isProUser(user: AuthState['user']): boolean {
   // Check for admin panel session (separate auth system)
   if (typeof window !== 'undefined' && localStorage.getItem('pakvisa-admin-token')) {
     return true;
   }
-  if (!user) return false;
+  if (!user) {
+    // Even without a user account, referral-earned Pro works
+    return checkReferralPro();
+  }
   if (user.role === 'admin') return true;
-  return user.role === 'pro' && !!user.proExpiresAt && new Date(user.proExpiresAt) > new Date();
+  if (user.role === 'pro' && !!user.proExpiresAt && new Date(user.proExpiresAt) > new Date()) return true;
+  // Also check referral-earned Pro
+  return checkReferralPro();
+}
+
+/**
+ * Check if referral-earned Pro is still valid.
+ */
+function checkReferralPro(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const until = localStorage.getItem('referral_pro_until');
+    if (!until) return false;
+    return Date.now() < Number(until);
+  } catch {
+    return false;
+  }
 }

@@ -17,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from 'next-themes';
 import { useAppStore } from '@/lib/store';
-import { useAuthStore, isProUser } from '@/lib/auth-store';
+import { useAuthStore, isProUser, setReferralProExpiry } from '@/lib/auth-store';
 import type { CountryData, CostProfileData } from '@/lib/types';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
 import dynamic from 'next/dynamic';
@@ -143,7 +143,7 @@ const FAQ_DATA = [
   { q: 'Can I travel to Europe with a Pakistani passport?', a: 'Pakistani citizens need a Schengen visa to visit most European countries. This requires applying at the embassy or consulate of your main destination. The process typically takes 2-4 weeks and requires comprehensive documentation including financial proof, travel insurance, and accommodation bookings.' },
   { q: 'What is the cost of a visa for popular destinations?', a: 'Costs vary widely. Turkey e-Visa costs $50. UAE visa is approximately $90-120 via agencies. Schengen visa fee is €90 (~$97). UK visa costs approximately £135 (~$170). US visa MRV fee is $185. Many countries like Maldives and Nepal offer free visa on arrival. Check each country page for exact fees.' },
   { q: 'How accurate is the information on PakVisa Advisor?', a: 'We source our data from official embassy websites and government portals. Our data is regularly verified and updated. However, visa policies can change with little notice, so we always recommend verifying with the official embassy or consulate before making travel plans.' },
-  { q: 'Is PakVisa Advisor free to use?', a: 'Yes! Basic visa search, requirements viewing, and limited AI queries are completely free. We offer Pro plans starting from $4.99 — monthly Pro is $9.99/month or $79.99/year (save 33%). Pro unlocks all visa types, document checklists, per-visa-type fees, processing times, and unlimited AI access.' },
+  { q: 'Is PakVisa Advisor free to use?', a: 'Yes! Basic visa search, requirements viewing, and limited AI queries are completely free. You can also unlock Pro for FREE by sharing PakVisa with your contact list — when 3 friends visit from your link, you get 7 days of Pro! Pro unlocks all visa types, document checklists, per-visa-type fees, processing times, and unlimited AI access. You can also buy Pro: $9.99/month or $79.99/year (save 33%).' },
   { q: 'What is the best time to apply for a visa?', a: 'Apply at least 4-6 weeks before your planned travel date for embassy visas. For e-Visas, 1-2 weeks is usually sufficient. Avoid peak travel seasons (summer, December holidays) as processing times may be longer. Some countries have specific application windows.' },
   { q: 'Can I get a visa if I have been previously rejected?', a: 'A previous rejection does not automatically disqualify you, but you must address the reasons for the previous rejection in your new application. Provide additional documentation, stronger financial proof, and a clear explanation of any changes in your circumstances. Consult our AI advisor for personalized guidance.' },
   { q: 'Does PakVisa Advisor help with the actual visa application?', a: 'PakVisa Advisor provides information, guidance, and tools to help you prepare. We show you requirements, costs, processing times, and provide AI-powered advice. However, you must submit your application directly to the relevant embassy, consulate, or official e-Visa portal.' },
@@ -555,6 +555,50 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
   // Tool panels
   const [activeTool, setActiveTool] = useState<string | null>(null);
 
+  // Referral state — for "Share to Unlock Pro"
+  const [refCode, setRefCode] = useState('');
+  const [referralStatus, setReferralStatus] = useState<Record<string, unknown> | null>(null);
+
+  // Fetch/create referral code on mount
+  useEffect(() => {
+    if (!mounted) return;
+    let sid = '';
+    try { sid = localStorage.getItem('_pvsid') || ''; } catch {}
+    fetch('/api/referral', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid }),
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data?.refCode) {
+          setRefCode(res.data.refCode);
+          setReferralStatus(res.data);
+          // If Pro is unlocked via referral, store the expiry for isProUser()
+          if (res.data.proUnlocked && res.data.proDaysEarned > 0) {
+            setReferralProExpiry(res.data.proDaysEarned);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [mounted]);
+
+  // Poll referral status every 30s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch('/api/referral').then(r => r.json()).then(res => {
+        if (res.success && res.data?.hasReferral) {
+          setReferralStatus(res.data);
+          // If Pro is unlocked via referral, store the expiry for isProUser()
+          if (res.data.proUnlocked && res.data.proDaysEarned > 0) {
+            setReferralProExpiry(res.data.proDaysEarned);
+          }
+        }
+      }).catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Search
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -742,12 +786,13 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
 
   const hasActiveFilters = filters.access !== null || filters.region !== null || searchQuery.trim() !== '';
 
-  // Share WhatsApp
+  // Share WhatsApp — includes referral link for "Share to Unlock Pro"
   const handleShareWhatsApp = useCallback(() => {
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://pakvisa.vercel.app';
-    const shareText = `Check out PakVisa — Free visa info for 70+ countries for Pakistani passport holders! ${shareUrl}`;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pakvisa-advisor.vercel.app';
+    const shareUrl = refCode ? `${baseUrl}/?ref=${refCode}` : baseUrl;
+    const shareText = `🇵🇰 Hey! I found this amazing FREE site for Pakistani visa info — PakVisa Advisor.\n\n✅ Visa requirements for 70+ countries\n✅ AI assistant answers your visa questions\n✅ Costs in PKR, processing times, document checklists\n✅ Step-by-step visa tracker with WhatsApp reminders\n\nIt saved me SO much time! Check it out:\n${shareUrl}\n\nIf you're planning to travel abroad, you NEED this. 🛫`;
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
-  }, []);
+  }, [refCode]);
 
   // ============================================================
   // Render: Tool Panel View (replaces main content, footer stays)
@@ -1634,6 +1679,14 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                     <Button
                       variant="outline"
                       size="lg"
+                      onClick={handleShareWhatsApp}
+                      className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/30"
+                    >
+                      <Share2 className="w-4 h-4" /> Share → Unlock Free Pro
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
                       onClick={() => setActiveModal('pricing')}
                       className="gap-1.5"
                       disabled={!!isUserPro}
@@ -1641,7 +1694,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                       {isUserPro ? (
                         <><Crown className="w-4 h-4" /> You&apos;re Pro ✓</>
                       ) : (
-                        <><Crown className="w-4 h-4" /> View Pro Plans — Rs. 500/app</>
+                        <><Crown className="w-4 h-4" /> Buy Pro Plans</>
                       )}
                     </Button>
                   </div>
@@ -1650,23 +1703,104 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
             </div>
           </section>
 
-          {/* ==================== SECTION 14: SHARE WHATSAPP ==================== */}
+          {/* ==================== SECTION 14: SHARE TO UNLOCK PRO ==================== */}
           <section className="px-4 pb-10">
             <div className="max-w-6xl mx-auto">
-              <div className="flex items-center justify-between rounded-xl border bg-card p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
-                    <Phone className="w-5 h-5 text-green-600" />
+              {referralStatus && (referralStatus.rewardTier as number) >= 1 ? (
+                /* Pro already unlocked via sharing */
+                <Card className="overflow-hidden border-0 shadow-lg">
+                  <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 p-6 text-white">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+                        <Crown className="w-8 h-8" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-xl mb-1">🎉 Pro Unlocked!</h3>
+                        <p className="text-white/80 text-sm">
+                          You shared PakVisa and unlocked Pro for {referralStatus.proDaysEarned as number} days!
+                          Enjoy unlimited AI, all visa types, document checklists, and WhatsApp reminders.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">Share PakVisa</p>
-                    <p className="text-xs text-muted-foreground">Share with friends and family on WhatsApp</p>
+                </Card>
+              ) : (
+                /* The big share offer */
+                <Card className="overflow-hidden border-0 shadow-lg">
+                  <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-6 sm:p-8 text-white">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+                        <Crown className="w-8 h-8" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="font-bold text-xl">Share & Unlock Pro — FREE!</h3>
+                          <Badge className="bg-amber-400 text-amber-900 text-[10px] font-bold">7 DAYS</Badge>
+                        </div>
+                        <p className="text-white/80 text-sm leading-relaxed">
+                          Share PakVisa with your <strong>entire contact list</strong> — WhatsApp groups, friends, family.
+                          When <strong>{(referralStatus?.visitorsNeeded as number) || 3} people</strong> visit from your link,
+                          you get <strong className="text-amber-300">7 days of Pro FREE</strong> — unlimited AI, all visa types, and WhatsApp reminders!
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/30">
-                  <Share2 className="w-3.5 h-3.5" /> Share
-                </Button>
-              </div>
+                  <div className="p-6 bg-gradient-to-b from-muted/50 to-background space-y-5">
+                    {/* Progress bar */}
+                    {referralStatus && (() => {
+                      const vc = referralStatus.visitorCount as number;
+                      const needed = (referralStatus.visitorsNeeded as number) || 3;
+                      const pct = Math.min(100, Math.round((vc / needed) * 100));
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{vc} of {needed} friends visited</span>
+                            <span className="font-semibold text-emerald-600">{pct}%</span>
+                          </div>
+                          <div className="h-3 rounded-full bg-emerald-100 dark:bg-emerald-900/30 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 transition-all duration-700"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {/* What you get */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="flex items-center gap-2.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2.5 border border-emerald-200/50 dark:border-emerald-800/30">
+                        <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="text-sm font-medium">Unlimited AI Queries</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 bg-sky-50 dark:bg-sky-950/20 rounded-lg px-3 py-2.5 border border-sky-200/50 dark:border-sky-800/30">
+                        <Shield className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span className="text-sm font-medium">All Visa Types & Docs</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2.5 border border-amber-200/50 dark:border-amber-800/30">
+                        <Phone className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span className="text-sm font-medium">WhatsApp Reminders</span>
+                      </div>
+                    </div>
+                    {/* Share button */}
+                    <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                      <Button
+                        size="lg"
+                        onClick={handleShareWhatsApp}
+                        className="gap-2 bg-[#25D366] hover:bg-[#20BA5A] text-white shadow-sm"
+                      >
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        Share on WhatsApp → Unlock Pro
+                      </Button>
+                      {refCode && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>Your code:</span>
+                          <code className="px-2 py-1 bg-muted rounded font-mono font-semibold">{refCode}</code>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
           </section>
 

@@ -139,3 +139,25 @@ Stage Summary:
 - GA uses beacon transport (faster, non-blocking)
 - Browserslist data updated to latest
 - Expected improvements: FCP -200ms, LCP -300ms, TBT -100ms, Speed Index -300ms
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Replace tiered referral system with "Share All → Unlock Pro" model
+
+Work Log:
+- Replaced the old 3-tier referral system (1 friend = 1 query, 3 friends = 5 queries, 5 friends = 1 day Pro) with a simple one-goal model: "Share with your entire contact list → When 3 people visit → Pro unlocked for 7 days FREE"
+- Updated /api/referral/route.ts: New model with VISITORS_NEEDED=3, PRO_DAYS_GRANTED=7 constants. Removed tier 1/3/5 logic. Added proUnlocked and visitorsNeeded fields to all responses.
+- Updated Sara widget (sara-widget.tsx): New "Share & Unlock Pro" panel with progress bar (0 of 3 visits), amber "Pro Unlocked!" celebration state, gradient background, improved WhatsApp share text with 🇵🇰 flag and bullet points. Button changed from "Share & Earn" to "Share → Pro".
+- Updated home-client.tsx: Added referral state (refCode, referralStatus) with fetch/poll logic. Replaced Section 14 (simple "Share PakVisa" row) with a full-featured "Share & Unlock Pro — FREE!" banner card with gradient header, progress bar, 3-column feature highlights, WhatsApp share button, and referral code display. Also updated Section 13 (Visa Tracker CTA) to include "Share → Unlock Free Pro" button.
+- Updated auth-store.ts: Added setReferralProExpiry() function and checkReferralPro() in isProUser(). Referral-earned Pro is now stored in localStorage as 'referral_pro_until' timestamp, so even non-logged-in users get Pro access from sharing.
+- Updated assistant/route.ts: Smart signals now mention "share-to-unlock-Pro" program and encourage sharing with contact list. Rate limit error message updated to mention the free Pro option.
+- Updated FAQ answer about "Is PakVisa Advisor free?" to mention the share-to-unlock-Pro option.
+- Verified with agent-browser: Page renders correctly, Share section shows "Share & Unlock Pro — FREE!" with progress bar and WhatsApp button, Sara widget shows "Share → Pro" toggle, referral API returns new format with proUnlocked and visitorsNeeded fields, no errors in dev log.
+
+Stage Summary:
+- Referral system completely redesigned: one clear goal (3 visits = 7 days Pro) instead of confusing tiers
+- UI updated everywhere: homepage banner, Sara widget, Visa Tracker section, FAQ
+- Pro gating now respects referral-earned Pro via localStorage timestamp
+- WhatsApp share text is much more compelling with emojis and bullet points
+- All API endpoints working correctly, no errors
