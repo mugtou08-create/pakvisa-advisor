@@ -21,6 +21,7 @@ import { useAuthStore, isProUser } from '@/lib/auth-store';
 import type { CountryData, CostProfileData } from '@/lib/types';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 
 // Lazy-load heavy components — they only render on user interaction.
 const CountryDetailPanel = dynamic(() => import('@/components/visa/country-detail').then(m => ({ default: m.CountryDetailPanel })), { ssr: false, loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
@@ -42,6 +43,28 @@ const SaraWidget = dynamic(() => import('@/components/app/sara-widget').then(m =
 import { getFlagUrl, REGIONS, getRegion, SUCCESS_STORIES } from '@/components/app/constants';
 import { intelligentSearch, resolveSearchToCountry, getSearchMatchInfo } from '@/lib/search-intelligence';
 import { normalizeSafetyRating } from '@/lib/dedup-requirements';
+
+// ============================================================
+// Deferred rendering: Only renders children when scrolled into view.
+// Saves initial DOM nodes + JS execution for below-fold sections.
+// ============================================================
+function DeferredSection({ children, className }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      { rootMargin: '200px' } // Start loading 200px before visible
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={ref} className={className}>{visible ? children : <div className="min-h-[100px]" />}</div>;
+}
 
 
 // ============================================================
@@ -314,11 +337,11 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         {/* Flag */}
         <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
           {country.flagUrl ? (
-            <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} />
+            <Image src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} loading="lazy" unoptimized />
           ) : (() => {
             const flagSrc = getFlagUrl(country.code);
             return flagSrc ? (
-              <img src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} />
+              <Image src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} loading="lazy" unoptimized />
             ) : (
               <span className="text-lg">{country.flagEmoji}</span>
             );
@@ -1087,7 +1110,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-7 rounded overflow-hidden bg-muted shrink-0">
                           {flagSrc ? (
-                            <img src={flagSrc} alt={`${c.name} flag`} className="w-full h-full object-cover" width={80} height={53} />
+                            <Image src={flagSrc} alt={`${c.name} flag`} className="w-full h-full object-cover" width={80} height={53} loading="lazy" unoptimized />
                           ) : (
                             <span className="text-base">{c.flagEmoji}</span>
                           )}
