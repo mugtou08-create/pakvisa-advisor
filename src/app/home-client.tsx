@@ -1149,18 +1149,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-bold uppercase tracking-wide">Visa Policy Alerts</h3>
               </div>
-              <style>{`
-                @keyframes alert-scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-                .alert-carousel-track {
-                  animation: alert-scroll-left 30s linear infinite;
-                  width: max-content;
-                }
-                .alert-carousel-track:hover { animation-play-state: paused; }
-                @media (prefers-reduced-motion: reduce) {
-                  .alert-carousel-track { animation: none; }
-                  .alert-carousel-overflow { overflow-x: auto; }
-                }
-              `}</style>
+              {/* Carousel CSS is in globals.css to avoid hydration mismatch */}
               <div className="alert-carousel-overflow overflow-hidden">
                 <div className="alert-carousel-track flex gap-3">
                   {[...VISA_ALERTS, ...VISA_ALERTS].map((alert, idx) => (
