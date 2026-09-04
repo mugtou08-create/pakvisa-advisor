@@ -34,7 +34,7 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData, ScoreBreakdown, ChecklistItem } from '@/lib/types';
 import { getFlagUrl, VISA_CATEGORY_COLORS, COUNTRY_NAME_ALIASES, SUCCESS_STORIES, EMBASSY_DATA, GENERIC_EMBASSY, MONTH_NAMES } from './constants';
-import Image from 'next/image';
+
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { formatCountryCode } from './shared-components-2';
 
@@ -100,19 +100,18 @@ export function MiniRadarChart({ safety, cost, ease }: { safety: number; cost: n
   );
 }
 
-/** Small flag image component with emoji fallback */
+/** Small flag image component with emoji fallback — uses plain <img> to avoid next/image hydration mismatch */
 export function FlagImage({ code, flagUrl, size = 24, className = '', emoji }: { code: string; flagUrl?: string; size?: number; className?: string; emoji?: string }) {
   const src = flagUrl || getFlagUrl(code);
   if (!src) return <span className={className} style={{ fontSize: size * 0.8 }}>{emoji || '\u{1F3F3}\uFE0F'}</span>;
   return (
-    <Image
+    <img
       src={src}
       alt={`Flag`}
       width={size}
       height={Math.round(size * 0.67)}
       className={`object-cover rounded-sm ${className}`}
-      unoptimized
-      suppressHydrationWarning
+      loading="lazy"
     />
   );
 }

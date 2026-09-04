@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+
 import { db } from '@/lib/db';
 import { getStaticCountries, getStaticCountry } from '@/lib/static-countries';
 import { deduplicateRequirements, normalizeSafetyRating } from '@/lib/dedup-requirements';

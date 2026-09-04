@@ -26,7 +26,6 @@ import { useAppStore } from '@/lib/store';
 import type { CountryData, UserProfileData } from '@/lib/types';
 import type { TripDestination } from '@/lib/store';
 import { getFlagUrl } from './constants';
-import Image from 'next/image';
 
 // ============================================================
 // Feature 1: VisaPolicyChangeTracker
@@ -214,7 +213,7 @@ export const VisaPolicyChangeTracker = React.memo(function VisaPolicyChangeTrack
                   >
                     <div className="flex items-center gap-2 mb-2">
                       {entry.flagUrl || getFlagUrl(entry.countryCode) ? (
-                        <Image src={entry.flagUrl || getFlagUrl(entry.countryCode)} alt={entry.countryName} width={20} height={14} className="rounded-sm object-cover" unoptimized />
+                        <img src={entry.flagUrl || getFlagUrl(entry.countryCode)} alt={entry.countryName} width={20} height={14} className="rounded-sm object-cover" loading="lazy" />
                       ) : (
                         <span className="text-base">{entry.flagEmoji}</span>
                       )}
@@ -290,7 +289,7 @@ export const VisaPolicyChangeTracker = React.memo(function VisaPolicyChangeTrack
                   <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-200/40 dark:border-amber-800/20 bg-white/50 dark:bg-amber-950/10 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 transition-all hover:shadow-sm press-effect">
                     <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
                       {entry.flagUrl || getFlagUrl(entry.countryCode) ? (
-                        <Image src={entry.flagUrl || getFlagUrl(entry.countryCode)} alt={entry.countryName} width={22} height={15} className="rounded-sm object-cover" unoptimized />
+                        <img src={entry.flagUrl || getFlagUrl(entry.countryCode)} alt={entry.countryName} width={22} height={15} className="rounded-sm object-cover" loading="lazy" />
                       ) : (
                         <span className="text-base">{entry.flagEmoji}</span>
                       )}
@@ -531,7 +530,7 @@ export const TravelChecklistGenerator = React.memo(function TravelChecklistGener
             {country && (
               <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground">
                 {country.flagUrl || getFlagUrl(country.code) ? (
-                  <Image src={country.flagUrl || getFlagUrl(country.code)} alt={country.name} width={18} height={12} className="rounded-sm object-cover" unoptimized />
+                  <img src={country.flagUrl || getFlagUrl(country.code)} alt={country.name} width={18} height={12} className="rounded-sm object-cover" loading="lazy" />
                 ) : (
                   <span>{country.flagEmoji}</span>
                 )}
