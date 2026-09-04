@@ -337,11 +337,11 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         {/* Flag */}
         <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
           {country.flagUrl ? (
-            <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" />
+            <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" suppressHydrationWarning />
           ) : (() => {
             const flagSrc = getFlagUrl(country.code);
             return flagSrc ? (
-              <img src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" />
+              <img src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" suppressHydrationWarning />
             ) : (
               <span className="text-lg">{country.flagEmoji}</span>
             );
@@ -1155,7 +1155,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-7 rounded overflow-hidden bg-muted shrink-0">
                           {flagSrc ? (
-                            <img src={flagSrc} alt={`${c.name} flag`} className="w-full h-full object-cover" loading="lazy" />
+                            <img src={flagSrc} alt={`${c.name} flag`} className="w-full h-full object-cover" loading="lazy" suppressHydrationWarning />
                           ) : (
                             <span className="text-base">{c.flagEmoji}</span>
                           )}

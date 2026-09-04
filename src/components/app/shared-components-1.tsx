@@ -112,6 +112,7 @@ export function FlagImage({ code, flagUrl, size = 24, className = '', emoji }: {
       height={Math.round(size * 0.67)}
       className={`object-cover rounded-sm ${className}`}
       loading="lazy"
+      suppressHydrationWarning
     />
   );
 }

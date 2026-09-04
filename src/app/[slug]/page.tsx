@@ -1065,7 +1065,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                       className="flex flex-col items-center gap-2 border rounded-lg p-3 bg-card hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all text-center group"
                     >
                       {rcFlag ? (
-                        <img src={rcFlag} alt={`${rc.name} flag`} className="w-10 h-auto rounded" width={80} height={53} />
+                        <img src={rcFlag} alt={`${rc.name} flag`} className="w-10 h-auto rounded" width={80} height={53} suppressHydrationWarning />
                       ) : (
                         <span className="text-2xl">{rc.flagEmoji}</span>
                       )}
