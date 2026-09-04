@@ -5,10 +5,11 @@ import { getStaticCountries } from '@/lib/static-countries';
 import HomeClient from './home-client';
 
 // ============================================================
-// force-dynamic: Always render at request time, never at build.
-// Uses DB when available, falls back to embedded static data.
+// ISR: Revalidate every 1 hour instead of force-dynamic.
+// Vercel caches the page and revalidates in the background.
+// This gives Googlebot fast cached HTML for indexing.
 // ============================================================
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 // ============================================================
 // Helpers
