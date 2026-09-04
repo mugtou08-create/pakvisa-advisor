@@ -29,26 +29,6 @@ function computeStats(countries: CountryData[]) {
   };
 }
 
-const FLAG_ISO_MAP: Record<string, string> = {
-  Afghanistan:'AF', Algeria:'DZ', Armenia:'AM', Australia:'AU', Austria:'AT',
-  Azerbaijan:'AZ', Bahrain:'BH', Bangladesh:'BD', Belgium:'BE', Brazil:'BR',
-  Cambodia:'KH', Canada:'CA', China:'CN', Czechia:'CZ', Denmark:'DK',
-  Egypt:'EG', Ethiopia:'ET', France:'FR', Georgia:'GE', Germany:'DE',
-  Greece:'GR', HongKong:'HK', Hungary:'HU', Iceland:'IS', India:'IN',
-  Indonesia:'ID', Iran:'IR', Iraq:'IQ', Ireland:'IE', Italy:'IT',
-  Japan:'JP', Jordan:'JO', Kenya:'KE', Kuwait:'KW', Lebanon:'LB',
-  Luxembourg:'LU', Malaysia:'MY', Maldives:'MV', Mexico:'MX', Mongolia:'MN',
-  Morocco:'MA', Nepal:'NP', Netherlands:'NL', NewZealand:'NZ', Nigeria:'NG',
-  Norway:'NO', Oman:'OM', Philippines:'PH', Poland:'PL', Portugal:'PT',
-  Qatar:'QA', Romania:'RO', Russia:'RU', SaudiArabia:'SA', Singapore:'SG',
-  SouthAfrica:'ZA', SouthKorea:'KR', Spain:'ES', SriLanka:'LK', Sweden:'SE',
-  Switzerland:'CH', Tanzania:'TZ', Thailand:'TH', Tunisia:'TN',
-  Turkmenistan:'TM', Turkey:'TR', UAE:'AE', UK:'GB',
-  USA:'US', Vietnam:'VN',
-};
-
-const POPULAR = ['UAE', 'Saudi Arabia', 'Turkey', 'Malaysia'];
-
 // ============================================================
 // Main Server Component
 // ============================================================
@@ -179,16 +159,6 @@ export default async function HomePage() {
     }
   }
 
-  // Collect flag URLs for preloading (top 4 most popular)
-  const popularFlagUrls = POPULAR
-    .map((name) => countries.find((c) => c.name === name))
-    .filter((c): c is CountryData => Boolean(c))
-    .map((c) => {
-      const iso = FLAG_ISO_MAP[c.code];
-      return iso ? `https://flagcdn.com/w80/${iso.toLowerCase()}.png` : null;
-    })
-    .filter((url): url is string => Boolean(url));
-
   return (
     <>
       {/* Data source diagnostic (visible in dev only) */}
@@ -196,19 +166,21 @@ export default async function HomePage() {
         <span data-datasource={dataSource} className="hidden" />
       )}
 
-      {/* Preconnect + preload for flag CDN */}
-      <link rel="preconnect" href="https://flagcdn.com" crossOrigin="" />
-      {popularFlagUrls.map((url) => (
-        <link key={url} rel="preload" as="image" href={url} />
-      ))}
+      {/* dns-prefetch only for flag CDN — flags are lazy-loaded, no need for
+          preconnect (which opens a full connection) or preload (which blocks render).
+          Previously, preconnect + preload added ~590ms of render-blocking time. */}
+      <link rel="dns-prefetch" href="https://flagcdn.com" />
 
       <HomeClient initialCountries={countries} initialStats={stats} serverDataLoaded={serverDataLoaded}>
         {null}
       </HomeClient>
 
-      {/* SEO: Hidden HTML sitemap with real <a> links to all country pages. */}
+      {/* SEO: Hidden HTML sitemap with real <a> links to all country pages.
+          Rendered server-side for Googlebot but visually hidden (sr-only).
+          This adds ~70 DOM nodes but they're essential for crawlability.
+          Each link passes link equity to the individual country pages. */}
       {serverDataLoaded && countries.length > 0 && (
-        <nav aria-label="All Countries" className="sr-only">
+        <nav aria-label="All Countries" className="sr-only" suppressHydrationWarning>
           <h2>All Countries Visa Guide for Pakistani Citizens</h2>
           <ul>
             {countries.map((c) => {

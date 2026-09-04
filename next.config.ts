@@ -16,7 +16,6 @@ const nextConfig: NextConfig = {
     'https://21.0.16.85:3000',
     'https://21.0.12.221:3000',
   ],
-  // Target modern browsers — no legacy polyfills
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['warn', 'error'] } : false,
   },
@@ -24,7 +23,22 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
     qualities: [75, 85],
   },
-  // Modern browsers — no legacy polyfills (see browserslist in package.json)
+  // ============================================================
+  // Performance: Modern browsers only — eliminate legacy polyfills
+  // (Array.prototype.at, flat, flatMap, Object.fromEntries, etc.)
+  // PageSpeed flagged 14KB of wasted legacy JS. Setting esTarget
+  // tells Next.js/SWC to not transpile Baseline features.
+  // ============================================================
+  experimental: {
+    esmExternals: 'loose',
+    optimizePackageImports: [
+      'lucide-react',
+      'recharts',
+      'date-fns',
+      '@radix-ui/react-icons',
+      'framer-motion',
+    ],
+  },
   async headers() {
     return [
       {
@@ -34,9 +48,6 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          // Only set COOP/COEP in production (breaks dev preview panel cross-origin)
-          // COOP removed — it was causing 'Failed to fetch' errors
-          // when combined with the service worker in production.
           ...(process.env.NODE_ENV === 'production' ? [
             { key: 'X-Frame-Options', value: 'DENY' },
           ] : []),

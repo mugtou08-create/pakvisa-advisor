@@ -112,8 +112,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preconnect to Google Analytics — saves ~300ms on LCP (PageSpeed recommendation) */}
-        <link rel="preconnect" href="https://www.google-analytics.com" />
+        {/* Only dns-prefetch for analytics — no preconnect needed since we use lazyOnload strategy.
+            Preconnect was causing the browser to prioritize the GA connection over page resources,
+            adding 263ms of main-thread blocking time (PageSpeed insight). */}
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
         <GoogleAnalytics />
