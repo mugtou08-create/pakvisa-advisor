@@ -1,8 +1,8 @@
-import { permanentRedirect } from 'next/navigation';
-import { CODE_TO_SLUG } from '@/lib/country-slug';
+import { permanentRedirect, notFound } from 'next/navigation';
+import { CODE_TO_SLUG, SLUG_TO_CODE } from '@/lib/country-slug';
 
-// Force dynamic — avoid pre-rendering at build time
-export const dynamic = 'force-dynamic';
+// ISR with 1-hour revalidation — these are just redirects, very cheap to cache
+export const revalidate = 3600;
 
 export default async function CountryRedirectPage({
   params,
@@ -10,6 +10,10 @@ export default async function CountryRedirectPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const slug = CODE_TO_SLUG[code] || code;
+  const slug = CODE_TO_SLUG[code];
+  if (!slug) {
+    // Unknown country code — return 404 instead of a broken redirect
+    notFound();
+  }
   permanentRedirect(`/${slug}`);
 }

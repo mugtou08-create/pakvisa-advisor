@@ -7,12 +7,26 @@ import { HERO_BLUR_URLS } from '@/lib/hero-blur-urls';
 import { isTouristVisa, getVisaCategoryLabel, getVisaCategoryColor } from '@/lib/visa-classifier';
 import { VisaTypeCard, VisaProBanner } from '@/components/visa/visa-type-card';
 
-// force-dynamic: Always render at request time. Vercel's build-time DB is empty.
-// At runtime, the real Turso DB has full country data.
-export const dynamic = 'force-dynamic';
+// ============================================================
+// ISR: Revalidate every 1 hour for fast cached responses.
+// Googlebot gets pre-rendered HTML <100ms instead of 500ms+ SSR.
+// Combined with generateStaticParams, all country pages are
+// pre-rendered at build time and revalidated hourly.
+// ============================================================
+export const revalidate = 3600;
 
-// Allow any slug to be rendered on-demand.
+// Allow any slug to be rendered on-demand (for aliases/future countries).
 export const dynamicParams = true;
+
+// ============================================================
+// Pre-render all known country pages at build time.
+// This gives Googlebot instant cached HTML for every country.
+// ============================================================
+export async function generateStaticParams() {
+  // Get all unique primary slugs from CODE_TO_SLUG
+  const uniqueSlugs = [...new Set(Object.values(CODE_TO_SLUG))];
+  return uniqueSlugs.map(slug => ({ slug }));
+}
 
 // Countries that have hero images — no DB column needed, just check this set.
 const HERO_IMAGE_SLUGS = new Set([
@@ -26,6 +40,7 @@ const HERO_IMAGE_SLUGS = new Set([
   'switzerland','tanzania','thailand','tunisia','turkmenistan','turkey','trkiye','uae','united-arab-emirates','uk','united-kingdom','usa','united-states','vietnam',
 ]);
 import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
 import {
   Clock, DollarSign, Shield, Calendar, Plane, FileText, Building,
   CheckCircle2, ArrowRight, Globe, Home, ChevronRight, ExternalLink,
@@ -260,7 +275,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug: rawSlug } = await params;
   const slug = rawSlug.toLowerCase();
   const code = SLUG_TO_CODE[slug];
-  if (!code) return { title: 'Country Not Found | PakVisa Advisor' };
+  if (!code) return { title: 'Country Not Found | PakVisa Advisor', robots: { index: false, follow: false } };
 
   let country: any = null;
   try {
@@ -274,7 +289,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!country) {
     country = getStaticCountry(code);
   }
-  if (!country) return { title: 'Country Not Found | PakVisa Advisor' };
+  if (!country) return { title: 'Country Not Found | PakVisa Advisor', robots: { index: false, follow: false } };
 
   // Normalize: static data uses costProfile (singular), DB uses costProfiles (array)
   if (!country.costProfiles || !Array.isArray(country.costProfiles)) {
@@ -296,6 +311,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    robots: { index: true, follow: true },
     keywords: [
       `${country.name} visa Pakistan`,
       `${country.name} visa Pakistani passport`,
@@ -305,6 +321,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       `${country.name} visa requirements 2026`,
       `how to get ${country.name} visa from Pakistan`,
       `${country.name} visa fee PKR`,
+      `${country.name} visa processing time`,
+      `${country.name} visa documents required`,
+      `Pakistani citizens ${country.name} travel`,
     ],
     openGraph: {
       type: 'article',
@@ -336,18 +355,14 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   // Primary slug = shortest form (e.g. 'usa' not 'united-states') — used for image/asset paths
   const primarySlug = code ? (CODE_TO_SLUG[code] || slug) : slug;
 
+  // If slug is not recognized at all, return proper 404
   if (!code) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Country Not Found</h1>
-          <p className="text-muted-foreground mb-4">The country you are looking for does not exist in our database.</p>
-          <Link href="/" className="text-emerald-600 hover:underline flex items-center gap-1 justify-center">
-            <ArrowLeft className="w-4 h-4" /> Back to PakVisa Advisor
-          </Link>
-        </div>
-      </div>
-    );
+    notFound();
+  }
+
+  // If this is an alias slug (e.g. 'united-states' instead of 'usa'), redirect to canonical
+  if (slug !== primarySlug) {
+    redirect(`/${primarySlug}`);
   }
 
   // ── Fetch country data: DB first, static fallback ──
@@ -375,17 +390,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   }
 
   if (!country) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Country Not Found</h1>
-          <p className="text-muted-foreground mb-4">The country you are looking for does not exist in our database.</p>
-          <Link href="/" className="text-emerald-600 hover:underline flex items-center gap-1 justify-center">
-            <ArrowLeft className="w-4 h-4" /> Back to PakVisa Advisor
-          </Link>
-        </div>
-      </div>
-    );
+    notFound();
   }
 
   // ── Normalize data shape (static fallback has different structure than DB) ──
