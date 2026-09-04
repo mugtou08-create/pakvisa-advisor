@@ -24,13 +24,13 @@ const nextConfig: NextConfig = {
     qualities: [75, 85],
   },
   // ============================================================
-  // Performance: Modern browsers only — eliminate legacy polyfills
-  // (Array.prototype.at, flat, flatMap, Object.fromEntries, etc.)
-  // PageSpeed flagged 14KB of wasted legacy JS. Setting esTarget
-  // tells Next.js/SWC to not transpile Baseline features.
+  // Performance: Tree-shake unused exports from large packages.
+  // PageSpeed flagged 214KB of unused JS. optimizePackageImports
+  // tells Next.js to only include the specific exports that are used,
+  // drastically reducing bundle size for icon libraries (lucide-react)
+  // and chart libraries (recharts) that export hundreds of items.
   // ============================================================
   experimental: {
-    esmExternals: 'loose',
     optimizePackageImports: [
       'lucide-react',
       'recharts',
