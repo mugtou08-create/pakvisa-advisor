@@ -62,3 +62,24 @@ Stage Summary:
 - Google crawl budget preserved by blocking 40+ API routes and redirect-only /country/ route
 - 404 pages now include popular country links to preserve link equity and help user discovery
 - All changes committed and pushed to production
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix hydration mismatch error caused by inline <style> tag
+
+Work Log:
+- Identified root cause: inline `<style>` tag in home-client.tsx with `@keyframes alert-scroll-left` caused server/client text content mismatch during React hydration
+- Server rendered `alert-scroll-left`, client rendered `scroll-left` (stale HMR cache)
+- Moved all carousel CSS from inline `<style>` to globals.css:
+  - `.alert-carousel-track` animation, hover, reduced-motion styles
+  - Reused existing `@keyframes alertScroll` animation from globals.css
+- Removed inline `<style>` block from home-client.tsx, replaced with comment
+- Cleared .next cache to eliminate stale builds
+- Verified with Agent Browser: no hydration errors, homepage and UAE page render correctly
+- Committed and pushed to GitHub
+
+Stage Summary:
+- Hydration mismatch completely fixed
+- Carousel still works identically (same animation, same classes)
+- All styles now in globals.css where they belong (no dynamic inline styles)
