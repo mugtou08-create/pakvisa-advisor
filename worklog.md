@@ -108,3 +108,34 @@ Stage Summary:
 - llms.txt created (fixes Agentic Browsing audit)
 - Modern browserslist eliminates ~14 KiB legacy polyfills
 - Expected Performance improvement: 65 → 80+ (FCP ~1.5s, LCP ~2.5s, Speed Index ~2.5s)
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix PageSpeed Insights mobile performance based on real Lighthouse 13.4.1 results
+
+Work Log:
+- Analyzed real PageSpeed Insights results from pakvisa-advisor.vercel.app
+- Current scores: FCP 1.5s, LCP 3.4s, TBT 410ms, CLS 0, Speed Index 2.1s
+- Identified 6 key issues from PageSpeed diagnostic insights:
+  1. Render-blocking CSS (590ms savings) — preconnect + preload for flagcdn
+  2. Legacy JavaScript polyfills (14KB waste) — Array.prototype.at, flat, etc.
+  3. Google Tag Manager impact (167KB, 263ms main-thread time)
+  4. Unused JavaScript (214KB, 142.6KB est. savings) — recharts, lucide-react
+  5. LCP element render delay (1,080ms) — h1 blocked by JS execution
+  6. Large DOM (1,370 elements) and 10 long main-thread tasks
+- Removed preconnect to flagcdn.com → dns-prefetch only (saves connection setup time)
+- Removed preload of popular flag images (not above-fold, was blocking render)
+- Removed preconnect to google-analytics.com (was causing browser to prioritize GA over page resources)
+- Added optimizePackageImports for lucide-react, recharts, date-fns, framer-motion (tree-shake unused exports)
+- Updated GA config: added transport_type: 'beacon' (non-blocking), removed redundant page_title/page_location
+- Updated browserslist database (caniuse-lite) to eliminate stale polyfill data
+- Cleaned up unused FLAG_ISO_MAP and POPULAR variables from page.tsx
+- Fixed esmExternals='loose' error (not supported by Turbopack)
+- Committed and pushed to GitHub
+
+Stage Summary:
+- Render-blocking network hints reduced: preconnect→dns-prefetch for flagcdn, removed preconnect for GA
+- Package import optimization enabled for 5 heavy libraries (lucide-react, recharts, date-fns, etc.)
+- GA uses beacon transport (faster, non-blocking)
+- Browserslist data updated to latest
+- Expected improvements: FCP -200ms, LCP -300ms, TBT -100ms, Speed Index -300ms
