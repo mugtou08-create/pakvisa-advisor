@@ -654,12 +654,11 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
           <section className="max-w-5xl mx-auto px-4 pb-8">
             <div className="flex flex-col sm:flex-row items-start gap-6">
               {flagUrl && (
-                <img
-                  src={flagUrl}
-                  alt={`${country.name} flag`}
-                  className="w-32 h-auto sm:w-40 rounded-lg shadow-lg border bg-muted"
-                  width={160}
-                  height={107}
+                <span
+                  role="img"
+                  aria-label={`${country.name} flag`}
+                  className="inline-block w-32 sm:w-40 rounded-lg shadow-lg border bg-muted"
+                  style={{ aspectRatio: '160/107', backgroundImage: `url(${flagUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
                 />
               )}
               <div className="flex-1">
@@ -1065,7 +1064,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                       className="flex flex-col items-center gap-2 border rounded-lg p-3 bg-card hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all text-center group"
                     >
                       {rcFlag ? (
-                        <img src={rcFlag} alt={`${rc.name} flag`} className="w-10 h-auto rounded" width={80} height={53} suppressHydrationWarning />
+                        <span className="inline-block w-10 rounded" style={{ height: 'auto', aspectRatio: '80/53', backgroundImage: `url(${rcFlag})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
                       ) : (
                         <span className="text-2xl">{rc.flagEmoji}</span>
                       )}

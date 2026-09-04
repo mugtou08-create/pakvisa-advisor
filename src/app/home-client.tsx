@@ -21,7 +21,7 @@ import { useAuthStore, isProUser, setReferralProExpiry } from '@/lib/auth-store'
 import type { CountryData, CostProfileData } from '@/lib/types';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
 import dynamic from 'next/dynamic';
-// Plain <img> used for flag images to avoid Next.js Image SSR hydration mismatch (data-nimg, loading, decoding, style attributes)
+// Flag images use CSS background-image on <span>/<div> to avoid <img> SSR hydration mismatch
 
 // Lazy-load heavy components — they only render on user interaction.
 const CountryDetailPanel = dynamic(() => import('@/components/visa/country-detail').then(m => ({ default: m.CountryDetailPanel })), { ssr: false, loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
@@ -335,17 +335,11 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
           tabIndex={-1}
         >{country.name} visa guide for Pakistani citizens</a>
         {/* Flag */}
-        <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
-          {country.flagUrl ? (
-            <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" suppressHydrationWarning />
-          ) : (() => {
-            const flagSrc = getFlagUrl(country.code);
-            return flagSrc ? (
-              <img src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" suppressHydrationWarning />
-            ) : (
-              <span className="text-lg">{country.flagEmoji}</span>
-            );
-          })()}
+        <div
+          className="w-12 h-8 rounded shrink-0 flex items-center justify-center"
+          style={(country.flagUrl || getFlagUrl(country.code)) ? { backgroundImage: `url(${country.flagUrl || getFlagUrl(country.code)})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        >
+          {!(country.flagUrl || getFlagUrl(country.code)) && <span className="text-lg">{country.flagEmoji}</span>}
         </div>
 
         {/* Info */}
@@ -1153,12 +1147,11 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                       className="rounded-xl border bg-card p-4 text-left hover:shadow-md transition-all group hover:-translate-y-0.5 duration-200 block"
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-7 rounded overflow-hidden bg-muted shrink-0">
-                          {flagSrc ? (
-                            <img src={flagSrc} alt={`${c.name} flag`} className="w-full h-full object-cover" loading="lazy" suppressHydrationWarning />
-                          ) : (
-                            <span className="text-base">{c.flagEmoji}</span>
-                          )}
+                        <div
+                          className={`w-10 h-7 rounded shrink-0 ${flagSrc ? '' : 'flex items-center justify-center'}`}
+                          style={flagSrc ? { backgroundImage: `url(${flagSrc})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                        >
+                          {!flagSrc && <span className="text-base">{c.flagEmoji}</span>}
                         </div>
                         <span className="font-semibold text-sm group-hover:text-emerald-600 transition-colors truncate">{c.name}</span>
                       </div>

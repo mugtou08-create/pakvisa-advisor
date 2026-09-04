@@ -100,19 +100,14 @@ export function MiniRadarChart({ safety, cost, ease }: { safety: number; cost: n
   );
 }
 
-/** Small flag image component with emoji fallback — uses plain <img> to avoid next/image hydration mismatch */
+/** Small flag component with emoji fallback — uses CSS background-image to avoid <img> hydration mismatch */
 export function FlagImage({ code, flagUrl, size = 24, className = '', emoji }: { code: string; flagUrl?: string; size?: number; className?: string; emoji?: string }) {
   const src = flagUrl || getFlagUrl(code);
   if (!src) return <span className={className} style={{ fontSize: size * 0.8 }}>{emoji || '\u{1F3F3}\uFE0F'}</span>;
   return (
-    <img
-      src={src}
-      alt={`Flag`}
-      width={size}
-      height={Math.round(size * 0.67)}
-      className={`object-cover rounded-sm ${className}`}
-      loading="lazy"
-      suppressHydrationWarning
+    <span
+      className={`inline-block rounded-sm ${className}`}
+      style={{ width: size, height: Math.round(size * 0.67), backgroundImage: `url(${src})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
     />
   );
 }
