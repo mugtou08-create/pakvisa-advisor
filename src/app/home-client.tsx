@@ -21,7 +21,7 @@ import { useAuthStore, isProUser, setReferralProExpiry } from '@/lib/auth-store'
 import type { CountryData, CostProfileData } from '@/lib/types';
 import { CODE_TO_SLUG } from '@/lib/country-slug';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
+// Plain <img> used for flag images to avoid Next.js Image SSR hydration mismatch (data-nimg, loading, decoding, style attributes)
 
 // Lazy-load heavy components — they only render on user interaction.
 const CountryDetailPanel = dynamic(() => import('@/components/visa/country-detail').then(m => ({ default: m.CountryDetailPanel })), { ssr: false, loading: () => <div className="p-6"><Skeleton className="h-64 w-full" /></div> });
@@ -337,11 +337,11 @@ function CountryResultCard({ country, expanded, onToggle, isFav, onToggleFav }: 
         {/* Flag */}
         <div className="w-12 h-8 rounded overflow-hidden bg-muted shrink-0 flex items-center justify-center">
           {country.flagUrl ? (
-            <Image src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} loading="lazy" unoptimized suppressHydrationWarning />
+            <img src={country.flagUrl} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" />
           ) : (() => {
             const flagSrc = getFlagUrl(country.code);
             return flagSrc ? (
-              <Image src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" width={48} height={32} loading="lazy" unoptimized suppressHydrationWarning />
+              <img src={flagSrc} alt={`${country.name} flag`} className="w-full h-full object-cover" loading="lazy" />
             ) : (
               <span className="text-lg">{country.flagEmoji}</span>
             );
@@ -1155,7 +1155,7 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-7 rounded overflow-hidden bg-muted shrink-0">
                           {flagSrc ? (
-                            <Image src={flagSrc} alt={`${c.name} flag`} className="w-full h-full object-cover" width={80} height={53} loading="lazy" unoptimized suppressHydrationWarning />
+                            <img src={flagSrc} alt={`${c.name} flag`} className="w-full h-full object-cover" loading="lazy" />
                           ) : (
                             <span className="text-base">{c.flagEmoji}</span>
                           )}
