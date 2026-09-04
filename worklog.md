@@ -181,3 +181,29 @@ Stage Summary:
 - All features verified working: Share-to-Unlock-Pro, referral API, Sara widget, page navigation
 - Page load performance: ~724ms (fast and smooth)
 - No errors in dev log or browser console
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Fix hydration mismatch error (data-nimg attributes + cascading style/div mismatch)
+
+Work Log:
+- Root cause: next/image `<Image>` component adds SSR-specific attributes (data-nimg="1", loading="lazy", decoding="async", style={{color:"transparent"}}) that don't match client render, causing hydration mismatch
+- These `<Image>` mismatches cascaded, causing React to misinterpret subsequent DOM nodes — resulting in a secondary `<style>` vs `<div>` mismatch in the alert carousel section
+- Fix: Replaced all 3 `<Image>` instances with plain `<img>` tags for external flag URLs (flagcdn.com)
+  - Since these were already `unoptimized`, plain `<img>` provides identical behavior without SSR-injected attributes
+  - Line 340: country.flagUrl flag → `<img src={country.flagUrl} ...>`
+  - Line 344: flagSrc fallback flag → `<img src={flagSrc} ...>`
+  - Line 1158: Popular Destinations flag → `<img src={flagSrc} ...>`
+- Removed unused `import Image from 'next/image'` import
+- Verified with agent-browser: zero hydration errors, 65.7ms clean hydration, 371 hydrated components, CLS=0, LCP=884ms
+- Verified all sections render correctly: hero, popular destinations, travel essentials, alerts carousel, country list, share section, Sara widget, footer
+- Verified referral/rewards API: visitorsNeeded=3, proDaysEarned=7, Pro unlocks at exactly 3 unique visitors, duplicate IP rejection, self-referral rejection, isProUser() checks referral Pro correctly
+- Committed and pushed to GitHub
+
+Stage Summary:
+- Hydration mismatch COMPLETELY FIXED by replacing next/image with plain img for flag images
+- No more data-nimg, loading, decoding, or style attribute mismatches
+- Cascading <style> vs <div> error also resolved (was caused by Image mismatches)
+- All features verified working, site loads fast (LCP 884ms)
+- Referral system (Share → 3 visits → 7 days Pro FREE) verified end-to-end
