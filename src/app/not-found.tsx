@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft, Globe, Compass } from 'lucide-react';
 
-// Popular countries to suggest — preserves link equity and helps users discover content
 const POPULAR_COUNTRIES = [
   { slug: 'uae', name: 'UAE', emoji: '🇦🇪' },
   { slug: 'saudi-arabia', name: 'Saudi Arabia', emoji: '🇸🇦' },
@@ -25,9 +24,9 @@ export default function NotFound() {
           <Globe className="w-16 h-16 text-muted-foreground/40 mx-auto" />
         </div>
         <h1 className="text-5xl font-bold mb-2">404</h1>
-        <h2 className="text-xl font-semibold mb-2">Country Not Found</h2>
+        <h2 className="text-xl font-semibold mb-2">Page Not Found</h2>
         <p className="text-muted-foreground mb-8">
-          The country you are looking for does not exist in our database, or the URL may be incorrect.
+          The page you are looking for doesn&apos;t exist or has been moved.
         </p>
 
         <Link
@@ -37,7 +36,6 @@ export default function NotFound() {
           <ArrowLeft className="w-4 h-4" /> Back to PakVisa Advisor
         </Link>
 
-        {/* Popular Countries — internal links for SEO link equity + user discovery */}
         <div className="mt-8 pt-8 border-t">
           <div className="flex items-center gap-2 justify-center mb-4">
             <Compass className="w-4 h-4 text-emerald-600" />

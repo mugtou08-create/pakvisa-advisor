@@ -324,6 +324,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       `${country.name} visa processing time`,
       `${country.name} visa documents required`,
       `Pakistani citizens ${country.name} travel`,
+      `${country.name} visa application from Pakistan`,
+      `${country.name} visa for Pakistani citizens 2026`,
+      `apply ${country.name} visa Islamabad`,
+      `${country.name} tourist visa Pakistan`,
+      `${country.name} visa cost Pakistani passport`,
+      `can Pakistani go to ${country.name} without visa`,
+      `${country.name} visa on arrival Pakistani`,
+      `${country.name} e-visa Pakistan online`,
+      `travel to ${country.name} from Pakistan guide`,
     ],
     openGraph: {
       type: 'article',
@@ -533,6 +542,45 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
     mainEntityOfPage: `https://pakvisa-advisor.vercel.app/${slug}`,
   };
 
+  // HowTo schema — eligible for Google rich results (step-by-step guide)
+  const howToSteps = isEmbassyRequired
+    ? [
+        { '@type': 'HowToStep', name: 'Determine visa type', text: `Identify the correct visa type for your trip to ${country.name} (tourist, business, student, etc.).` },
+        { '@type': 'HowToStep', name: 'Gather documents', text: `Collect all required documents: valid Pakistani passport (6+ months), photos, application form, bank statements, flight tickets, hotel booking, and travel insurance.` },
+        { '@type': 'HowToStep', name: 'Book embassy appointment', text: `Schedule an appointment at the ${country.name} embassy or consulate in Islamabad or Karachi.` },
+        { '@type': 'HowToStep', name: 'Submit application', text: `Visit the embassy on your appointment date, submit your documents, and pay the visa fee.` },
+        { '@type': 'HowToStep', name: 'Wait for processing', text: `Wait for visa processing. This typically takes ${country.processingDaysMin || 2}–${country.processingDaysMax || 14} business days.` },
+        { '@type': 'HowToStep', name: 'Collect visa', text: `Collect your approved visa from the embassy or receive it by courier. Verify all details are correct.` },
+      ]
+    : country.etaAvailable
+      ? [
+          { '@type': 'HowToStep', name: 'Visit e-Visa portal', text: `Go to the official ${country.name} e-Visa application website.` },
+          { '@type': 'HowToStep', name: 'Fill application', text: `Complete the online application form with your personal and travel details.` },
+          { '@type': 'HowToStep', name: 'Upload documents', text: `Upload required documents: passport scan, photograph, travel itinerary, and proof of accommodation.` },
+          { '@type': 'HowToStep', name: 'Pay fee online', text: `Pay the e-Visa fee using a credit or debit card.` },
+          { '@type': 'HowToStep', name: 'Receive approval', text: `Receive your e-Visa approval by email. Print it and carry it with your passport.` },
+        ]
+      : country.visaOnArrival
+        ? [
+            { '@type': 'HowToStep', name: 'Travel to destination', text: `Board your flight to ${country.name} with your valid Pakistani passport (6+ months validity).` },
+            { '@type': 'HowToStep', name: 'Present at immigration', text: `At the airport, proceed to the immigration counter and present your passport and return ticket.` },
+            { '@type': 'HowToStep', name: 'Receive visa stamp', text: `The visa on arrival is stamped in your passport. Processing takes 5-15 minutes.` },
+          ]
+        : [
+            { '@type': 'HowToStep', name: 'Travel visa-free', text: `Pack your bags and travel to ${country.name} with your valid Pakistani passport. No visa application needed!` },
+          ];
+
+  const howToSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: `How to get a ${country.name} visa for Pakistani citizens`,
+    description: `Step-by-step guide to obtain a ${country.name} visa for Pakistani passport holders. ${visaLabel} access.`,
+    totalTime: isEmbassyRequired && (country.processingDaysMin || country.processingDaysMax)
+      ? `P${country.processingDaysMin || 2}D-P${country.processingDaysMax || 14}D`
+      : undefined,
+    step: howToSteps,
+  };
+
   return (
     <>
       <script
@@ -550,6 +598,10 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
       />
 
       <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -1209,6 +1261,41 @@ function generateFAQs(
       a: `Common requirements for a ${country.name} visa include: a valid Pakistani passport with 6+ months validity, passport-sized photographs, proof of accommodation, return flight ticket, travel insurance, and proof of sufficient funds. For the complete and most up-to-date list, check the official embassy website or use PakVisa Advisor.`,
     });
   }
+
+  // Q6: Can Pakistani passport holders get visa on arrival? (high-search-volume query)
+  faqs.push({
+    q: `Can Pakistani passport holders get visa on arrival in ${country.name}?`,
+    a: country.visaOnArrival
+      ? `Yes! Pakistani citizens can obtain a visa on arrival in ${country.name}. Simply present your valid Pakistani passport at the immigration counter. No prior application is needed. Ensure your passport has at least 6 months validity and blank visa pages.`
+      : country.visaFree
+        ? `Pakistani citizens do not need any visa for ${country.name} — entry is visa-free. No visa on arrival or prior application is needed. Just travel with a valid Pakistani passport.`
+        : `No, ${country.name} does not offer visa on arrival for Pakistani passport holders. You must ${country.etaAvailable ? 'apply for an e-Visa online before traveling' : 'apply for a visa at the embassy or consulate before your trip'}.`,
+  });
+
+  // Q7: What are the required documents? (high-search-volume query)
+  if (isEmbassyRequired) {
+    faqs.push({
+      q: `What documents are required for ${country.name} visa from Pakistan?`,
+      a: `To apply for a ${country.name} visa from Pakistan, you typically need: (1) Valid Pakistani passport with 6+ months validity and blank pages, (2) Completed visa application form, (3) Recent passport-sized photographs, (4) Proof of accommodation/hotel booking, (5) Return/onward flight ticket, (6) Bank statements showing sufficient funds, (7) Travel insurance, (8) Cover letter stating purpose of visit. Requirements may vary by visa type — always verify with the ${country.name} embassy in Islamabad.`,
+    });
+  } else {
+    faqs.push({
+      q: `What is the currency in ${country.name} and should I exchange PKR before traveling?`,
+      a: `The currency in ${country.name} is ${country.currency} (${country.currencyCode}). It is generally better to exchange some PKR to ${country.currencyCode} before departure for immediate expenses. You can also use international debit/credit cards at ATMs in ${country.name}. Use PakVisa Advisor's currency converter to check current exchange rates and plan your travel budget.`,
+    });
+  }
+
+  // Q8: How to apply? (high-search-volume query)
+  faqs.push({
+    q: `How can I apply for a ${country.name} visa from Pakistan?`,
+    a: country.visaFree
+      ? `You do not need to apply for a visa for ${country.name}! Pakistani citizens can travel visa-free. Simply book your flight, ensure your passport has 6+ months validity, and carry travel insurance. No embassy visit or application is needed.`
+      : country.etaAvailable
+        ? `To apply for a ${country.name} e-Visa from Pakistan: (1) Visit the official ${country.name} e-Visa portal, (2) Fill in the online application form, (3) Upload required documents (passport scan, photo, itinerary), (4) Pay the visa fee online, (5) Receive your e-Visa approval by email, (6) Print and carry it with your passport. The process is fully online — no embassy visit required.`
+        : country.visaOnArrival
+          ? `For ${country.name}, Pakistani citizens get a visa on arrival. No prior application is needed. Simply arrive at the ${country.name} airport/border with your valid Pakistani passport (6+ months validity), return ticket, and proof of accommodation. The visa is stamped at immigration.`
+          : `To apply for a ${country.name} visa from Pakistan: (1) Determine your visa type (tourist, business, etc.), (2) Gather required documents, (3) Fill out the visa application form, (4) Book an appointment at the ${country.name} embassy/consulate in Islamabad or Karachi, (5) Submit your application and pay the fee, (6) Wait for processing (${country.processingDaysMin || '2'}–${country.processingDaysMax || '14'} business days), (7) Collect your visa. Use PakVisa Advisor to track your application with our Visa Process Tracker tool.`,
+  });
 
   return faqs;
 }
