@@ -428,9 +428,18 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
     if (!mounted) return;
     let cancelled = false;
     (async () => {
-      // If SSR already provided data, we still try to fetch fresh data
-      // but don't block the UI waiting for it.
-      const maxRetries = initialCountries && initialCountries.length > 0 ? 1 : 3;
+      // ── Performance optimization ──
+      // If SSR already provided data (ISR cache), skip the client-side refetch.
+      // This saves ~77 KiB of JSON download on every page load and
+      // significantly improves FCP/LCP/Speed Index on PageSpeed.
+      // The ISR cache revalidates every 1 hour, so data is at most 1 hour stale.
+      if (initialCountries && initialCountries.length > 0) {
+        setDataFetched(true);
+        return;
+      }
+
+      // Only fetch if SSR data is empty (DB was down during server render)
+      const maxRetries = 3;
       let success = false;
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         if (cancelled) break;
@@ -460,12 +469,12 @@ export default function HomeClient({ initialCountries, initialStats, serverDataL
           if (cancelled) break;
           console.warn('[HomeClient] Fetch attempt', attempt, 'failed:', e instanceof Error ? e.message : e);
           if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 1000 * attempt)); // Backoff: 1s, 2s
+            await new Promise(r => setTimeout(r, 1000 * attempt)); // Backoff: 1s, 2s, 3s
           }
         }
       }
       // NUCLEAR FALLBACK: if API failed AND SSR had no data, use embedded fallback
-      if (!success && !cancelled && (!initialCountries || initialCountries.length === 0)) {
+      if (!success && !cancelled) {
         try {
           const { getClientFallbackCountries } = await import('@/lib/client-fallback-countries');
           const fallback = getClientFallbackCountries();

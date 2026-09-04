@@ -78,9 +78,12 @@
     "zustand": "^5.0.6"
   },
   "browserslist": [
-    "last 2 versions and not dead",
-    "> 0.3% in PK",
-    "not op_mini all"
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions",
+    "not dead",
+    "not IE 11"
   ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
