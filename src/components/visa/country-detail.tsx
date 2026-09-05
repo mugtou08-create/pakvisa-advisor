@@ -579,7 +579,7 @@ function AffiliateResources({ country }: { country: CountryData }) {
           </div>
           <div className="text-center">
             <p className="text-xs font-medium group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">Get Insurance</p>
-            <p className="text-[10px] text-muted-foreground">from $42/mo</p>
+            <p className="text-[10px] text-muted-foreground">from $62.72/mo</p>
           </div>
         </a>
       </div>

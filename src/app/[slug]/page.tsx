@@ -919,7 +919,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
                 <div className="text-3xl">🛡️</div>
                 <div className="flex-1">
                   <p className="font-bold text-base">Travel Insurance for {country.name}</p>
-                  <p className="text-sm text-muted-foreground">Get comprehensive nomad insurance from SafetyWing — coverage from $42/month worldwide.</p>
+                  <p className="text-sm text-muted-foreground">Get comprehensive nomad insurance from SafetyWing — coverage from $62.72/month worldwide.</p>
                 </div>
                 <span className="text-emerald-600 font-semibold text-sm shrink-0">Get Covered →</span>
               </div>
