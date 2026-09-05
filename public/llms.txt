@@ -1,52 +1,40 @@
 # PakVisa Advisor
 
-> Pakistani Passport Visa Checker & Travel Tools
+> AI-powered visa eligibility checker and travel tools for Pakistani passport holders. Check visa requirements for 70+ countries, compare destinations, estimate trip budgets, and track your visa application with WhatsApp reminders.
 
-## Overview
+## Key Pages
 
-PakVisa Advisor is a free, AI-powered visa intelligence platform for Pakistani passport holders. It provides visa requirement checks for 70+ countries, personalized eligibility scoring, currency conversion, trip budget estimation, and an AI travel consultant.
+- [/](https://pakvisa-advisor.vercel.app/) — Homepage: Visa checker, country grid, tools, and visa policy alerts
+- [/uae](https://pakvisa-advisor.vercel.app/uae) — UAE Visa Guide for Pakistani Citizens
+- [/saudi-arabia](https://pakvisa-advisor.vercel.app/saudi-arabia) — Saudi Arabia Visa Guide
+- [/turkey](https://pakvisa-advisor.vercel.app/turkey) — Turkey Visa Guide
+- [/malaysia](https://pakvisa-advisor.vercel.app/malaysia) — Malaysia Visa Guide
+- [/uk](https://pakvisa-advisor.vercel.app/uk) — UK Visa Guide
+- [/usa](https://pakvisa-advisor.vercel.app/usa) — USA Visa Guide
+- [/canada](https://pakvisa-advisor.vercel.app/canada) — Canada Visa Guide
+- [/australia](https://pakvisa-advisor.vercel.app/australia) — Australia Visa Guide
+- [/germany](https://pakvisa-advisor.vercel.app/germany) — Germany Visa Guide
+- [/thailand](https://pakvisa-advisor.vercel.app/thailand) — Thailand Visa Guide
+- [/china](https://pakvisa-advisor.vercel.app/china) — China Visa Guide
+- [/japan](https://pakvisa-advisor.vercel.app/japan) — Japan Visa Guide
+- [/singapore](https://pakvisa-advisor.vercel.app/singapore) — Singapore Visa Guide
 
-## Key Features
+## Features
 
-- **Visa Checker**: Search any country to see visa requirements, fees, processing times, and document checklists for Pakistani passport holders
-- **AI Travel Consultant (Sara)**: Chat-based AI assistant that answers visa and travel questions in English and Urdu
-- **Visa Comparison**: Compare visa requirements, fees, and costs for multiple countries side by side
-- **Currency Converter**: Convert PKR to 70+ foreign currencies with live exchange rates
-- **Budget Calculator**: Estimate trip costs including visa fees, flights, accommodation, food, and transport
-- **Favorites**: Save countries to a personal list for quick access
-- **Pro Plan**: Premium features including detailed country guides and AI-powered document verification
+- Visa requirement checker for 70+ countries with Pakistani passport
+- Country comparison tool (side-by-side visa, cost, safety comparison)
+- Currency converter (PKR to any currency)
+- Trip budget calculator with monthly cost breakdowns
+- Visa Process Tracker with WhatsApp reminders (Pro feature)
+- AI assistant (Sara) for visa questions
+- Visa eligibility quiz
+- PDF visa guide downloads
 
-## URL Structure
+## API Endpoints
 
-- `/` — Homepage with visa search, country list, and travel tools
-- `/{country-slug}` — Detailed country visa guide (e.g., `/turkey`, `/malaysia`, `/uae`)
-- `/api/assistant` — AI chat endpoint (POST with messages array)
-- `/api/countries` — Country data API (JSON)
-- `/api/convert` — Currency conversion API
-- `/api/go` — Affiliate link redirect (accepts `p` for partner, `c` for country)
-
-## Content Categories
-
-Countries are classified into four visa types for Pakistani citizens:
-1. **Visa Free**: No visa required (e.g., Malaysia 30 days, Dominica)
-2. **Visa on Arrival**: Visa issued at the airport (e.g., Maldives, Nepal)
-3. **e-Visa**: Online visa application (e.g., Turkey, Azerbaijan, Bahrain)
-4. **Embassy Required**: Must apply at embassy/consulate (e.g., USA, UK, Schengen countries)
-
-## Data Sources
-
-- Visa requirements sourced from official government immigration websites
-- Currency rates from exchange rate APIs
-- Country data updated regularly via automated scraping
-
-## Technical
-
-- Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4
-- Deployed on Vercel with edge caching (ISR, 5-minute revalidation)
-- Database: Turso (SQLite) via Prisma ORM
-- AI: Large Language Model for travel consultations
-
-## Contact
-
-- Website: https://pakvisa-advisor.vercel.app
-- Email: via in-app contact form
+- `/api/countries` — Country data (visa types, requirements, costs)
+- `/api/currency` — Currency conversion rates
+- `/api/compare` — Country comparison data
+- `/api/score` — Visa eligibility scoring
+- `/api/assistant` — AI assistant (Sara) chat
+- `/api/timeline` — Visa timeline tracker (Pro)

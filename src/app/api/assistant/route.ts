@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       if (!freeResult.allowed) {
         return NextResponse.json({
           success: false,
-          error: `You've used all ${FREE_RATE_LIMIT} free questions today. Sign up for a free account or share PakVisa with friends to earn more!`,
+          error: `You've used all ${FREE_RATE_LIMIT} free questions today. Share PakVisa with your contact list to unlock 7 days of Pro FREE — or sign up for a Pro plan!`,
           code: 'LIMIT_REACHED',
           remainingQueries: 0,
         });
@@ -173,9 +173,10 @@ export async function POST(request: NextRequest) {
 
     if (referralData) {
       if (referralData.hasReferral && (referralData.visitorCount as number) > 0) {
-        smartContext += `\nSMART SIGNAL - Referral progress: User has shared and earned ${referralData.visitorCount} visitor(s). Current tier: ${referralData.rewardTier}. They have ${referralData.bonusQueries} bonus queries.`;
+        const proUnlocked = (referralData.rewardTier as number) >= 1;
+        smartContext += `\nSMART SIGNAL - Referral progress: User has shared and earned ${referralData.visitorCount} visitor(s). ${proUnlocked ? 'PRO UNLOCKED via sharing! They have 7 days of free Pro.' : `They need ${(referralData.visitorsNeeded as number) || 3} total visits to unlock Pro. Encourage them to share with their entire contact list.`}`;
       } else if (!referralData.hasReferral) {
-        smartContext += `\nSMART SIGNAL - Referral: User has NOT been introduced to the share-and-earn program yet.`;
+        smartContext += `\nSMART SIGNAL - Referral: User has NOT been introduced to the share-to-unlock-Pro program yet. Mention they can share PakVisa with their contact list to unlock 7 days of Pro FREE.`;
       }
     }
 

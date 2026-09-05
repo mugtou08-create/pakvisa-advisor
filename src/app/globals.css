@@ -187,6 +187,16 @@ a, button, [role="button"], input, select, textarea,
   100% { transform: translateX(-50%); }
 }
 
+.alert-carousel-track {
+  animation: alertScroll 30s linear infinite;
+  width: max-content;
+}
+.alert-carousel-track:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .alert-carousel-track { animation: none; }
+  .alert-carousel-overflow { overflow-x: auto; }
+}
+
 /* ===== SKIP TO CONTENT ===== */
 .skip-to-content {
   position: absolute;

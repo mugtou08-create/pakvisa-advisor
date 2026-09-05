@@ -112,6 +112,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Only dns-prefetch for analytics — no preconnect needed since we use lazyOnload strategy.
+            Preconnect was causing the browser to prioritize the GA connection over page resources,
+            adding 263ms of main-thread blocking time (PageSpeed insight). */}
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
         <GoogleAnalytics />
         <GoogleAdSense />
         <meta name="google-site-verification" content="aXhN2r-V-uKdvYHhLmnjF8OOpLW48PPCx8_AZrEq3as" />
